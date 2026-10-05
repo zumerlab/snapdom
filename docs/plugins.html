@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Plugins — SnapDOM</title>
@@ -82,54 +82,10 @@
     .back-top { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); text-decoration: none; padding: 5px 12px; border: 1px solid var(--border-soft); border-radius: 999px; transition: all 0.2s; margin-bottom: 16px; font-weight: 600; }
     .back-top:hover { color: var(--accent); border-color: var(--accent); }
 
-    /* ── Playground ── */
-    .playground-section { max-width: 1100px; margin: 0 auto 60px; padding: 0 24px; }
-    .playground-card { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 32px; }
-    .playground-card::before { content: ''; position: absolute; top: -1px; left: -1px; width: 20px; height: 20px; border-top: 3px solid var(--accent); border-left: 3px solid var(--accent); pointer-events: none; }
-    .playground-card::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 20px; height: 20px; border-bottom: 3px solid var(--accent); border-right: 3px solid var(--accent); pointer-events: none; }
-    .playground-card .section-label { margin-bottom: 24px; }
-    .pg-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
-    .pg-left, .pg-right { display: flex; flex-direction: column; gap: 16px; min-width: 0; overflow: hidden; }
-    .pg-panel { position: relative; background: var(--bg); border: 1px solid var(--border-soft); border-radius: 0; padding: 20px; min-width: 0; overflow: hidden; }
-    .pg-panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-    .pg-panel-header h4 { font-size: 10px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin: 0; font-weight: 700; }
-    .pg-panel h4 { font-size: 10px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 14px; font-weight: 700; }
-    .pg-target { padding: 20px; border-radius: 0; background: #FFFFFF; color: #0F1E4D; font-family: var(--font-body); border: 1px solid var(--border-soft); }
-    .pg-target h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; color: #0F1E4D; }
-    .pg-target p { font-size: 13px; color: #55617C; line-height: 1.5; }
-    .pg-target .pg-tag { display: inline-block; padding: 2px 8px; border-radius: 0; font-size: 11px; font-weight: 700; background: var(--accent-soft); color: var(--accent); margin-top: 8px; }
-    .pg-result { min-height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; }
-    .pg-result img { max-width: 100%; border: 1px solid rgba(15,30,77,0.2); background: #fff; padding: 6px; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); }
-    .pg-code-wrap { position: relative; }
-    .pg-code-block { background: var(--code-bg); border: 1px solid var(--code-bg); border-radius: 0; padding: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; color: var(--code-text); white-space: pre; overflow-x: auto; margin: 0; min-height: 80px; }
-
     /* Copy button */
     .copy-btn { position: absolute; top: 8px; right: 8px; background: transparent; border: 1px solid rgba(217,226,247,0.3); border-radius: 999px; padding: 4px 12px; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--code-text); cursor: pointer; transition: border-color 0.15s, color 0.15s; z-index: 2; font-weight: 700; }
     .copy-btn:hover { border-color: rgba(217,226,247,0.7); color: #FFFFFF; }
     .copy-btn.copied { color: #9FE8C5; border-color: #9FE8C5; }
-    .pg-panel-header .copy-btn { position: static; color: var(--text-muted); border-color: rgba(15,30,77,0.3); }
-    .pg-panel-header .copy-btn:hover { color: var(--text); border-color: var(--border); }
-    .pg-panel-header .copy-btn.copied { color: var(--green); border-color: var(--green); }
-
-    /* Plugin toggles */
-    .pg-plugins { display: flex; flex-direction: column; gap: 6px; }
-    .pg-plugin { border: 1px solid var(--border-soft); border-radius: 0; overflow: hidden; background: var(--surface); }
-    .pg-plugin.active { border-color: var(--accent); }
-    .pg-plugin-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; user-select: none; }
-    .pg-plugin-header input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
-    .pg-plugin-header span { font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
-    .pg-plugin-opts { padding: 0 14px 12px; display: none; }
-    .pg-plugin.active .pg-plugin-opts { display: flex; flex-direction: column; gap: 8px; }
-    .pg-opt { display: flex; align-items: center; gap: 8px; }
-    .pg-opt label { font-size: 11px; color: var(--text-muted); font-family: var(--font-mono); min-width: 60px; font-weight: 600; }
-    .pg-opt select, .pg-opt input[type="text"] { background: var(--surface); border: 1px solid rgba(15,30,77,0.3); border-radius: 0; padding: 5px 8px; color: var(--text); font-family: var(--font-mono); font-size: 12px; flex: 1; min-width: 0; }
-    .pg-opt select { cursor: pointer; }
-    .pg-opt select:focus, .pg-opt input:focus { outline: none; border-color: var(--accent); }
-    .pg-opt input[type="color"] { width: 28px; height: 28px; border: 1px solid rgba(15,30,77,0.3); border-radius: 0; padding: 2px; cursor: pointer; background: var(--surface); flex-shrink: 0; }
-    .pg-capture-btn { padding: 12px 20px; border-radius: 999px; border: 1.5px solid var(--accent); background: var(--accent); color: #FFFFFF; font-size: 12px; font-weight: 700; font-family: var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase; cursor: pointer; transition: background 0.15s, border-color 0.15s; width: 100%; }
-    .pg-capture-btn:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
-    .pg-capture-btn:disabled { opacity: 0.5; cursor: wait; }
-    .pg-status { font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); min-height: 16px; text-align: center; }
 
     /* ── Install ── */
     .install-section { max-width: 1100px; margin: 0 auto 60px; padding: 0 24px; }
@@ -228,7 +184,6 @@
       .plugin-grid { grid-template-columns: 1fr; }
       .cta-card { padding: 32px 20px; }
       .cta-steps { flex-direction: column; align-items: center; }
-      .pg-layout { grid-template-columns: 1fr; }
       .install-grid { grid-template-columns: 1fr; }
       .modal { padding: 24px; width: 95%; }
     }
@@ -247,24 +202,25 @@
   <link rel="stylesheet" href="./pro-plans.css">
   <link rel="stylesheet" href="navigation.css"><link rel="stylesheet" href="panes.css">
   <script type="module" src="panes.js"></script>
-</head>
+<script type="module" src="catalogue.js"></script>
+<link rel="stylesheet" href="code.css"><script defer data-manual src="assets/prism/prism.min.js"></script><script defer src="code-blocks.js"></script></head>
 <body>
   <script defer src="./site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "", "title": "Extend SnapDOM", "lead": "Add HTML, context for agents, PDF and recordings to SnapDOM. Transform captures with filters, timestamps and input redaction, or build your own plugin.", "links": [["#playground", "Playground"], ["#quickstart", "Quick start"], ["#official", "Browse plugins"], ["#build-plugin", "Build a plugin"]]} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="plugins.html" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">12 official plugins</span></a><a class="site-nav-item sec-capture" href="plugins.html#playground"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="plugins.html" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">13 official plugins</span></a><a class="site-nav-item sec-capture" href="playground/"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter plugins" aria-label="Filter plugins"></label><nav class="pane-nav" aria-label="Plugins"><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Build</button><div class="pane-nav-items"><a href="capabilities/">Capabilities</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="plugins.html" aria-current="page">Plugins and playground</a><div class="pane-toc"><a href="#plugin-pro-title">PDF &amp; Vector plugins.</a><a href="#build-a-plugin">Build a plugin</a></div></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Reference</button><div class="pane-nav-items"><a href="docs/plugins/">Plugin API</a></div></div></nav></aside>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter plugins" aria-label="Filter plugins"></label><nav class="pane-nav" aria-label="Plugins"><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Build</button><div class="pane-nav-items"><a href="capabilities/">Capabilities</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="plugins.html" aria-current="page">Official plugins</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Reference</button><div class="pane-nav-items"><a href="docs/plugins/">Plugin API</a></div></div></nav></aside>
 
-<article class="pane-read sec-export" data-title="Plugins and playground">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Plugins</span><span aria-hidden="true">/</span><span>Plugins and playground</span></nav><span class="doc-meta"></span></div><h1>Extend SnapDOM</h1><p class="doc-lead">Add HTML, context for agents, PDF and recordings to SnapDOM. Transform captures with filters, timestamps and input redaction, or build your own plugin.</p><p class="pane-links doc-links"><a href="#playground">Playground</a><a href="#quickstart">Quick start</a><a href="#official">Browse plugins</a><a href="#build-plugin">Build a plugin</a></p></header>
+<article class="pane-read sec-export" data-title="Official plugins">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Plugins</span><span aria-hidden="true">/</span><span>Official plugins</span></nav><span class="doc-meta"></span></div><h1>Extend SnapDOM</h1><p class="doc-lead">Add HTML, context for agents, PDF and recordings to SnapDOM. Transform captures with filters, timestamps and input redaction, or build your own plugin.</p><p class="pane-links doc-links"><a href="#playground">Playground</a><a href="#quickstart">Quick start</a><a href="#official">Browse plugins</a><a href="#build-plugin">Build a plugin</a></p></header>
 <div class="pane-content"><!-- content -->
 
   <section class="plugin-pro" aria-labelledby="plugin-pro-title">
     <div>
-      <span class="pro-label">SnapDOM Pro</span>
+      <span class="pro-label">Open source</span>
       <h2 id="plugin-pro-title">PDF &amp; Vector plugins.</h2>
-      <p>PDF Pro adds selectable, searchable text and pagination. Vector exports editable shapes and text for SVG and Figma. Each is a separate paid plugin.</p>
-      <p class="plugin-pro-terms">Individual: $39/year · Business: $99/year, per plugin.</p>
+      <p>PDF adds selectable, searchable text and pagination. Vector exports editable shapes and text for SVG and Figma. Both plugins live in the SnapDOM monorepo under the MIT license.</p>
+      <p class="plugin-pro-terms">The updated plugin package is prepared locally; these exports are not published yet.</p>
     </div>
     <div class="plugin-pro-links">
       <a href="./pro/pdf/" data-umami-event="Plugins PDF Pro">Explore PDF</a>
@@ -272,147 +228,7 @@
     </div>
   </section>
 
-  <!-- ── Playground ── -->
-  <section class="playground-section" id="playground">
-    <div class="playground-card">
-      <div class="section-label">Playground</div>
-      <div class="pg-layout">
-        <div class="pg-left">
-          <div class="pg-panel">
-            <h4>Source element</h4>
-            <div class="pg-target" id="pgTarget" style="background:radial-gradient(120% 120% at 20% 20%, #2a2f3a 0%, #14161a 55%, #0d0f12 100%); color:white; padding:16px; border-radius:14px;">
-              <h3 style="color:#fff; margin-bottom:8px;">Hello SnapDOM</h3>
-              <p style="color:#aab; font-size:12px; margin-bottom:10px;">Captured with plugins in real time</p>
-              <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:4px; font-size:28px; text-align:center;">
-                <span>🚀</span><span>✨</span><span>🧠</span><span>🖼️</span><span>🎛️</span><span>🧪</span>
-                <span>💡</span><span>🧩</span><span>📦</span><span>🧭</span><span>⚙️</span><span>🛡️</span>
-              </div>
-              <div style="display:flex; gap:6px; margin-top:10px; align-items:center; flex-wrap:wrap;">
-                <button type="button" aria-label="Primary action" style="padding:4px 10px; border-radius:6px; border:0; background:#5C7CFF; color:#FFFCF4; font-size:12px; cursor:pointer; font-weight:700;">Capture</button>
-                <button type="button" aria-label="Download capture" style="padding:4px 10px; border-radius:6px; border:1px solid rgba(255,255,255,0.2); background:transparent; color:#fff; font-size:12px; cursor:pointer;">Download</button>
-                <a href="#" style="color:#8AA0FF; font-size:12px; text-decoration:none; font-weight:600;">docs</a>
-                <input type="text" placeholder="filename" aria-label="Output filename" style="padding:3px 8px; border-radius:6px; border:1px solid rgba(255,255,255,0.15); background:rgba(0,0,0,0.3); color:#fff; font-size:12px; width:110px;">
-                <span class="pg-tag" style="background:rgba(255,255,255,0.1); color:#8AA0FF;">Live content</span>
-              </div>
-            </div>
-          </div>
-          <div class="pg-panel">
-            <h4>Plugins (combine freely)</h4>
-            <div class="pg-plugins">
-              <div class="pg-plugin" data-pg="filter">
-                <div class="pg-plugin-header">
-                  <input type="checkbox" id="pgChkFilter">
-                  <span>filter</span>
-                </div>
-                <div class="pg-plugin-opts">
-                  <div class="pg-opt">
-                    <label for="pgFilterPreset">Preset</label>
-                    <select id="pgFilterPreset">
-                      <option value="grayscale">grayscale</option>
-                      <option value="sepia">sepia</option>
-                      <option value="blur">blur</option>
-                      <option value="vintage">vintage</option>
-                      <option value="dramatic">dramatic</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div class="pg-plugin" data-pg="timestamp">
-                <div class="pg-plugin-header">
-                  <input type="checkbox" id="pgChkTimestamp">
-                  <span>timestamp-overlay</span>
-                </div>
-                <div class="pg-plugin-opts">
-                  <div class="pg-opt">
-                    <label for="pgTsPos">Position</label>
-                    <select id="pgTsPos">
-                      <option value="bottom-right">bottom-right</option>
-                      <option value="bottom-left">bottom-left</option>
-                      <option value="top-right">top-right</option>
-                      <option value="top-left">top-left</option>
-                    </select>
-                  </div>
-                  <div class="pg-opt">
-                    <label for="pgTsFmt">Format</label>
-                    <select id="pgTsFmt">
-                      <option value="datetime">datetime</option>
-                      <option value="date">date</option>
-                      <option value="time">time</option>
-                      <option value="iso">iso</option>
-                    </select>
-                  </div>
-                  <div class="pg-opt">
-                    <label for="pgTsBg">Bg color</label>
-                    <input type="color" id="pgTsBg" value="#000000">
-                  </div>
-                </div>
-              </div>
-              <div class="pg-plugin" data-pg="replaceText">
-                <div class="pg-plugin-header">
-                  <input type="checkbox" id="pgChkReplace">
-                  <span>replace-text</span>
-                </div>
-                <div class="pg-plugin-opts">
-                  <div class="pg-opt">
-                    <label for="pgReplFind">Find</label>
-                    <input type="text" id="pgReplFind" value="SnapDOM" placeholder="text to find">
-                  </div>
-                  <div class="pg-opt">
-                    <label for="pgReplWith">Replace</label>
-                    <input type="text" id="pgReplWith" value="MyApp" placeholder="replace with">
-                  </div>
-                </div>
-              </div>
-              <div class="pg-plugin" data-pg="ascii">
-                <div class="pg-plugin-header">
-                  <input type="checkbox" id="pgChkAscii">
-                  <span>ascii-export</span>
-                </div>
-                <div class="pg-plugin-opts">
-                  <div class="pg-opt">
-                    <label for="pgAsciiW">Width</label>
-                    <input type="text" id="pgAsciiW" value="80" placeholder="columns">
-                  </div>
-                </div>
-              </div>
-              <div class="pg-plugin" data-pg="pdfImage">
-                <div class="pg-plugin-header">
-                  <input type="checkbox" id="pgChkPdf">
-                  <span>pdf-image</span>
-                </div>
-                <div class="pg-plugin-opts">
-                  <div class="pg-opt">
-                    <label for="pgPdfOrient">Orient</label>
-                    <select id="pgPdfOrient">
-                      <option value="portrait">portrait</option>
-                      <option value="landscape">landscape</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <button class="pg-capture-btn" id="pgCapture" data-umami-event="Plugins playground capture">Capture</button>
-          <div class="pg-status" id="pgStatus"></div>
-        </div>
-        <div class="pg-right">
-          <div class="pg-panel">
-            <h4>Captured output</h4>
-            <div class="pg-result" id="pgOutput">Select plugins and click Capture</div>
-          </div>
-          <div class="pg-panel">
-            <div class="pg-panel-header">
-              <h4 style="margin:0">Generated code</h4>
-              <button class="copy-btn" data-copy="pgCode" style="position:static;" data-umami-event="Plugins playground copy">Copy</button>
-            </div>
-            <div class="pg-code-wrap">
-              <pre class="pg-code-block" id="pgCode">// Select plugins to see the code</pre>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+<section id="playground"><h2 id="playground">Playground</h2><p>Try presets, editable samples, PDF, Vector and real plugin outputs in the <a href="playground/">capture playground</a>.</p></section>
 
   <!-- ── Install & Usage ── -->
   <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
@@ -463,14 +279,7 @@
 
   <!-- ── Plugin Directory ── -->
   <div class="section-top"><a href="#top" class="back-top">Back to top</a></div>
-  <div class="filter-bar">
-    <button class="filter-btn active" data-filter="all" data-umami-event="Plugins filter all">All</button>
-    <button class="filter-btn" data-filter="capture" data-umami-event="Plugins filter capture">Capture</button>
-    <button class="filter-btn" data-filter="transform" data-umami-event="Plugins filter transform">Transform</button>
-    <button class="filter-btn" data-filter="export" data-umami-event="Plugins filter export">Export</button>
-    <button class="filter-btn" data-filter="utility" data-umami-event="Plugins filter utility">Utility</button>
-    <button class="filter-btn" data-filter="integration" data-umami-event="Plugins filter integration">Integration</button>
-  </div>
+  <div class="catalogue-controls"><label>Find an official plugin<input type="search" data-catalogue-search placeholder="Name, format or capability"></label><div data-catalogue-filters></div><p data-catalogue-status role="status" aria-live="polite"></p></div>
 
   <section class="grid-section" id="official">
     <div class="section-label">Official — @zumer/snapdom-plugins</div>
@@ -521,13 +330,21 @@
         <div class="card-footer"><span class="official-badge">official</span><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/ascii-export.js" data-umami-event="Plugins source ascii-export">Source</a><span class="expand-hint">details</span></div>
       </div>
 
-      <!-- pdf-image -->
-      <div class="plugin-card" data-category="export" data-plugin="pdf-image">
+      <!-- pdf -->
+      <div class="plugin-card" data-category="export" data-plugin="pdf">
         <div class="card-top"><div class="plugin-icon">D</div><span class="category-tag">export</span></div>
-        <h3>pdf-image</h3>
-        <p>Exports the capture as a JPEG embedded in a downloadable PDF, in portrait or landscape.</p>
+        <h3>pdf</h3>
+        <p>Exports searchable, paginated PDFs with selectable text and links. The updated package is not published yet.</p>
         <div class="hooks"><span class="hook-badge">defineExports</span></div>
         <div class="card-footer"><span class="official-badge">official</span><span class="expand-hint">details</span></div>
+      </div>
+
+      <div class="plugin-card" data-category="export" data-plugin="vector">
+        <div class="card-top"><div class="plugin-icon">V</div><span class="category-tag">export</span></div>
+        <h3>vector</h3>
+        <p>Exports editable SVG text and shapes, or copies a capture into Figma. The updated package is not published yet.</p>
+        <div class="hooks"><span class="hook-badge">beforeRender</span><span class="hook-badge">defineExports</span></div>
+        <div class="card-footer"><span class="official-badge">official</span><a href="./pro/vector/docs.html">Reference</a><span class="expand-hint">details</span></div>
       </div>
 
       <!-- agent-map -->
@@ -625,11 +442,11 @@
 <nav class="pager" aria-label="Pages"><a href="capabilities/"><span>Previous</span><strong>Capabilities</strong></a><a class="is-next" href="docs/plugins/"><span>Next</span><strong>Plugin API</strong></a></nav>
 </article>
 </main>
-<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="docs/">Documentation</a><a href="docs/#quick-start">Quick start</a><a href="how-to/">How-to recipes</a><a href="guides/">Guides</a><a href="compare/">Compare</a></div><div><h2>Build</h2><a href="capabilities/">Capabilities</a><a href="plugins.html">Plugins</a><a href="plugins.html#playground">Playground</a><a href="plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="showcase/">Showcase</a><a href="labs.html">Labs</a><a href="blog/">Blog</a></div><div><h2>Community</h2><a href="ecosystem/">Ecosystem</a><a href="made-with/">Made with</a><a href="plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="docs/">Documentation</a><a href="docs/#quick-start">Quick start</a><a href="how-to/">How-to recipes</a><a href="guides/">Guides</a><a href="compare/">Compare</a></div><div><h2>Build</h2><a href="capabilities/">Capabilities</a><a href="plugins.html">Plugins</a><a href="playground/">Playground</a><a href="plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="showcase/">Showcase</a><a href="labs.html">Labs</a><a href="blog/">Blog</a></div><div><h2>Community</h2><a href="ecosystem/">Ecosystem</a><a href="made-with/">Made with</a><a href="plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
 <!-- pane:end --><!-- ── Plugin detail modal ── -->
-  <div class="modal-overlay" id="pluginModal">
+  <div class="modal-overlay" id="pluginModal" role="dialog" aria-modal="true" aria-labelledby="plugin-modal-title">
     <div class="modal" id="modalContent">
-      <button class="modal-close" id="modalClose">&times;</button>
+      <button class="modal-close" id="modalClose" aria-label="Close plugin details">&times;</button>
       <div id="modalBody"></div>
     </div>
   </div>
@@ -692,16 +509,17 @@
         ],
         usage: `import { asciiExport } from '@zumer/snapdom-plugins/ascii-export';\n\nconst result = await snapdom(el, {\n  plugins: [asciiExport({ width: 120 })]\n});\nconst ascii = await result.toAscii();`
       },
-      'pdf-image': {
-        icon: 'D', category: 'export',
-        desc: "Exports the capture as a JPEG embedded in a downloadable PDF, in portrait or landscape.",
-        hooks: ['defineExports'],
-        options: [
-          ['orientation', 'string', "'portrait'", "'portrait' | 'landscape'"],
-          ['quality', 'number', '0.92', 'JPEG quality (0-1)'],
-          ['filename', 'string', "'capture.pdf'", 'Download filename'],
-        ],
-        usage: `import { pdfImage } from '@zumer/snapdom-plugins/pdf-image';\n\nconst result = await snapdom(el, {\n  plugins: [pdfImage({ orientation: 'landscape' })]\n});\nawait result.toPdfImage(); // downloads PDF`
+      'pdf': {
+        icon: 'D', category: 'export', hooks: ['beforeRender', 'defineExports'],
+        desc: 'Searchable, paginated PDF with selectable text, links and optional form fields. Prepared locally; not published yet.',
+        options: [['page', 'string', "'fit'", 'Use fit for the element bounds, or a paper size such as a4.']],
+        usage: `import { pdf } from '@zumer/snapdom-plugins/pdf';\n\nconst result = await snapdom(el, { plugins: [pdf()] });\nconst file = await result.toPdf({ page: 'a4' });`
+      },
+      'vector': {
+        icon: 'V', category: 'export', hooks: ['beforeRender', 'defineExports'],
+        desc: 'Editable SVG or Figma clipboard export. Prepared locally; not published yet.',
+        options: [['exclude', 'string | function | array', 'undefined', 'Selectors or predicates for elements to leave out.']],
+        usage: `import { vector } from '@zumer/snapdom-plugins/vector';\n\nconst result = await snapdom(el, { plugins: [vector()] });\nconst svg = await result.toVector();\nawait result.toFigma(); // HTTPS or localhost, from a user action`
       },
       'agent-map': {
         icon: 'A', category: 'export',
@@ -823,7 +641,7 @@
 
       body.innerHTML = `
         <div class="modal-icon" style="background:${c.bg};color:${c.fg};">${d.icon}</div>
-        <h2>${pluginName}</h2>
+        <h2 id="plugin-modal-title">${pluginName}</h2>
         <p class="modal-desc">${d.desc}</p>
         <div class="modal-hooks">${d.hooks.map(h => `<span class="hook-badge">${h}</span>`).join('')}</div>
         ${noteHtml}
@@ -835,10 +653,15 @@
         </div>`;
 
       modal.classList.add('open');
+      document.getElementById('modalClose').focus();
     }
 
     // Open modal on card click
     document.querySelectorAll('.plugin-card[data-plugin]').forEach(card => {
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', 'Details for ' + card.dataset.plugin);
+      card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPluginModal(card.dataset.plugin); } });
       card.addEventListener('click', (e) => {
         if (e.target.closest('a')) return;
         openPluginModal(card.dataset.plugin);
@@ -886,19 +709,7 @@
     });
   </script>
 
-  <!-- Filter bar -->
-  <script>
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        const f = btn.dataset.filter;
-        document.querySelectorAll('.plugin-card').forEach(card => {
-          card.style.display = (f === 'all' || card.dataset.category === f) ? '' : 'none';
-        });
-      });
-    });
-  </script>
+
 
   <!-- Community plugins from .md -->
   <script>
@@ -941,392 +752,7 @@
     })();
   </script>
 
-  <!-- Playground -->
-  <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 
-    // ── Plugin factories ──
-    function filterPlugin(options = {}) {
-      const presets = {
-        grayscale: 'grayscale(1)', sepia: 'sepia(1)', blur: 'blur(2px)',
-        vintage: 'sepia(0.4) contrast(1.1) brightness(0.9) saturate(0.8)',
-        dramatic: 'contrast(1.4) brightness(0.85) saturate(1.3)',
-      };
-      const css = options.preset ? (presets[options.preset] || '') : (options.filter || '');
-      return { name: 'filter', afterClone(ctx) { if (css) ctx.clone.style.filter = css; } };
-    }
 
-    function timestampOverlayPlugin(options = {}) {
-      const { format = 'datetime', position = 'bottom-right', background = 'rgba(0,0,0,0.6)', color = '#fff', fontSize = 11 } = options;
-      const posMap = { 'top-left': 'top:6px;left:6px', 'top-right': 'top:6px;right:6px', 'bottom-left': 'bottom:6px;left:6px', 'bottom-right': 'bottom:6px;right:6px' };
-      function getTs() {
-        const now = new Date();
-        switch (format) {
-          case 'date': return now.toLocaleDateString();
-          case 'time': return now.toLocaleTimeString();
-          case 'iso': return now.toISOString();
-          default: return now.toLocaleString();
-        }
-      }
-      return {
-        name: 'timestamp-overlay',
-        afterClone(ctx) {
-          const label = document.createElement('div');
-          label.textContent = getTs();
-          label.style.cssText = `position:absolute;${posMap[position] || posMap['bottom-right']};background:${background};color:${color};font-size:${fontSize}px;padding:2px 6px;border-radius:3px;font-family:monospace;pointer-events:none;z-index:999999;line-height:1.4;`;
-          ctx.clone.style.position = 'relative';
-          ctx.clone.appendChild(label);
-        }
-      };
-    }
-
-    function replaceTextPlugin(options = {}) {
-      const { replacements = [] } = options;
-      function walkText(node, fn) {
-        if (node.nodeType === 3) { fn(node); return; }
-        for (const c of node.childNodes) walkText(c, fn);
-      }
-      return {
-        name: 'replace-text',
-        afterClone(ctx) {
-          if (!replacements.length) return;
-          walkText(ctx.clone, (tn) => {
-            let t = tn.textContent;
-            for (const { find, replace } of replacements) {
-              t = find instanceof RegExp ? t.replace(find, replace) : t.split(find).join(replace);
-            }
-            tn.textContent = t;
-          });
-        }
-      };
-    }
-
-    // Exact same pattern as docs/index.html
-    function canvasToAsciiHTML(canvas, opts) {
-      const { cols, contrast, invert, charAspect } = opts;
-      const charset = '@%#WMNHQ$OC?7>!1=+;:~-,._  ';
-      const rampLen = charset.length;
-      const W = canvas.width|0, H = canvas.height|0;
-      const g = canvas.getContext('2d', { willReadFrequently: true });
-      const data = g.getImageData(0,0,W,H).data;
-      const blockW = Math.max(1, (W/cols)|0);
-      const blockH = Math.max(1, (blockW*charAspect)|0);
-      const rows = Math.max(1, (H/blockH)|0);
-      let out = '<pre style="margin:0;font:7px/1 monospace;white-space:pre;">';
-      for (let r=0;r<rows;r++){
-        const y0=r*blockH, y1=Math.min(H,y0+blockH);
-        for (let c=0;c<cols;c++){
-          const x0=c*blockW, x1=Math.min(W,x0+blockW);
-          let sumR=0,sumG=0,sumB=0,sumL=0,count=0;
-          for (let y=y0;y<y1;y++){
-            const rowOff = y*W*4;
-            for (let x=x0;x<x1;x++){
-              const i = rowOff + (x<<2);
-              const R=data[i], G=data[i+1], B=data[i+2];
-              sumR+=R; sumG+=G; sumB+=B; sumL += 0.2126*R + 0.7152*G + 0.0722*B; count++;
-            }
-          }
-          const inv = count?1/count:0;
-          const Rm=(sumR*inv)|0, Gm=(sumG*inv)|0, Bm=(sumB*inv)|0;
-          let norm = (sumL*inv)/255;
-          norm = (contrast + 1) * (norm - 0.5) + 0.5;
-          if (norm<0) norm=0; else if (norm>1) norm=1;
-          const idx = invert ? ((norm*(rampLen-1))+.5)|0 : (((1-norm)*(rampLen-1))+.5)|0;
-          const ch = charset[idx];
-          const safe = ch===' ' ? '&nbsp;' : (ch==='&'?'&amp;':ch==='<'?'&lt;':ch==='>'?'&gt;':ch);
-          out += `<span style="color:rgba(${Rm},${Gm},${Bm},1)">${safe}</span>`;
-        }
-        if (r<rows-1) out += '\n';
-      }
-      out += '</pre>';
-      return out;
-    }
-
-    function asciiExportPlugin() {
-      return {
-        name: 'ascii-export',
-        async defineExports(ctx) {
-          async function ascii(_ctx, opts = {}) {
-            const options = { cols: 120, contrast: 0.8, invert: false, charAspect: 2.0, ...opts };
-            const canvas = await ctx.exports.canvas();
-            return canvasToAsciiHTML(canvas, options);
-          }
-          return { ascii };
-        }
-      };
-    }
-
-    // PDF image plugin — renders the capture as a JPEG inside a downloadable PDF
-    function pdfImagePlugin(options = {}) {
-      const { orientation = 'portrait' } = options;
-      return {
-        name: 'pdf-image',
-        defineExports() {
-          return {
-            pdfImage: async (ctx) => {
-              const img = new Image();
-              img.src = ctx.export.url;
-              await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
-
-              const isLandscape = orientation === 'landscape';
-              const pageW = isLandscape ? 841.89 : 595.28; // A4 in points
-              const pageH = isLandscape ? 595.28 : 841.89;
-              const margin = 40;
-              const maxW = pageW - margin * 2;
-              const maxH = pageH - margin * 2;
-              const scale = Math.min(maxW / img.width, maxH / img.height, 1);
-              const w = img.width * scale;
-              const h = img.height * scale;
-              const x = (pageW - w) / 2;
-              const y = (pageH - h) / 2;
-
-              // Get image as JPEG data
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width; canvas.height = img.height;
-              canvas.getContext('2d').drawImage(img, 0, 0);
-              const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.92);
-              const jpegBase64 = jpegDataUrl.split(',')[1];
-              const jpegBytes = atob(jpegBase64);
-              const jpegLen = jpegBytes.length;
-
-              // Build minimal PDF
-              const offsets = [];
-              let pdf = '';
-              function obj(content) {
-                offsets.push(pdf.length);
-                pdf += `${offsets.length} 0 obj\n${content}\nendobj\n`;
-              }
-              obj(`<< /Type /Catalog /Pages 2 0 R >>`); // 1
-              obj(`<< /Type /Pages /Kids [3 0 R] /Count 1 >>`); // 2
-              obj(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 5 0 R /Resources << /XObject << /Img 4 0 R >> >> >>`); // 3
-
-              // Image XObject
-              const imgStream = `<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegLen} >>\nstream\n`;
-              offsets.push(pdf.length);
-              pdf += `4 0 obj\n${imgStream}`;
-              // We'll build as array buffer at the end for binary JPEG
-
-              const contentStream = `q ${w} 0 0 ${h} ${x} ${y} cm /Img Do Q`;
-              const contentObj = `<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`;
-
-              // Build final PDF as binary
-              const enc = new TextEncoder();
-              const header = enc.encode('%PDF-1.4\n');
-
-              // Obj 1-3
-              let textPart = '';
-              const realOffsets = [];
-              textPart += `%PDF-1.4\n`;
-              realOffsets.push(textPart.length);
-              textPart += `1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n`;
-              realOffsets.push(textPart.length);
-              textPart += `2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n`;
-              realOffsets.push(textPart.length);
-              textPart += `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] /Contents 5 0 R /Resources << /XObject << /Img 4 0 R >> >> >>\nendobj\n`;
-
-              // Obj 4 — image with binary stream
-              realOffsets.push(textPart.length);
-              const imgHeader = `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpegLen} >>\nstream\n`;
-
-              const imgHeaderBytes = enc.encode(imgHeader);
-              const preImgBytes = enc.encode(textPart);
-
-              const jpegBuf = new Uint8Array(jpegLen);
-              for (let i = 0; i < jpegLen; i++) jpegBuf[i] = jpegBytes.charCodeAt(i);
-
-              const afterImg = `\nendstream\nendobj\n`;
-              realOffsets.push(preImgBytes.length + imgHeaderBytes.length + jpegLen + afterImg.length); // offset for obj 5
-
-              const contentStr = `q ${w.toFixed(2)} 0 0 ${h.toFixed(2)} ${x.toFixed(2)} ${y.toFixed(2)} cm /Img Do Q`;
-              const obj5 = `5 0 obj\n<< /Length ${contentStr.length} >>\nstream\n${contentStr}\nendstream\nendobj\n`;
-
-              // Fix offset 5
-              realOffsets[4] = preImgBytes.length + imgHeaderBytes.length + jpegLen + enc.encode(afterImg).length;
-
-              const afterImgBytes = enc.encode(afterImg);
-              const obj5Bytes = enc.encode(obj5);
-
-              // xref
-              const xrefOffset = preImgBytes.length + imgHeaderBytes.length + jpegLen + afterImgBytes.length + obj5Bytes.length;
-              let xref = `xref\n0 6\n0000000000 65535 f \n`;
-              xref += `${String(realOffsets[0]).padStart(10,'0')} 00000 n \n`;
-              xref += `${String(realOffsets[1]).padStart(10,'0')} 00000 n \n`;
-              xref += `${String(realOffsets[2]).padStart(10,'0')} 00000 n \n`;
-              xref += `${String(realOffsets[3]).padStart(10,'0')} 00000 n \n`;
-              xref += `${String(realOffsets[4]).padStart(10,'0')} 00000 n \n`;
-              xref += `trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
-
-              const xrefBytes = enc.encode(xref);
-
-              // Combine all
-              const totalLen = preImgBytes.length + imgHeaderBytes.length + jpegLen + afterImgBytes.length + obj5Bytes.length + xrefBytes.length;
-              const pdfBuf = new Uint8Array(totalLen);
-              let pos = 0;
-              pdfBuf.set(preImgBytes, pos); pos += preImgBytes.length;
-              pdfBuf.set(imgHeaderBytes, pos); pos += imgHeaderBytes.length;
-              pdfBuf.set(jpegBuf, pos); pos += jpegLen;
-              pdfBuf.set(afterImgBytes, pos); pos += afterImgBytes.length;
-              pdfBuf.set(obj5Bytes, pos); pos += obj5Bytes.length;
-              pdfBuf.set(xrefBytes, pos);
-
-              const blob = new Blob([pdfBuf], { type: 'application/pdf' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'capture.pdf';
-              a.click();
-              setTimeout(() => URL.revokeObjectURL(url), 5000);
-              return url;
-            }
-          };
-        }
-      };
-    }
-
-    // ── DOM refs ──
-    const $ = id => document.getElementById(id);
-    const pgTarget = $('pgTarget');
-    const pgOutput = $('pgOutput');
-    const pgStatus = $('pgStatus');
-    const pgCode   = $('pgCode');
-    const pgBtn    = $('pgCapture');
-
-    // Checkbox toggle styling + ascii/pdf mutual exclusion
-    function deactivate(id) {
-      const chk = $(id);
-      if (chk && chk.checked) {
-        chk.checked = false;
-        chk.closest('.pg-plugin').classList.remove('active');
-      }
-    }
-    document.querySelectorAll('.pg-plugin-header').forEach(header => {
-      const chk = header.querySelector('input[type="checkbox"]');
-      const card = header.closest('.pg-plugin');
-      const toggle = () => {
-        card.classList.toggle('active', chk.checked);
-        if (chk.checked && chk.id === 'pgChkAscii') deactivate('pgChkPdf');
-        if (chk.checked && chk.id === 'pgChkPdf') deactivate('pgChkAscii');
-        updateCode();
-      };
-      chk.addEventListener('change', toggle);
-      header.addEventListener('click', (e) => { if (e.target !== chk) { chk.checked = !chk.checked; toggle(); } });
-    });
-
-    // Update code on option change
-    document.querySelectorAll('.pg-plugin-opts select, .pg-plugin-opts input').forEach(el => {
-      el.addEventListener('change', updateCode);
-      el.addEventListener('input', updateCode);
-    });
-
-    function getActivePlugins() {
-      const plugins = [];
-      const imports = [];
-      const calls = [];
-      let hasAscii = false;
-      let hasPdf = false;
-
-      if ($('pgChkFilter').checked) {
-        const preset = $('pgFilterPreset').value;
-        plugins.push(filterPlugin({ preset }));
-        imports.push(`import { filter } from '@zumer/snapdom-plugins/filter';`);
-        calls.push(`filter({ preset: '${preset}' })`);
-      }
-      if ($('pgChkTimestamp').checked) {
-        const position = $('pgTsPos').value;
-        const format = $('pgTsFmt').value;
-        const bg = $('pgTsBg').value;
-        const bgRgba = `rgba(${parseInt(bg.slice(1,3),16)},${parseInt(bg.slice(3,5),16)},${parseInt(bg.slice(5,7),16)},0.6)`;
-        plugins.push(timestampOverlayPlugin({ position, format, background: bgRgba }));
-        imports.push(`import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';`);
-        const tsOpts = [];
-        if (format !== 'datetime') tsOpts.push(`format: '${format}'`);
-        if (position !== 'bottom-right') tsOpts.push(`position: '${position}'`);
-        if (bg !== '#000000') tsOpts.push(`background: '${bgRgba}'`);
-        calls.push(tsOpts.length ? `timestampOverlay({ ${tsOpts.join(', ')} })` : `timestampOverlay()`);
-      }
-      if ($('pgChkReplace').checked) {
-        const find = $('pgReplFind').value;
-        const replace = $('pgReplWith').value;
-        if (find) {
-          plugins.push(replaceTextPlugin({ replacements: [{ find, replace }] }));
-          imports.push(`import { replaceText } from '@zumer/snapdom-plugins/replace-text';`);
-          calls.push(`replaceText({ replacements: [{ find: '${find}', replace: '${replace}' }] })`);
-        }
-      }
-      if ($('pgChkAscii').checked) {
-        plugins.push(asciiExportPlugin());
-        imports.push(`import { asciiExport } from '@zumer/snapdom-plugins/ascii-export';`);
-        calls.push(`asciiExport()`);
-        hasAscii = true;
-      }
-      if ($('pgChkPdf').checked) {
-        const orient = $('pgPdfOrient').value;
-        plugins.push(pdfImagePlugin({ orientation: orient }));
-        imports.push(`// pdf-image is a demo plugin (code in playground)`);
-        calls.push(orient !== 'portrait' ? `pdfImage({ orientation: '${orient}' })` : `pdfImage()`);
-        hasPdf = true;
-      }
-      return { plugins, imports, calls, hasAscii, hasPdf };
-    }
-
-    function updateCode() {
-      const { imports, calls, hasAscii, hasPdf } = getActivePlugins();
-      if (!calls.length) {
-        pgCode.textContent = '// Select plugins to see the code';
-        return;
-      }
-      let code =
-        `import { snapdom } from '@zumer/snapdom';\n` +
-        imports.join('\n') + '\n\n' +
-        `const result = await snapdom(element, {\n` +
-        `  plugins: [\n` +
-        calls.map(c => `    ${c}`).join(',\n') + '\n' +
-        `  ]\n` +
-        `});\n` +
-        `const png = await result.toPng();`;
-      if (hasAscii) code += `\nconst ascii = await result.toAscii();`;
-      if (hasPdf) code += `\nawait result.toPdfImage(); // downloads PDF`;
-      pgCode.textContent = code;
-    }
-
-    // Capture
-    pgBtn.addEventListener('click', async () => {
-      pgBtn.disabled = true;
-      pgStatus.textContent = 'Capturing...';
-      try {
-        const t0 = performance.now();
-        const { plugins, calls, hasAscii, hasPdf } = getActivePlugins();
-        const result = await snapdom(pgTarget, { plugins });
-        pgOutput.innerHTML = '';
-
-        if (hasAscii) {
-          // ASCII mode — call toAscii directly (same pattern as docs/index.html)
-          const cols = parseInt($('pgAsciiW').value) || 100;
-          const asciiHTML = await result.toAscii({ cols, invert: true });
-          pgOutput.innerHTML = asciiHTML;
-        } else {
-          // Normal mode — show PNG
-          const img = await result.toPng();
-          img.alt = 'Captured output';
-          pgOutput.appendChild(img);
-        }
-
-        if (hasPdf && result.toPdfImage) {
-          await result.toPdfImage();
-        }
-
-        const ms = (performance.now() - t0).toFixed(0);
-        pgStatus.textContent = `Captured in ${ms}ms` + (calls.length ? ` with ${calls.length} plugin${calls.length > 1 ? 's' : ''}` : '') + (hasPdf ? ' — PDF downloaded' : '');
-      } catch (err) {
-        pgStatus.textContent = `Error: ${err.message}`;
-        console.error(err);
-      } finally {
-        pgBtn.disabled = false;
-      }
-    });
-
-    updateCode();
-  </script>
-  <script defer src="/copy-code.js"></script>
 </body>
 </html>

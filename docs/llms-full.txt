@@ -2,7 +2,7 @@
 
 SnapDOM is a browser capture engine for web interfaces.
 
-It captures a DOM subtree, its computed styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, image-based PDFs and recordings.
+It captures a DOM subtree, its computed styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, searchable, paginated PDFs and editable vector artwork and recordings.
 
 SnapDOM has two integrated render engines: `svg` (default) and experimental `html-in-canvas`. Both receive the same finished clone; the second uses the browser's native painter and falls back to SVG when unavailable or unsuitable for the capture.
 
@@ -34,7 +34,7 @@ For a browser ES module:
 </script>
 ```
 
-The package entry is ESM; there is no CommonJS build. The core has no runtime dependencies. Official plugins are a separate package; use the plugin version that matches the core major version:
+The package entry is ESM; there is no CommonJS build. The core has no runtime dependencies. Official plugins are a separate package. The monorepo prepares @zumer/snapdom-plugins 4.0.0 for SnapDOM 3.x; this updated package is not yet published. Use a published compatible version for existing plugins, or run npm run site for local PDF/Vector demos:
 
 ```bash
 npm install @zumer/snapdom-plugins@latest
@@ -364,14 +364,15 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `timestampOverlay()` | Timestamp badge | format datetime, position bottom-right |
 | `redactInputs()` | Masks input/textarea values, excludes blocks and removes named attributes; `<select>` values are not masked, hide them with `blocks` | types, autocomplete, selector, all, mask, blocks, attributes |
 | `asciiExport()` | `toAscii(opts?)` → string; `width`, `charset` and `invert` can be overridden per call | width 80 characters, charset `' .:-=+*#%@'`, invert false |
-| `pdfImage()` | `toPdfImage()` → object URL, also downloads | portrait A4, JPEG quality 0.92, filename capture.pdf |
+| `pdf()` | `toPdf()` → Blob; optional download | selectable text, pagination, links and optional form fields |
+| `vector()` | `toVector()` → SVG string; `toFigma()` → clipboard | supported text and shapes reconstructed as vectors |
 | `htmlExport()` | `toHtml()` → string | fullDocument true, filename capture.html |
 | `contextExport()` | `toContext()` → outline string or JSON | format outline, geometry true, maxTextLength 120, maxNodes 800 |
 | `agentMap()` | `toAgentMap()` → object | image annotated, fields minimal, semantic false, maxImageWidth 1024 |
 | `gifExport()` | `toGif()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
 | `videoExport()` | `toMp4()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
 
-The MIT `pdfImage` plugin puts a JPEG on a single page with margins. It does not provide selectable text or semantic pagination, and `toPdfImage()` is not a Blob-returning API.
+PDF and Vector are MIT source in packages/plugins. The updated package is prepared locally and has not been published yet. PDF returns a Blob; downloading is an explicit export option.
 
 ### Redaction across outputs
 
@@ -589,3 +590,32 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 - Tiled rasterization: https://snapdom.dev/blog/huge-page-mosaic/
 - Plugin gallery: https://snapdom.dev/plugins.html
 - Plugin contract: https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md
+
+## PDF and Vector — MIT sources and live documentation
+
+Both exporters live inside the official plugin workspace: packages/plugins/pdf and packages/plugins/vector. Vector includes its internal SVD dependency in packages/plugins/vector/svd. The original Pro repositories are no longer required to use the integrated sources. @zumer/snapdom-plugins 4.0.0 is prepared locally and remains unpublished; do not assume a CDN has that version yet.
+
+PDF usage:
+```js
+import { snapdom } from '@zumer/snapdom';
+import { pdf } from '@zumer/snapdom-plugins/pdf';
+const capture = await snapdom(element, { plugins: [pdf()] });
+const file = await capture.toPdf({ page: 'a4', text: true, fields: true });
+// file is a Blob. Add download: 'report.pdf' only when a download is wanted.
+```
+Capture-model options belong in pdf(options); document/output options belong in toPdf(options). PDF uses the frozen capture, with a faithful image and an aligned selectable text layer. Form measurement and field export are separate options. Core password masking does not redact ordinary email or telephone fields; use redactInputs for intentional privacy rules.
+
+Vector usage:
+```js
+import { snapdom } from '@zumer/snapdom';
+import { vector } from '@zumer/snapdom-plugins/vector';
+const capture = await snapdom(element, { plugins: [vector()] });
+const svg = await capture.toVector();
+// On a later user click in a secure context, call capture.toFigma().
+```
+Vector reconstructs supported text and shapes as vector elements; it is distinct from core toSvg(), which embeds HTML in foreignObject. Inspect approximation diagnostics before using artwork that requires exact fidelity. Figma export writes to the async clipboard and requires a secure context and a user action.
+
+Live PDF documentation: https://snapdom.dev/pro/pdf/. Full API: https://snapdom.dev/pro/pdf/docs.html.
+Live Vector documentation: https://snapdom.dev/pro/vector/. Full API: https://snapdom.dev/pro/vector/docs.html.
+General capture Playground: https://snapdom.dev/playground/. Source directory: https://github.com/zumerlab/snapdom/tree/main/packages/plugins.
+The /pro/ URL segment is preserved for existing links; it does not indicate a paid license. Current PDF/Vector demos generate outputs in the browser from editable samples rather than serving pre-release files.

@@ -1,0 +1,11 @@
+body { background:#F7F9FC; color:#0F1E4D; font-family:Arial,sans-serif; }
+.product-content { --ink:#0F1E4D; --accent:#2D5BFF; --paper:#F7F9FC; --wash:#EEF3FF; --sans:Arial,sans-serif; --rule:#d6deef; }
+.product-content .layout > nav { top:88px; max-height:calc(100vh - 100px); }
+.product-content .layout { gap:40px; }
+.product-content .panel,.product-content .note,.product-content .channel,.product-content pre,.product-content code,.product-content .product,.product-content .card,.product-content .btn,.product-content .hint { border-radius:0; }
+.product-content > .wrap { padding-top:24px; }
+.product-content a { text-underline-offset:3px; }
+@media(max-width:900px) { .product-content .layout > nav { max-height:none; position:static; } }
+
+.product-content :not(pre) > code { overflow-wrap:anywhere; }
+@media(max-width:600px) { .product-content table { display:block; max-width:100%; overflow-x:auto; } }

@@ -1,0 +1,24 @@
+.playground-layout { max-width:1480px; margin:auto; padding:40px 24px 80px; display:grid; grid-template-columns:248px minmax(0,1fr); gap:40px; }
+.playground-layout > aside { position:sticky; top:88px; align-self:start; }
+.playground-layout h2 { font-size:14px; margin:0 0 16px; }
+.preset-list { display:grid; }
+.preset-list button { text-align:left; background:transparent; border:0; border-bottom:1px solid #d6deef; padding:14px 12px; color:#0F1E4D; font:14px Arial; cursor:pointer; }
+.preset-list button[aria-pressed="true"] { color:#1D43D7; background:#EEF3FF; border-left:3px solid #2D5BFF; }
+.capture-settings { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px; margin:28px 0; }
+.capture-settings label { display:grid; gap:6px; font-size:13px; }
+.capture-settings select { width:100%; background:white; border:1px solid #b7c4df; padding:10px; color:#0F1E4D; font:14px Arial; }
+.capture-settings .exclude-control { display:flex; align-items:center; }
+.playground-preview { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; }
+.playground-preview > section { min-width:0; }
+.capture-output { background:white; border:1px solid #d6deef; min-height:200px; padding:16px; }
+.capture-output img,.capture-output canvas { display:block; max-width:100%; height:auto; }
+.capture-output pre { font:8px/1 monospace; overflow:auto; }
+.playground-layout > section { min-width:0; }
+@media(max-width:1080px) { .playground-layout { grid-template-columns:1fr; }.playground-layout > aside { position:static; }.preset-list { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+@media(max-width:600px) { .playground-layout { padding:24px 14px; gap:24px; }.capture-settings,.preset-list { grid-template-columns:repeat(2,minmax(0,1fr)); }.playground-preview { grid-template-columns:1fr; } }
+
+.capture-settings .demo-act { min-height:44px; }
+
+.playground-layout { --c:#1D43D7; --c-tint:#EEF3FF; }
+#capture-status { margin:16px 0; font-size:14px; }
+.playground-layout > aside p { margin-top:16px; font-size:13px; color:#55617C; }

@@ -42,3 +42,45 @@ if (siteHead) {
   document.addEventListener('keydown', event => { if (event.key === 'Escape') { setOpen(null); setMenu(false) } })
   document.addEventListener('mousedown', event => { if (!siteHead.contains(event.target)) { setOpen(null); setMenu(false) } })
 }
+
+// Search the generated local index; no account or third-party search service needed.
+if (siteHead) {
+  const root = new URL('.', [...document.scripts].find(s => /\/site\.js(?:\?|$)/.test(s.src)).src)
+  const searchButton = document.createElement('button')
+  searchButton.type = 'button'; searchButton.className = 'site-search-button'
+  searchButton.innerHTML = 'Search docs <kbd>/</kbd>'
+  searchButton.setAttribute('aria-haspopup', 'dialog')
+  siteHead.querySelector('.site-menu-button').before(searchButton)
+  const dialog = document.createElement('dialog')
+  dialog.className = 'site-search-dialog'
+  dialog.setAttribute('aria-label', 'Search SnapDOM documentation')
+  dialog.innerHTML = '<form method="dialog"><label>Search docs<input type="search" placeholder="API, recipe or plugin" autocomplete="off"></label><button>Close</button></form><p role="status" aria-live="polite">Type to find a page.</p><div class="site-search-results"></div>'
+  document.body.append(dialog)
+  const input = dialog.querySelector('input'), results = dialog.querySelector('.site-search-results'), status = dialog.querySelector('[role=status]')
+  let indexPromise
+  const search = async () => {
+    const query = input.value.trim().toLowerCase(), words = query.split(/\s+/)
+    results.replaceChildren()
+    if (!query) { status.textContent = 'Type to find a page.'; return }
+    try {
+      indexPromise ||= fetch(new URL('search-index.json', root)).then(r => { if (!r.ok) throw new Error(); return r.json() }).catch(e => { indexPromise = null; throw e })
+      const pages = await indexPromise
+      if (query !== input.value.trim().toLowerCase()) return
+      const matches = pages.filter(p => words.every(w => `${p.title} ${p.text}`.toLowerCase().includes(w))).sort((a, b) => Number(b.title.toLowerCase().includes(query)) - Number(a.title.toLowerCase().includes(query))).slice(0, 12)
+      for (const page of matches) {
+        const link = document.createElement('a'); link.href = new URL(page.path, root); link.textContent = page.title
+        const path = document.createElement('small'); path.textContent = page.path; link.append(path); results.append(link)
+      }
+      status.textContent = matches.length ? `${matches.length} results` : 'No matches. Try a format, framework or API name.'
+    } catch { status.textContent = 'Search could not load. Try again or browse the Learn menu.' }
+  }
+  const open = () => { if (!dialog.open) dialog.showModal(); input.focus() }
+  searchButton.addEventListener('click', open)
+  input.addEventListener('input', search)
+  dialog.addEventListener('close', () => searchButton.focus())
+  dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close() } })
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && dialog.open) { event.preventDefault(); dialog.close(); return }
+    if (event.key === '/' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.target.closest('input,textarea,select,[contenteditable]')) { event.preventDefault(); open() }
+  })
+}

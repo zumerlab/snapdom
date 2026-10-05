@@ -1,201 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="index, follow">
-<link rel="canonical" href="https://snapdom.dev/pro/pdf/">
-<title>snapdom-pdf: looks like a screenshot, reads like text</title>
-<meta name="description" content="Export a SnapDOM capture to PDF. The pixels remain SnapDOM's; an aligned text layer adds selection, search, copy and safe links.">
-<style>
-  /* The selection highlight is this page's accent on purpose: what is being sold
-     is the ability to select text, so the page is built to be selected. */
-  :root {
-    --paper: #ffffff;
-    --ink:   #0b1020;
-    --dim:   #5b6478;
-    --rule:  #e4e7ee;
-    --wash:  #f6f7fb;
-    --accent:#2e4bf0;
-    --sel:   rgba(46, 75, 240, .22);
-    /* Two colours doing two jobs: blue is what is alive and selectable, amber is
-       "look here". Grey is what is dead, and the left panel wears it. */
-    --mark:  #f0910a;
-    --dead:  #94a3b8;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  }
-  ::selection { background: var(--sel); color: var(--ink); }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; }
-  body { margin: 0; background: linear-gradient(180deg,#f7f9fd 0,#fff 520px); color: var(--ink); font-family: var(--sans);
-         font-size: 17px; line-height: 1.6; }
-  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 28px; }
-
-  /* Eyebrows and labels are monospace because the product's inner life is PDF
-     operators, like `3 Tr`, `Tz` and `/SMask`. The utility face says so. */
-  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
-             text-transform: uppercase; color: var(--accent); }
-
-  header { padding: 34px 0 0; }
-  header .bar { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
-  header a { color: var(--dim); text-decoration: none; font-size: 14px; }
-  header a:hover { color: var(--ink); }
-
-  h1 { font-size: clamp(38px, 7vw, 76px); line-height: .98; letter-spacing: -.035em;
-       font-weight: 800; margin: 26px 0 0; max-width: 15ch; }
-  h1 em { font-style: normal; }
-  .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--dim); max-width: 54ch;
-          margin: 20px 0 0; }
-
-  /* the signature: two panels, one document, one difference */
-  .proof { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 40px 0 0; }
-  .panel { border: 1px solid var(--rule); border-radius: 14px; overflow: hidden;
-           background: var(--wash); }
-  .panel > figcaption { display: flex; align-items: center; justify-content: space-between;
-    gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--rule); background: #fff;
-    font-family: var(--mono); font-size: 12px; letter-spacing: .04em; color: var(--dim); }
-  .panel .verdict { font-weight: 600; }
-
-  /* Dead: a flat picture. Desaturated, cooler, and the cursor says so on hover. */
-  .panel.flat { background: #eef1f5; }
-  .panel.flat .verdict { color: var(--dead); }
-  .panel.flat .card { filter: grayscale(1) contrast(.96); }
-  .panel.flat .card img, .panel.flat .card canvas { cursor: not-allowed; }
-
-  /* Alive: the accent, a ring, and the only colour in the pair. */
-  .panel.live { border-color: rgba(46,75,240,.4); background: #eef1fe;
-                box-shadow: 0 0 0 4px rgba(46,75,240,.07); }
-  .panel.live > figcaption { border-bottom-color: rgba(46,75,240,.25); }
-  .panel.live .verdict { color: var(--accent); }
-  .panel.live .card canvas { cursor: text; }
-
-  .card { position: relative; margin: 18px; background: #fff; border-radius: 8px;
-          box-shadow: 0 1px 3px rgba(11,16,32,.1), 0 8px 24px rgba(11,16,32,.07); }
-  .card img, .card canvas { display: block; width: 100%; height: auto; border-radius: 8px;
-              user-select: none; -webkit-user-drag: none; }
-  .card .layer { position: absolute; inset: 0; }
-  /* Each word carries its own trailing space so a copied selection comes back as
-     words and not one run-on string; overflow keeps that space out of the highlight. */
-  .card .layer span { position: absolute; white-space: pre; color: transparent;
-                      transform-origin: 0 0; line-height: 1; overflow: hidden; }
-  /* The page-wide ::selection gives selected text a colour, which would make this
-     layer VISIBLE the moment you drag over it, as two copies of every word. Here the
-     highlight is the whole point and the glyphs must stay invisible. */
-  .card .layer ::selection { color: transparent; background: var(--sel); }
-  .card .layer span::selection { color: transparent; background: var(--sel); }
-  /* The sweep on load paints the same highlight the browser would, one word at a
-     time, so the page shows what it is selling before anyone touches it. It is a
-     background rather than a real Selection because a Selection cannot be animated
-     and a fake cursor would be a lie about what is happening. */
-  .card .layer span.hit { background: var(--sel); }
-  .card .layer span { transition: background .18s ease; }
-  /* The left panel has no layer at all. There is nothing to select, which is the
-     whole point. Its image is inert. */
-  .panel.flat .card img { user-select: none; }
-
-  /* The one amber thing above the fold, so it reads as an instruction and not as
-     decoration. */
-  .try { margin: 18px 0 0; font-size: 15px; color: #3d3121; display: inline-flex;
-         align-items: center; gap: 10px; background: #fff8ec; border: 1px solid #f6dcae;
-         border-radius: 999px; padding: 9px 16px 9px 13px; }
-  .try b { color: var(--ink); font-weight: 650; }
-  .cursor { display: inline-block; width: 20px; height: 20px; flex: none; color: var(--mark); }
-
-  section { padding: 76px 0 0; }
-  h2 { font-size: clamp(26px, 3.4vw, 36px); letter-spacing: -.025em; font-weight: 800;
-       margin: 14px 0 0; }
-  .sub { color: var(--dim); margin: 10px 0 0; max-width: 62ch; }
-
-  /* samples */
-  .files { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-           gap: 12px; margin: 28px 0 0; }
-  .file { display: flex; flex-direction: column; text-decoration: none; color: inherit; border: 1px solid var(--rule);
-          border-radius: 11px; padding: 16px 17px; transition: border-color .15s, transform .15s; }
-  .file:hover { border-color: var(--accent); transform: translateY(-2px); }
-  .file:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  .file .name { font-weight: 650; display: flex; align-items: center; gap: 7px; }
-  .file .name svg { flex: none; color: var(--accent); }
-  .file .what { display: block; color: var(--dim); font-size: 14px; margin-top: 5px; }
-  /* Pinned to the bottom so the four cards line up however the copy wraps. */
-  .file .meta { display: block; font-family: var(--mono); font-size: 11px; color: var(--dim);
-                margin-top: auto; padding-top: 10px; letter-spacing: .03em; }
-
-  /* spec list */
-  .spec { margin: 26px 0 0; border-top: 1px solid var(--rule); }
-  .spec > div { display: grid; grid-template-columns: 190px 1fr; gap: 22px;
-                padding: 17px 0; border-bottom: 1px solid var(--rule); }
-  .spec dt { font-family: var(--mono); font-size: 12px; letter-spacing: .05em;
-             text-transform: uppercase; color: var(--accent); padding-top: 3px; }
-  .spec dd { margin: 0; color: #26304a; }
-  .spec dd b { font-weight: 650; color: var(--ink); }
-
-/* code */
-  .code { margin: 26px 0 0; padding: 20px 22px; border-radius: 12px; background: #0f1729;
-          color: #e2e8f0; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
-          line-height: 1.7; }
-  .code code { font: inherit; }
-  .code .k { color: #93b4ff; }
-  .code .s { color: #8ee6b0; }
-  .code .n { color: #f5c377; }
-  .code .c { color: #7b88a1; }
-  .spec.opts > div { grid-template-columns: 150px 1fr; }
-  .spec.opts dd code, .spec dd code { font-family: var(--mono); font-size: 12.5px;
-    background: #eef1f8; padding: 1px 5px; border-radius: 4px; }
-
-  /* price */
-  .price { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 30px 0 0; }
-  .tier { border: 1px solid var(--rule); border-radius: 14px; padding: 26px; display: flex;
-          flex-direction: column; }
-  .tier.pick { border-color: var(--ink); }
-  .tier .who { font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
-               text-transform: uppercase; color: var(--dim); }
-  .tier .amount { font-size: 46px; font-weight: 800; letter-spacing: -.04em; margin: 10px 0 0; }
-  .tier .amount small { font-size: 17px; font-weight: 600; color: var(--dim);
-                        letter-spacing: 0; margin-left: 3px; }
-  .tier .for { margin: 6px 0 18px; color: var(--dim); font-size: 15px; }
-  .tier ul { list-style: none; margin: 0 0 22px; padding: 0; font-size: 15px; }
-  .tier li { padding: 5px 0 5px 22px; position: relative; color: #26304a; }
-  .tier li::before { content: ""; position: absolute; left: 4px; top: 13px; width: 7px;
-                     height: 7px; border-radius: 50%; background: var(--accent); }
-  .buy { margin-top: auto; display: block; text-align: center; text-decoration: none;
-         padding: 13px 18px; border-radius: 10px; font-weight: 650; font-size: 16px;
-         background: var(--wash); color: var(--ink); border: 1px solid var(--rule); }
-  .tier.pick .buy { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .buy:hover { filter: brightness(.97); }
-  .buy:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-  .buy[aria-disabled="true"] { cursor:not-allowed; opacity:.72; filter:none; }
-  .fineprint { color: var(--dim); font-size: 14px; margin: 18px 0 0; }
-
-  .prelaunch { margin: 18px 0 0; padding: 12px 15px; border-radius: 9px; background: #fff8ec;
-               border-left: 3px solid var(--mark); color: #5b441b; font-size: 14px; }
-
-/* Who is behind it, stated once and quietly, next to the licence. */
-  .who-made { margin: 26px 0 0; padding: 18px 22px; border-radius: 12px;
-              background: var(--wash); border-left: 3px solid var(--accent); }
-  .who-made p { margin: 0; font-size: 15.5px; color: #26304a; max-width: 76ch; }
-  .who-made b { color: var(--ink); font-weight: 650; }
-
-  /* faq */
-  .faq { margin: 24px 0 0; }
-  .faq > div { padding: 20px 0; border-bottom: 1px solid var(--rule); display: grid;
-               grid-template-columns: 320px 1fr; gap: 24px; }
-  .faq h3 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -.01em; }
-  .faq p { margin: 0; color: #26304a; font-size: 16px; }
-
-  footer { margin: 84px 0 0; border-top: 1px solid var(--rule); padding: 26px 0 60px;
-           color: var(--dim); font-size: 14px; display: flex; justify-content: space-between;
-           gap: 16px; flex-wrap: wrap; }
-  footer a { color: var(--dim); }
-
-  @media (max-width: 820px) {
-    .proof, .price { grid-template-columns: 1fr; }
-    .spec > div, .faq > div { grid-template-columns: 1fr; gap: 6px; }
-  }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-</style>
-<link rel="stylesheet" href="../../pro-plans.css">
-<script>
+<!doctype html><html lang="en"><head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow"><title>SnapDOM PDF — open-source pdf export</title><meta name="description" content="Capture a live element, add selectable text and links, and paginate it into a PDF in your browser."><link rel="canonical" href="https://snapdom.dev/pro/pdf/"><meta name="theme-color" content="#F7F9FC"><link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css"><link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css"><link rel="stylesheet" href="../../plugin-demos.css"><link rel="stylesheet" href="../../pdf-text-layer.css"><script defer src="../../site.js"></script><script type="module" src="../../plugin-demos.js"></script><script>
   if (location.hostname === 'snapdom.dev') {
     const umami = document.createElement('script')
     umami.defer = true
@@ -212,90 +15,9 @@
     gtag('js', new Date())
     gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' })
   }
-</script>
-</head>
-<body>
-
-<div class="wrap">
-
-<header>
-  <div class="bar">
-    <span class="eyebrow">SnapDOM Pro · PDF</span>
-    <nav><a href="docs.html">Reference</a> · <a href="https://snapdom.dev">← SnapDOM</a></nav>
-  </div>
-
-  <h1>Export SnapDOM captures<br><em>to searchable PDF.</em></h1>
-
-  <p class="lede">The visible page is SnapDOM's own capture. A real PDF text layer adds
-  selection, search, copy and working links without asking another renderer to rebuild your
-  layout.</p>
-
-  <!-- Both panels are real PDFs, rendered here by pdf.js. Same element, same
-       exporter; the left one was written with `text: false`, which is the file every
-       canvas-to-PDF route produces. Nothing here is a mock-up of a PDF. -->
-  <div class="proof">
-    <figure class="panel flat" style="margin:0">
-      <figcaption><span>Exported without the text layer</span><span class="verdict">nothing to select</span></figcaption>
-      <div class="card" data-pdf="assets/hero-flat.pdf">
-        <img class="poster" src="assets/hero-card.png" alt="A delivery note as a flat picture.">
-      </div>
-    </figure>
-
-    <figure class="panel live" style="margin:0">
-      <figcaption><span>The same page, the whole exporter</span><span class="verdict">selectable</span></figcaption>
-      <div class="card" data-pdf="assets/hero-live.pdf">
-        <img class="poster" src="assets/hero-card.png" alt="The same delivery note, with a real text layer.">
-      </div>
-    </figure>
-  </div>
-
-  <p class="try">
-    <svg class="cursor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"
-         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M4 3l7 17 2.5-7 7-2.5z"/></svg>
-    <span><b>Drag across both.</b> The right-hand PDF contains a selectable text layer.</span>
-  </p>
-</header>
-
-<section>
-  <span class="eyebrow">Sample files</span>
-  <h2>Download the actual output</h2>
-  <p class="sub">Every file below came directly from an earlier pre-release build. Open one,
-  select a paragraph, copy it, search it or click a link. They prove the core interaction, but
-  will be regenerated from the final gated bundle before launch so codecs, tagging and sizes match.</p>
-
-  <div class="files">
-    <a class="file" href="samples/report.pdf" download>
-      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Report</span>
-      <span class="what">Mixed prose, a table, a live link and a rotated stamp.</span>
-      <span class="meta">1 page · 209 KB</span>
-    </a>
-    <a class="file" href="samples/ledger-a4.pdf" download>
-      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Ledger, A4</span>
-      <span class="what">Sixty rows over three pages. No row is cut through the middle.</span>
-      <span class="meta">3 pages · 579 KB</span>
-    </a>
-    <a class="file" href="samples/scripts.pdf" download>
-      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Scripts</span>
-      <span class="what">Chinese, Russian, Greek, Arabic, Hebrew, emoji. All searchable.</span>
-      <span class="meta">1 page · 157 KB</span>
-    </a>
-    <a class="file" href="samples/controls.pdf" download>
-      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Form controls</span>
-      <span class="what">Input values and shadow DOM are in. The password never is.</span>
-      <span class="meta">1 page · 163 KB</span>
-    </a>
-    <a class="file" href="samples/transparent.pdf" download>
-      <span class="name"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 19h16"/></svg>Transparent</span>
-      <span class="what">No background at all: an image plane plus a real soft mask.</span>
-      <span class="meta">1 page · 95 KB</span>
-    </a>
-  </div>
-</section>
-
-<section>
+</script><link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head><body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../../plugins.html" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">13 official plugins</span></a><a class="site-nav-item sec-capture" href="../../playground/"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><nav class="pane-nav" aria-label="Official export plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Export plugins</button><div class="pane-nav-items"><a href="../pdf/" aria-current="page">PDF</a><a href="../vector/">Vector</a><a href="../../plugins.html">All plugins</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>PDF reference</button><div class="pane-nav-items"><a href="docs.html">Full API reference</a><a href="https://github.com/zumerlab/snapdom">Source · MIT</a><a href="../../playground/">Capture playground</a></div></div></nav></aside><div class="pane-demo sec-export"><section class="demo-panel" data-export-demo="pdf"><header class="demo-panel-head"><span class="demo-panel-title">Live PDF export</span></header><div class="demo-panel-body" tabindex="0" role="region" aria-label="Live export controls and preview"><form data-export-settings class="plugin-demo-settings"><label>Live sample<select name="sample"><option value="report">Report</option><option value="ledger">A4 ledger</option><option value="scripts">Multilingual text</option><option value="controls">Form controls</option><option value="transparent">Transparent artwork</option></select></label><label>Page size<select name="page"><option value="fit">Fit to content</option><option value="a4">A4</option><option value="letter">Letter</option></select></label><label><input type="checkbox" name="text" checked> Selectable text</label><label><input type="checkbox" name="fields" checked> Fillable fields</label><button type="submit" class="demo-act is-primary">Generate PDF</button></form><p class="demo-label">Editable source</p><div class="plugin-demo-source" tabindex="0" role="region" aria-label="Scrollable live sample"><div data-export-source></div></div><p class="demo-label">Generated output</p><div data-pdf-output class="plugin-demo-output"><p>Nothing generated yet.</p></div><nav data-pdf-pages aria-label="PDF preview pages" hidden><button type="button" data-pdf-prev>Previous</button><span data-pdf-page></span><button type="button" data-pdf-next>Next</button></nav><p data-export-file></p><p data-export-status role="status" aria-live="polite">Edit the source, then generate a PDF.</p><details><summary>Code for this demo</summary><pre><code data-export-code></code></pre></details></div></section></div><article class="pane-read sec-export"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Build</span><span aria-hidden="true">/</span><span>Plugins</span><span aria-hidden="true">/</span><span>PDF</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Export a searchable PDF.</h1><p class="doc-lead">Capture a live element, add selectable text and links, and paginate it into a PDF in your browser.</p></header><aside class="callout"><div class="callout-label">Open source</div><p>PDF is MIT-licensed source inside <code>packages/plugins/pdf</code>. The updated package is not published yet. Run <code>npm run site</code> to try these demos against the local build.</p></aside><div class="pane-content pdf-reference"><section>
   <span class="eyebrow">How it works</span>
-  <h2>The page image plus a PDF text layer</h2>
+  <h2 id="the-page-image-plus-a-pdf-text-layer">The page image plus a PDF text layer</h2>
   <p class="sub">The page image is SnapDOM's capture. The plugin places a second, invisible text
   layer over it using positions derived from SnapDOM's final serialized clone. No headless browser
   or separate layout engine rebuilds the page.</p>
@@ -393,14 +115,14 @@
     <div>
       <dt>Ships as</dt>
       <dd>A <b>minified</b> ES module to ship, an <b>unminified</b> one to read, TypeScript
-      declarations, versioned reference, licence and checksummed manifest. Browser use without a
+      declarations, versioned reference and MIT license. Browser use without a
       bundler requires an import map for the external SnapDOM peer.</dd>
     </div>
     <div>
       <dt>Verified by</dt>
       <dd>The full Chromium suite parses PDFs back with pdf.js, checks raw
       <b>bytes</b> (xref offsets, stream lengths, the lot), and one fixture compares the text
-      layer against <b>pixels</b>. A separate gate imports and executes both customer bundles in
+      layer against <b>pixels</b>. A separate gate imports and executes both plugin builds in
       Chromium, Firefox and WebKit. That is a three-engine API/artifact smoke, not three full layout
       suites.</dd>
     </div>
@@ -409,13 +131,13 @@
 
 <section>
   <span class="eyebrow">Quick start</span>
-  <h2>Add PDF export to SnapDOM</h2>
+  <h2 id="add-pdf-export-to-snapdom">Add PDF export to SnapDOM</h2>
   <p class="sub">Register the plugin once and every capture gains <code>toPdf()</code> alongside
   <code>toPng()</code> and <code>toCanvas()</code>. It reuses the existing capture rather than
   running a second capture engine.</p>
 
   <pre class="code"><code><span class="k">import</span> { snapdom } <span class="k">from</span> <span class="s">'@zumer/snapdom'</span>
-<span class="k">import</span> pdf <span class="k">from</span> <span class="s">'./vendor/snapdom-pdf.mjs'</span>
+<span class="k">import</span> pdf <span class="k">from</span> <span class="s">'@zumer/snapdom-plugins/pdf'</span>
 
 snapdom.plugins(pdf())
 
@@ -452,7 +174,7 @@ snapdom.plugins(pdf())
     <div><dt>quality</dt><dd>Quality of the JPEG candidate. <code>0.92</code>. It changes nothing while the lossless candidate wins, which on page artwork is until roughly <code>0.5</code>.</dd></div>
     <div><dt>deflate</dt><dd>Deflate the content streams. <code>true</code>.</dd></div>
     <div><dt>text</dt><dd>Emit the selectable layer. <code>true</code>. Turn it off and you get
-      the file in the left-hand panel above.</dd></div>
+      an image-only PDF.</dd></div>
     <div><dt>links</dt><dd>Emit same-document destinations and safe <code>http:</code>,
       <code>https:</code>, <code>mailto:</code> and <code>tel:</code> annotations. <code>true</code>.</dd></div>
     <div><dt>image</dt><dd>Draw the page image. <code>true</code>. Set <code>false</code> for an
@@ -492,8 +214,7 @@ snapdom.plugins(pdf())
     <div><dt>encrypt</dt><dd><code>{userPassword, ownerPassword, permissions}</code>. AES-256 (R6).
       The password is what protects the file; the permission flags are a request a viewer may honour.
       Needs https or localhost.</dd></div>
-    <div><dt>meta</dt><dd><code>{title, author, subject, keywords, creator, created, modified}</code>
-      → <code>/Info</code> and XMP. Dates are written only when you pass them.</dd></div>
+    <div><dt>meta</dt><dd><code>{title, author, subject, keywords, creator, created, modified}</code> <code>/Info</code> and XMP. Dates are written only when you pass them.</dd></div>
     <div><dt>onProgress</dt><dd><code>({phase, done, total})</code> per step, for exports long enough
       to need a bar.</dd></div>
     <div><dt>signal</dt><dd>An <code>AbortSignal</code>. Aborting rejects between pages with
@@ -504,71 +225,25 @@ snapdom.plugins(pdf())
     <div><dt>backgroundColor</dt><dd>Flatten at capture, plugin-default or export time. Resolution
       remains a <code>snapdom(...)</code> concern.</dd></div>
   </dl>
-  <p class="sub"><a href="docs.html"><b>Read the complete option, warning and limits reference →</b></a></p>
+  <p class="sub"><a href="docs.html"><b>Read the complete option, warning and limits reference </b></a></p>
 </section>
 
 <section id="pricing">
-  <span class="eyebrow">Licence</span>
-  <h2>An annual subscription</h2>
-  <p class="sub">Individual and Business are the two plans. While a subscription is active you get
-  every release, the private repository and support. When it ends you keep using the versions you
-  have, in anything the plan allowed.</p>
-
-  <div class="price">
-    <div class="tier">
-      <span class="who">Individual</span>
-      <div class="amount">$39<small>USD / year</small></div>
-      <p class="pro-renewal">Renews annually until cancelled.</p>
-      <p class="for">One person, your own projects.</p>
-      <ul>
-        <li>Unlimited projects</li>
-        <li>Minified and readable builds</li>
-        <li>Documentation</li>
-        <li>Private repository: releases and issues</li>
-        <li>Keep the versions you have when it ends</li>
-      </ul>
-      <a class="buy" href="https://buy.polar.sh/polar_cl_JqCwLmVRZxfLwWqOQEudWpWMsgziQohmmQrcr0ORcf3">Buy Individual</a>
-    </div>
-
-    <div class="tier pick">
-      <span class="who">Business</span>
-      <div class="amount">$99<small>USD / year</small></div>
-      <p class="pro-renewal">Renews annually until cancelled.</p>
-      <p class="for">Companies, and work you deliver to clients.</p>
-      <ul>
-        <li>Unlimited developers</li>
-        <li>Ship it inside what you build</li>
-        <li>Minified and readable builds</li>
-        <li>Documentation</li>
-        <li>Private repository: releases and issues</li>
-        <li>Keep the versions you have when it ends</li>
-      </ul>
-      <a class="buy" href="https://buy.polar.sh/polar_cl_VzhyG1d82GIgqlbAo48VyXxwQw9arwz1xTREV2p6tlg">Buy Business</a>
-    </div>
-  </div>
-
-  <div class="who-made">
-    <p><b>Made by the maintainer of SnapDOM.</b> Support comes from the person who wrote the
-    plugin, at <a href="https://zumerlab.com">Zumerlab</a>.</p>
-  </div>
-
-  <p class="fineprint"><b>Platforms, builders and SDKs need a separate agreement.</b> Running the
-  plugin inside your own product or service is covered at any scale; handing other developers the
-  ability to generate PDFs is not. <a href="mailto:hello@zumerlab.com">Write to us</a> about
-  platform, builder, SDK or hosted-generation use.</p>
+  <span class="eyebrow">Open source</span>
+  <h2 id="included-in-the-snapdom-monorepo">Included in the SnapDOM monorepo</h2>
+  <p class="sub">The PDF plugin is available as MIT-licensed source in <code>packages/plugins/pdf</code>.
+  The updated <code>@zumer/snapdom-plugins</code> package is prepared locally and has not been published yet.</p>
+  <p><a href="docs.html">Read the reference </a> · <a href="https://github.com/zumerlab/snapdom">SnapDOM on GitHub</a></p>
 </section>
 
 <section>
   <span class="eyebrow">Before you ask</span>
-  <h2>Questions</h2>
+  <h2 id="questions">Questions</h2>
 
   <div class="faq">
     <div>
       <h3>Can I use it in something I sell to a client?</h3>
-      <p>Yes, on the Business plan: finished apps and sites you build and deliver to clients are
-      covered, including hosted services whose users receive the PDFs. Handing other developers the
-      ability to generate PDFs (a platform, builder, SDK or generation API) needs a separate
-      agreement.</p>
+      <p>Yes. The MIT license permits commercial use, modification and redistribution. Keep the license notice with redistributed copies.</p>
     </div>
     <div>
       <h3>Is the text really selectable, or is it OCR?</h3>
@@ -578,16 +253,12 @@ snapdom.plugins(pdf())
       and copy a paragraph.</p>
     </div>
     <div>
-      <h3>Is it a subscription?</h3>
-      <p>Yes, annual. It renews each year until you cancel. While it is active you get new releases,
-      the private repository and support; when it ends, the versions you already have stay licensed
-      for as long as you use them.</p>
+      <h3>Is it open source?</h3>
+      <p>Yes. The PDF plugin is part of the SnapDOM monorepo under the MIT license.</p>
     </div>
     <div>
       <h3>Can I read the code?</h3>
-      <p>Yes. Every licence includes the unminified build alongside the minified one, so you can
-      read what you are shipping, step through it in your own debugger, and see why it did
-      something before you write to us about it.</p>
+      <p>Yes. Its source, reference and browser test suites live in <code>packages/plugins/pdf</code> in the SnapDOM monorepo.</p>
     </div>
     <div>
       <h3>Does it need a server?</h3>
@@ -618,117 +289,11 @@ snapdom.plugins(pdf())
     </div>
     <div>
       <h3>Which browsers?</h3>
-      <p>The complete fixture suite is Chromium-only. Both customer bundles must also pass the
+      <p>The complete fixture suite is Chromium-only. Both plugin builds must also pass the
       release artifact smoke in Chromium, Firefox and WebKit. That supports the plugin/API contract
       in all three; it does not pretend every complex layout has the same three-engine coverage.</p>
     </div>
   </div>
 </section>
 
-<footer>
-  <span>© Zumerlab · <a href="https://snapdom.dev">snapdom.dev</a></span>
-  <span>SnapDOM PDF is a SnapDOM Pro plugin. <a href="https://github.com/zumerlab/snapdom">SnapDOM itself stays free.</a></span>
-</footer>
-
-</div>
-
-<script type="module">
-/**
- * Both panels are PDFs on disk. pdf.js draws each one and rebuilds its text layer
- * from the file's own text content, so the left panel ends up with zero words for
- * the same reason it would in any reader: there are none in it.
- *
- * pdf.js is vendored under assets/pdfjs/ and loaded only once a panel is on screen,
- * so the poster image is what the page paints first.
- */
-// Resolved against this file, so the page works wherever it is mounted on the site
-// and a bare specifier never reaches the module loader.
-const PDFJS = new URL('assets/pdfjs/pdf.mjs', import.meta.url).href
-const WORKER = new URL('assets/pdfjs/pdf.worker.mjs', import.meta.url).href
-const still = matchMedia('(prefers-reduced-motion: reduce)')
-let swept = false
-
-async function draw(pdfjs, card) {
-  const doc = await pdfjs.getDocument({ url: new URL(card.dataset.pdf, import.meta.url).href }).promise
-  const page = await doc.getPage(1)
-  const poster = card.querySelector('.poster')
-  // Draw at the width the poster already occupies, so nothing reflows on swap.
-  const css = poster.getBoundingClientRect().width || 430
-  const base = page.getViewport({ scale: 1 })
-  const viewport = page.getViewport({ scale: (css / base.width) * (devicePixelRatio || 1) })
-
-  const canvas = document.createElement('canvas')
-  canvas.width = viewport.width
-  canvas.height = viewport.height
-  canvas.style.width = '100%'
-  card.appendChild(canvas)
-  await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise
-
-  const layer = document.createElement('div')
-  layer.className = 'layer'
-  card.appendChild(layer)
-
-  const spans = []
-  for (const item of (await page.getTextContent()).items) {
-    if (!item.str.trim()) continue
-    // The composed matrix carries PDF's y-up to the canvas's y-down, so its `d` is
-    // negative; handing that to CSS verbatim mirrors every glyph. Take the angle out.
-    const tx = pdfjs.Util.transform(viewport.transform, item.transform)
-    const angle = Math.atan2(tx[1], tx[0])
-    const size = Math.hypot(tx[2], tx[3]) / (devicePixelRatio || 1)
-    const s = document.createElement('span')
-    s.textContent = item.str + ' '
-    s.style.left = (tx[4] / (devicePixelRatio || 1)) + 'px'
-    s.style.top = (tx[5] / (devicePixelRatio || 1) - size) + 'px'
-    s.style.fontSize = size + 'px'
-    s.style.fontFamily = /mono/i.test(item.fontName) ? 'monospace' : 'sans-serif'
-    layer.appendChild(s)
-    // Squeeze onto the advance the file declares, or selection drifts along the line.
-    const want = item.width * viewport.scale / (devicePixelRatio || 1)
-    const range = document.createRange()
-    range.setStart(s.firstChild, 0)
-    range.setEnd(s.firstChild, item.str.length)
-    const natural = range.getBoundingClientRect().width
-    s.style.transform = `rotate(${angle}rad)` + (natural > 0 && want > 0 ? ` scaleX(${want / natural})` : '')
-    spans.push(s)
-  }
-
-  poster.remove()
-  return spans
-}
-
-/** Sweep the highlight across the words once, so the page shows what it sells. */
-function sweep(spans) {
-  if (still.matches || !spans.length) return
-  let i = 0
-  const on = setInterval(() => {
-    if (i >= spans.length) {
-      clearInterval(on)
-      setTimeout(() => spans.forEach(s => s.classList.remove('hit')), 1000)
-      return
-    }
-    spans[i++].classList.add('hit')
-  }, 60)
-}
-
-async function start() {
-  const pdfjs = await import(PDFJS)
-  pdfjs.GlobalWorkerOptions.workerSrc = WORKER
-  for (const card of document.querySelectorAll('.card[data-pdf]')) {
-    try {
-      const spans = await draw(pdfjs, card)
-      if (card.closest('.live') && !swept) { swept = true; setTimeout(() => sweep(spans), 500) }
-    } catch (err) {
-      // The posters stay, the download links below still work, and the page still
-      // makes its case, so a failure here is a downgrade, not a broken page.
-      console.warn('[pro] could not render', card.dataset.pdf, err)
-    }
-  }
-}
-
-const eye = new IntersectionObserver(([e]) => { if (e.isIntersecting) { eye.disconnect(); start() } },
-  { rootMargin: '200px' })
-eye.observe(document.querySelector('.proof'))
-</script>
-</body>
-</html>
+</div></article></main><footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../guides/">Guides</a><a href="../../compare/">Compare</a></div><div><h2>Build</h2><a href="../../capabilities/">Capabilities</a><a href="../../plugins.html">Plugins</a><a href="../../playground/">Playground</a><a href="../../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer></body></html>

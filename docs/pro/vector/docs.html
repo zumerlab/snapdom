@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head>
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="index, follow">
@@ -8,83 +8,78 @@
 <title>snapdom-vector documentation</title>
 <meta name="description" content="The SnapDOM Vector reference: toVector() for a standalone SVG, toFigma() for a paste into Figma, the exclude option, what reaches the output and the limits.">
 <style>
-  :root {
+:root{
     --ink:#0b1020; --dim:#5b6478; --rule:#e4e7ee; --wash:#f6f7fb;
     --accent:#2e4bf0; --sel:rgba(46,75,240,.22); --mark:#f0910a; --good:#0d8a5f;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   }
-  ::selection { background: var(--sel); color: var(--ink); }
-  * { box-sizing: border-box; }
-  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
-  body { margin: 0; background: #fff; color: var(--ink); font-family: var(--sans);
-         font-size: 16.5px; line-height: 1.65; }
-
-  /* Two columns: the contents stay put because this page is looked THINGS UP in,
+::selection{ background: var(--sel); color: var(--ink); }
+*{ box-sizing: border-box; }
+html{ -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body{ margin: 0; background: #fff; color: var(--ink); font-family: var(--sans);
+         font-size: 16.5px; line-height: 1.65; }/* Two columns: the contents stay put because this page is looked THINGS UP in,
      not read front to back. */
-  .shell { max-width: 1180px; margin: 0 auto; padding: 0 28px;
+.product-content .shell{ max-width: 1180px; margin: 0 auto; padding: 0 28px;
            display: grid; grid-template-columns: 216px 1fr; gap: 52px; align-items: start; }
-  nav.toc { position: sticky; top: 0; padding: 38px 0 40px; max-height: 100vh; overflow: auto; }
-  nav.toc .home { font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
+.product-content nav.toc{ position: sticky; top: 0; padding: 38px 0 40px; max-height: 100vh; overflow: auto; }
+.product-content nav.toc .home{ font-family: var(--mono); font-size: 12px; letter-spacing: .1em;
                   text-transform: uppercase; color: var(--accent); text-decoration: none; }
-  nav.toc ul { list-style: none; margin: 22px 0 0; padding: 0; }
-  nav.toc li { margin: 0 0 3px; }
-  nav.toc a { display: block; padding: 4px 0; color: var(--dim); text-decoration: none;
+.product-content nav.toc ul{ list-style: none; margin: 22px 0 0; padding: 0; }
+.product-content nav.toc li{ margin: 0 0 3px; }
+.product-content nav.toc a{ display: block; padding: 4px 0; color: var(--dim); text-decoration: none;
               font-size: 14.5px; border-left: 2px solid transparent; padding-left: 12px;
               margin-left: -14px; }
-  nav.toc a:hover { color: var(--ink); border-left-color: var(--rule); }
-  nav.toc .gap { margin-top: 16px; }
-
-  main { padding: 38px 0 100px; min-width: 0; }
-  h1 { font-size: 40px; letter-spacing: -.03em; font-weight: 800; margin: 0; }
-  .lede { color: var(--dim); margin: 12px 0 0; font-size: 18px; max-width: 60ch; }
-  h2 { font-size: 26px; letter-spacing: -.02em; font-weight: 750; margin: 58px 0 0;
+.product-content nav.toc a:hover{ color: var(--ink); border-left-color: var(--rule); }
+.product-content nav.toc .gap{ margin-top: 16px; }
+.product-content main{ padding: 38px 0 100px; min-width: 0; }
+.product-content h1{ font-size: 40px; letter-spacing: -.03em; font-weight: 800; margin: 0; }
+.product-content .lede{ color: var(--dim); margin: 12px 0 0; font-size: 18px; max-width: 60ch; }
+.product-content h2{ font-size: 26px; letter-spacing: -.02em; font-weight: 750; margin: 58px 0 0;
        padding-top: 14px; border-top: 1px solid var(--rule); scroll-margin-top: 20px; }
-  h3 { font-size: 17px; font-weight: 650; margin: 30px 0 0; scroll-margin-top: 20px; }
-  p { margin: 12px 0 0; max-width: 72ch; }
-  ul.plain { margin: 12px 0 0; padding-left: 20px; max-width: 72ch; }
-  ul.plain li { margin: 5px 0; }
-  a { color: var(--accent); }
-  code { font-family: var(--mono); font-size: .87em; background: var(--wash);
+.product-content h3{ font-size: 17px; font-weight: 650; margin: 30px 0 0; scroll-margin-top: 20px; }
+.product-content p{ margin: 12px 0 0; max-width: 72ch; }
+.product-content ul.plain{ margin: 12px 0 0; padding-left: 20px; max-width: 72ch; }
+.product-content ul.plain li{ margin: 5px 0; }
+.product-content a{ color: var(--accent); }
+.product-content code{ font-family: var(--mono); font-size: .87em; background: var(--wash);
          border: 1px solid var(--rule); border-radius: 5px; padding: 1px 5px; }
-
-  pre { margin: 18px 0 0; padding: 18px 20px; border-radius: 11px; background: #0f1729;
+.product-content pre{ margin: 18px 0 0; padding: 18px 20px; border-radius: 11px; background: #0f1729;
         color: #e2e8f0; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
         line-height: 1.7; }
-  pre code { background: none; border: 0; padding: 0; font-size: inherit; color: inherit; }
-  .k { color: #93b4ff; } .s { color: #8ee6b0; } .n { color: #f5c377; } .c { color: #7b88a1; }
-
-  table { width: 100%; border-collapse: collapse; margin: 18px 0 0; font-size: 15.5px; }
-  th, td { text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule);
+.product-content pre code{ background: none; border: 0; padding: 0; font-size: inherit; color: inherit; }
+.product-content .k{ color: #93b4ff; }
+.product-content .s{ color: #8ee6b0; }
+.product-content .n{ color: #f5c377; }
+.product-content .c{ color: #7b88a1; }
+.product-content table{ width: 100%; border-collapse: collapse; margin: 18px 0 0; font-size: 15.5px; }
+.product-content th, .product-content td{ text-align: left; padding: 10px 12px 10px 0; border-bottom: 1px solid var(--rule);
            vertical-align: top; }
-  th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em;
+.product-content th{ font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em;
        text-transform: uppercase; color: var(--dim); font-weight: 600; }
-  td.opt { font-family: var(--mono); font-size: 13.5px; white-space: nowrap; color: var(--accent); }
-  td.def { font-family: var(--mono); font-size: 13px; color: var(--dim); white-space: nowrap; }
-
-  .note { margin: 20px 0 0; padding: 14px 18px; border-radius: 10px; background: var(--wash);
+.product-content td.opt{ font-family: var(--mono); font-size: 13.5px; white-space: nowrap; color: var(--accent); }
+.product-content td.def{ font-family: var(--mono); font-size: 13px; color: var(--dim); white-space: nowrap; }
+.product-content .note{ margin: 20px 0 0; padding: 14px 18px; border-radius: 10px; background: var(--wash);
           border-left: 3px solid var(--accent); max-width: 72ch; }
-  .note p { margin: 0; }
-  .note p + p { margin-top: 8px; }
-  .warn { border-left-color: var(--mark); background: #fff8ec; }
-
-  footer { margin: 70px 0 0; padding-top: 22px; border-top: 1px solid var(--rule);
+.product-content .note p{ margin: 0; }
+.product-content .note p + p{ margin-top: 8px; }
+.product-content .warn{ border-left-color: var(--mark); background: #fff8ec; }
+.product-content footer{ margin: 70px 0 0; padding-top: 22px; border-top: 1px solid var(--rule);
            color: var(--dim); font-size: 14px; }
-  footer a { color: var(--dim); }
-
-  @media (max-width: 900px) {
-    .shell { grid-template-columns: 1fr; gap: 0; }
-    nav.toc { position: static; max-height: none; padding-bottom: 10px; }
-    nav.toc ul { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 14px; }
-    nav.toc a { padding-left: 0; margin-left: 0; border-left: 0; }
+.product-content footer a{ color: var(--dim); }
+@media (max-width: 900px){
+.product-content .shell{ grid-template-columns: 1fr; gap: 0; }
+.product-content nav.toc{ position: static; max-height: none; padding-bottom: 10px; }
+.product-content nav.toc ul{ display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 14px; }
+.product-content nav.toc a{ padding-left: 0; margin-left: 0; border-left: 0; }
   }
 </style>
-</head>
-<body>
+<link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../product.css"><script defer src="../../site.js"></script><link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../../plugins.html" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">13 official plugins</span></a><a class="site-nav-item sec-capture" href="../../playground/"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><div class="product-content">
 <div class="shell">
 
 <nav class="toc">
-  <a class="home" href="./">← SnapDOM Vector</a>
+  <a class="home" href="./"> SnapDOM Vector</a>
   <ul>
     <li><a href="#start">Getting started</a></li>
     <li><a href="#api">Registering</a></li>
@@ -104,13 +99,9 @@
   Figma. This page is the whole reference.</p>
 
   <h2 id="start">Getting started</h2>
-  <p>The download has <code>snapdom-vector.mjs</code>, <code>snapdom-vector.dev.mjs</code> (the
-  same code unminified, for reading and debugging), their TypeScript declarations, the licence and
-  a checksummed manifest. The module has no dependencies of its own. SnapDOM is a <b>peer
-  dependency</b>: it is not bundled in, so your page keeps one engine instead of two. It needs
-  SnapDOM 3, because the plugin walks the clone that SnapDOM's render hooks hand over.</p>
+  <p>The Vector plugin and its internal SVD format live in <code>packages/plugins/vector</code> under the MIT license. The updated plugin package has not been published yet. SnapDOM 3 is a peer dependency; it is not bundled in.</p>
   <pre><code><span class="k">import</span> { snapdom } <span class="k">from</span> <span class="s">'@zumer/snapdom'</span>
-<span class="k">import</span> vector <span class="k">from</span> <span class="s">'./vendor/snapdom-vector.mjs'</span>
+<span class="k">import</span> vector <span class="k">from</span> <span class="s">'@zumer/snapdom-plugins/vector'</span>
 
 <span class="k">const</span> shot = <span class="k">await</span> snapdom(document.querySelector(<span class="s">'#plan-card'</span>), {
   plugins: [vector()]
@@ -286,5 +277,5 @@ snapdom.plugins(vector())</code></pre>
 </main>
 
 </div>
-</body>
+</div><footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../guides/">Guides</a><a href="../../compare/">Compare</a></div><div><h2>Build</h2><a href="../../capabilities/">Capabilities</a><a href="../../plugins.html">Plugins</a><a href="../../playground/">Playground</a><a href="../../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer></body>
 </html>

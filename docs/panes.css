@@ -30,7 +30,6 @@
 @media (max-width: 1080px) {
   .pane, .pane.no-demo { grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .pane-side { position: static; grid-row: auto; }
-  .pane-toc { display: none; }
   .pane-demo, .pane-read { grid-column: 1; }
 }
 @media (max-width: 600px) {
@@ -276,9 +275,6 @@
 .pane-list li::marker { color: var(--c-dot); }
 
 /* ── Converted content pages (scripts/docs-site/sections.py) ── */
-.pane-toc { margin: 2px 0 6px 14px; padding-left: 10px; border-left: 1px solid rgba(15,30,77,0.14); }
-.pane-nav-items .pane-toc a { padding: 4px 10px; border-left: 0; color: #59647D; font: 400 12.5px/1.4 Arial, Helvetica, sans-serif; }
-.pane-nav-items .pane-toc a:hover { color: var(--c); }
 .doc-links { margin-top: 18px; }
 .pane-content > :first-child { margin-top: 0; }
 .pane-content .prose h2 { font-weight: 700; font-size: 26px; letter-spacing: -.025em; }

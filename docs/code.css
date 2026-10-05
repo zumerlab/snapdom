@@ -1,0 +1,16 @@
+/* Same source palette as how-to/html-to-png, shared by every current page. */
+pre.site-code-block,div.site-code-block { position:relative; display:block; background:#0F1E4D !important; color:#D9E2F7 !important; border:1px solid #0F1E4D !important; border-radius:0 !important; padding:48px 20px 20px !important; margin:18px 0; overflow:auto; max-width:100%; text-align:left; white-space:pre; font:13px/1.7 ui-monospace,'SF Mono',Menlo,Consolas,monospace !important; }
+.site-code-block > code { display:block; margin:0 !important; padding:0 !important; border:0 !important; background:transparent !important; color:inherit !important; font:inherit !important; white-space:pre !important; overflow-wrap:normal !important; }
+.site-code-block > .code-copy { position:absolute; top:10px; right:10px; padding:8px 12px; min-height:32px; border:1px solid #7282a6; border-radius:0; color:#D9E2F7; background:#0F1E4D; font:12px Arial,sans-serif; cursor:pointer; }
+.site-code-block > .code-copy:hover { border-color:#D9E2F7; }
+.site-code-block > .code-copy:focus-visible { outline:3px solid #8FB5FF; outline-offset:2px; }
+.site-code-block > .code-copy.copied { color:#9FE8C5; }
+.site-code-block .token { display:inline; padding:0; margin:0; border:0; background:transparent; font:inherit; letter-spacing:normal; text-transform:none; white-space:inherit; }
+.site-code-block .token.comment,.site-code-block .token.prolog,.site-code-block .token.doctype { color:#9BAACA; }
+.site-code-block .token.keyword,.site-code-block .token.tag,.site-code-block .token.selector { color:#8FB5FF; }
+.site-code-block .token.string,.site-code-block .token.attr-value,.site-code-block .token.template-string { color:#9FE8C5; }
+.site-code-block .token.function,.site-code-block .token.class-name { color:#5BD4F0; }
+.site-code-block .token.number,.site-code-block .token.boolean { color:#FFD166; }
+.site-code-block .token.operator,.site-code-block .token.punctuation { color:#BAC8E7; }
+.site-code-block .token.property,.site-code-block .token.attr-name,.site-code-block .token.parameter { color:#D9E2F7; }
+@media(max-width:600px) { pre.site-code-block,div.site-code-block { padding:48px 14px 16px !important; font-size:12px !important; }.site-code-block > .code-copy { min-height:44px; top:4px; } }

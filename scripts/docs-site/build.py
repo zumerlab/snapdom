@@ -10,13 +10,13 @@ OUT = os.path.join(HERE, '..', '..', 'docs')
 
 MENU = [
  ('Learn', [('Docs','docs/','capture','API, options and quick start'),('How-to','how-to/','start','Short recipes, one task each'),('Guides','guides/','options','React, Vue, Svelte, Angular, Lit, Next.js'),('Compare','compare/','ecosystem','SnapDOM vs html2canvas and others')]),
- ('Build', [('Capabilities','capabilities/','capture','What you can make from a capture'),('Plugins','plugins.html','export','12 official plugins'),('Playground','plugins.html#playground','capture','Change settings, see the result')]),
+ ('Build', [('Capabilities','capabilities/','capture','What you can make from a capture'),('Plugins','plugins.html','export','13 official plugins'),('Playground','playground/','capture','Change settings, see the result')]),
  ('Explore', [('Showcase','showcase/','labs','Live capture demos'),('Labs','labs.html','labs','Experiments on top of captures'),('Blog','blog/','record','Notes from the team')]),
  ('Community', [('Ecosystem','ecosystem/','ecosystem','SnapDIFF, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
 ]
 FOOT = [
  ('Learn', [('Documentation','docs/'),('Quick start','docs/#quick-start'),('How-to recipes','how-to/'),('Guides','guides/'),('Compare','compare/')]),
- ('Build', [('Capabilities','capabilities/'),('Plugins','plugins.html'),('Playground','plugins.html#playground'),('Writing plugins','plugins.html#build-plugin')]),
+ ('Build', [('Capabilities','capabilities/'),('Plugins','plugins.html'),('Playground','playground/'),('Writing plugins','plugins.html#build-plugin')]),
  ('Explore', [('Showcase','showcase/'),('Labs','labs.html'),('Blog','blog/')]),
  ('Community', [('Ecosystem','ecosystem/'),('Made with','made-with/'),('Community plugins','plugins.html#community'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
 ]
@@ -34,7 +34,7 @@ def header(active, root='../'):
             f'<a class="site-shell-brand" href="{root or "./"}" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a>'
             f'<nav class="site-nav" aria-label="Main navigation">{"".join(groups)}</nav>'
             '<button type="button" class="site-menu-button" aria-expanded="false">Menu</button>'
-            '<a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a>'
+            '<a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a>'
             '</div></header>')
 
 def footer(root='../'):
@@ -79,11 +79,11 @@ DEMO = '''<div class="pane-demo"><section class="demo-panel sec-capture" aria-la
 {target}<p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
 <footer class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</footer></section></div>'''
 
-SAMPLE = '''<div class="sample-card" data-target><div class="sample-card-kicker">Weekly report</div><div class="sample-card-title" data-title contenteditable spellcheck="false">Captures this week</div>
+SAMPLE = '''<div class="sample-card" data-target><div class="sample-card-kicker">Component preview</div><div class="sample-card-title" data-title contenteditable spellcheck="false">Capture an editable component</div>
 <div class="sample-card-bars" aria-hidden="true"><i style="height:38%"></i><i style="height:52%"></i><i style="height:44%"></i><i style="height:70%"></i><i style="height:61%"></i><i style="height:84%"></i><i style="height:96%"></i></div>
 <div class="sample-card-total"><b>1,284</b><span>+12% vs last week</span></div>
-<label class="demo-input">Owner email<input value="ana@example.com"></label>
-<div class="sample-card-actions"><button type="button">Approve</button><a href="#" onclick="return false">View details</a></div></div>
+<label class="demo-input">Owner email<input type="email" value="ana@example.com"></label>
+<p>Editable text and an open shadow root can be captured together.</p></div>
 '''
 
 COPY_JS = '''<script>
@@ -138,3 +138,7 @@ def build(groups, render):
 
 for name in ('capabilities.py', 'ecosystem.py', 'sections.py'):
     exec(open(os.path.join(HERE, name)).read())
+
+exec(open(os.path.join(HERE, 'finish.py')).read(), {'__file__': os.path.join(HERE, 'finish.py')})
+
+exec(open(os.path.join(HERE, 'metadata.py')).read(), {'__file__': os.path.join(HERE, 'metadata.py')})

@@ -2,7 +2,7 @@
 
 > SnapDOM is a browser capture engine for web interfaces.
 
-SnapDOM (`@zumer/snapdom`) captures a DOM subtree, its styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, image-based PDFs and recordings.
+SnapDOM (`@zumer/snapdom`) captures a DOM subtree, its styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, searchable, paginated PDFs and editable vector artwork and recordings.
 
 Two integrated engines render the same finished clone: `svg` (default) serializes it, while experimental `html-in-canvas` paints it through the browser's native API. The second engine still needs the browser feature flag or applicable origin trial (supported Chrome builds: `chrome://flags/#canvas-draw-element`) and a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`; the default build currently omits it. Unsupported captures fall back to SVG.
 
@@ -42,6 +42,12 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 - [Ecosystem](https://snapdom.dev/ecosystem/): official and community plugins, PDF, Vector, SnapEye, SnapSurf and SnapDIFF; differences and combined workflows
 - [Blog](https://snapdom.dev/blog/): capture architecture, tiled rasterization and plugin experiments
 - [SnapDOM v3 release](https://snapdom.dev/blog/snapdom-v3/): automatic capture reuse, new APIs, rendering fixes and upgrade notes
+
+- [Playground](https://snapdom.dev/playground/): nine editable capture presets, export settings and generated code
+- [PDF live demos](https://snapdom.dev/pro/pdf/): reports, paginated ledgers, multilingual text, form controls and transparency; PDFs generated from the live DOM
+- [PDF API reference](https://snapdom.dev/pro/pdf/docs.html): capture-time options, pagination, text, fields, metadata and encryption
+- [Vector live demos](https://snapdom.dev/pro/vector/): editable components, SVG, charts and forms; browser-generated SVG and Figma clipboard export
+- [Vector API reference](https://snapdom.dev/pro/vector/docs.html): supported content, approximation reports and clipboard constraints
 
 ## Core API
 
@@ -122,7 +128,8 @@ Import factories from `@zumer/snapdom-plugins` and pass instances through `plugi
 - `timestampOverlay({ format?, position? })`: timestamp badge
 - `redactInputs({ types?, autocomplete?, selector?, all?, mask?, blocks?, attributes? })`: masks input/textarea values, excludes blocks and removes named attributes; `<select>` values are not masked, hide them with `blocks`
 - `asciiExport({ width?, charset?, invert? })`: `toAscii(opts?)` returns text; `width`, `charset` and `invert` can be overridden per call
-- `pdfImage({ orientation?, filename? })`: `toPdfImage()` downloads a single-page PDF containing a JPEG and returns its object URL
+- `pdf()`: `toPdf()` returns a PDF Blob with selectable text, pagination, links and optional form fields; `download` is opt-in
+- `vector()`: `toVector()` returns SVG artwork; `toFigma()` writes supported content to the clipboard
 - `htmlExport({ fullDocument? })`: `toHtml()` returns captured HTML with styles and assets
 - `contextExport({ format?, geometry? })`: `toContext()` returns an outline or JSON tree
 - `agentMap({ image?, fields?, semantic? })`: `toAgentMap()` returns `{ dimensions, map, image? }`; map entries use compact keys such as `i`, `n`, `r` and `b: [x, y, width, height]`
@@ -137,7 +144,7 @@ Redaction leaves the live page unchanged. `selector` selects inputs/textareas on
 
 Use SnapDOM when a web interface already exists in a real browser and you need images, reusable capture data or plugin exports. It handles browser features such as open Shadow DOM, pseudo-elements, CSS variables, transforms and webfonts, subject to resource access and browser rendering limits.
 
-It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. Core SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. The MIT `pdfImage` plugin is image-based, without selectable text or semantic pagination. Use a browser automation tool when the task requires navigation or rendering a remote URL.
+It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. Core SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. PDF and Vector now have MIT source in packages/plugins; the updated plugin package is not published yet. Use a browser automation tool when the task requires navigation or rendering a remote URL.
 
 ## Project links
 

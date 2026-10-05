@@ -9,16 +9,15 @@
 //   data-demo="capture" | "diff" | "pair" | "compare"   (absent: no demo column)
 //   data-method="toPng" | "toJpg" | "toCanvas" | "toSvg"
 //   data-options='{"scale":2}'
-//   data-prepare="redact" | "retitle"       changes the live card for one capture, then restores it
-//   data-transform="ascii" | "map" | "context"   simulated plugin output on the core capture
+//   data-prepare="redact" | "retitle"       official plugins change only the captured copy
+//   data-transform="ascii" | "map" | "context"   official plugin output
 //   data-lib="html2canvas" | "html-to-image" | "dom-to-image" | "modern-screenshot"   (compare)
 //   data-demo-label, data-note
 // Without JavaScript every topic stays visible as one long page.
 // SnapDOM loads from unpkg on the first run, like demo.js, because the site is served
 // from docs/ and cannot reach the repository's dist/.
 
-let snapdomPromise = null
-const loadSnapdom = () => snapdomPromise ||= import('https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs').then(m => m.snapdom)
+import { loadSnapdom, loadPlugin, mountSample, sampleFor } from './demo-runtime.js'
 
 // An open shadow root for the demos that show Shadow DOM capture.
 customElements.define('sd-shadow-card', class extends HTMLElement {
@@ -54,7 +53,7 @@ pane.querySelector('.pane-filter input').addEventListener('input', event => {
 })
 
 // ── Demo panel ──
-const card = panel?.querySelector('[data-target]')
+let card = panel?.querySelector('[data-target]')
 const results = panel?.querySelector('[data-results]')
 const resultLabel = panel?.querySelector('[data-result-label]')
 const statusLine = panel?.querySelector('.demo-panel-status')
@@ -91,7 +90,7 @@ const print = (node, caption) => {
 const setBusy = busy => Object.values(buttons).forEach(b => { b.disabled = busy })
 
 const IDLE = {
-  capture: ['Result', 'Edit the title, then run. This uses the real library from unpkg.', 'Nothing captured yet'],
+  capture: ['Result', 'Edit the sample, then run a real capture.', 'Nothing captured yet'],
   diff: ['Changed pixels', '1 · Take a baseline.', 'No baseline yet'],
   pair: ['Before · After', '1 · Take a baseline.', 'No baseline yet'],
   compare: ['Results', 'Runs SnapDOM and the other library on the same element.', 'Run both to compare the output'],
@@ -110,64 +109,6 @@ function resetDemo() {
   buttons.baseline.classList.add('is-primary')
   buttons.compare.classList.remove('is-primary')
   buttons.compare.disabled = true
-}
-
-// Simulated plugin steps, applied to the live card or to the core result.
-const prepares = {
-  redact(el) {
-    const fields = [...el.querySelectorAll('input')]
-    const values = fields.map(f => f.value)
-    fields.forEach(f => { f.value = '•'.repeat(f.value.length) })
-    return () => fields.forEach((f, i) => { f.value = values[i] })
-  },
-  retitle(el) {
-    const title = el.querySelector('[data-title]')
-    const text = title.textContent
-    title.textContent = 'Name hidden for sharing'
-    return () => { title.textContent = text }
-  },
-}
-const transforms = {
-  ascii(canvas) {
-    const cols = 46, ramp = ' .:-=+*#%@'
-    const { width: w, height: h } = canvas
-    const rows = Math.round(cols * h / w * 0.5), cw = w / cols, ch = h / rows
-    const data = canvas.getContext('2d').getImageData(0, 0, w, h).data
-    let text = ''
-    for (let y = 0; y < rows; y++) {
-      for (let x = 0; x < cols; x++) {
-        const k = (Math.floor(y * ch + ch / 2) * w + Math.floor(x * cw + cw / 2)) * 4
-        const light = (data[k] * 0.3 + data[k + 1] * 0.59 + data[k + 2] * 0.11) / 255
-        text += ramp[Math.min(ramp.length - 1, Math.floor((1 - light) * ramp.length))]
-      }
-      text += '\n'
-    }
-    return text
-  },
-  map(img, el) {
-    const box = el.getBoundingClientRect()
-    const wrap = document.createElement('div')
-    wrap.className = 'demo-map'
-    img.style.height = 'auto'
-    wrap.append(img)
-    el.querySelectorAll('input, button, a').forEach((node, i) => {
-      const r = node.getBoundingClientRect()
-      const mark = document.createElement('span')
-      mark.style.cssText = `left:${(r.left - box.left) / box.width * 100}%;top:${(r.top - box.top) / box.height * 100}%;width:${r.width / box.width * 100}%;height:${r.height / box.height * 100}%`
-      const badge = document.createElement('b')
-      badge.textContent = i + 1
-      mark.append(badge)
-      wrap.append(mark)
-    })
-    return wrap
-  },
-  context(_, el) {
-    return JSON.stringify({
-      title: el.querySelector('[data-title]').textContent,
-      fields: [...el.querySelectorAll('input')].map(i => ({ label: 'Owner email', value: i.value })),
-      actions: ['Approve', 'View details'],
-    }, null, 2)
-  },
 }
 
 // Other libraries for the head-to-head pages, pinned like the compare harness pins them.
@@ -229,28 +170,45 @@ async function run() {
   }
   const { method = 'toPng', options, prepare, transform } = topic.dataset
   setBusy(true)
-  const restore = prepare ? prepares[prepare](card) : null
   try {
     const snapdom = await loadSnapdom()
-    const opts = options ? JSON.parse(options) : undefined
+    const opts = options ? JSON.parse(options) : {}
+    const plugins = []
+    if (prepare === 'redact') plugins.push((await loadPlugin('redact-inputs')).redactInputs())
+    if (prepare === 'retitle') plugins.push((await loadPlugin('replace-text')).replaceText({ replacements: [{ find: card.querySelector('[data-title]').textContent, replace: 'Name hidden for sharing' }] }))
+    const outputs = { ascii: ['ascii-export', 'asciiExport', 'toAscii'], map: ['agent-map', 'agentMap', 'toAgentMap'], context: ['context-export', 'contextExport', 'toContext'], pdf: ['pdf', 'pdf', 'toPdf'], vector: ['vector', 'vector', 'toVector'], html: ['html-export', 'htmlExport', 'toHtml'], gif: ['gif-export', 'gifExport', 'toGif'] }
+    const output = outputs[transform]
+    if (output) plugins.push((await loadPlugin(output[0]))[output[1]]())
+    opts.plugins = plugins
     const t0 = performance.now()
     if (method === 'download') {
       await snapdom.download(card, { format: 'png', filename: 'snapdom-demo', ...opts })
       statusLine.textContent = `Downloaded snapdom-demo.png · ${Math.round(performance.now() - t0)} ms`
       return
     }
-    const out = method === 'result' ? await (await snapdom(card, opts)).toPng() : await snapdom[method](card, opts)
+    const result = await snapdom(card, opts)
+    let node
+    if (output) {
+      const value = await result[output[2]](transform === 'map' ? { image: 'annotated' } : transform === 'ascii' ? { width: 46 } : transform === 'gif' ? { fps: 4, duration: 1000 } : {})
+      if (transform === 'gif') {
+        node = new Image(); node.src = URL.createObjectURL(value); node.alt = 'Recorded GIF'
+      } else if (transform === 'map') {
+        node = new Image(); node.src = value.image; node.alt = 'Captured element map'
+      } else if (transform === 'pdf') {
+        node = document.createElement('a'); node.href = URL.createObjectURL(new Blob([value], { type: 'application/pdf' })); node.download = 'snapdom-demo.pdf'; node.textContent = 'Download captured PDF'
+      } else if (transform === 'vector') {
+        node = new Image(); node.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(value); node.alt = 'Vector artwork'
+      } else node = typeof value === 'string' ? value : JSON.stringify(value, null, 2)
+    } else node = await result[method === 'result' ? 'toPng' : method]()
     const ms = Math.round(performance.now() - t0)
-    const w = out.naturalWidth || out.width, h = out.naturalHeight || out.height
-    const node = transform ? transforms[transform](out, card) : out
+    const w = node.naturalWidth || node.width, h = node.naturalHeight || node.height
     if (!results.querySelector('.demo-print')) results.replaceChildren()
-    results.prepend(print(node, `${w} × ${h} px · ${ms} ms`))
+    results.prepend(print(node, `${w ? w + ' × ' + h + ' px · ' : ''}${ms} ms`))
     results.querySelectorAll('.demo-print:nth-child(n+3)').forEach(n => n.remove())
     statusLine.textContent = `Done · ${ms} ms`
   } catch (error) {
     statusLine.textContent = fail(error)
   } finally {
-    restore?.()
     setBusy(false)
   }
 }
@@ -332,8 +290,13 @@ function configureDemo() {
   if (!topic.dataset.demo) return
   panel.classList.remove(secOf(panel))
   panel.classList.add(secOf(topic))
+  if (!card.querySelector('sd-shadow-card') && !card.classList.contains('tricky-card')) {
+    const holder = document.createElement('div')
+    const next = mountSample(holder, sampleFor(topic.dataset.title, location.pathname), topic.dataset.title)
+    card.replaceWith(next); card = next
+  }
   panel.querySelector('.demo-panel-title').textContent = topic.dataset.demoLabel || topic.dataset.title
-  note.textContent = topic.dataset.note || ''
+  note.textContent = topic.dataset.note || (location.pathname.includes('/guides/') ? 'Live DOM example. The article shows how to mount and capture it in your framework.' : '')
   resetDemo()
 }
 

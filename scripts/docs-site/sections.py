@@ -3,7 +3,7 @@
 #   - the old site header (or the new one, on a rerun) becomes the grouped header;
 #   - the hero becomes a DocHeader: breadcrumb, section-coloured title, lead, text links;
 #   - the content moves into the reading column, after the sidebar (every page of the
-#     section, with the current page's headings under it) and, where set, a live demo;
+#     section, with only group and page levels) and, where set, a live demo;
 #   - a Previous / Next pager and the footer directory close the page.
 # Markers (<!-- pane:start --> … <!-- pane:end -->) let a rerun find what it wrote.
 
@@ -39,7 +39,7 @@ SECTIONS = [
    ('Special cases','ecosystem',[('how-to/capture-element-without-puppeteer/index.html','Capture without Puppeteer',D(demo='capture',method='toPng')),
                                  ('how-to/capture-shadow-dom/index.html','Capture Shadow DOM',D(demo='capture',method='toPng',target='shadow')),
                                  ('how-to/capture-full-page/index.html','Capture a full page',D(demo='capture',method='toPng')),
-                                 ('how-to/capture-iframe/index.html','Capture an iframe',None),
+                                 ('how-to/capture-iframe/index.html','Capture an iframe',D(demo='capture',method='toPng',note='Captures the same-origin srcdoc frame together with its surrounding element.')),
                                  ('how-to/visual-regression-screenshot/index.html','Visual regression',D(demo='diff',label='Baseline and diff'))])]},
  {'name':'Guides', 'menu':'Guides', 'filter':'Filter frameworks', 'groups':[
    ('Overview','options',[('guides/index.html','SnapDOM in your framework',None)]),
@@ -76,7 +76,7 @@ SECTIONS = [
    ('Made with','context',[('made-with/index.html','Projects using SnapDOM',None)])]},
  {'name':'Plugins', 'menu':'Plugins', 'filter':'Filter plugins', 'groups':[
    ('Build','capture',[('capabilities/index.html','Capabilities','link')]),
-   ('Plugins','export',[('plugins.html','Plugins and playground',D(end='<!-- ── Plugin detail modal'))]),
+   ('Plugins','export',[('plugins.html','Official plugins',D(end='<!-- ── Plugin detail modal'))]),
    ('Reference','export',[('docs/plugins/index.html','Plugin API','link')])]},
 ]
 
@@ -180,8 +180,6 @@ def convert(section, gi, path, title, demo, flat):
         for p, t, _ in items:
             here = p == path
             links += f'<a href="{rel(path, p)}"{CUR if here else ""}>{E(t)}</a>'
-            if here and heads:
-                links += '<div class="pane-toc">' + ''.join(f'<a href="#{h}">{E(x)}</a>' for h, x in heads) + '</div>'
         open_ = any(p == path for p, _, _ in items)
         side.append(f'<div class="sec-{gsec}"><button type="button" class="pane-nav-head" aria-expanded="{str(open_).lower()}"><span class="sec-dot"></span>{E(glabel)}</button><div class="pane-nav-items">{links}</div></div>')
     sidebar_html = (f'<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="{section["filter"]}" aria-label="{section["filter"]}"></label>'

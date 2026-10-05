@@ -1,0 +1,35 @@
+.plugin-page .pane-demo { min-width:0; }
+.plugin-demo-settings { display:grid; gap:12px; margin-bottom:20px; }
+.plugin-demo-settings label { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:13px; }
+.plugin-demo-settings select { flex:1; min-width:0; max-width:100%; padding:10px; background:#fff; color:#0F1E4D; border:1px solid #b7c4df; font:14px Arial; }
+.plugin-demo-settings .demo-act { min-height:44px; }
+.plugin-demo-source { overflow:auto; max-height:420px; margin-bottom:20px; border:1px solid #b7c4df; }
+.plugin-demo-source .sample-card { margin:0; max-width:none; width:100%; box-sizing:border-box; }
+.plugin-demo-output { position:relative; min-height:100px; background:#fff; padding:12px; border:1px solid #b7c4df; overflow:auto; }
+.plugin-demo-output img,.plugin-demo-output canvas { display:block; max-width:100%; height:auto; }
+.plugin-demo-output > p { font-size:13px; color:#55617C; }
+.plugin-demo-preview { position:relative; }
+[data-pdf-pages] { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; font-size:12px; }
+[data-pdf-pages] button { min-height:44px; padding:8px; background:white; color:#0F1E4D; border:1px solid #b7c4df; cursor:pointer; }
+[data-export-status],[data-export-file] { margin:16px 0; font-size:13px; }
+[data-export-file] a { text-decoration:underline; text-underline-offset:3px; }
+.plugin-page details summary { cursor:pointer; font-size:13px; padding:12px 0; }
+.pdf-reference section { margin:32px 0; }
+.pdf-reference .eyebrow { color:var(--c); font:12px ui-monospace,monospace; text-transform:uppercase; }
+.pdf-reference h2 { margin:12px 0 20px; font-size:26px; line-height:1.25; }
+.pdf-reference p { margin:12px 0; line-height:1.65; }
+.pdf-reference .spec { display:grid; gap:16px; margin:24px 0; }
+.pdf-reference .spec > div { padding:16px 0; border-top:1px solid #d6deef; }
+.pdf-reference dt { font-weight:700; margin-bottom:8px; }
+.pdf-reference dd { margin:0; line-height:1.6; }
+.pdf-reference .faq > div { padding:20px 0; border-bottom:1px solid #d6deef; }
+.pdf-reference h3 { font-size:18px; margin:0 0 12px; }
+.pdf-reference code:not(pre code) { background:#EEF3FF; padding:2px 4px; font-family:ui-monospace,monospace; font-size:.88em; overflow-wrap:anywhere; }
+.plugin-demo-source table { width:100%; border-collapse:collapse; margin:16px 0; font-size:12px; }
+.plugin-demo-source th,.plugin-demo-source td { padding:8px 2px; border-bottom:1px solid #d6deef; text-align:left; }
+.plugin-demo-source th:last-child,.plugin-demo-source td:last-child { text-align:right; }
+.plugin-demo-source input,.plugin-demo-source textarea,.plugin-demo-source select { max-width:100%; box-sizing:border-box; }
+
+.plugin-demo-settings button[type="submit"] { background:var(--c); color:#fff; border:1px solid var(--c); }
+
+@media(min-width:1241px) { .plugin-page .demo-panel-body { max-height:calc(100vh - 160px); overflow:auto; } }

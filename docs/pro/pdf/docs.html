@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en">
-<head>
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="index, follow">
@@ -8,65 +8,69 @@
 <title>SnapDOM PDF reference</title>
 <meta name="description" content="Complete API reference for the SnapDOM PDF plugin: installation, options, warnings, accessibility contract and limits.">
 <style>
-  :root { --ink:#121827; --dim:#5b6478; --rule:#dfe3eb; --wash:#f5f7fb; --accent:#2e4bf0;
+:root{ --ink:#121827; --dim:#5b6478; --rule:#dfe3eb; --wash:#f5f7fb; --accent:#2e4bf0;
     --mark:#e88a13; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     --sans:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
-  * { box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
-  body { margin:0; color:var(--ink); background:#fff; font:15.5px/1.65 var(--sans); }
-  a { color:var(--accent); }
-  .layout { width:min(1220px,calc(100% - 40px)); margin:auto; display:grid;
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{ margin:0; color:var(--ink); background:#fff; font:15.5px/1.65 var(--sans); }
+.product-content a{ color:var(--accent); }
+.product-content .layout{ width:min(1220px,calc(100% - 40px)); margin:auto; display:grid;
     grid-template-columns:230px minmax(0,760px); gap:72px; align-items:start; }
-  nav { position:sticky; top:0; max-height:100vh; overflow:auto; padding:34px 0 44px; }
-  nav .home { display:block; color:var(--ink); font:700 12px var(--mono); letter-spacing:.08em;
+.product-content nav{ position:sticky; top:0; max-height:100vh; overflow:auto; padding:34px 0 44px; }
+.product-content nav .home{ display:block; color:var(--ink); font:700 12px var(--mono); letter-spacing:.08em;
     text-decoration:none; text-transform:uppercase; }
-  nav .version { display:block; margin-top:9px; color:var(--mark); font:700 11px var(--mono); }
-  nav ul { list-style:none; margin:22px 0 0; padding:0; }
-  nav li { margin:2px 0; }
-  nav li.gap { margin-top:14px; }
-  nav a { display:block; padding:3px 0 3px 11px; border-left:2px solid transparent;
+.product-content nav .version{ display:block; margin-top:9px; color:var(--mark); font:700 11px var(--mono); }
+.product-content nav ul{ list-style:none; margin:22px 0 0; padding:0; }
+.product-content nav li{ margin:2px 0; }
+.product-content nav li.gap{ margin-top:14px; }
+.product-content nav a{ display:block; padding:3px 0 3px 11px; border-left:2px solid transparent;
     color:var(--dim); text-decoration:none; font-size:13px; }
-  nav a:hover { color:var(--ink); border-color:var(--accent); }
-  main { min-width:0; padding:74px 0 90px; }
-  h1 { margin:0; font-size:clamp(38px,6vw,64px); line-height:1; letter-spacing:-.045em; }
-  h2 { margin:66px 0 10px; padding-top:8px; font-size:27px; line-height:1.2; letter-spacing:-.025em; }
-  h3 { margin:32px 0 8px; font-size:18px; }
-  p { margin:10px 0; }
-  .lede { max-width:670px; margin:20px 0 0; color:var(--dim); font-size:19px; line-height:1.55; }
-  code { font-family:var(--mono); font-size:.88em; background:var(--wash); border:1px solid #e9ecf2;
+.product-content nav a:hover{ color:var(--ink); border-color:var(--accent); }
+.product-content main{ min-width:0; padding:74px 0 90px; }
+.product-content h1{ margin:0; font-size:clamp(38px,6vw,64px); line-height:1; letter-spacing:-.045em; }
+.product-content h2{ margin:66px 0 10px; padding-top:8px; font-size:27px; line-height:1.2; letter-spacing:-.025em; }
+.product-content h3{ margin:32px 0 8px; font-size:18px; }
+.product-content p{ margin:10px 0; }
+.product-content .lede{ max-width:670px; margin:20px 0 0; color:var(--dim); font-size:19px; line-height:1.55; }
+.product-content code{ font-family:var(--mono); font-size:.88em; background:var(--wash); border:1px solid #e9ecf2;
     padding:1px 5px; border-radius:5px; }
-  pre { margin:18px 0; padding:18px 20px; overflow:auto; border-radius:11px; background:#0f1729;
+.product-content pre{ margin:18px 0; padding:18px 20px; overflow:auto; border-radius:11px; background:#0f1729;
     color:#e9eefc; font:13px/1.65 var(--mono); }
-  pre code { padding:0; border:0; background:none; color:inherit; font-size:inherit; }
-  table { width:100%; margin:18px 0 24px; border-collapse:collapse; font-size:14px; }
-  th { color:var(--dim); font:700 11px var(--mono); letter-spacing:.06em; text-align:left;
+.product-content pre code{ padding:0; border:0; background:none; color:inherit; font-size:inherit; }
+.product-content table{ width:100%; margin:18px 0 24px; border-collapse:collapse; font-size:14px; }
+.product-content th{ color:var(--dim); font:700 11px var(--mono); letter-spacing:.06em; text-align:left;
     text-transform:uppercase; }
-  th,td { padding:10px 12px; border-bottom:1px solid var(--rule); vertical-align:top; }
-  td:first-child { width:145px; font:600 13px var(--mono); }
-  td:nth-child(2) { width:105px; color:var(--dim); font:12px var(--mono); }
-  .note { margin:20px 0; padding:14px 17px; border-left:3px solid var(--accent); border-radius:8px;
+.product-content th, .product-content td{ padding:10px 12px; border-bottom:1px solid var(--rule); vertical-align:top; }
+.product-content td:first-child{ width:145px; font:600 13px var(--mono); }
+.product-content td:nth-child(2){ width:105px; color:var(--dim); font:12px var(--mono); }
+.product-content .note{ margin:20px 0; padding:14px 17px; border-left:3px solid var(--accent); border-radius:8px;
     background:var(--wash); }
-  .warn { border-left-color:var(--mark); background:#fff8ec; }
-  .note p:first-child { margin-top:0; } .note p:last-child { margin-bottom:0; }
-  .plain { padding-left:20px; } .plain li { margin:7px 0; }
-  .channels { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:20px 0; }
-  .channel { padding:15px; border:1px solid var(--rule); border-radius:10px; }
-  .channel b { display:block; margin-bottom:5px; }
-  footer { margin-top:70px; padding-top:20px; border-top:1px solid var(--rule); color:var(--dim); }
-  @media (max-width:900px) {
-    .layout { display:block; width:min(760px,calc(100% - 32px)); }
-    nav { position:static; max-height:none; padding-bottom:0; }
-    nav ul { display:flex; flex-wrap:wrap; gap:2px 9px; }
-    nav a { padding-left:0; border:0; }
-    main { padding-top:42px; }
+.product-content .warn{ border-left-color:var(--mark); background:#fff8ec; }
+.product-content .note p:first-child{ margin-top:0; }
+.product-content .note p:last-child{ margin-bottom:0; }
+.product-content .plain{ padding-left:20px; }
+.product-content .plain li{ margin:7px 0; }
+.product-content .channels{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:20px 0; }
+.product-content .channel{ padding:15px; border:1px solid var(--rule); border-radius:10px; }
+.product-content .channel b{ display:block; margin-bottom:5px; }
+.product-content footer{ margin-top:70px; padding-top:20px; border-top:1px solid var(--rule); color:var(--dim); }
+@media (max-width:900px){
+.product-content .layout{ display:block; width:min(760px,calc(100% - 32px)); }
+.product-content nav{ position:static; max-height:none; padding-bottom:0; }
+.product-content nav ul{ display:flex; flex-wrap:wrap; gap:2px 9px; }
+.product-content nav a{ padding-left:0; border:0; }
+.product-content main{ padding-top:42px; }
   }
-  @media (max-width:640px) { .channels { grid-template-columns:1fr; } th:nth-child(2),td:nth-child(2) { display:none; } }
+@media (max-width:640px){
+.product-content .channels{ grid-template-columns:1fr; }
+.product-content th:nth-child(2), .product-content td:nth-child(2){ display:none; } }
 </style>
-</head>
-<body>
+<link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../product.css"><script defer src="../../site.js"></script><link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../../plugins.html" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">13 official plugins</span></a><a class="site-nav-item sec-capture" href="../../playground/"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><div class="product-content">
 <div class="layout">
 <nav aria-label="Reference sections">
-  <a class="home" href="./">← SnapDOM PDF</a>
+  <a class="home" href="./"> SnapDOM PDF</a>
   <span class="version">1.0.0</span>
   <ul>
     <li><a href="#install">Installation</a></li>
@@ -94,38 +98,31 @@
   <h1>SnapDOM PDF</h1>
   <p class="lede">The complete reference for the SnapDOM plugin that adds
   <code>toPdf()</code> to a capture. The versioned <code>REFERENCE.md</code> shipped beside the
-  module is canonical for a purchased build.</p>
+  module is canonical for that version.</p>
 
-  <div class="note"><p>Subscribers get a ZIP and a private GitHub repository, not an npm package, and
-  the recipes below describe that delivery.</p></div>
+  <div class="note"><p>The PDF exporter is now MIT-licensed source in the SnapDOM monorepo. The updated plugin package has not been published yet.</p></div>
 
   <h2 id="install">Installation</h2>
-  <div class="channels">
-    <div class="channel"><b>ZIP + bundler</b>Install SnapDOM, copy the plugin module into the app and
-      import it by relative path. The bundler resolves its peer import.</div>
-    <div class="channel"><b>ZIP + browser</b>Serve both ESM files and provide an import map for
-      <code>@zumer/snapdom</code>.</div>
-    <div class="channel"><b>Private repository</b>Each version is also a GitHub release with the same
-      ZIP, in the repository your subscription gives you access to.</div>
-  </div>
+  <p>After the updated package is published, import <code>pdf</code> from <code>@zumer/snapdom-plugins/pdf</code>. For local development, use the monorepo workspace.</p>
 
   <h3>Bundler</h3>
   <pre><code>import { snapdom } from '@zumer/snapdom'
-import pdf from './vendor/snapdom-pdf.mjs'</code></pre>
+import { pdf } from '@zumer/snapdom-plugins/pdf'</code></pre>
 
   <h3>Browser without a bundler</h3>
   <pre><code>&lt;script type="importmap"&gt;
 {
   "imports": {
-    "@zumer/snapdom": "/vendor/snapdom.mjs"
+    "@zumer/snapdom": "/vendor/snapdom.mjs",
+    "@zumer/snapdom-plugins/pdf": "/vendor/plugins/pdf.js"
   }
 }
 &lt;/script&gt;
 &lt;script type="module"&gt;
   import { snapdom } from '@zumer/snapdom'
-  import pdf from '/vendor/snapdom-pdf.mjs'
+  import { pdf } from '@zumer/snapdom-plugins/pdf'
 &lt;/script&gt;</code></pre>
-  <p>Serve <code>.mjs</code> with a JavaScript MIME type. A global/IIFE SnapDOM script cannot satisfy
+  <p>Serve the plugin package with its <code>pdf/src/</code> tree and a JavaScript MIME type. A global/IIFE SnapDOM script cannot satisfy
   the plugin's ESM peer import. Requires <code>@zumer/snapdom &gt;=3.0.0 &lt;4</code>.</p>
   <div class="note"><p><b>SnapDOM 3 is the floor.</b> The exporter reads v3's immutable capture
   metadata, requested export options and pre-decode canvas crops, which 2.x does not expose. The
@@ -135,7 +132,7 @@ import pdf from './vendor/snapdom-pdf.mjs'</code></pre>
   <p>The module exports the same <code>pdf</code> factory as default and named export. It does not
   export a standalone <code>toPdf(element)</code> helper.</p>
   <pre><code>import { snapdom } from '@zumer/snapdom'
-import pdf, { pdf as namedPdf } from './snapdom-pdf.mjs'
+import pdf, { pdf as namedPdf } from '@zumer/snapdom-plugins/pdf'
 
 snapdom.plugins(pdf())                         // every later capture
 const local = await snapdom(el, { plugins: [pdf()] }) // this capture
@@ -520,5 +517,5 @@ if (report.counts['link-unresolved']) throw new Error('a link lost its destinati
   packaged <code>REFERENCE.md</code> with the module so behaviour and documentation stay versioned together.</footer>
 </main>
 </div>
-</body>
+</div><footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../guides/">Guides</a><a href="../../compare/">Compare</a></div><div><h2>Build</h2><a href="../../capabilities/">Capabilities</a><a href="../../plugins.html">Plugins</a><a href="../../playground/">Playground</a><a href="../../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer></body>
 </html>
