@@ -1,3 +1,4 @@
+import { buttonState } from './demo-feedback.js'
 import { loadSnapdom, loadPlugin, mountSample } from './demo-runtime.js'
 const panel = document.querySelector('[data-export-demo]')
 const format = panel.dataset.exportDemo
@@ -9,6 +10,7 @@ const file = panel.querySelector('[data-export-file]')
 const code = panel.querySelector('[data-export-code]')
 const pages = panel.querySelector('[data-pdf-pages]')
 const figma = panel.querySelector('[data-figma]')
+const generateButton = form.querySelector('[type=submit]')
 let card, fileURL, pdfDocument, pageNumber = 1, lastResult, generation = 0
 const options = () => ({ sample:form.elements.sample.value, page:form.elements.page?.value, text:form.elements.text?.checked, fields:form.elements.fields?.checked })
 const heading = (kicker, title) => `<div class="sample-card-kicker">${kicker}</div><h2 data-title contenteditable="true" aria-label="Edit document title" style="font:700 21px Arial;margin:10px 0">${title}</h2>`
@@ -17,6 +19,8 @@ function updateCode() {
   code.textContent = `import { snapdom } from '@zumer/snapdom';\nimport { ${format} } from '@zumer/snapdom-plugins/${format}';\n\nconst result = await snapdom(element, {\n  plugins: [${format}()],\n  dpr: 1\n});\n${format === 'pdf' ? `const blob = await result.toPdf({\n  page: '${s.page}',\n  text: ${s.text},\n  fields: ${s.fields}\n});` : 'const svg = await result.toVector();'}`
 }
 function clearOutput() {
+  buttonState(generateButton, 'idle', format === 'pdf' ? 'Generate PDF' : 'Generate Vector')
+  buttonState(figma, 'idle', 'Copy to Figma')
   generation++
   if (fileURL) { URL.revokeObjectURL(fileURL); fileURL = null }
   pdfDocument?.destroy(); pdfDocument = null
@@ -92,6 +96,7 @@ form.addEventListener('submit',async event => {
   clearOutput()
   const token = generation
   Array.from(form.elements).forEach(control => { control.disabled = true })
+  buttonState(generateButton, 'busy', format === 'pdf' ? 'Generating PDF…' : 'Exporting SVG…')
   status.textContent = `Loading ${format} and capturing…`
   try {
     const snapdom = await loadSnapdom(), plugin = (await loadPlugin(format))[format]()
@@ -115,14 +120,18 @@ form.addEventListener('submit',async event => {
       output.replaceChildren(image); figma.disabled = false
       status.textContent = 'SVG generated. Open the file in a vector editor or copy the capture to Figma.'
     }
-  } catch(error) { status.textContent = `Error: ${error.message}` }
+    buttonState(generateButton, 'success', format === 'pdf' ? 'PDF ready ✓ · Generate again' : 'SVG ready ✓ · Export again')
+  } catch(error) { buttonState(generateButton, 'error', 'Export failed · Retry'); status.textContent = `Error: ${error.message}` }
   finally { Array.from(form.elements).forEach(control => { control.disabled = false }) }
 })
 figma?.addEventListener('click',async () => {
   figma.disabled = true
-  try { await lastResult.toFigma(); status.textContent = 'Copied. Paste into Figma.' }
-  catch(error) { status.textContent = `Clipboard error: ${error.message}` }
-  finally { figma.disabled = !lastResult }
+  Array.from(form.elements).forEach(control => { control.disabled = true })
+  buttonState(figma, 'busy', 'Copying to Figma…')
+  status.textContent = 'Copying artwork to the clipboard…'
+  try { await lastResult.toFigma(); buttonState(figma, 'success', 'Copied ✓ · Copy again'); status.textContent = 'Copied to clipboard. Now paste into Figma with Ctrl+V / ⌘V.' }
+  catch(error) { buttonState(figma, 'error', 'Copy failed · Retry'); status.textContent = `Clipboard error: ${error.message}` }
+  finally { figma.disabled = !lastResult; Array.from(form.elements).forEach(control => { control.disabled = false }) }
 })
 window.addEventListener('pagehide',() => { if (fileURL) URL.revokeObjectURL(fileURL); pdfDocument?.destroy() })
 setSample()

@@ -225,6 +225,7 @@ const png = await result.toPng();</pre>
       <pre class="code-block">const blob = await result.toBlob({ format: 'jpeg', quality: 0.92 });</pre>
     </section>
 
+<section class="prose"><h2 id="capture-boundaries">Capture boundaries and working recipes</h2><p>For embedded documents, follow the <a href="../../how-to/capture-iframe/">same-origin iframe recipe</a>; cross-origin frames cannot be read by browser JavaScript. For custom elements, follow the <a href="../../how-to/capture-shadow-dom/">open Shadow DOM recipe</a> or the <a href="../../guides/lit/">Lit component guide</a>. For a PNG Blob rather than an image element, use the <a href="../../how-to/html-to-png/#upload">upload recipe</a> and request <code>format: 'png'</code> explicitly.</p></section>
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">

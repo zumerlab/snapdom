@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HTML to editable SVG and Figma with SnapDOM Vector | SnapDOM Blog</title>
+  <meta name="description" content="Turn a live component into editable SVG artwork and Figma clipboard output. Try a product card and review fonts, layers and conversion limits." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/blog/html-to-editable-svg-figma/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="HTML to editable SVG and Figma with SnapDOM Vector" />
+  <meta property="og:description" content="Turn a live component into editable SVG artwork and Figma clipboard output. Try a product card and review fonts, layers and conversion limits." />
+  <meta property="og:url" content="https://snapdom.dev/blog/html-to-editable-svg-figma/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta property="article:published_time" content="2026-10-05" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "HTML to editable SVG and Figma with SnapDOM Vector",
+  "description": "Turn a live component into editable SVG artwork and Figma clipboard output. Try a product card and review fonts, layers and conversion limits.",
+  "url": "https://snapdom.dev/blog/html-to-editable-svg-figma/",
+  "mainEntityOfPage": "https://snapdom.dev/blog/html-to-editable-svg-figma/",
+  "image": "https://snapdom.dev/assets/og-card.jpg",
+  "datePublished": "2026-10-05",
+  "dateModified": "2026-10-05",
+  "author": {
+    "@type": "Person",
+    "name": "Juan Martin Muda",
+    "url": "https://github.com/tinchox5"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Zumerlab",
+    "url": "https://zumerlab.com"
+  }
+}</script>
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "SnapDOM",
+      "item": "https://snapdom.dev/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Blog",
+      "item": "https://snapdom.dev/blog/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "HTML to editable SVG and Figma with SnapDOM Vector",
+      "item": "https://snapdom.dev/blog/html-to-editable-svg-figma/"
+    }
+  ]
+}</script>
+  <style>
+    .byline { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+  </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body>
+  <script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "Vector \u00b7 Figma", "title": "HTML to editable SVG and Figma with SnapDOM Vector", "lead": "Turn a live component into editable SVG artwork and Figma clipboard output. Try a product card and review fonts, layers and conversion limits.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../../plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">13 official plugins</span></a><a class="site-nav-item sec-capture" href="../../playground/"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../../blog/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter posts" aria-label="Filter posts"></label><nav class="pane-nav" aria-label="Blog"><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">All posts</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Posts</button><div class="pane-nav-items"><a href="../snapdom-pdf-vs-html2canvas-jspdf/">PDF vs html2canvas + jsPDF</a><a href="../claude-code-capture-skill/">Claude Code capture skill</a><a href="./" aria-current="page">Editable SVG and Figma</a><a href="../snapdom-v3/">SnapDOM v3 is out</a><a href="../dom-capture-boundaries/">DOM capture boundaries</a><a href="../huge-page-mosaic/">Tiled rasterization</a><a href="../painting-without-canvas/">Painting without a canvas</a></div></div></nav></aside>
+
+<article class="pane-read sec-record" data-title="Editable SVG and Figma">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Blog</span><span aria-hidden="true">/</span><span>Posts</span><span aria-hidden="true">/</span><span>Editable SVG and Figma</span></nav><span class="doc-meta">Vector · Figma</span></div><h1>HTML to editable SVG and Figma with SnapDOM Vector</h1><p class="doc-lead">Turn a live component into editable SVG artwork and Figma clipboard output. Try a product card and review fonts, layers and conversion limits.</p></header>
+<div class="pane-content"><!-- content --><section><h2 id="from-a-shipped-component-to-editable-artwork">From a shipped component to editable artwork</h2><p>To edit a captured component in a design tool, its labels need to remain text and its shapes need to remain shapes. PNG exports keep pixels. Core SVG captures embed HTML in a foreignObject.</p><p>SnapDOM's Vector plugin reconstructs supported browser text and geometry as standalone SVG artwork. Its Figma clipboard export provides another destination for that capture. The plugin reads the rendered DOM to measure text and shapes.</p></section><section><h2 id="three-outputs-with-different-jobs">Three outputs with different jobs</h2><div style="overflow-x:auto"><table><thead><tr><th>Output</th><th>Keep it for</th><th>Check before handoff</th></tr></thead><tbody><tr><td>PNG</td><td>A visual reference</td><td>Resolution and clipped content</td></tr><tr><td>Core toSvg()</td><td>SnapDOM's self-contained HTML capture in SVG</td><td>foreignObject support in the destination</td></tr><tr><td>Vector toVector()</td><td>Editable supported text and shapes</td><td>Fonts, approximated paint and destination rendering</td></tr></tbody></table></div><p>Check how the SVG stores its content before sending it to a vector editor. The <a href="../../how-to/html-to-svg/">HTML-to-SVG recipe</a> describes the capture route. Vector is a separate plugin with a different output contract.</p></section><section><h2 id="try-a-product-card-then-inspect-the-svg">Try a product card, then inspect the SVG</h2><p>Edit the product name, export the card and download its SVG. Open it in your vector editor, find the title and try changing it. The demo reports how many SVG text elements and foreignObject elements the exported file contains; check the imported result in the editor you use.</p><div data-blog-demo="vector"></div><p>For charts and inline illustrations, use the <a href="../../pro/vector/">Vector playground</a>. Start with ordinary text, borders and gradients before moving to effects that your destination may approximate.</p></section><section><h2 id="install-and-capture-once">Install and capture once</h2><pre><code>npm install @zumer/snapdom@3 @zumer/snapdom-plugins@4</code></pre><pre><code>import { snapdom } from &#x27;@zumer/snapdom&#x27;;
+import { vector } from &#x27;@zumer/snapdom-plugins/vector&#x27;;
+const card = document.querySelector(&#x27;#product-card&#x27;);
+const result = await snapdom(card, { plugins: [vector()] });
+const svg = await result.toVector();
+// Wire this after capture has finished, on HTTPS or localhost:
+copyButton.addEventListener(&#x27;click&#x27;, () =&gt; result.toFigma());</code></pre><p><code>toVector()</code> returns an SVG string. <code>toFigma()</code> writes the clipboard and resolves without returning artwork. Keep the source connected through export. Register the plugin on the captures that need it. The public plugin option is <code>exclude</code>; do not copy historical internal engine settings into your application.</p></section><section><h2 id="the-figma-handoff">The Figma handoff</h2><p>Generate first, click <strong>Copy to Figma</strong>, then paste into a Figma design file. Clipboard access requires HTTPS or localhost and browser permission. A successful clipboard write confirms transport; inspect the pasted layers separately. Paste is a separate step inside Figma.</p><p>The public clipboard route does not require installing the optional development Figma plugin. That separate consumer accepts the internal SVD-derived payload and offers font preflight; It consumes that payload rather than arbitrary SVG.</p><p>Verify that the title is editable, the intended font is available, gradients and shadows look right, and the group contains the expected layers. The exported layers are positioned. Add Auto Layout, reusable components and design tokens in Figma if the design needs them.</p></section><section><h2 id="font-and-effect-fidelity-are-part-of-the-review">Font and effect fidelity are part of the review</h2><p>Editable text needs an available font. Figma distinguishes missing fonts from fonts not yet loaded, and its <a href="https://developers.figma.com/docs/plugins/working-with-text/">text API documentation</a> explains why a text node can appear correct yet still need its font before editing. Plan a fallback with the recipient rather than silently substituting it.</p><p>SVG and Figma are different renderers. Unsupported paint can be diagnosed or approximated by the conversion engine. Review complex masks, filters, text shaping and clipped content in the actual destination. The export contains the chart artwork; keep its data in the application.</p><p>For a designer-developer handoff, retain a PNG reference beside the vector file. Compare it with the imported artwork to spot rendering differences.</p></section><section><h2 id="next-steps-and-sources">Next steps and sources</h2><p>Read <a href="../../docs/options/">capture options</a> and <a href="../../how-to/screenshot-a-div/">capture boundaries</a> before exporting a real component. For document output, use <a href="../snapdom-pdf-vs-html2canvas-jspdf/">the PDF comparison</a>. For an agent checking the implementation against a reference, see <a href="../claude-code-capture-skill/">the Claude Code workflow</a>.</p><p>Sources checked October 5, 2026: <a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/vector/README.md">Vector public API</a>, <a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/vector/src/public.js">clipboard adapter</a>, <a href="https://github.com/zumerlab/snapdom/tree/main/packages/plugins/vector/figma-plugin">optional Figma consumer</a>, and <a href="https://www.npmjs.com/package/@zumer/snapdom-plugins/v/4.0.0">plugins 4.0.0</a>.</p></section><section><h2 id="snapdom-vector-vs-html-to-design">SnapDOM Vector vs html.to.design</h2><p>The html.to.design plugin by divRIOTS documents a URL-import workflow, viewport selection and a Chrome extension for pages behind login. That is useful when the job starts inside Figma with an existing website.</p><p>SnapDOM Vector starts inside the running app: your code selects an element and exports it through the capture pipeline. Use it for a component export button or a handoff from the app. Compare the same component in Figma before choosing a tool.</p></section><!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../claude-code-capture-skill/"><span>Previous</span><strong>Claude Code capture skill</strong></a><a class="is-next" href="../snapdom-v3/"><span>Next</span><strong>SnapDOM v3 is out</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../guides/">Guides</a><a href="../../compare/">Compare</a></div><div><h2>Build</h2><a href="../../capabilities/">Capabilities</a><a href="../../plugins.html">Plugins</a><a href="../../playground/">Playground</a><a href="../../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+
+
+<script type="module" src="../export-demo.js"></script></body>
+</html>

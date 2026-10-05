@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Claude Code capture skill: visual checks without writing Playwright scripts | SnapDOM Blog</title>
+  <meta name="description" content="A downloadable Claude Code skill and billing-card fixture. Route app capture to SnapEye, visual review to SnapDIFF and browser interaction to SnapSurf." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/blog/claude-code-capture-skill/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Claude Code capture skill: visual checks without writing Playwright scripts" />
+  <meta property="og:description" content="A downloadable Claude Code skill and billing-card fixture. Route app capture to SnapEye, visual review to SnapDIFF and browser interaction to SnapSurf." />
+  <meta property="og:url" content="https://snapdom.dev/blog/claude-code-capture-skill/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta property="article:published_time" content="2026-10-05" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Claude Code capture skill: visual checks without writing Playwright scripts",
+  "description": "A downloadable Claude Code skill and billing-card fixture. Route app capture to SnapEye, visual review to SnapDIFF and browser interaction to SnapSurf.",
+  "url": "https://snapdom.dev/blog/claude-code-capture-skill/",
+  "mainEntityOfPage": "https://snapdom.dev/blog/claude-code-capture-skill/",
+  "image": "https://snapdom.dev/assets/og-card.jpg",
+  "datePublished": "2026-10-05",
+  "dateModified": "2026-10-05",
+  "author": {
+    "@type": "Person",
+    "name": "Juan Martin Muda",
+    "url": "https://github.com/tinchox5"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Zumerlab",
+    "url": "https://zumerlab.com"
+  }
+}</script>
+  <script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "SnapDOM",
+      "item": "https://snapdom.dev/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Blog",
+      "item": "https://snapdom.dev/blog/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Claude Code capture skill: visual checks without writing Playwright scripts",
+      "item": "https://snapdom.dev/blog/claude-code-capture-skill/"
+    }
+  ]
+}</script>
+  <style>
+    .byline { font-size: 13px; color: var(--text-muted); margin-bottom: 28px; }
+  </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body>
+  <script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "Agents \u00b7 Tutorial", "title": "Claude Code capture skill: visual checks without writing Playwright scripts", "lead": "A downloadable Claude Code skill and billing-card fixture. Route app capture to SnapEye, visual review to SnapDIFF and browser interaction to SnapSurf.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Short recipes, one task each</span></a><a class="site-nav-item sec-options" href="../../guides/"><span class="sec-dot"></span><span class="site-nav-item-label">Guides</span><span class="site-nav-item-desc">React, Vue, Svelte, Angular, Lit, Next.js</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Build</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../capabilities/"><span class="sec-dot"></span><span class="site-nav-item-label">Capabilities</span><span class="site-nav-item-desc">What you can make from a capture</span></a><a class="site-nav-item sec-export" href="../../plugins.html"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">13 official plugins</span></a><a class="site-nav-item sec-capture" href="../../playground/"><span class="sec-dot"></span><span class="site-nav-item-label">Playground</span><span class="site-nav-item-desc">Change settings, see the result</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live capture demos</span></a><a class="site-nav-item sec-labs" href="../../labs.html"><span class="sec-dot"></span><span class="site-nav-item-label">Labs</span><span class="site-nav-item-desc">Experiments on top of captures</span></a><a class="site-nav-item sec-record" href="../../blog/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter posts" aria-label="Filter posts"></label><nav class="pane-nav" aria-label="Blog"><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">All posts</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Posts</button><div class="pane-nav-items"><a href="../snapdom-pdf-vs-html2canvas-jspdf/">PDF vs html2canvas + jsPDF</a><a href="./" aria-current="page">Claude Code capture skill</a><a href="../html-to-editable-svg-figma/">Editable SVG and Figma</a><a href="../snapdom-v3/">SnapDOM v3 is out</a><a href="../dom-capture-boundaries/">DOM capture boundaries</a><a href="../huge-page-mosaic/">Tiled rasterization</a><a href="../painting-without-canvas/">Painting without a canvas</a></div></div></nav></aside>
+
+<article class="pane-read sec-record" data-title="Claude Code capture skill">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Blog</span><span aria-hidden="true">/</span><span>Posts</span><span aria-hidden="true">/</span><span>Claude Code capture skill</span></nav><span class="doc-meta">Agents · Tutorial</span></div><h1>Claude Code capture skill: visual checks without writing Playwright scripts</h1><p class="doc-lead">A downloadable Claude Code skill and billing-card fixture. Route app capture to SnapEye, visual review to SnapDIFF and browser interaction to SnapSurf.</p></header>
+<div class="pane-content"><!-- content --><section><h2 id="give-the-agent-a-repeatable-visual-check">Capture before editing, compare afterward</h2><p>The skill below tells Claude Code which component to capture, when to save the baseline and how to read the comparison. It uses SnapEye for local app capture, SnapDIFF for visual review and SnapSurf for browser interaction.</p><p>You can run these capture checks without writing a Playwright test script. SnapSurf uses Playwright internally to control its browser. SnapEye captures through the running app; SnapDIFF can compare captures inside the page.</p></section><section><h2 id="snapeye-snapdiff-and-snapsurf-have-different-roles">SnapEye, SnapDIFF and SnapSurf have different roles</h2><div style="overflow-x:auto"><table><thead><tr><th>Tool</th><th>Use it for</th><th>Boundary</th></tr></thead><tbody><tr><td>SnapEye</td><td>Capture, diff and record a running local app; return JSON and artifacts</td><td>Does not navigate or click for the agent</td></tr><tr><td>SnapDIFF</td><td>In-page baseline comparison and visual review</td><td>Browser storage alone does not provide a CI gate</td></tr><tr><td>SnapSurf</td><td>Navigate, find, act and verify semantic changes through MCP</td><td>Its isolated browser does not inherit your Chrome login</td></tr></tbody></table></div><p>Semantic verification answers whether the interface changed state; visual comparison answers whether captured pixels changed. A “saved” message can be correct while a button overlaps it, so check pixels when the task concerns appearance.</p></section><section><h2 id="set-up-local-capture-in-a-vite-app">Set up local capture in a Vite app</h2><pre><code>npm install --save-dev @zumer/snapeye @zumer/snapdom@3</code></pre><pre><code>import { defineConfig } from &#x27;vite&#x27;;
+import { snapeye } from &#x27;@zumer/snapeye/vite&#x27;;
+export default defineConfig({ plugins: [snapeye()] });</code></pre><p>Start the dev server, then capture the component before editing it. Use a stable viewport, fixed fixture data and a specific target rather than the entire application.</p><pre><code>npx snapeye capture billing-card-desktop --target &#x27;#billing-card&#x27;
+# Close the capture-trigger tab before editing, then:
+npx snapeye diff billing-card-desktop --target &#x27;#billing-card&#x27; --fail-on-change</code></pre><p>Read <code>status</code> first. A successful operation with <code>diff.changed: false</code> passes an appearance-preserving refactor. If it changed, inspect the reported regions and artifacts. An environment failure is not a passing comparison.</p></section><section><h2 id="download-a-claude-code-capture-skill">Download a Claude Code capture skill</h2><p>Save <a href="capture-skill.md" download="SKILL.md">this complete SKILL.md</a> as <code>.claude/skills/visual-capture/SKILL.md</code> in the project. It routes capture and verification; install the tools separately. The skill supplies instructions; the installed tools perform the capture. The <a href="https://code.claude.com/docs/en/skills">official skill guide</a> documents the directory and frontmatter.</p><pre><code>---
+name: visual-capture
+description: Capture and verify local UI changes with SnapEye; use SnapSurf for browser interactions and SnapDIFF for in-page review.
+---
+Capture the baseline before editing. Keep the viewport and fixture data fixed.
+Use SnapEye for a selector-level capture and read status before diff.changed.
+Never replace a baseline simply to hide a regression.
+Use SnapSurf for navigation and verify after every action.
+Report the target, artifacts, tool versions and what was actually verified.</code></pre><p>The downloadable version also covers errors, intentional visual changes and signed-in sessions. It keeps publication and baseline approval subject to the user’s instructions.</p></section><section><h2 id="a-reproducible-billing-card-exercise">A reproducible billing-card exercise</h2><p><a href="billing-card.html">Open the fixture</a> or <a href="billing-card.html" download>download its HTML</a>. It is a static card with a button that deliberately changes its border, so the baseline and the regression are easy to identify. The card uses synthetic data.</p><pre><code>npm install --save-dev vite @zumer/snapeye @zumer/snapdom@3
+npx snapeye serve billing-card.html
+# In another terminal, using the URL printed by serve:
+npx snapeye capture billing-card --url &lt;printed-url&gt; --target &#x27;#billing-card&#x27;
+# Close the capture-trigger tab, edit the CSS, then compare:
+npx snapeye diff billing-card --url &lt;printed-url&gt; --target &#x27;#billing-card&#x27; --fail-on-change</code></pre><p>For an interaction-only state, opening a fresh trigger URL reloads the page. Reach the state with a browser tool and use SnapEye's documented in-page API instead of assuming the CLI captured an already-open modal. Try the <a href="https://zumerlab.com/snapdiff/">SnapDIFF live demos</a> for an in-page review workflow with deliberate visual drift.</p></section><section><h2 id="add-browser-interaction-through-mcp">Add browser interaction through MCP</h2><p>SnapSurf is published in the <a href="https://registry.modelcontextprotocol.io/v0.1/servers/io.github.zumerlab%2Fsnapsurf/versions/latest">official MCP Registry</a> as <code>io.github.zumerlab/snapsurf</code>, and is listed in <a href="https://glama.ai/mcp/servers/zumerlab/snapsurf">Glama</a>. The registry entry checked on October 5, 2026 is version 0.1.2, with the npm package <code>@zumer/snapsurf</code> as its distribution.</p><pre><code>claude mcp add --scope user snapsurf -- npx -y -p @zumer/snapsurf@latest snapsurf-mcp</code></pre><p>Then ask Claude to open the app, find a named control, act, verify and assert the intended transition. Read <code>structuredContent</code>, obtain fresh target ids after new observations, and escalate to pixels when the semantic report cannot answer the question. A semantic diff does not prove a SnapDOM image has the right pixels.</p><p>SnapSurf starts its own browser context. For a workflow requiring the user's existing signed-in tab, use an authorized integration for that tab. </p></section><section><h2 id="a-useful-task-to-give-claude">A useful task to give Claude</h2><p>“Refactor the billing card CSS without changing its appearance. Capture #billing-card before editing, keep the fixture and viewport fixed, compare afterward, and report the JSON verdict and artifact paths. If verification fails, explain the failure; do not overwrite the reference.”</p><p>For an intentional redesign, specify which region may change and inspect that change before approving a new reference. Keep the original reference until that review is complete.</p><p>Continue with <a href="../../how-to/screenshot-a-div/">element capture</a>, <a href="../../docs/cache/">recapture and invalidation</a>, or <a href="../../guides/react/">React lifecycle timing</a>.</p><p>Sources checked October 5, 2026: <a href="https://github.com/zumerlab/snapeye">SnapEye setup and CLI</a>, <a href="https://github.com/zumerlab/snapdiff">SnapDIFF workflows</a>, <a href="https://github.com/zumerlab/snapsurf/blob/main/docs/INTEGRATIONS.md">SnapSurf MCP integration</a>, and the Claude Code skill guide above.</p></section><section><h2 id="what-about-playwright-mcp">What about Playwright MCP?</h2><p>Microsoft’s Playwright MCP also lets an agent operate a browser without writing a standalone test script. Its documented approach uses structured accessibility snapshots. SnapSurf adds a digest-and-diff workflow with assertions over retained transitions. Both tools control a browser. Compare their observation and verification APIs against the task you need to run.</p><p>Keep Playwright tests when you need an established end-to-end suite, multi-browser automation or a CI workflow your team already maintains. Add selector-level DOM capture when the immediate question is what changed in a running component.</p></section><section><h2 id="protect-the-baseline-during-hot-reload">Protect the baseline during hot reload</h2><p>After a CLI capture finishes, close its trigger tab or navigate to the ordinary app URL before editing. In our local SnapEye 0.4.0 fixture, leaving the capture query open during Vite hot reload triggered another capture and replaced the baseline. A resulting no-change verdict would be misleading. With the capture URL removed before editing, the deliberate border change produced <code>changed: true</code> and exit code 3.</p><p>The fixture was checked in Chromium at 320 × 240 captured CSS pixels. An unchanged run reported zero changed pixels; the border regression reported a change. The check covered this fixture in Chromium.</p></section><!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../snapdom-pdf-vs-html2canvas-jspdf/"><span>Previous</span><strong>PDF vs html2canvas + jsPDF</strong></a><a class="is-next" href="../html-to-editable-svg-figma/"><span>Next</span><strong>Editable SVG and Figma</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../guides/">Guides</a><a href="../../compare/">Compare</a></div><div><h2>Build</h2><a href="../../capabilities/">Capabilities</a><a href="../../plugins.html">Plugins</a><a href="../../playground/">Playground</a><a href="../../plugins.html#build-plugin">Writing plugins</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../labs.html">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../plugins.html#community">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+
+
+</body>
+</html>

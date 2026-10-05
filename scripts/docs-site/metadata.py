@@ -25,7 +25,13 @@ for file in sorted(DOCS.rglob('*.html')):
     url=html.unescape(canonical[1]); parsed=urlparse(url)
     if parsed.netloc!='snapdom.dev' or parsed.query or parsed.fragment:continue
     local=str(file.relative_to(ROOT))
-    if local in changed:modified=today
+    if local in changed:
+        modified=today
+        # Keep the article's modification date aligned with its sitemap entry.
+        # Publication dates and untouched pages retain their existing dates.
+        updated=re.sub(r'("dateModified"\s*:\s*")[^"]+("\s*)',
+                       lambda match:match[1]+modified+match[2],source)
+        if updated!=source:file.write_text(updated)
     else:modified=min(old.get(url,today),today)
     entries[url]=modified
 result=ET.Element(f'{{{NS}}}urlset')

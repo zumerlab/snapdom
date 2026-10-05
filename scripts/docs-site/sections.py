@@ -57,7 +57,10 @@ SECTIONS = [
    ('Architecture','record',[('compare/puppeteer/index.html','vs Puppeteer',None),('compare/playwright/index.html','vs Playwright',None)])]},
  {'name':'Blog', 'menu':'Blog', 'filter':'Filter posts', 'groups':[
    ('Overview','record',[('blog/index.html','All posts',None)]),
-   ('Posts','record',[('blog/snapdom-v3/index.html','SnapDOM v3 is out',None),
+   ('Posts','record',[('blog/snapdom-pdf-vs-html2canvas-jspdf/index.html','PDF vs html2canvas + jsPDF',None),
+                      ('blog/claude-code-capture-skill/index.html','Claude Code capture skill',None),
+                      ('blog/html-to-editable-svg-figma/index.html','Editable SVG and Figma',None),
+                      ('blog/snapdom-v3/index.html','SnapDOM v3 is out',None),
                       ('blog/dom-capture-boundaries/index.html','DOM capture boundaries',None),
                       ('blog/huge-page-mosaic/index.html','Tiled rasterization',None),
                       ('blog/painting-without-canvas/index.html','Painting without a canvas',None)])]},

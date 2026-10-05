@@ -33,7 +33,7 @@
     "url": "https://snapdom.dev/how-to/html-to-png/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-05-11",
+    "dateModified": "2026-10-05",
     "author": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab" },
     "publisher": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
     "mainEntityOfPage": "https://snapdom.dev/how-to/html-to-png/",
@@ -121,6 +121,7 @@
       <p><code>const img = await snapdom.toPng(element);</code> — that returns an <code>HTMLImageElement</code>. Append it, download it, or convert to a Blob with <code>snapdom.toBlob(element, { format: 'png' })</code> if you need a PNG Blob to upload.</p>
     </div>
 
+<section class="prose"><h2 id="choose-png-output">Choose the PNG output you need</h2><p>This recipe starts with an element already rendered in the browser and focuses on the output: an image for a preview, a file to download, or a Blob for an upload. To select an element and prepare its layout first, start with <a href="../screenshot-a-div/">Screenshot a div</a>.</p><p><code>toPng()</code> returns an <code>HTMLImageElement</code>; <code>toBlob(el, { format: 'png' })</code> returns a PNG Blob. <code>download()</code> saves a file. Choose the path below for the value your application actually needs.</p></section>
     <section class="prose">
       <h2 id="install">Step 1 — Install</h2>
       <pre class="code-block">npm install @zumer/snapdom@latest</pre>

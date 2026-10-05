@@ -33,7 +33,7 @@
     "url": "https://snapdom.dev/how-to/screenshot-a-div/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-05-11",
+    "dateModified": "2026-10-05",
     "author": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab" },
     "publisher": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
     "mainEntityOfPage": "https://snapdom.dev/how-to/screenshot-a-div/",
@@ -121,6 +121,10 @@
       <p><code>const img = await snapdom.toPng(document.querySelector('#my-div'));</code> — that's the entire recipe. The promise resolves to an <code>HTMLImageElement</code> you can append, download or upload.</p>
     </div>
 
+<section class="prose"><h2 id="prepare-the-element">Select and prepare the capture root</h2><p>This recipe covers the element itself: selecting an attached, rendered div and capturing its current layout. To choose between a preview, a downloaded PNG and an upload-ready Blob, continue with <a href="../html-to-png/">the HTML to PNG output recipe</a>.</p><p>Attach the div to the document and give it a measurable layout; <code>display: none</code> is not a renderable target. Wait for your application’s data and framework DOM update, then settle fonts and images in that element:</p><pre class="code-block">const el = document.querySelector('#card');
+await document.fonts.ready;
+await Promise.all(Array.from(el.querySelectorAll('img'), img =&gt; img.decode()));
+const img = await snapdom.toPng(el);</pre><p>If image decoding rejects, fix or replace the failed asset before retrying. For an embedded document or custom element, see the <a href="../capture-iframe/">iframe</a> and <a href="../capture-shadow-dom/">Shadow DOM</a> recipes.</p></section>
     <section class="prose">
       <h2 id="install">Step 1 — Install SnapDOM</h2>
       <pre class="code-block">npm install @zumer/snapdom@latest</pre>
@@ -266,7 +270,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
         <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Howto div cta npm">Installation</a>
       </div>
     </section>
-  <!-- /content --></div>
+  <section><h2 id="choose-the-destination-for-your-capture">Choose the destination for your capture</h2><p>Export the selected element as a <a href="../../blog/snapdom-pdf-vs-html2canvas-jspdf/">searchable invoice PDF</a>, reconstruct <a href="../../blog/html-to-editable-svg-figma/">editable SVG and Figma artwork</a>, or use the <a href="../../blog/claude-code-capture-skill/">Claude Code capture skill</a> to verify a UI change.</p></section><!-- /content --></div>
 <nav class="pager" aria-label="Pages"><a href="../"><span>Previous</span><strong>How to capture the DOM</strong></a><a class="is-next" href="../html-to-png/"><span>Next</span><strong>Convert HTML to PNG</strong></a></nav>
 </article>
 </main>

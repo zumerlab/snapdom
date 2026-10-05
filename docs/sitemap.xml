@@ -6,19 +6,31 @@
   </url>
   <url>
     <loc>https://snapdom.dev/blog/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/blog/claude-code-capture-skill/</loc>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/blog/dom-capture-boundaries/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/blog/html-to-editable-svg-figma/</loc>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/blog/huge-page-mosaic/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/blog/painting-without-canvas/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/blog/snapdom-pdf-vs-html2canvas-jspdf/</loc>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/blog/snapdom-v3/</loc>
@@ -66,15 +78,15 @@
   </url>
   <url>
     <loc>https://snapdom.dev/docs/api/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/cache/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/options/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/plugins/</loc>
@@ -90,11 +102,11 @@
   </url>
   <url>
     <loc>https://snapdom.dev/guides/angular/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/lit/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/nextjs/</loc>
@@ -102,15 +114,15 @@
   </url>
   <url>
     <loc>https://snapdom.dev/guides/react/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/svelte/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/vue/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/</loc>
@@ -166,7 +178,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/html-to-png/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/html-to-svg/</loc>
@@ -178,7 +190,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/screenshot-a-div/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/how-to/visual-regression-screenshot/</loc>
@@ -234,7 +246,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/pro/pdf/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/pro/pdf/docs.html</loc>
@@ -242,7 +254,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/pro/vector/</loc>
-    <lastmod>2026-10-04</lastmod>
+    <lastmod>2026-10-05</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/pro/vector/docs.html</loc>
