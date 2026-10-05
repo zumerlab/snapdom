@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "description": "Official plugins for SnapDOM",
   "type": "module",
   "exports": {
@@ -11,18 +11,22 @@
     "./redact-inputs": "./redact-inputs.js",
     "./filter": "./filter.js",
     "./color-tint": "./color-tint.js",
-    "./pdf-image": "./pdf-image.js",
     "./agent-map": "./agent-map.js",
     "./context-export": "./context-export.js",
     "./html-export": "./html-export.js",
     "./gif-export": "./gif-export.js",
-    "./video-export": "./video-export.js"
+    "./video-export": "./video-export.js",
+    "./pdf": "./pdf.js"
   },
   "files": [
     "*.js",
     "*.d.ts",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "pdf/src/",
+    "pdf/REFERENCE.md",
+    "pdf/LICENSE",
+    "CHANGELOG.md"
   ],
   "types": "./index.d.ts",
   "keywords": [
@@ -47,5 +51,6 @@
   },
   "devDependencies": {
     "@zumer/snapdom": "file:../.."
-  }
+  },
+  "sideEffects": false
 }

@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: nav</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 600px; background: #fff; padding: 24px; color: #111;
+            font: 16px/1.6 Arial, Helvetica, sans-serif; }
+  h1 { font-size: 28px; margin: 0 0 12px; }
+  h2 { font-size: 22px; margin: 0 0 10px; }
+  h3 { font-size: 18px; margin: 0 0 8px; }
+  p, li { margin: 0 0 8px; }
+  ul { margin: 0 0 16px; padding-left: 20px; }
+  /* Every section is taller than an A4 text column (≈1058 CSS px), so the four of
+     them cannot share a page and a forward link is always a CROSS-page jump —
+     which is the only kind that can prove the destination names the right page. */
+  section { height: 1200px; }
+  .hidden-head { display: none; }
+</style>
+</head>
+<body>
+<!-- Navigation, end to end: an in-document link becomes a jump inside the FILE, a
+     heading becomes a bookmark, and both become named destinations so somebody
+     outside the file can point at them.
+
+     Four things here exist to be got wrong:
+       - #GONE resolves to nothing. It must produce NO annotation — a link that
+         silently lands on page 1 is worse than text that is not clickable.
+       - #top is the document top by HTML's rule, and has no element.
+       - the h3 under an h2 with no id must still be reachable, on a name this
+         file never wrote.
+       - a heading inside a shadow root, slotted from the light DOM, must appear
+         in the outline EXACTLY once — the same flattened-tree rule the text layer
+         lives by, asserted where a duplicate would be visible as an extra
+         bookmark rather than as smudged pixels. -->
+<div id="target">
+  <h1 id="manual">MANUALTITLE</h1>
+  <nav>
+    <ul>
+      <li><a href="#intro">TOCINTRO</a></li>
+      <li><a href="#deep">TOCDEEP</a></li>
+      <li><a href="#uni">TOCUNI</a></li>
+      <li><a href="#GONE">TOCGONE</a></li>
+      <li><a href="https://snapdom.dev/nav">TOCEXTERNAL</a></li>
+    </ul>
+  </nav>
+
+  <section>
+    <h2 id="intro">INTROHEAD</h2>
+    <p>INTROBODY</p>
+  </section>
+
+  <section>
+    <h2>MIDDLEHEAD</h2>
+    <h3 id="deep">DEEPHEAD</h3>
+    <p>DEEPBODY</p>
+    <p><a href="#top">BACKTOTOP</a></p>
+    <p><a href="#manual">BACKTOTITLE</a></p>
+  </section>
+
+  <section>
+    <h2 id="uni">ANÁLISIS 日本語</h2>
+    <p>UNIBODY</p>
+    <h3 class="hidden-head">NEVERSHOWN</h3>
+  </section>
+
+  <section>
+    <slot-head><h2 slot="h">SLOTTEDHEAD</h2></slot-head>
+    <p>SLOTBODY</p>
+  </section>
+</div>
+<script type="module">
+  import './_pdf.js'
+
+  // A heading that lives in the light DOM and is PAINTED inside a shadow root.
+  // Walking both trees naively would list it twice in the outline.
+  customElements.define('slot-head', class extends HTMLElement {
+    connectedCallback() {
+      if (this.shadowRoot) return
+      // Two headings, reachable two different ways. SLOTTEDHEAD is light DOM
+      // painted through the slot; SHADOWONLYHEAD exists only inside the root, so
+      // the flattened walk finds it and a CSS selector never can.
+      this.attachShadow({ mode: 'open' }).innerHTML =
+        '<div><slot name="h"></slot></div><h2>SHADOWONLYHEAD</h2>'
+    }
+  })
+
+  window.__ready = true
+</script>
+</body>
+</html>

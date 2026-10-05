@@ -1,0 +1,55 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>clone drift · scrolled container</title>
+<!--
+  The one shape none of the five demo fixtures has, and the one that broke the
+  mount: a scrolled container. snapdom wraps its content in an inner div that
+  carries `translate(-scrollX, -scrollY)`, and that wrapper sits BETWEEN the
+  container and its children — so `.scroller > div` stops matching and the page's
+  own cascade, which is what makes the mounted clone faithful, no longer reaches
+  the child. Measured before the fix: the child laid out 300×48 in the clone
+  against 300×316 live, 268px of drift.
+
+  `_clonemetrics.mjs` captures this page and asserts the drift is ~0.
+-->
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; font: 14px/1.5 system-ui, sans-serif; background: #fff; }
+  #root { padding: 20px; width: 420px; }
+
+  /* Child combinator on purpose: this is the selector the wrapper breaks. */
+  .scroller { width: 300px; height: 150px; overflow: auto; border: 2px solid #334155; }
+  .scroller > div { height: 300px; padding: 8px; background: linear-gradient(#fee2e2, #dbeafe); }
+  .scroller > div > p:first-child { margin: 0 0 8px; color: #b91c1c; font-weight: 700; }
+
+  /* A nested scroller: the wrapper has to survive being wrapped itself. */
+  .outer { margin-top: 16px; width: 300px; height: 120px; overflow: auto; border: 2px dashed #0f766e; }
+  .outer > section { height: 240px; padding: 6px; }
+  .outer > section > .tag { display: inline-block; padding: 2px 8px; border-radius: 999px;
+                            background: #ccfbf1; color: #0f766e; font-size: 12px; }
+</style>
+
+<div id="root">
+  <div class="scroller">
+    <div>
+      <p>direct child of the scroller</p>
+      <p>filler so the container actually scrolls</p>
+      <p>more filler</p>
+    </div>
+  </div>
+
+  <div class="outer">
+    <section>
+      <span class="tag">nested</span>
+      <p>a second scroller, scrolled to a different offset</p>
+    </section>
+  </div>
+</div>
+
+<script type="module">
+  document.querySelector('.scroller').scrollTop = 60
+  document.querySelector('.outer').scrollTop = 30
+  window.__ready = true
+</script>

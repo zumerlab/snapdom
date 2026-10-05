@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: align</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  /* A wrapped word is one run per line fragment, not one run. At this width the
+     prose reaches that case exactly once by luck (`per-page`, broken at its
+     hyphen), which is coverage that would vanish the next time someone edits a
+     sentence — hence the deliberately narrow `.note` below. */
+  #target { width: 660px; background: #fff; padding: 28px 32px; color: #14181f;
+            font: 16px/1.55 Arial, Helvetica, sans-serif; }
+  h1 { font: 700 30px/1.25 Georgia, 'Times New Roman', serif; margin: 0 0 6px; }
+  h2 { font: 700 20px/1.3 Georgia, 'Times New Roman', serif; margin: 26px 0 8px; }
+  p { margin: 0 0 12px; }
+  code { font-family: Menlo, Consolas, monospace; font-size: 14px; background: #f3f4f6; }
+  a { color: #1d4ed8; }
+  em { font-style: italic; }
+  strong { font-weight: 700; }
+  .lede { font-size: 18px; color: #374151; }
+  .caps { text-transform: uppercase; letter-spacing: 1px; font-weight: 700; font-size: 13px; }
+  .lower { text-transform: lowercase; }
+  .title { text-transform: capitalize; }
+  .quote { font: italic 17px/1.5 Georgia, 'Times New Roman', serif; color: #4b5563;
+           border-left: 3px solid #d1d5db; padding-left: 14px; margin: 0 0 12px; }
+  dl { margin: 0 0 12px; }
+  dt { font-weight: 700; }
+  dd { margin: 0 0 6px 20px; }
+  /* Narrow enough that the compound inside it CANNOT fit on one line: a word broken
+     at its own hyphens is several client rects, and one run per rect. */
+  .note { float: right; width: 108px; margin: 4px 0 8px 18px; padding: 8px 10px;
+          background: #f9fafb; border-left: 3px solid #9ca3af; font-size: 13px;
+          line-height: 1.45; color: #4b5563; }
+  /* Two DIFFERENT angles, neither of them 45°. verify.mjs recovers the run's own
+     width and height from its AABB to project the origin, and that 2×2 system is
+     singular at exactly 45° — the same singularity text-layer sidesteps by measuring
+     the advance rather than solving for it. */
+  .stamp { display: inline-block; white-space: nowrap; font-weight: 700;
+           color: #b91c1c; transform: rotate(-18deg); }
+  .tilt  { display: inline-block; white-space: nowrap; font-weight: 700;
+           color: #047857; transform: rotate(33deg); }
+  .stamps { margin: 26px 0 30px; text-align: center; }
+  .stamps span { margin: 0 40px; }
+</style>
+</head>
+<body>
+<div id="target">
+  <h1>Selectable text over a raster page</h1>
+  <p class="lede">A page image says what the document looks like. It says nothing a
+    reader can select, a search box can find, or a screen reader can speak. The text
+    layer is the other half.</p>
+
+  <p>Every run in this document was placed from SnapDOM&rsquo;s final artifact DOM, measured with
+    <code>getClientRects()</code>, and written under render mode <code>3 Tr</code> so
+    the glyphs paint nothing at all. What you see is the raster underneath; what you
+    copy is this. The two agree because both come from the same final serialized
+    layout, mounted in the same frame &mdash; and the sweep in
+    <code>verify.mjs</code> is what turns that sentence into a number.</p>
+
+  <h2>Why word granularity</h2>
+  <p>A line-level run leans on the substitute font&rsquo;s own advance widths to space
+    the characters inside it, so the highlight drifts away from the pixels a few words
+    in and never comes back. Per word the drift is bounded by the word: each one gets
+    its own <em>Tm</em> and its own horizontal scale, and the error cannot accumulate
+    across the line. It costs more operators. It buys a selection that lands where the
+    reader is looking.</p>
+
+  <p class="quote">&ldquo;We kept asking why the highlight slid to the right on long
+    lines, and the answer was that nobody had ever pinned the advance to anything the
+    browser measured.&rdquo;</p>
+
+  <p>The horizontal scale is the correction. Chromium reports the advance the real
+    font produced, including <span class="title">letter spacing</span>, word spacing
+    and every shaping decision; the base-14 substitute produces a different one; and
+    <code>Tz</code> is the ratio between them, clamped so a degenerate measurement
+    cannot stretch a run to a thousand percent. Set it wrong and the run is still on
+    the right line, still starting in the right place, and still visibly the wrong
+    width when you drag across it.</p>
+
+  <h2>What the sweep actually asserts</h2>
+  <aside class="note">A compound such as text-layer-geometry-notes breaks at its own
+    hyphens, and each piece is a client rect of its own.</aside>
+  <p>For each word: the origin the content stream carries, against the left edge of
+    the box the browser reported for that same word. For each word again: the painted
+    advance, reconstructed from <code>Tz</code> and the substitute&rsquo;s own metrics,
+    against the width of that box. Both in points, both relative to the element&rsquo;s
+    border box, with no fitting, no averaging and no per-page fudge factor.</p>
+
+  <dl>
+    <dt>Origin</dt>
+    <dd>The baseline start point. Untransformed it is the left edge of the client
+      rect, and the top edge plus the ascent &mdash; a number the browser lays out from
+      the font&rsquo;s own metrics and the layer reads with a zero-height inline baseline
+      probe in the artifact&rsquo;s own document.</dd>
+    <dt>Advance</dt>
+    <dd>The distance the text cursor travels. It is the one quantity the raster and
+      the layer can disagree about while both look correct in isolation.</dd>
+    <dt>Matrix</dt>
+    <dd>Null when nothing rotates, so the common path stays exactly as cheap as it was
+      before rotation existed at all.</dd>
+  </dl>
+
+  <p>Six probes pin six words and prove the mechanism. Hundreds of words prove the
+    <em>absence</em> of the case nobody thought of: the italic that shifts by a
+    hairline, the inline code span whose monospace substitute is a different width,
+    the capitalised heading whose transform never reached the text node, the
+    <span class="caps">small emphatic label</span> that is tracked out by a pixel per
+    character. None of those is a probe anyone would have written. All of them are in
+    here, and all of them are counted.</p>
+
+  <div class="stamps">
+    <span class="stamp">DRAFT</span>
+    <span class="tilt">REVIEW</span>
+  </div>
+
+  <h2>The parts that are not covered here</h2>
+  <p>Text outside WinAnsi goes out through a Type0 font and is addressed by glyph
+    identifier rather than by byte, so a byte comparison cannot read it back; the
+    <code>unicode</code> fixture owns that path. Form control values carry no text
+    node and no client rect, so they are placed from layout metrics instead;
+    <code>forms</code> owns those. Shadow roots, overflow clipping and opacity each
+    have a fixture of their own. This one is deliberately made of nothing but
+    <span class="lower">ORDINARY VISIBLE PROSE</span>, because its claim is about
+    quantity: not that a hard case works, but that the easy case works
+    <strong>everywhere</strong>, several hundred times in a row, with no exception the
+    file forgot to mention.</p>
+
+  <p>Read the artifacts as well as the numbers. The debug render paints this layer in
+    red instead of in nothing, and a text layer sliding off its raster is a thing you
+    see in a quarter of a second and argue about for an hour. See the
+    <a href="https://snapdom.dev/docs/text-layer">text layer notes</a> and the
+    <a href="https://snapdom.dev/docs/pagination">pagination notes</a> for the rest,
+    and remember that an escape such as <code>\n</code> or a call such as
+    <code>toPdf(element, options)</code> has to survive the PDF string escaping on
+    its way in&hellip; which is the sort of thing a sweep notices and a probe does
+    not.</p>
+</div>
+
+<script type="module">
+  import './_pdf.js'
+
+  const target = document.getElementById('target')
+
+  /**
+   * Where Chromium puts the baseline inside an inline box, per computed font.
+   * A zero-height inline-block sits ON the baseline, so its top edge minus the top
+   * of a text rect on the same line IS the ascent. This is the layout the raster is
+   * painted from; text-layer uses its own probe in the separately mounted final
+   * artifact, and the two landing on the same line is the claim — not the assumption.
+   */
+  const ascents = new WeakMap()
+  function ascentOf(cs, host) {
+    const doc = host.ownerDocument
+    let cache = ascents.get(doc)
+    if (!cache) { cache = new Map(); ascents.set(doc, cache) }
+    const key = `${cs.fontStyle}|${cs.fontWeight}|${cs.fontSize}|${cs.fontFamily}`
+    if (cache.has(key)) return cache.get(key)
+    const probe = doc.createElement('span')
+    probe.style.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+    probe.innerHTML = '<span style="display:inline-block;width:0;height:0"></span>Hxg'
+    host.appendChild(probe)
+    const range = doc.createRange()
+    range.setStart(probe.lastChild, 0)
+    range.setEnd(probe.lastChild, 3)
+    const a = probe.firstChild.getBoundingClientRect().top - range.getClientRects()[0].top
+    host.removeChild(probe)
+    cache.set(key, a)
+    return a
+  }
+
+  /** text-layer's `shown()`, restated from the CSS rather than imported from it. */
+  const shown = (s, mode, first) => {
+    if (mode.includes('uppercase')) return s.toUpperCase()
+    if (mode.includes('lowercase')) return s.toLowerCase()
+    if (!mode.includes('capitalize')) return s
+    return first ? s.charAt(0).toUpperCase() + s.slice(1) : s
+  }
+
+  /**
+   * Every painted word fragment of #target, in the order a document-order walk
+   * reaches it — which is the order index.js writes its runs in, so verify.mjs can
+   * pair them by index and see a dropped run as a divergence rather than as a
+   * word it failed to find.
+   *
+   * A word that wrapped is several fragments. Which characters landed in which
+   * rect is decided by probing each character's own rect, never by dividing the
+   * word by proportion: Blink breaks where the line runs out, not where the
+   * character count does. A word with NO rect contributes nothing, deliberately —
+   * this fixture has no form controls and nothing hidden, so it never happens, and
+   * if it ever does the sequence lengths stop matching instead of quietly losing a
+   * word the way a nearest-match search would.
+   */
+  window.__words = (captureRoot = target) => {
+    const doc = captureRoot.ownerDocument
+    const view = doc.defaultView
+    const t = captureRoot.getBoundingClientRect()
+    const out = []
+    const wrapped = []
+    const range = doc.createRange()
+    // Off to the left, so nothing it measures can push #target around. Removed
+    // before this function returns, and long before anything is captured.
+    const host = doc.createElement('div')
+    host.style.cssText = 'position:absolute;left:-4000px;top:0;white-space:nowrap'
+    doc.body.appendChild(host)
+    const walker = doc.createTreeWalker(captureRoot, view.NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!/\S/.test(node.data)) continue
+      const cs = view.getComputedStyle(node.parentElement)
+      const mode = cs.textTransform
+      const ascent = ascentOf(cs, host)
+      for (const m of node.data.matchAll(/\S+/g)) {
+        range.setStart(node, m.index)
+        range.setEnd(node, m.index + m[0].length)
+        const rects = [...range.getClientRects()]
+        if (rects.length !== 1) wrapped.push(`${m[0]}×${rects.length}`)
+        const parts = rects.length === 1
+          ? [m[0]]
+          : split(node, m.index, m.index + m[0].length, rects, range)
+        for (let k = 0; k < rects.length; k++) {
+          const r = rects[k]
+          out.push({
+            text: shown(parts[k], mode, k === 0),
+            left: r.left - t.left, top: r.top - t.top,
+            width: r.width, height: r.height, ascent,
+          })
+        }
+      }
+    }
+    doc.body.removeChild(host)
+    return { words: out, wrapped, target: { width: t.width, height: t.height } }
+  }
+
+  /** Which characters were painted in which of a wrapped word's rects. */
+  function split(node, from, to, rects, range) {
+    const parts = new Array(rects.length).fill('')
+    for (let i = from; i < to;) {
+      const ch = String.fromCodePoint(node.data.codePointAt(i))
+      range.setStart(node, i)
+      range.setEnd(node, i + ch.length)
+      const cr = range.getClientRects()[0]
+      let best = 0
+      if (cr) {
+        let bd = Infinity
+        for (let k = 0; k < rects.length; k++) {
+          const d = Math.abs((cr.top + cr.bottom) - (rects[k].top + rects[k].bottom))
+          if (d < bd) { bd = d; best = k }
+        }
+      }
+      parts[best] += ch
+      i += ch.length
+    }
+    return parts
+  }
+
+  /**
+   * Advances in the SUBSTITUTE font, the quantity Tz is the correction to.
+   * verify.mjs reads the family off the PDF's own /BaseFont, so nothing here
+   * predicts which base-14 face a CSS stack maps to.
+   */
+  const mctx = document.createElement('canvas').getContext('2d')
+  window.__natural = (jobs) => jobs.map(([font, text]) => {
+    mctx.font = font
+    return mctx.measureText(text).width
+  })
+
+  window.__ready = true
+</script>
+</body>
+</html>

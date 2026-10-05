@@ -45,11 +45,11 @@ function localFile(base, path) {
 function pluginFile(path) {
   const entry = path.slice('/__plugins/'.length)
   // Public extensionless entries follow package exports; relative helper imports may
-  // request a single .js filename. Neither route can escape the plugin directory.
+  // request relative .js modules, including the PDF source tree. Neither route can escape the plugin directory.
   const exported = pluginEntries[entry ? `./${entry}` : '.']
   const name = typeof exported === 'string' ? exported.slice(2) : entry
-  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]*\.js$/.test(name)) return null
-  return join(PLUGINS, name)
+  if (!name.endsWith('.js')) return null
+  return localFile(PLUGINS, `/${name}`)
 }
 
 createServer((req, res) => {

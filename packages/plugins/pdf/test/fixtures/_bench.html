@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bench: long document</title>
+<!--
+  Not a fixture: a bench page, driven by test/tools/bench.mjs and deleted with it if
+  the measurement it exists for stops being worth repeating. `?pages=` sets how
+  much prose to lay out and `?fat=1` embeds a web font and a large image, so the
+  serialized SVG grows without the PAINTED AREA of any one page slice growing —
+  which is the whole question when the raster is cut into per-page regions.
+-->
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 0; background: #fff; }
+  #target { width: 794px; padding: 40px; background: #fff; color: #111;
+            font: 15px/1.7 Georgia, "Times New Roman", serif; }
+  h2 { font: 600 20px/1.3 Arial, sans-serif; margin: 28px 0 10px; }
+  p { margin: 0 0 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 20px; }
+  th, td { border: 1px solid #d8d8d8; padding: 6px 9px; text-align: left; font-size: 13px; }
+  thead th { background: #f2f4f7; }
+  .fat { width: 100%; height: 180px; object-fit: cover; margin: 12px 0; }
+</style>
+</head>
+<body>
+<div id="target"></div>
+<script type="module">
+  const params = new URLSearchParams(location.search)
+  const pages = Number(params.get('pages') || 50)
+  const fat = params.get('fat') === '1'
+
+  // ~9 paragraphs of 60 words fills roughly one A4 page at this measure.
+  const WORDS = ('lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor ' +
+    'incididunt ut labore et dolore magna aliqua enim ad minim veniam quis nostrud ' +
+    'exercitation ullamco laboris nisi aliquip ex ea commodo consequat duis aute irure').split(' ')
+  const words = (n, seed) => Array.from({ length: n }, (_, i) => WORDS[(i * 7 + seed) % WORDS.length]).join(' ')
+
+  // A heavy image built here rather than fetched: what matters is that snapdom
+  // has to INLINE it, so the serialized SVG grows by megabytes while no single
+  // page slice paints any more area than before. Noise, because it must not
+  // compress away to nothing.
+  let heavy = ''
+  if (fat) {
+    const c = Object.assign(document.createElement('canvas'), { width: 900, height: 600 })
+    const ctx = c.getContext('2d')
+    const img = ctx.createImageData(900, 600)
+    let seed = 12345
+    for (let i = 0; i < img.data.length; i += 4) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff
+      img.data[i] = seed & 255
+      img.data[i + 1] = (seed >> 8) & 255
+      img.data[i + 2] = (seed >> 16) & 255
+      img.data[i + 3] = 255
+    }
+    ctx.putImageData(img, 0, 0)
+    heavy = c.toDataURL('image/png')
+  }
+
+  const target = document.getElementById('target')
+  const parts = []
+  for (let p = 0; p < pages; p++) {
+    parts.push(`<h2 id="s${p}">Section ${p + 1}</h2>`)
+    if (fat && p % 10 === 0) parts.push(`<img class="fat" src="${heavy}" alt="figure ${p}">`)
+    if (p % 5 === 4) {
+      parts.push('<table><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead><tbody>' +
+        Array.from({ length: 8 }, (_, r) =>
+          `<tr><td>${words(3, p + r)}</td><td>${r + 1}</td><td>${(r * 7.5).toFixed(2)}</td><td>${(r * 31.4).toFixed(2)}</td></tr>`
+        ).join('') + '</tbody></table>')
+    }
+    for (let i = 0; i < 8; i++) parts.push(`<p>${words(60, p * 13 + i)}</p>`)
+  }
+  target.innerHTML = parts.join('')
+
+  await document.fonts.ready.catch(() => {})
+  window.__ready = true
+  window.__height = target.getBoundingClientRect().height
+</script>
+</body>
+</html>

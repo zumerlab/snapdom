@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: table</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 600px; background: #fff; padding: 24px; color: #111;
+            font: 16px/1.4 Arial, Helvetica, sans-serif; }
+  h1 { font-size: 24px; margin: 0 0 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; border-bottom: 1px solid #e5e7eb; }
+  th { padding: 8px; color: #6b7280; font-size: 13px; }
+  /* Rows that touch, so a row top is the only legal cut and a blind one is always
+     wrong; two baselines per row, so half a row lost to a break shows up as a
+     missing cell rather than as a shorter string. */
+  td { padding: 8px; line-height: 2; }
+</style>
+</head>
+<body>
+<div id="target">
+  <!-- The probe is the inline span, not the h1: a block's box is the container
+       width, which says nothing about the run's advance. -->
+  <h1><span data-probe="title">PAGINATIONFIXTURE</span></h1>
+  <table>
+    <thead><tr><th>HEADROW</th><th>HEADALPHA</th><th>HEADBETA</th></tr></thead>
+    <tbody></tbody>
+  </table>
+</div>
+<script type="module">
+  import './_pdf.js'
+  import { collectBlocks, collectRepeats, headerReserve, paginate } from '/src/paginate.js'
+
+  // 24 two-line rows is three A4 pages at margin 24, so there are two cuts to place.
+  window.__rows = 24
+  const tbody = document.querySelector('#target tbody')
+  let html = ''
+  for (let i = 0; i < window.__rows; i++) {
+    const n = String(i).padStart(2, '0')
+    html += `<tr><td>R${n}<br>S${n}</td><td>A${n}</td><td>B${n}</td></tr>`
+  }
+  // Last row, so its annotation can only be correct on the LAST page.
+  html += '<tr><td colspan="3"><a data-probe="rowlink" href="https://snapdom.dev/row">ROWLINK</a></td></tr>'
+  tbody.innerHTML = html
+
+  // Exact row geometry, so verify.mjs can assert where the page break actually fell
+  // instead of only that nothing was lost.
+  const target = document.getElementById('target')
+  const t = target.getBoundingClientRect()
+  window.__rowTops = [...tbody.rows].map(tr => tr.getBoundingClientRect().top - t.top)
+
+  // EVERY cut, not just the first: index.js's own collectBlocks → paginate pipeline
+  // over this live DOM. Reading the boundaries directly is the only way to see a
+  // cut that was never pulled up — one landing mid-row still leaves the whole row on
+  // the next page, so nothing in the rendered PDF gives it away.
+  //
+  // All three of index.js's page numbers come from the caller, none from this file:
+  // it owns the page size, and `contentHeight` is the height of what index.js
+  // actually DRAWS, which is the raster and not this element's box. Recomputing it
+  // here as `rect.height * k` would quietly paginate a different document the moment
+  // anything bleeds past the box.
+  //
+  // `repeat` is not a flag the replica may guess: a repeated `<thead>` takes room
+  // from every page its table continues onto, so a replica that leaves it out
+  // paginates a DIFFERENT document — and would keep agreeing with index.js only
+  // for as long as the reserve happened to change no cut.
+  window.__slices = (k, availHeight, contentHeight, repeat = true) => {
+    const rect = target.getBoundingClientRect()
+    const toContent = (y) => (y - rect.top) * k
+    const blocks = collectBlocks(target).map(b => ({
+      ...b, top: toContent(b.top), bottom: toContent(b.bottom),
+    }))
+    const bands = repeat ? collectRepeats(target).map(b => ({
+      top: toContent(b.top), bottom: toContent(b.bottom), bodyBottom: toContent(b.bodyBottom),
+    })) : []
+    return paginate({
+      blocks, contentHeight, availHeight,
+      reserve: headerReserve(bands, availHeight * 0.5),
+    }).slices
+  }
+
+  /** The `<thead>` height in CSS px — what every page after the first gives up. */
+  window.__headHeight = document.querySelector('#target thead').getBoundingClientRect().height
+
+  window.__ready = true
+</script>
+</body>
+</html>

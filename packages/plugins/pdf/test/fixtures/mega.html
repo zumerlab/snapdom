@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: pdfmega — fields, identity, structure edge</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  /* A real webfont behind everything except one deliberate Arial paragraph:
+     the island proves the mixed-page fallback accounting, and excluding it
+     (capture.exclude) is how the UA-claim variant earns a fully-embedded page.
+     The field DA keeps Helvetica regardless — editors type in what they have. */
+  @font-face { font-family: 'InterFix'; font-weight: 400; font-style: normal;
+               src: url('/demo/fonts/Inter-400.ttf') format('truetype'); }
+  @font-face { font-family: 'InterFix'; font-weight: 700; font-style: normal;
+               src: url('/demo/fonts/Inter-700.ttf') format('truetype'); }
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 640px; background: #fff; padding: 28px; color: #111;
+            font: 15px/1.5 'InterFix', Arial, Helvetica, sans-serif; }
+  h1, h2 { font-weight: 700; }
+  h1 { font-size: 24px; margin: 0 0 10px; }
+  h2 { font-size: 18px; margin: 22px 0 8px; }
+  label { display: block; margin-bottom: 12px; }
+  .inline { display: inline-flex; align-items: center; gap: 6px; margin-right: 16px; }
+  input[type=text], input[type=email], input[type=date], textarea, select {
+    display: block; width: 300px; margin-top: 4px; padding: 6px 8px;
+    font: 14px/1.4 'InterFix', Arial, Helvetica, sans-serif; border: 1px solid #94a3b8;
+    border-radius: 4px; box-sizing: border-box; background: #f8fafc; color: #111; }
+  input[type=password] { display: block; width: 300px; margin-top: 4px; padding: 6px 8px;
+    font: 14px/1.4 'InterFix', Arial; border: 1px solid #94a3b8; border-radius: 4px;
+    box-sizing: border-box; background: #fff; color: #111; }
+  textarea { height: 84px; resize: none; }
+  table { border-collapse: collapse; width: 100%; margin-top: 8px; }
+  th, td { border: 1px solid #cbd5e1; padding: 6px 10px; text-align: left; font-size: 14px; }
+  thead th { background: #f1f5f9; }
+  #cover { width: 640px; height: 905px; background: #0f172a; color: #fff; padding: 60px;
+           box-sizing: border-box; font: 15px/1.5 'InterFix', Arial, sans-serif; }
+  #cover h1 { font-size: 40px; }
+</style>
+</head>
+<body>
+<div id="cover"><h1>MegaReportCover</h1><p>CoverSubtitle</p></div>
+<div id="target">
+  <h1 id="top">MegaFormHeading</h1>
+  <p class="arial" style="font-family: Arial, sans-serif">SystemFontParagraph stays on Arial on purpose.</p>
+  <p>IntroParagraph with an <a href="https://zumerlab.com/mega">ExternalMegaLink</a> and an
+     <a href="#detail">InternalMegaLink</a>.</p>
+
+  <h2>IdentitySection</h2>
+  <label>FullNameLabel <input type="text" name="fullname" value="AdaLovelace" maxlength="80"></label>
+  <label>EmailLabel <input type="email" name="email" value="ada@analytical.engines"></label>
+  <label>BirthLabel <input type="date" name="birth" value="1815-12-10"></label>
+  <label>SecretLabel <input type="password" name="secret" value="Sup3rSecretValue"></label>
+  <label>FrozenLabel <input type="text" name="frozen" value="ReadOnlyValue" readonly></label>
+
+  <h2>PreferencesSection</h2>
+  <span class="inline"><input type="checkbox" name="updates" checked id="cb1"><label for="cb1">UpdatesLabel</label></span>
+  <span class="inline"><input type="checkbox" name="spam" id="cb2"><label for="cb2">SpamLabel</label></span>
+  <br>
+  <span class="inline"><input type="radio" name="plan" value="free" id="r1"><label for="r1">FreePlan</label></span>
+  <span class="inline"><input type="radio" name="plan" value="pro" checked id="r2"><label for="r2">ProPlan</label></span>
+  <span class="inline"><input type="radio" name="plan" value="mega" id="r3"><label for="r3">MegaPlan</label></span>
+  <label>EngineLabel <select name="engine">
+    <option value="chromium">ChromiumOption</option>
+    <option value="webkit" selected>WebkitOption</option>
+    <option value="gecko">GeckoOption</option>
+  </select></label>
+  <label>NotesLabel <textarea name="notes">MultilineStart and quite a few more words to wrap over lines MultilineEnd</textarea></label>
+
+  <h2 id="detail">DetailSection</h2>
+  <table>
+    <thead><tr><th scope="col">ColA</th><th scope="col">ColB</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">RowOne</th><td>CellB1</td></tr>
+      <tr><th scope="row">RowTwo</th><td>CellB2</td></tr>
+    </tbody>
+  </table>
+  <p>ClosingParagraph mentions SearchableClosingWord.</p>
+</div>
+<script type="module">
+  import { snapdom } from '@zumer/snapdom'
+  import pdf from '/src/index.js'
+
+  const b64 = (bytes) => {
+    let out = ''
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
+    }
+    return btoa(out)
+  }
+
+  /**
+   * One export, parameterised by the check. `plugin` are pdf() defaults
+   * (capture-time), `export` are toPdf() options. Returns bytes as base64 plus
+   * the structured report and progress trace, or the error's name/message.
+   */
+  window.__export = async ({ plugin = {}, export: exp = {}, capture = {}, abort = false } = {}) => {
+    try {
+      const shot = await snapdom(document.getElementById('target'), {
+        // embedFonts inlines the page's @font-face into the capture — the PDF
+        // export can only embed a binary the capture carries.
+        plugins: [pdf(plugin)], scale: 1, dpr: 1, embedFonts: true, ...capture,
+      })
+      let report = null
+      const progress = []
+      const options = {
+        ...exp,
+        onReport: r => { report = r },
+        onProgress: p => progress.push(p.phase),
+      }
+      if (exp.coverSelector) {
+        options.cover = document.querySelector(exp.coverSelector)
+        delete options.coverSelector
+      }
+      if (abort) {
+        const controller = new AbortController()
+        controller.abort()
+        options.signal = controller.signal
+      }
+      const blob = await shot.toPdf(options)
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      return { base64: b64(bytes), report, progress: [...new Set(progress)] }
+    } catch (error) {
+      return { error: { name: error?.name || 'Error', message: String(error?.message || error) } }
+    }
+  }
+  window.__ready = true
+</script>
+</body>
+</html>

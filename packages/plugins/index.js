@@ -12,7 +12,7 @@ export { replaceText } from './replace-text.js';
 export { redactInputs } from './redact-inputs.js';
 export { filter } from './filter.js';
 export { colorTint } from './color-tint.js';
-export { pdfImage } from './pdf-image.js';
+export { pdf } from './pdf.js';
 export { agentMap } from './agent-map.js';
 export { contextExport } from './context-export.js';
 export { htmlExport } from './html-export.js';

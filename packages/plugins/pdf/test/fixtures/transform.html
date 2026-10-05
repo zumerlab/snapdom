@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: transform</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { position: relative; width: 640px; height: 520px; background: #fff; color: #111;
+            font: 20px/1 Arial, Helvetica, sans-serif; }
+  .abs { position: absolute; display: inline-block; white-space: nowrap; }
+  /* Untransformed text under a transformed ancestor: the run must inherit the rotation. */
+  .rotparent { position: absolute; left: 40px; top: 340px; width: 300px;
+               transform: rotate(12deg); transform-origin: 0 0; }
+  .rotparent p { margin: 0; }
+  /* Sideways Latin advances by the HORIZONTAL metric — 149px of Arial here. The
+     slack and the nowrap are what keep a metric-different fallback font from
+     wrapping the run into two columns and failing the vert checks by the wrong name. */
+  .vbox { position: absolute; left: 560px; top: 40px; height: 320px;
+          writing-mode: vertical-rl; white-space: nowrap; }
+</style>
+</head>
+<body>
+<!-- data-rotate is the CSS rotation of the painted glyphs, in degrees; the PDF text
+     matrix must encode its negation, because PDF user space is y-up. -->
+<div id="target">
+  <span class="abs" data-probe="rot0"   data-rotate="0"   style="left:40px;  top:40px">ROTZERO</span>
+  <span class="abs" data-probe="rot15"  data-rotate="15"  style="left:40px;  top:110px; transform:rotate(15deg)">ROTFIFTEEN</span>
+  <span class="abs" data-probe="rot45"  data-rotate="45"  style="left:320px; top:100px; transform:rotate(45deg)">ROTFORTYFIVE</span>
+  <span class="abs" data-probe="rotneg" data-rotate="-30" style="left:40px;  top:230px; transform:rotate(-30deg)">ROTNEGTHIRTY</span>
+  <span class="abs" data-probe="skew"   data-skew="20"    style="left:340px; top:230px; transform:skewX(20deg)">SKEWTWENTY</span>
+  <div class="rotparent"><p><span data-probe="nested" data-rotate="12">NESTEDCHILD</span></p></div>
+  <div class="vbox"><span data-probe="vert" data-rotate="90">VERTICALTEXT</span></div>
+</div>
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>

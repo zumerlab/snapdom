@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: geometry</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  /* Absolute placement everywhere: every expected coordinate is a literal in this file. */
+  #target { position: relative; width: 600px; height: 320px; background: #fff; color: #111;
+            font: 20px/1.4 Arial, Helvetica, sans-serif; }
+  #target > span, #target > a { position: absolute; white-space: nowrap; }
+  a { color: #4f46e5; }
+  .mono { font-family: ui-monospace, Menlo, monospace; }
+  .serif { font-family: Georgia, "Times New Roman", serif; }
+</style>
+</head>
+<body>
+<div id="target">
+  <!-- No two probes share a baseline, so every run is unambiguously its own item. -->
+  <span data-probe="head"   style="left:40px;  top:40px">GEOMETRYPROBE</span>
+  <span data-probe="mono"   style="left:40px;  top:90px"  class="mono">MONOWORD</span>
+  <span data-probe="mid"    style="left:300px; top:140px">MIDDLEWORD</span>
+  <span data-probe="serif"  style="left:40px;  top:190px" class="serif">SERIFWORD</span>
+  <span data-probe="bold"   style="left:300px; top:240px; font-weight:700">BOLDWORD</span>
+  <a    data-probe="link"   style="left:40px;  top:280px" href="https://snapdom.dev/docs">LINKPROBE</a>
+</div>
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: perspective3d</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  /* The padding is not decoration: a rotated leaf paints ~16px above its slot, and a
+     run whose baseline falls outside the page box never reaches the PDF at all — the
+     first two cases were missing from it until the top row had room. */
+  #target { display: flex; flex-wrap: wrap; width: 880px; padding: 40px 24px; background: #fff;
+            color: #111; font: 10px/1 Arial, Helvetica, sans-serif; }
+  /* No overflow, opacity, filter or clip anywhere: every one of those is a grouping
+     context, and grouping overrides `transform-style: preserve-3d` — the slot would
+     silently change the answer of half the cases below. */
+  .slot { width: 220px; height: 120px; }
+  /* Every element of a chain. The offset variant puts a margin on each of them and
+     changes nothing else. */
+  .step { width: 100px; height: 40px; }
+  .off .step { margin-left: 37px; margin-top: 23px; }
+  /* nowrap keeps a long probe word one run: the warning below counts RUNS, and a word
+     that wrapped into two would be counted twice under a name nobody asserted. */
+  .leaf { position: relative; white-space: nowrap; background: #dbeafe; }
+  /* Zero-size, so getBoundingClientRect returns the PROJECTED corner point itself
+     rather than the AABB of a projected quad — the four of them are what Blink
+     actually paints, read off the live DOM. */
+  .mark { position: absolute; width: 0; height: 0; }
+</style>
+</head>
+<body>
+<!-- The 2D-affine gate in text-layer.js, case by case. Each chain is written outermost
+     element first; the leaf is the element whose text the layer places. What is asserted
+     is the run's `matrix` against the corners of that same leaf, so a chain the module
+     rescues has to agree with the browser and not merely with itself. -->
+<div id="target">
+  <!-- Rescues: a 3D chain that a flattening boundary or a z-neutral plane reduces to
+       an exact 2×2, and which must therefore still ship one. -->
+  <div class="slot">
+    <div class="step" style="transform:rotateY(45deg)">
+      <div class="step" style="perspective:500px">
+        <div class="step leaf" data-probe="RESCUEFLATPERSP" style="transform:rotate(20deg)">RESCUEFLATPERSP</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="transform:rotateY(40deg)">
+      <div class="step" style="perspective:500px">
+        <div class="step">
+          <div class="step leaf" data-probe="RESCUEGAPPERSP" style="transform:rotate(20deg)">RESCUEGAPPERSP</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="perspective:500px">
+      <div class="step">
+        <div class="step leaf" data-probe="RESCUEPERSPGAP" style="transform:rotateY(45deg)">RESCUEPERSPGAP</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="transform:perspective(500px)">
+      <div class="step leaf" data-probe="RESCUEFUNCFLAT" style="transform:rotateY(45deg)">RESCUEFUNCFLAT</div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="transform-style:preserve-3d; transform:rotateY(35deg)">
+      <div class="step" style="transform:rotateY(15deg)">
+        <div class="step" style="perspective:500px">
+          <div class="step leaf" data-probe="RESCUEKEEPCHAIN" style="transform:rotate(12deg)">RESCUEKEEPCHAIN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Refusals: no 2×2 describes what Blink paints, or one does but this module cannot
+       know which. Every one of them must report matrix === null AND warn. -->
+  <div class="slot">
+    <div class="step" style="perspective:500px">
+      <div class="step leaf" data-probe="REFUSEORIGINZ"
+           style="transform-origin:50% 50% 60px; transform:rotateX(180deg)">REFUSEORIGINZ</div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step leaf" data-probe="REFUSEFUNCORIGIN"
+         style="transform:perspective(324px); transform-origin:14px 47px 31px">REFUSEFUNCORIGIN</div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="perspective:600px">
+      <div class="step" style="transform:rotateY(45deg); transform-style:preserve-3d">
+        <div class="step leaf" data-probe="REFUSEKEEPCANCEL"
+             style="transform:rotateY(-45deg) rotate(25deg)">REFUSEKEEPCANCEL</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="perspective:500px">
+      <div class="step" style="transform:rotateY(60deg)">
+        <div class="step leaf" data-probe="REFUSEFLATCANCEL"
+             style="transform:rotateY(-60deg) rotate(25deg)">REFUSEFLATCANCEL</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="transform:rotate3d(0,1,1,45deg)">
+      <div class="step">
+        <div class="step" style="transform-style:preserve-3d">
+          <div class="step leaf" data-probe="REFUSEREACHBACK" style="transform:rotateY(25deg)">REFUSEREACHBACK</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="transform:perspective(300px)">
+      <div class="step" style="transform-style:preserve-3d">
+        <div class="step leaf" data-probe="REFUSETRANSLATEZ" style="translate:0 0 30px">REFUSETRANSLATEZ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Regression guards: 3D chains that are exactly describable, and that a coarser gate
+       would throw away along with the ones above. -->
+  <div class="slot">
+    <div class="step" style="perspective:800px; transform-style:preserve-3d">
+      <div class="step" style="transform-style:preserve-3d">
+        <div class="step leaf" data-probe="GUARDFLIPY" style="transform:rotateY(180deg)">GUARDFLIPY</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="perspective:800px; transform-style:preserve-3d">
+      <div class="step leaf" data-probe="GUARDFLIPX" style="transform:rotateX(180deg)">GUARDFLIPX</div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="transform:rotateY(30deg)">
+      <div class="step leaf" data-probe="GUARDNESTFLAT" style="transform:rotateY(30deg)">GUARDNESTFLAT</div>
+    </div>
+  </div>
+
+  <div class="slot">
+    <div class="step" style="transform:rotateY(30deg); transform-style:preserve-3d">
+      <div class="step leaf" data-probe="GUARDNESTKEEP" style="transform:rotateY(30deg)">GUARDNESTKEEP</div>
+    </div>
+  </div>
+</div>
+<script type="module">
+  import './_pdf.js'
+
+  const W = 100, H = 40
+
+  // The offset twin of every chain, cloned so that a margin on each link is provably
+  // the ONLY difference. Without it a dropped inter-element translation is invisible:
+  // every box sits at its parent's origin and a chain that never moves cannot show
+  // that the module composed it in the wrong space.
+  for (const slot of [...document.querySelectorAll('.slot')]) {
+    const off = slot.cloneNode(true)
+    off.classList.add('off')
+    const leaf = off.querySelector('.leaf')
+    const name = leaf.dataset.probe + 'OFF'
+    leaf.dataset.probe = name
+    leaf.textContent = name
+    document.getElementById('target').appendChild(off)
+  }
+
+  for (const leaf of document.querySelectorAll('.leaf')) {
+    for (const [x, y] of [[0, 0], [W, 0], [0, H], [W, H]]) {
+      const m = document.createElement('i')
+      m.className = 'mark'
+      m.style.left = `${x}px`
+      m.style.top = `${y}px`
+      leaf.appendChild(m)
+    }
+  }
+
+  /** What Blink paints for each leaf's own plane, from its four projected corners. */
+  window.__quads = () => {
+    const out = {}
+    for (const leaf of document.querySelectorAll('.leaf')) {
+      const [p00, p10, p01, p11] = [...leaf.querySelectorAll('.mark')]
+        .map(e => { const r = e.getBoundingClientRect(); return [r.left, r.top] })
+      out[leaf.dataset.probe] = {
+        // Where the leaf's own origin sits inside its slot. The offset twin is only
+        // worth its checks if the margins actually moved the chain.
+        ox: p00[0] - leaf.closest('.slot').getBoundingClientRect().left,
+        oy: p00[1] - leaf.closest('.slot').getBoundingClientRect().top,
+        a: (p10[0] - p00[0]) / W, b: (p10[1] - p00[1]) / W,
+        c: (p01[0] - p00[0]) / H, d: (p01[1] - p00[1]) / H,
+        // Distance from the far corner to where the OTHER three corners put it. Zero
+        // for any affine map; a projection that is not one has no 2×2 at all.
+        gap: Math.hypot(p11[0] - (p10[0] + p01[0] - p00[0]), p11[1] - (p10[1] + p01[1] - p00[1])),
+        // What the axis-aligned fallback costs at the far corner — the size of the
+        // claim a refusal declines to make.
+        miss: Math.hypot(p11[0] - p00[0] - W, p11[1] - p00[1] - H),
+      }
+    }
+    return out
+  }
+
+  window.__ready = true
+</script>
+</body>
+</html>

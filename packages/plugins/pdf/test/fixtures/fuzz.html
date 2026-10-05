@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: fuzz</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 20px; background: #eef1f5; }
+  /* Wide enough that an ordinary paragraph wraps two or three times, narrow enough
+     that a4 pagination has something to cut. */
+  #target { width: 620px; background: #fff; padding: 20px; color: #14181f;
+            font: 16px/1.5 Arial, Helvetica, sans-serif; }
+  p, div.block, table, dl { margin: 0 0 10px; }
+  /* position:relative so `.away` below is positioned against the clip box itself. */
+  .clipbox { position: relative; overflow: hidden; border: 1px solid #ccc; padding: 4px; }
+  .scrollbox { overflow: auto; border: 1px solid #ccc; padding: 0; }
+  /* An inline-block that cannot wrap: one client rect per word under any transform,
+     which is what makes the AABB inversion in verify.mjs exact. */
+  .tilt { display: inline-block; white-space: nowrap; }
+  .tiltwrap { display: inline-block; }
+  table { border-collapse: collapse; }
+  td, th { border: 1px solid #ddd; padding: 2px 6px; text-align: left; }
+  input, textarea, select { font: inherit; box-sizing: border-box; }
+  textarea { resize: none; }
+  /* Far enough outside its clip box that no part of it survives visibleEnough's
+     half-area rule — the generator's claim is "not painted", not "half painted". */
+  .away { position: absolute; left: -900px; top: -600px; white-space: nowrap; }
+  .op0 { opacity: 0; }
+  .vis0 { visibility: hidden; }
+  .dis0 { display: none; }
+  .zero { transform: scale(0); }
+</style>
+</head>
+<body>
+<div id="target"></div>
+
+<script type="module">
+  import './_pdf.js'
+
+  const target = document.getElementById('target')
+
+  // ——— the generator ————————————————————————————————————————————
+  //
+  // Every page this fixture exports is a pure function of one 32-bit seed. That is
+  // the whole point: a fuzz failure nobody can reproduce gets muted, and a muted
+  // check protects nothing. Math.random is never called here, and neither is
+  // anything else that varies between runs — no Date, no locale formatting, no
+  // measurement feeding back into a layout decision.
+
+  /**
+   * mulberry32. Written out rather than imported so the sequence is pinned to this
+   * file for good: seed 1 has to build the same page next year as it does today.
+   * Its period (2^32) and quality are irrelevant here — reproducibility is not.
+   */
+  function mulberry32(seed) {
+    let a = seed >>> 0
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0
+      let t = Math.imul(a ^ (a >>> 15), 1 | a)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+  }
+
+  let rnd = mulberry32(1)
+  const pick = (xs) => xs[Math.min(xs.length - 1, (rnd() * xs.length) | 0)]
+  const int = (lo, hi) => lo + ((rnd() * (hi - lo + 1)) | 0)
+  const odds = (p) => rnd() < p
+
+  /** Tokens are the identity of a word, so nothing else in the page may spell one. */
+  let tok = 0
+  const nextTok = (kind) => `${kind}${String(tok++).padStart(4, '0')}`
+  let recipe = []
+  let hiddenTokens = []
+
+  /**
+   * Word decorations, and where the defects lived.
+   *
+   * Rows 1–2 stay inside WinAnsi, so the run goes out as a byte string verify.mjs
+   * can read back out of the content stream — that is what keeps the text
+   * comparison a BYTE comparison for most of the page. Rows 3–5 are outside it and
+   * force the Type0 font, which addresses glyphs by id: those runs are still
+   * counted, still placed and still extracted, but their text is only readable
+   * through pdf.js. Rows 4–5 mix scripts inside ONE word, which is where the
+   * character-order regression shipped.
+   */
+  const DECOR = [
+    '', '', '', '', '',
+    'é', 'ü', 'ñ', 'ß', 'ç',
+    '’', '—', '…', '™', '‰',
+    '(x)', ')y(', '\\z', '\\)',
+    'א', 'בג', 'ع', 'ל',
+    '中', '日本', 'Ω', 'π', '𝔘', '𝕏', '😀',
+  ]
+  /** The subset that stays in WinAnsi: a word that must remain byte-readable. */
+  const ANSI_DECOR = DECOR.slice(0, 19)
+
+  /**
+   * One word: a unique token plus 0–2 decorations, before or after. The token is
+   * what every count in verify.mjs is over, so it is never split by a decoration.
+   */
+  function word(ansiOnly = false) {
+    const pool = ansiOnly ? ANSI_DECOR : DECOR
+    let s = nextTok('W')
+    if (odds(0.45)) s += pick(pool)
+    if (odds(0.2)) s = pick(pool) + s
+    if (odds(0.15)) s += pick(pool)
+    return s
+  }
+
+  const words = (n, ansiOnly) => Array.from({ length: n }, () => word(ansiOnly)).join(' ')
+
+  /** A word that CANNOT fit a narrow column, so Blink has to break it mid-word. */
+  function longWord() {
+    const chunks = ['layer', 'geometry', 'fragment', 'baseline', 'advance', 'origin']
+    let s = nextTok('W')
+    for (let i = 0, n = int(3, 5); i < n; i++) s += (odds(0.5) ? '-' : '') + pick(chunks)
+    return s
+  }
+
+  /** Hidden text: never painted, so it must never reach the file. */
+  function hiddenWords(n) {
+    const out = []
+    for (let i = 0; i < n; i++) out.push(nextTok('H'))
+    hiddenTokens.push(...out)
+    return out.join(' ')
+  }
+
+  const FONTS = [
+    '16px/1.5 Arial, Helvetica, sans-serif',
+    '13px/1.4 Georgia, "Times New Roman", serif',
+    '700 20px/1.3 Georgia, "Times New Roman", serif',
+    'italic 15px/1.6 Arial, Helvetica, sans-serif',
+    '14px/1.5 Menlo, Consolas, monospace',
+    '700 11px/1.4 Arial, Helvetica, sans-serif',
+    '24px/1.2 Arial, Helvetica, sans-serif',
+  ]
+  /**
+   * `capitalize` is NOT in this pool, and that is a finding rather than an oversight.
+   *
+   * Blink capitalizes the first letter of every UAX#29 word SEGMENT, and internal
+   * punctuation starts a new one: MEASURED at 16px Arial, `well-known` paints
+   * `Well-Known` (85.08px) and `a-b c(d)e` paints `A-B C(D)E` (84.56px, the same
+   * width as `uppercase`) — while an apostrophe does not break, so `it's` stays
+   * `It's`. text-layer.js uppercases only the first character of each \S+ word, so
+   * it writes `Well-known` and measures Tz against that string's substitute width.
+   * Every generated word carrying a `-`, `(`, `)` or `\` would fail the geometry
+   * invariants for a reason that is not arithmetic. Reported, not worked around:
+   * put it back the day the layer segments the way the paint does — `shown` below
+   * already restates the rule Blink actually applies.
+   */
+  const TRANSFORMS = ['none', 'uppercase', 'lowercase']
+
+  /** Style shuffled onto a block. Every one of these reaches a run's own metrics. */
+  function decorate(el) {
+    const bits = []
+    if (odds(0.6)) { el.style.font = pick(FONTS); bits.push('font') }
+    if (odds(0.3)) { el.style.textTransform = pick(TRANSFORMS); bits.push(`tt:${el.style.textTransform}`) }
+    if (odds(0.2)) { el.style.letterSpacing = `${pick([0.5, 1, 2, -0.4])}px`; bits.push('track') }
+    if (odds(0.12)) { el.style.wordSpacing = `${pick([2, 5])}px`; bits.push('wordsp') }
+    if (odds(0.12)) { el.style.textAlign = pick(['right', 'center', 'justify']); bits.push('align') }
+    return bits
+  }
+
+  // ——— transforms ———
+  //
+  // The angles avoid ±45° and ±135°, where |a||d| = |b||c| and the 2×2 system
+  // verify.mjs inverts to recover a rotated run's own box is singular — the same
+  // singularity text-layer.js sidesteps by MEASURING the advance instead of solving
+  // for it. Composed chains are rejected and re-drawn when they land near it anyway,
+  // from the SEEDED stream, so the rejection is part of the reproducible sequence.
+
+  const ANGLES = [-119, -71, -33, -18, -8, 12, 27, 58, 71, 105, 128]
+  const SKEWS = [-24, -12, -6, 7, 15, 22]
+  const SCALES = [-1.4, -0.9, -0.7, 0.6, 0.8, 1.25, 1.6]
+
+  function oneTransform() {
+    switch (pick(['rotate', 'skewX', 'skewY', 'scale', 'rotskew'])) {
+      case 'rotate': return `rotate(${pick(ANGLES)}deg)`
+      case 'skewX': return `skewX(${pick(SKEWS)}deg)`
+      case 'skewY': return `skewY(${pick(SKEWS)}deg)`
+      case 'scale': return `scale(${pick(SCALES)}, ${pick(SCALES)})`
+      default: return `rotate(${pick(ANGLES)}deg) skewX(${pick(SKEWS)}deg)`
+    }
+  }
+
+  /**
+   * The same thing at a size a 500px-wide BLOCK survives: a full-width block turned
+   * far enough sweeps its own AABB out past the capture root on both axes, and a run
+   * whose origin lands off the MediaBox is written and then unreachable — a real
+   * product behaviour (index.js warns about it) but not one this fixture is asking
+   * about, and it would eat the exactly-once invariant alive.
+   */
+  function mildTransform() {
+    switch (pick(['rotate', 'skewX', 'skewY', 'scale'])) {
+      case 'rotate': return `rotate(${pick([-8, -5, -3, 2, 4, 7])}deg)`
+      case 'skewX': return `skewX(${pick([-10, -6, 5, 9])}deg)`
+      case 'skewY': return `skewY(${pick([-7, -4, 3, 8])}deg)`
+      default: return `scale(${pick([0.75, 0.9, 1.1])}, ${pick([0.8, 0.95, 1.15])})`
+    }
+  }
+
+  /** align's conditioning number for the AABB inversion, and the axis-aligned floor. */
+  function usable(m) {
+    const det = Math.abs(m.a * m.d) - Math.abs(m.b * m.c)
+    const axis = Math.abs(m.b) < 1e-6 && Math.abs(m.c) < 1e-6
+    if (axis) return Math.abs(m.a) > 0.3 && Math.abs(m.d) > 0.3
+    return det > 0.2 && Math.abs(m.a * m.d - m.b * m.c) > 0.2
+  }
+
+  /**
+   * A transform chain of 1–2 levels whose COMPOSED map is invertible enough for
+   * verify.mjs to project through. Nesting is the case that matters: the run carries
+   * the product, and a chain that composes wrong is invisible in any single level.
+   */
+  function transformChain() {
+    for (let attempt = 0; attempt < 8; attempt++) {
+      const outer = odds(0.45) ? oneTransform() : null
+      const inner = oneTransform()
+      const m = new DOMMatrix(outer || '').multiply(new DOMMatrix(inner))
+      if (usable(m)) return { outer, inner }
+    }
+    return { outer: null, inner: 'rotate(-18deg)' }
+  }
+
+  // ——— blocks ———————————————————————————————————————————————————
+
+  const el = (tag, cls) => {
+    const n = document.createElement(tag)
+    if (cls) n.className = cls
+    return n
+  }
+
+  function para(host) {
+    const p = el('p')
+    p.textContent = words(int(5, 14))
+    const bits = decorate(p)
+    host.appendChild(p)
+    return `para[${bits.join(',')}]`
+  }
+
+  /**
+   * A column too narrow for its own content. `overflow-wrap: anywhere` is the case
+   * that breaks a word at no boundary at all, so a fragment carries a slice of
+   * characters and nothing about the split is guessable from the word.
+   */
+  function narrow(host) {
+    const d = el('div', 'block')
+    d.style.width = `${int(46, 96)}px`
+    if (odds(0.5)) d.style.overflowWrap = 'anywhere'
+    d.textContent = `${words(int(1, 2), true)} ${longWord()} ${words(1, true)}`
+    const bits = decorate(d)
+    host.appendChild(d)
+    return `narrow[${d.style.width}${d.style.overflowWrap ? ',anywhere' : ''}${bits.length ? ',' + bits.join(',') : ''}]`
+  }
+
+  function tilted(host) {
+    const { outer, inner } = transformChain()
+    const wrap = el('div', 'tiltwrap')
+    if (outer) wrap.style.transform = outer
+    const span = el('span', 'tilt')
+    span.style.transform = inner
+    span.textContent = words(int(1, 3))
+    decorate(span)
+    wrap.appendChild(span)
+    const holder = el('p')
+    holder.style.textAlign = 'center'
+    holder.appendChild(wrap)
+    host.appendChild(holder)
+    // A transform does not affect layout, so a turned box overhangs its own line by
+    // half its AABB and can reach outside the capture root. The padding that
+    // contains it is read off the AABB rather than guessed — layout-driven, so
+    // still a pure function of the seed. __build's containment pass is the backstop.
+    const r = wrap.getBoundingClientRect()
+    holder.style.padding = `${Math.ceil(r.height / 2) + 8}px 8px`
+    return `tilted[${outer ? outer + ' > ' : ''}${inner}]`
+  }
+
+  /**
+   * RTL. Mixed with LTR tokens on purpose: a bidi word is several client rects in
+   * VISUAL order, and the run that goes out first has to be the one the SOURCE
+   * reaches first, or extraction reads the characters back scrambled.
+   */
+  function bidi(host) {
+    const p = el('p')
+    p.dir = 'rtl'
+    const parts = []
+    for (let i = 0, n = int(3, 7); i < n; i++) {
+      parts.push(odds(0.5) ? `${pick(['אבג', 'שלום', 'عربي', 'مرحبا'])}${nextTok('W')}` : word())
+    }
+    p.textContent = parts.join(' ')
+    const bits = decorate(p)
+    if (odds(0.4)) { p.style.width = `${int(70, 130)}px`; bits.push('narrow') }
+    if (odds(0.35)) { p.style.display = 'inline-block'; p.style.transform = oneTransform(); bits.push('turned') }
+    host.appendChild(p)
+    return `bidi[${bits.join(',')}]`
+  }
+
+  /** Overflow clipping: what is inside is painted, what is outside is not. */
+  function clipbox(host) {
+    const d = el('div', 'clipbox block')
+    d.style.width = `${int(150, 300)}px`
+    d.style.height = `${int(44, 70)}px`
+    const p = el('p')
+    p.style.margin = '0'
+    p.style.fontSize = '13px'
+    p.textContent = words(int(2, 3), true)
+    d.appendChild(p)
+    const away = el('span', 'away')
+    away.dataset.hidden = 'clipped'
+    away.textContent = hiddenWords(2)
+    d.appendChild(away)
+    host.appendChild(d)
+    return `clip[${d.style.width}×${d.style.height}]`
+  }
+
+  /**
+   * A scroll container with content above AND below the visible band. Both are
+   * marked hidden and must be dropped; the band between them must survive whole,
+   * which is why it is two short lines inside a taller box rather than a tight fit.
+   */
+  function scrollbox(host) {
+    const d = el('div', 'scrollbox block')
+    d.style.height = '64px'
+    d.style.width = '340px'
+    const above = el('div')
+    above.dataset.hidden = 'scrolled-above'
+    above.style.height = '200px'
+    above.textContent = hiddenWords(2)
+    const band = el('div')
+    band.style.height = '48px'
+    band.style.fontSize = '13px'
+    band.style.lineHeight = '22px'
+    band.textContent = words(2, true)
+    const below = el('div')
+    below.dataset.hidden = 'scrolled-below'
+    below.style.height = '200px'
+    // Its own first line would otherwise be painted: the band ends 16px inside the
+    // 64px viewport, and the text after it starts exactly there.
+    below.style.paddingTop = '60px'
+    below.textContent = hiddenWords(2)
+    d.append(above, band, below)
+    host.appendChild(d)
+    // Integer, and the band clears the clip edge by 16px above and 60px below, so a
+    // partially clipped word is not reachable from here — the claim is all-or-nothing.
+    d.scrollTop = 200
+    return `scroll[top=${d.scrollTop}]`
+  }
+
+  function hiddenbits(host) {
+    const p = el('p')
+    p.textContent = `${words(2, true)} `
+    for (const cls of ['op0', 'vis0', 'dis0', 'zero']) {
+      if (!odds(0.7)) continue
+      const s = el('span', cls)
+      s.dataset.hidden = cls
+      s.textContent = ` ${hiddenWords(1)} `
+      p.appendChild(s)
+    }
+    p.appendChild(document.createTextNode(` ${words(2, true)}`))
+    host.appendChild(p)
+    return 'hidden'
+  }
+
+  /**
+   * Form controls. Their value carries no text node and no client rect, so
+   * text-layer places it from layout metrics — a different code path with the same
+   * contract. The password is the one value that must NEVER reach the file: an
+   * invisible text layer is still plain text on disk.
+   */
+  function controls(host) {
+    const d = el('div', 'block')
+    // A control's value is placed from layout metrics and clipped at its own padding
+    // box, so a value that does not FIT is a run text-layer drops on purpose. The
+    // font is held small and the boxes wide so this fixture never asks that
+    // question — `forms` owns it — and a missing control run is always a defect.
+    d.style.font = pick(['13px/1.4 Arial, Helvetica, sans-serif', '15px/1.4 Georgia, serif'])
+    const input = el('input')
+    input.type = 'text'
+    input.style.width = '260px'
+    input.value = words(int(1, 2), true)
+    d.appendChild(input)
+    if (odds(0.6)) {
+      const sel = el('select')
+      const o1 = el('option')
+      o1.textContent = word(true)
+      const o2 = el('option')
+      o2.textContent = hiddenWords(1)
+      sel.append(o1, o2)
+      d.appendChild(sel)
+    }
+    if (odds(0.5)) {
+      const ta = el('textarea')
+      ta.style.width = '300px'
+      ta.style.height = '46px'
+      ta.value = words(2, true)
+      d.appendChild(ta)
+    }
+    if (odds(0.5)) {
+      const pw = el('input')
+      pw.type = 'password'
+      pw.style.width = '160px'
+      // Marked hidden for the walker AND counted: the bullets are what is painted,
+      // and the value itself is asserted absent from the file by name.
+      pw.value = hiddenWords(1)
+      pw.dataset.secret = '1'
+      d.appendChild(pw)
+    }
+    host.appendChild(d)
+    return 'controls'
+  }
+
+  /** Anchors: link annotations are the other half of the layer, and they paginate. */
+  function links(host) {
+    const p = el('p')
+    for (let i = 0, n = int(1, 3); i < n; i++) {
+      const a = el('a')
+      a.href = `https://snapdom.dev/fz/${nextTok('L')}`
+      a.textContent = words(int(1, 2), true)
+      p.append(a, document.createTextNode(` ${word(true)} `))
+    }
+    decorate(p)
+    host.appendChild(p)
+    return 'links'
+  }
+
+  /** An open shadow root with slotted light content: one flattened tree, walked once. */
+  function shadow(host) {
+    const card = el('fz-card')
+    const light = el('span')
+    light.textContent = words(int(1, 3), true)
+    card.appendChild(light)
+    if (odds(0.4)) card.dataset.tail = words(1, true)
+    host.appendChild(card)
+    return 'shadow'
+  }
+
+  function table(host, rows) {
+    const t = el('table')
+    const head = el('tr')
+    for (let c = 0; c < 3; c++) {
+      const th = el('th')
+      th.textContent = word(true)
+      head.appendChild(th)
+    }
+    t.appendChild(head)
+    for (let i = 0; i < rows; i++) {
+      const tr = el('tr')
+      for (let c = 0; c < 3; c++) {
+        const td = el('td')
+        td.textContent = word(true)
+        tr.appendChild(td)
+      }
+      t.appendChild(tr)
+    }
+    if (odds(0.4)) t.style.font = pick(FONTS)
+    host.appendChild(t)
+    return `table[${rows}]`
+  }
+
+  /** An atomic block: pagination must move it whole rather than cut it. */
+  function avoidblock(host) {
+    const d = el('div', 'block')
+    d.style.breakInside = 'avoid'
+    d.style.background = '#f6f7f9'
+    d.style.padding = '6px'
+    d.textContent = words(int(6, 12), true)
+    decorate(d)
+    host.appendChild(d)
+    return 'avoid'
+  }
+
+  const BLOCKS = [
+    [para, 3], [narrow, 2], [tilted, 2], [bidi, 2], [clipbox, 1],
+    [scrollbox, 1], [hiddenbits, 1], [controls, 1], [shadow, 1],
+    [(h) => table(h, int(2, 5)), 1], [avoidblock, 1], [links, 1],
+  ]
+  const WEIGHTED = BLOCKS.flatMap(([fn, w]) => Array.from({ length: w }, () => fn))
+
+  /**
+   * A block dropped into a wrapper that transforms, fades or clips it. Weighted
+   * towards this on purpose: every regression this fixture exists to catch lived at
+   * an INTERSECTION — bidi inside a wrap inside a transform — and never in a
+   * feature on its own.
+   */
+  function wrapped(host, fn) {
+    const w = el('div', 'block')
+    w.style.width = '500px'
+    const kind = pick(['transform', 'alpha', 'clip', 'nested-transform'])
+    let into = w
+    if (kind === 'transform') w.style.transform = mildTransform()
+    else if (kind === 'nested-transform') {
+      w.style.transform = mildTransform()
+      into = el('div')
+      into.style.transform = mildTransform()
+      w.appendChild(into)
+    } else if (kind === 'alpha') w.style.opacity = String(pick([0.35, 0.6, 0.85]))
+    else {
+      w.style.overflow = 'hidden'
+      w.style.padding = '6px'
+      // Wide enough that nothing inside reaches the clip edge: the clip is here to
+      // make the block a grouping context, not to cut anything.
+      w.style.width = '520px'
+    }
+    // Connected BEFORE the block is built inside it: two builders read layout back
+    // (the scroll offset, a turned box's AABB) and an unattached subtree has none —
+    // which showed up as a scroll container claiming scrollTop 200 and painting 0.
+    host.appendChild(w)
+    return `${fn(into)} in ${kind}`
+  }
+
+  /**
+   * @param {number} seed
+   * @param {number} minHeight - keep adding blocks until the page is at least this
+   *   tall, so a paginated export really has several pages to disagree about.
+   */
+  window.__build = (seed, minHeight = 0) => {
+    rnd = mulberry32(seed)
+    tok = 0
+    recipe = []
+    hiddenTokens = []
+    target.style.padding = '20px'
+    target.textContent = ''
+    let n = int(4, 8)
+    for (let i = 0; i < n || target.getBoundingClientRect().height < minHeight; i++) {
+      const fn = pick(WEIGHTED)
+      recipe.push(odds(0.4) ? wrapped(target, fn) : fn(target))
+      // A runaway is a generator bug, not a product failure: say so loudly.
+      if (i > 400) { recipe.push('!! minHeight unreachable'); break }
+    }
+    condition()
+    contain()
+    return { seed, recipe, hidden: hiddenTokens, height: target.getBoundingClientRect().height }
+  }
+
+  /**
+   * Keep every ACCUMULATED map invertible enough to project through.
+   *
+   * `transformChain` conditions the chain it builds, but a block dropped into a
+   * transformed wrapper composes with something it never saw, and two well-behaved
+   * maps multiply to a near-singular one: seed 1024 put `rotate(-33deg)` under a
+   * wrapper and landed at |a||d| − |b||c| = 0.04, where the 2×2 system verify.mjs
+   * inverts to recover a run's own box has no useful answer. text-layer.js does not
+   * care — it MEASURES the advance instead of solving for it — but the check would
+   * be reading noise. A page whose runs cannot be projected is a page this fixture
+   * cannot make a claim about, so the transform is replaced rather than excused.
+   */
+  function condition() {
+    for (let pass = 0; pass < 3; pass++) {
+      let fixed = 0
+      for (const node of target.querySelectorAll('*')) {
+        // `transform: scale(0)` is exactly the singular map this pass exists to
+        // remove, and it is also how one of the hidden blocks HIDES. Reconditioning
+        // it un-hides text the generator promised was not painted.
+        if (node.closest('[data-hidden]')) continue
+        if (getComputedStyle(node).transform === 'none') continue
+        let m = new DOMMatrix()
+        for (let n = node; n && n !== document.body; n = n.parentElement) {
+          const t = getComputedStyle(n).transform
+          if (t !== 'none') m = new DOMMatrix(t).multiply(m)
+        }
+        if (usable(m)) continue
+        node.style.transform = pass < 2 ? 'rotate(-18deg)' : 'none'
+        fixed++
+      }
+      if (!fixed) return
+      recipe.push(`!! reconditioned ${fixed} transform(s)`)
+    }
+  }
+
+  /**
+   * Grow #target's padding until every painted word is inside its border box.
+   *
+   * A run whose origin lands outside the capture root is written to the file and
+   * then unreachable — index.js counts it and warns. That is real, and `perspective3d`
+   * and `align` are where it belongs; here it would only mean the generator threw a
+   * turned block off the edge of its own page, and it would take the exactly-once
+   * invariant with it. #target is content-box sized, so padding moves the children
+   * uniformly without re-laying them out: the overflow measured before is the
+   * overflow cured after, and one pass is exact.
+   */
+  function contain() {
+    const t = target.getBoundingClientRect()
+    let l = 0, r = 0, top = 0, bot = 0
+    for (const w of window.__words().words) {
+      for (const b of w.rects) {
+        l = Math.max(l, -b.left)
+        top = Math.max(top, -b.top)
+        r = Math.max(r, b.left + b.width - t.width)
+        bot = Math.max(bot, b.top + b.height - t.height)
+      }
+    }
+    if (l <= 0 && r <= 0 && top <= 0 && bot <= 0) return
+    const px = (v) => `${Math.ceil(Math.max(0, v)) + 20}px`
+    target.style.padding = `${px(top)} ${px(r)} ${px(bot)} ${px(l)}`
+  }
+
+  window.__html = () => target.outerHTML
+
+  // ——— what the DOM says is painted ————————————————————————————
+  //
+  // Restated from the CSS and the flattened tree, never imported from the product:
+  // the two agreeing is the claim. What is NOT restated is the visibility rule —
+  // the generator marks a subtree [data-hidden] when it means "not painted", and
+  // verify.mjs asserts those tokens are absent from the file by name. Restating
+  // opacity/clip arithmetic here would only prove that two copies of it agree.
+
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TITLE', 'TEMPLATE', 'OPTION', 'OPTGROUP', 'DATALIST'])
+  const CONTROL = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
+
+  /** Ascent per computed font: a zero-height inline-block sits ON the baseline. */
+  const ascents = new WeakMap()
+  function ascentOf(cs, host) {
+    const doc = host.ownerDocument
+    let cache = ascents.get(doc)
+    if (!cache) { cache = new Map(); ascents.set(doc, cache) }
+    const key = `${cs.fontStyle}|${cs.fontWeight}|${cs.fontSize}|${cs.fontFamily}`
+    if (cache.has(key)) return cache.get(key)
+    const probe = doc.createElement('span')
+    probe.style.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+    probe.innerHTML = '<span style="display:inline-block;width:0;height:0"></span>Hxg'
+    host.appendChild(probe)
+    const range = doc.createRange()
+    range.setStart(probe.lastChild, 0)
+    range.setEnd(probe.lastChild, 3)
+    const a = probe.firstChild.getBoundingClientRect().top - range.getClientRects()[0].top
+    host.removeChild(probe)
+    cache.set(key, a)
+    return a
+  }
+
+  /**
+   * The painted form of a word, restated from what Blink PAINTS rather than from
+   * text-layer.js — the two disagreeing is the claim, and on `capitalize` they do
+   * (see TRANSFORMS above, and note that branch is unreachable until the generator
+   * emits `capitalize` again). The segment break class is the one that was measured:
+   * `-`, `(`, `)` and `\` break a word, `'` does not.
+   */
+  const shown = (s, mode, first) => {
+    if (mode.includes('uppercase')) return s.toUpperCase()
+    if (mode.includes('lowercase')) return s.toLowerCase()
+    if (!mode.includes('capitalize')) return s
+    return s.replace(/(^|[^\p{L}\p{N}'’])(\p{L})/gu, (m, sep, ch) => sep + ch.toUpperCase())
+  }
+
+  /** The value a control PAINTS. A password paints bullets, never its value. */
+  function controlText(el) {
+    if (el.tagName === 'SELECT') {
+      if (el.multiple || el.size > 1) return ''
+      const opt = el.selectedOptions[0]
+      return opt ? opt.label || opt.text : ''
+    }
+    if (el.tagName === 'TEXTAREA') return el.value || el.placeholder
+    if (el.type === 'password') return el.value ? '•'.repeat(el.value.length) : el.placeholder
+    if (el.type === 'text') return el.value || el.placeholder
+    return ''
+  }
+
+  /**
+   * Every painted word fragment of #target, in the order a FLATTENED document-order
+   * walk reaches it — the order index.js writes its runs in, so verify.mjs pairs
+   * them by position and reads a dropped or duplicated run as a divergence at a
+   * known index rather than as a word a search failed to find.
+   *
+   * A word is one entry however many rects it wrapped into; verify.mjs consumes
+   * that many runs for it and asserts they concatenate back. Degenerate rects are
+   * dropped here as they are there: a zero-area box paints nothing.
+   */
+  window.__words = (captureRoot = target) => {
+    const doc = captureRoot.ownerDocument
+    const view = doc.defaultView
+    const t = captureRoot.getBoundingClientRect()
+    const out = []
+    const range = doc.createRange()
+    const host = doc.createElement('div')
+    host.style.cssText = 'position:absolute;left:-4000px;top:0;white-space:nowrap'
+    doc.body.appendChild(host)
+
+    const rel = (r) => ({ left: r.left - t.left, top: r.top - t.top, width: r.width, height: r.height })
+    const solid = (rects) => [...rects].filter(r => r.width > 0 && r.height > 0)
+
+    const visit = (node) => {
+      if (node.nodeType === view.Node.TEXT_NODE) { emit(node); return }
+      if (node.nodeType !== view.Node.ELEMENT_NODE) return
+      const tag = node.tagName.toUpperCase()
+      if (SKIP.has(tag)) return
+      if (node.dataset && node.dataset.hidden !== undefined) return
+      if (CONTROL.has(tag)) { emitControl(node); return }
+      let kids
+      if (node.shadowRoot) kids = node.shadowRoot.childNodes
+      else if (tag === 'SLOT') kids = node.assignedNodes({ flatten: true })
+      else kids = node.childNodes
+      for (const kid of kids) visit(kid)
+    }
+
+    const emit = (node) => {
+      if (!/\S/.test(node.data || '')) return
+      const tree = node.getRootNode()
+      const parent = node.assignedSlot || node.parentElement || tree.host || null
+      if (!parent) return
+      const cs = view.getComputedStyle(parent)
+      const ascent = ascentOf(cs, host)
+      const size = parseFloat(cs.fontSize)
+      for (const m of node.data.matchAll(/\S+/g)) {
+        range.setStart(node, m.index)
+        range.setEnd(node, m.index + m[0].length)
+        const rects = solid(range.getClientRects())
+        if (!rects.length) continue
+        out.push({
+          text: shown(m[0], cs.textTransform, true),
+          rects: rects.map(rel), ascent, size, control: false,
+          // Diagnostic only, and worth its keep: letter-spacing is the one style
+          // that makes the canvas advance and the laid-out advance disagree, and a
+          // failure that does not say so reads as arithmetic.
+          track: cs.letterSpacing === 'normal' ? '' : cs.letterSpacing,
+        })
+      }
+    }
+
+    const emitControl = (node) => {
+      const raw = controlText(node)
+      if (!raw || !/\S/.test(raw)) return
+      const cs = view.getComputedStyle(node)
+      const r = node.getBoundingClientRect()
+      if (r.width <= 0 || r.height <= 0) return
+      out.push({
+        text: shown(raw, cs.textTransform, true),
+        rects: [rel(r)], ascent: ascentOf(cs, host), size: parseFloat(cs.fontSize), control: true,
+        track: cs.letterSpacing === 'normal' ? '' : cs.letterSpacing,
+      })
+    }
+
+    visit(captureRoot)
+    doc.body.removeChild(host)
+    return { words: out, target: { width: t.width, height: t.height } }
+  }
+
+  /** Advances in the SUBSTITUTE font — the quantity Tz is the correction to. */
+  const mctx = document.createElement('canvas').getContext('2d')
+  window.__natural = (jobs) => jobs.map(([font, text]) => {
+    mctx.font = font
+    return mctx.measureText(text).width
+  })
+
+  customElements.define('fz-card', class extends HTMLElement {
+    connectedCallback() {
+      if (this.shadowRoot) return
+      const root = this.attachShadow({ mode: 'open' })
+      const box = document.createElement('div')
+      box.style.cssText = 'border:1px solid #dcdcdc;padding:4px'
+      const before = document.createElement('span')
+      before.textContent = 'SHADOWHEAD '
+      const slot = document.createElement('slot')
+      const after = document.createElement('span')
+      after.textContent = ` ${this.dataset.tail || 'SHADOWTAIL'}`
+      box.append(before, slot, after)
+      root.appendChild(box)
+    }
+  })
+
+  window.__ready = true
+</script>
+</body>
+</html>

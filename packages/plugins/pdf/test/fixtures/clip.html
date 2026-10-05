@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: clip</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 520px; background: #fff; padding: 24px; color: #111;
+            font: 18px/1.5 Arial, Helvetica, sans-serif; }
+  p { margin: 0; }
+  .clipbox, .scrollbox { width: 320px; height: 60px; margin: 12px 0;
+                         border: 1px solid #cbd5e1; padding: 4px 8px; box-sizing: border-box; }
+  .clipbox { overflow: hidden; }
+  /* positioned so children's offsetTop is measured against the scroll box itself */
+  .scrollbox { overflow-y: auto; scrollbar-width: none; position: relative; }
+  .push { margin-top: 100px; }
+  /* Load-bearing. The escaped paragraphs are painted nowhere but they still HAVE a
+     box, and it has to land inside #target — otherwise index.js's page-slice filter
+     drops them before clipping is ever consulted and every absence assertion in this
+     fixture passes against an implementation with no clipping at all. verify.mjs
+     asserts the containment so this can never silently rot back. */
+  .spacer { height: 200px; }
+</style>
+</head>
+<body>
+<div id="target">
+  <p data-probe="base">CLIPBASELINE</p>
+
+  <div class="clipbox">
+    <p data-probe="insideclip">INSIDECLIP</p>
+    <p class="push" data-probe="outsideclip">OUTSIDECLIP</p>
+  </div>
+  <div class="spacer"></div>
+
+  <div class="scrollbox" id="sb">
+    <p data-probe="scrolledaway">SCROLLEDAWAY</p>
+    <p class="push" data-probe="scrolledinview">SCROLLEDINTOVIEW</p>
+    <p class="push" data-probe="scrolledbelow">SCROLLEDBELOW</p>
+  </div>
+  <div class="spacer"></div>
+</div>
+<script type="module">
+  import './_pdf.js'
+  const sb = document.getElementById('sb')
+  // Park the middle paragraph in view; the other two scroll out of the clip rect.
+  sb.scrollTop = sb.querySelectorAll('p')[1].offsetTop - 10
+  window.__ready = true
+</script>
+</body>
+</html>

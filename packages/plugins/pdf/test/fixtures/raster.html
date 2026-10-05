@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: raster</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  /* Pure black on pure white and nothing else painted anywhere: the only thing an
+     ink scan can find inside a line's band is that line's own glyphs. No borders,
+     no backgrounds, no rules, no links — every one of those is ink a column scan
+     cannot tell from a letter. */
+  /* 420px of content leaves the widest line about a quarter of its own width in
+     slack: wide enough that nothing wraps on a machine whose font stack resolves
+     differently, narrow enough that a capture rendered in the wrong face does. */
+  #target { width: 420px; background: #fff; color: #000; padding: 30px 36px;
+            font: 20px/2.6 Arial, Helvetica, sans-serif; }
+  /* line-height 2.6 keeps consecutive bands apart (verify.mjs asserts it), and
+     word-spacing keeps the gap BETWEEN words an order of magnitude wider than the
+     widest gap inside one, which is what lets the scan segment a line into words
+     without being told where the words are.
+     Deliberately NOT `white-space: nowrap`: a line that cannot re-wrap cannot
+     demonstrate the failure this fixture exists to catch. Every line here has room
+     to spare (verify.mjs asserts that too), so it only wraps if the capture uses
+     different metrics than the DOM — which is exactly the event to catch. */
+  p { margin: 0; word-spacing: 30px; }
+  /* The inline and table-cell lines exist because snapdom warns about exactly those
+     two displays ("kept its natural width and may re-wrap under font-fallback
+     rasterization") and a page made only of block <p>s never makes it say so. Both
+     carry the SAME font box as the text around them: a band is grouped by the top of
+     a word's client rect, so an inline run in another size would be read as a line of
+     its own and would overlap its neighbour's band. */
+  table { border-collapse: collapse; border: 0; margin: 0; }
+  td { padding: 0; border: 0; }
+  td + td { padding-left: 44px; }
+  .b { font-weight: 700; }
+  .i { font-style: italic; }
+  .g { font-family: Georgia, 'Times New Roman', serif; }
+  .t { font-family: 'Times New Roman', Times, serif; }
+  .m { font-family: Menlo, Consolas, monospace; font-size: 18px; }
+  .big { font-size: 28px; }
+  .small { font-size: 14px; }
+</style>
+</head>
+<body>
+<div id="target">
+  <p>Selection lands where</p>
+  <p class="b">pixels agree jointly</p>
+  <p class="i">slanted glyphs verify</p>
+  <p class="g">Raster proves geometry</p>
+  <p class="g b" style="font-size:22px">Heavy serif Words</p>
+  <p class="m">mono width probe</p>
+  <p class="big">LARGE CAPS ROW</p>
+  <p class="small">tiny prose fragments</p>
+  <p class="t">Times roman sample</p>
+  <p>jumpy quagga pygmy</p>
+  <p>inline <span class="b">span</span> probe</p>
+  <table><tr><td>cell</td><td>pair</td></tr></table>
+  <!-- The tripwire. Every other line here has room to spare, so a capture rendered
+       in the wrong face slides its words sideways; this one is close enough to the
+       edge of its box that the same drift makes a word fall onto a second line.
+       verify.mjs asserts it stays close, because a tripwire that drifts wide stops
+       being one and nothing else on the page would say so. -->
+  <p id="tripwire">understanding floodwaters juxtapose</p>
+</div>
+
+<script type="module">
+  import './_pdf.js'
+
+  const target = document.getElementById('target')
+
+  /**
+   * Where Chromium puts the baseline inside an inline box, per computed font: a
+   * zero-height inline-block sits ON the baseline, so its top minus the top of a text
+   * rect on the same line IS the ascent. Measured off the LAYOUT, which is what the
+   * raster is painted from; text-layer reads its ascent out of canvas font metrics
+   * instead, so verify.mjs comparing the two is a claim and not a restatement.
+   */
+  const ascents = new Map()
+  function ascentOf(cs, host) {
+    const key = `${cs.fontStyle}|${cs.fontWeight}|${cs.fontSize}|${cs.fontFamily}`
+    if (ascents.has(key)) return ascents.get(key)
+    const probe = document.createElement('span')
+    probe.style.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`
+    probe.innerHTML = '<span style="display:inline-block;width:0;height:0"></span>Hxg'
+    host.appendChild(probe)
+    const range = document.createRange()
+    range.setStart(probe.lastChild, 0)
+    range.setEnd(probe.lastChild, 3)
+    const a = probe.firstChild.getBoundingClientRect().top - range.getClientRects()[0].top
+    host.removeChild(probe)
+    ascents.set(key, a)
+    return a
+  }
+
+  /**
+   * Every painted word of #target, in the order a document-order walk reaches it —
+   * the order index.js writes its runs in, so verify.mjs pairs run i with word i
+   * and sees a dropped run as a divergence rather than as a word it failed to find.
+   *
+   * `line` groups the words the browser put on one baseline. That grouping is the
+   * DOM's claim; the raster's own answer is the number of ink groups the scan finds
+   * in that line's band, and the two disagreeing is what a capture-time re-wrap
+   * looks like from here.
+   */
+  window.__words = () => {
+    const t = target.getBoundingClientRect()
+    const out = []
+    const range = document.createRange()
+    // Off to the left, so nothing the ascent probe measures can push #target around.
+    // Removed before this function returns, and long before anything is captured.
+    const host = document.createElement('div')
+    host.style.cssText = 'position:absolute;left:-4000px;top:0;white-space:nowrap'
+    document.body.appendChild(host)
+    const walker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!/\S/.test(node.data)) continue
+      const ascent = ascentOf(getComputedStyle(node.parentElement), host)
+      for (const m of node.data.matchAll(/\S+/g)) {
+        range.setStart(node, m.index)
+        range.setEnd(node, m.index + m[0].length)
+        const rects = [...range.getClientRects()]
+        out.push({
+          text: m[0], rects: rects.length, ascent,
+          left: rects[0].left - t.left, top: rects[0].top - t.top,
+          width: rects[0].width, height: rects[0].height,
+        })
+      }
+    }
+    document.body.removeChild(host)
+    // A rect's top/bottom is the font's own box, not the 2.6 line box, so words on
+    // one baseline share a top to the pixel. Round anyway: sub-pixel drift between
+    // two faces on one line would otherwise split it into two "lines".
+    const tops = [...new Set(out.map(w => Math.round(w.top)))].sort((a, b) => a - b)
+    for (const w of out) w.line = tops.indexOf(Math.round(w.top))
+    return { words: out, lines: tops.length, target: { width: t.width, height: t.height } }
+  }
+
+  /** Advances in the SUBSTITUTE font, the quantity Tz is the correction to. */
+  const mctx = document.createElement('canvas').getContext('2d')
+  window.__natural = (jobs) => jobs.map(([font, text]) => {
+    mctx.font = font
+    return mctx.measureText(text).width
+  })
+
+  window.__ready = true
+</script>
+</body>
+</html>

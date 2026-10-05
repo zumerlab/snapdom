@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: typography</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  /* Absolute placement so no two probes share a baseline — the rotated one's AABB
+     is 90px tall and would otherwise merge into a neighbour's pdf.js text item. */
+  #target { position: relative; width: 480px; height: 460px; background: #fff; color: #111;
+            font: 16px/1.6 Arial, Helvetica, sans-serif; }
+  #target > span, #target > div { position: absolute; left: 24px; }
+  .narrow { width: 60px; word-break: break-all; }
+</style>
+</head>
+<body>
+<div id="target">
+  <!-- text-transform never reaches the text node, so the layer and the pixels
+       disagree unless the layer applies it itself. -->
+  <span data-probe="upper" style="top:20px; text-transform:uppercase">shoutinglower</span>
+  <span data-probe="caps"  style="top:60px; text-transform:capitalize">titlecaseword</span>
+
+  <!-- Upright: letter-spacing widens the DOM box but not the base-14 advance, so
+       only Tz can make the run fit. Rotated: the width is no longer readable from
+       the AABB and comes from measureReal, which is the one place ctx.letterSpacing
+       is actually consulted. -->
+  <span data-probe="tracked" style="top:100px; letter-spacing:4px">TRACKEDWORD</span>
+  <span data-probe="slant"   data-rotate="25"
+        style="top:150px; display:inline-block; letter-spacing:4px; transform:rotate(25deg)">TRACKEDSLANT</span>
+  <span data-probe="plain"   style="top:260px">PLAINWORD</span>
+
+  <!-- One unbreakable token in a 60px column: the word wraps into several client
+       rects, and each rect must get a run carrying the characters PAINTED in it. -->
+  <div class="narrow" style="top:300px"><span data-probe="wrapped">WRAPPINGLONGSINGLEWORD</span></div>
+</div>
+<script type="module">
+  import './_pdf.js'
+
+  // The browser's own tracked advances, so the expectations are not this file's arithmetic.
+  const ctx = document.createElement('canvas').getContext('2d')
+  const advance = (text, spacing) => {
+    ctx.font = '400 16px Arial, Helvetica, sans-serif'
+    ctx.letterSpacing = spacing
+    const w = ctx.measureText(text).width
+    ctx.letterSpacing = '0px'
+    return w
+  }
+  window.__adv = {
+    tracked: advance('TRACKEDWORD', '4px'), trackedPlain: advance('TRACKEDWORD', '0px'),
+    slant: advance('TRACKEDSLANT', '4px'), slantPlain: advance('TRACKEDSLANT', '0px'),
+  }
+
+  // What Chromium actually paints on each line of the wrapped word: one character
+  // at a time through a Range, grouped by the top of its own client rect. Deciding
+  // where a line ends by measuring instead of by counting characters is the whole
+  // point — a proportional slice puts the wrong glyphs in every box, and only these
+  // strings can say so.
+  const node = document.querySelector('[data-probe="wrapped"]').firstChild
+  const range = document.createRange()
+  const lines = []
+  let prevTop = null
+  for (let i = 0; i < node.length; i++) {
+    range.setStart(node, i)
+    range.setEnd(node, i + 1)
+    const top = Math.round(range.getBoundingClientRect().top)
+    if (top !== prevTop) { lines.push(''); prevTop = top }
+    lines[lines.length - 1] += node.data[i]
+  }
+  window.__lines = lines
+
+  window.__ready = true
+</script>
+</body>
+</html>

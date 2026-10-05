@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>plugin — the snapdom plugin contract</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #fff;
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111; }
+  #target { width: 320px; padding: 16px; border: 1px solid #cbd5e1; background: #f8fafc; }
+  #other  { width: 520px; padding: 16px; border: 1px solid #cbd5e1; background: #fff7ed; }
+  h1 { font-size: 20px; margin: 0 0 8px; }
+</style>
+</head>
+<body>
+
+<!-- Two elements of DELIBERATELY different widths. The per-capture bridge that
+     carries a measurement from beforeClone to the exporter is keyed on the object
+     the engine builds per capture, and the way that can go wrong is two overlapping
+     captures sharing one entry — which would show up here as one document coming
+     out the other one's size. -->
+<div id="target">
+  <h1>PLUGINTARGET</h1>
+  <p>The narrow one. Its page is 320 css px wide plus its own border.</p>
+</div>
+
+<div id="other">
+  <h1>PLUGINOTHER</h1>
+  <p>The wide one, exported at the same time as the narrow one.</p>
+</div>
+
+<script type="module">
+  import { snapdom } from '@zumer/snapdom'
+  import pdf from '/src/index.js'
+
+  // Everything here drives the SHIPPED api on purpose: the other fixtures go through
+  // test/fixtures/_pdf.js, which translates one call into capture + export, and a
+  // translation layer cannot tell you whether the names it translates to are right.
+  window.__snapdom = snapdom
+  window.__pdf = pdf
+
+  // A download is the one side effect that is not observable from the bytes, and the
+  // engine defaults `filename` to 'snapDOM' — so a PDF option named `filename` would
+  // make every export download itself. Counting clicks is how that stays proven.
+  window.__clicks = []
+  const realClick = HTMLAnchorElement.prototype.click
+  HTMLAnchorElement.prototype.click = function () {
+    if (this.download) { window.__clicks.push(this.download); return }
+    return realClick.call(this)
+  }
+
+  window.__warnings = []
+  const realWarn = console.warn
+  console.warn = (...a) => {
+    const m = a.join(' ')
+    if (m.startsWith('[snapdom-pdf]')) window.__warnings.push(m)
+    realWarn(...a)
+  }
+
+  window.__ready = true
+</script>
+</body>
+</html>

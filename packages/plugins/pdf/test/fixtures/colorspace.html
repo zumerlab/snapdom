@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: colorspace</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; font: 14px/1.5 Arial, sans-serif; }
+  #target { width: 320px; padding: 16px; background: #fff; color: #111; }
+</style>
+</head>
+<body>
+<!--
+  This fixture's DOM is deliberately dull. What it exists to test is not a
+  capture: it is `encodeImage` deciding a colour space, which is a question
+  about PIXELS and is asked directly of surfaces this page builds, so the
+  cases can be exact — a page whose every pixel is grey, one with exactly 256
+  colours, one with 257, and one with holes in it.
+-->
+<div id="target">colour space probe</div>
+<script type="module">
+  import { encodeImage } from '/src/writer/index.js'
+  window.__encodeImage = encodeImage
+  window.__ready = true
+</script>
+</body>
+</html>

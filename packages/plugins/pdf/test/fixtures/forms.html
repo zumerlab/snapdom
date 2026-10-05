@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: forms</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 460px; background: #fff; padding: 24px; color: #111;
+            font: 16px/1.4 Arial, Helvetica, sans-serif; }
+  label { display: block; margin-bottom: 14px; }
+  input, textarea, select { display: block; width: 260px; margin-top: 4px; padding: 6px 8px;
+    font: 16px/1.4 Arial, Helvetica, sans-serif; border: 1px solid #cbd5e1; border-radius: 6px;
+    box-sizing: border-box; background: #fff; color: #111; }
+  textarea { height: 120px; resize: none; }
+</style>
+</head>
+<body>
+<div id="target">
+  <label>NameLabel <input data-probe="nameinput" type="text" value="AdaLovelace"></label>
+  <label>SearchLabel <input type="text" placeholder="PlaceholderProbe"></label>
+  <label>SecretLabel <input type="password" value="Sup3rSecretValue"></label>
+  <label>NotesLabel <textarea>TEXTAREASTART lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor TEXTAREAEND</textarea></label>
+  <label>EngineLabel <select data-probe="engineselect">
+    <option>ChromiumOption</option>
+    <option selected>WebkitOption</option>
+    <option>FirefoxOption</option>
+  </select></label>
+</div>
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>

@@ -11,7 +11,7 @@ export * from './replace-text.js';
 export * from './timestamp-overlay.js';
 export * from './redact-inputs.js';
 export * from './ascii-export.js';
-export * from './pdf-image.js';
+export * from './pdf.js';
 export * from './html-export.js';
 export * from './gif-export.js';
 export * from './video-export.js';

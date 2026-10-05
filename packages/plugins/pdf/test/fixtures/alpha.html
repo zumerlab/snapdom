@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: alpha</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  /* A checkerboard behind the target, so a flattened capture is obvious by eye too. */
+  body { margin: 0; padding: 40px; background:
+    repeating-conic-gradient(#dfe5ee 0 25%, #f5f7fa 0 50%) 0 0 / 24px 24px; }
+  #target { width: 400px; height: 240px; background: transparent;
+            display: flex; align-items: center; justify-content: center; }
+  /* 300px for ~205px of Arial: on a host that substitutes a wider face the label
+     still fits on one line, so the chip's box — which the alpha samples are taken
+     against — stays where this file says it is. */
+  .chip { width: 300px; height: 90px; border-radius: 12px; background: #111827; color: #fff;
+          display: flex; align-items: center; justify-content: center;
+          font: 20px/1 Arial, Helvetica, sans-serif; }
+</style>
+</head>
+<body>
+<div id="target">
+  <div class="chip">TRANSPARENTCARD</div>
+</div>
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>

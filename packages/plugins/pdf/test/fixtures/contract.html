@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: contract</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 420px; background: #fff; padding: 24px; color: #111;
+            font: 16px/1.5 Arial, Helvetica, sans-serif; }
+  p { margin: 0 0 10px; }
+  .rot { display: inline-block; transform: rotate(20deg); }
+  input { display: block; width: 240px; padding: 6px 8px; box-sizing: border-box;
+          font: 16px/1.4 Arial, Helvetica, sans-serif; border: 1px solid #cbd5e1; }
+</style>
+</head>
+<body>
+<!-- collectTextLayer is asserted here DIRECTLY. Everywhere else the module contract
+     is only visible through index.js and pdf.js, where a renamed field surfaces as a
+     garbled geometry failure three layers away. -->
+<div id="target">
+  <p><span>PLAINRUN</span></p>
+  <p><span class="rot">ROTATEDRUN</span></p>
+  <p><input type="text" value="CONTROLRUN"></p>
+  <p><a href="https://snapdom.dev/contract">CONTRACTLINK</a></p>
+  <!-- nav.js and paginate.js are read by index.js in as many places as
+       text-layer.js is, and a renamed field there surfaces the same way: as a
+       geometry failure three layers off. Pinned here for the same reason. -->
+  <h2 id="pinned">CONTRACTHEAD</h2>
+  <p><a href="#pinned">CONTRACTJUMP</a></p>
+  <table>
+    <thead><tr><th>CONTRACTHEADCELL</th></tr></thead>
+    <tbody><tr><td>CONTRACTROW</td></tr></tbody>
+  </table>
+</div>
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>

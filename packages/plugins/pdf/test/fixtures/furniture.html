@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: furniture</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 600px; background: #fff; padding: 24px; color: #111;
+            font: 16px/1.6 Arial, Helvetica, sans-serif; }
+  h1 { font-size: 26px; margin: 0 0 14px; }
+  h2 { font-size: 20px; margin: 0 0 10px; }
+  p { margin: 0 0 8px; }
+  /* Section height is set INLINE on the markup below, not here — see the note
+     above the body. */
+
+  /* The three elements that are NOT the capture. They sit outside #target so the
+     body never contains them; each is captured on its own. */
+  .aside { width: 600px; background: #fff; color: #111;
+           font: 16px/1.5 Arial, Helvetica, sans-serif; }
+  #cover { height: 848px; padding: 60px; box-sizing: border-box;
+           background: linear-gradient(160deg, #1e293b, #0f172a); color: #fff; }
+  #cover h1 { font-size: 44px; }
+  #colophon { height: 848px; padding: 60px; box-sizing: border-box; color: #475569; font-size: 13px; }
+  #brand { height: 40px; padding: 8px 0; border-top: 2px solid #2563eb; color: #2563eb;
+           font: 12px/24px Arial, Helvetica, sans-serif; }
+  #stamp { width: 300px; height: 120px; border: 6px solid #dc2626; color: #dc2626;
+           font: bold 34px/108px Arial, Helvetica, sans-serif; text-align: center; }
+</style>
+</head>
+<body>
+<!-- Everything a paginated DOCUMENT has that the captured element does not: a
+     cover, a generated index, running heads, a page number, a watermark and a
+     closing page. None of it was covered by a test before this fixture.
+
+     The assertion that matters most is the one joining two of them: the number
+     the index PRINTS beside a heading has to be the number PRINTED on the page
+     that heading is on. Those two numbers are produced by different code from
+     different inputs, and nothing else in the file notices when they disagree.
+
+     Section heights are written INLINE, and that is not a style preference.
+     snapdom used to drop an explicit `height` that a DESCENDANT of the capture
+     root got from a STYLESHEET rule: the raster came out the right total size with
+     every child collapsed to its content height and the rest of the page blank, so
+     the layer landed correctly and the pixels did not. `stripHeightForWrappers`
+     tested the used height against `scrollHeight`, which returns the padding-box
+     height when the content is shorter — so it could never detect the ordinary
+     case it was written for.
+
+     Fixed in the v3 engine. The inline heights remain deliberate: this fixture
+     isolates PDF page furniture from the engine's wrapper-height heuristics. -->
+<div id="target">
+  <h1>DOCUMENTTITLE</h1>
+  <section style="height:620px"><h2>SECTIONALPHA</h2><p>BODYALPHA</p></section>
+  <section style="height:620px"><h2 id="body-beta">SECTIONBETA</h2><p>BODYBETA</p></section>
+  <section style="height:620px"><h2>SECTIONGAMMA</h2><p>BODYGAMMA</p></section>
+  <section style="height:620px"><h2>SECTIONDELTA</h2><p>BODYDELTA</p></section>
+  <section style="height:620px"><h2>SECTIONOMEGA 日本語報告</h2><p>BODYOMEGA</p></section>
+</div>
+
+<div id="cover" class="aside"><h1><span id="coverprobe">COVERPAGE</span></h1><p id="cover-local">COVERSUBTITLE</p>
+  <p><a href="https://snapdom.dev/cover">COVERLINK</a></p>
+  <p><a href="#cover-local">COVERLOCAL</a> <a href="#body-beta">COVERTOBODY</a></p></div>
+<div id="colophon" class="aside"><p>LEGALCOLOPHON</p><p>COLOPHONBODY</p>
+  <p><a href="https://snapdom.dev/back">BACKLINK</a></p></div>
+<div id="brand" class="aside">FOOTBRAND</div>
+<div id="stamp" class="aside">STAMPMARK</div>
+
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>

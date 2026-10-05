@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: semantic</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 560px; padding: 24px; background: #fff; color: #111;
+            font: 16px/1.5 Arial, Helvetica, sans-serif; }
+  h1, h2 { margin: 0 0 10px; }
+  p { margin: 0 0 12px; }
+  .swatch { width: 120px; height: 54px; margin-bottom: 8px;
+            background: linear-gradient(135deg, #7c3aed, #06b6d4); }
+  .opacity-zero { opacity: 0; }
+  .filter-zero { filter: opacity(0); }
+  pre { padding: 8px; background: #f4f4f5; font: 14px/1.4 monospace; white-space: pre-wrap; }
+  svg { display: block; margin: 8px 0; }
+  .privacy-clip { clip-path: inset(0 100% 0 0); }
+  .privacy-mask { -webkit-mask-image: linear-gradient(transparent, transparent);
+                  mask-image: linear-gradient(transparent, transparent); }
+  .privacy-filter { filter: blur(7px); }
+  .privacy-transparent { color: transparent; }
+  .safe-shadow { color: #111; text-shadow: 1px 1px 2px rgba(0,0,0,.3); }
+  .auto-visible { content-visibility: auto; contain-intrinsic-size: auto 24px; }
+  #privacy-overflow { width: 150px; overflow: hidden; white-space: nowrap; }
+  #privacy-overflow a { display: inline-block; }
+  #long-prose { margin-top: 16px; }
+</style>
+</head>
+<body>
+<div id="target">
+  <h1>SEMANTICVISIBLE</h1>
+  <h2 class="opacity-zero">OUTLINEOPACITYZERO</h2>
+  <h2 class="filter-zero">OUTLINEFILTERZERO</h2>
+  <div aria-hidden="true">
+    <h2>OUTLINEARIAHIDDEN</h2>
+    <p>STRUCTARIAHIDDEN</p>
+  </div>
+  <h2><span aria-hidden="true">OUTLINESECRET</span>OUTLINESAFE</h2>
+  <h2 class="privacy-clip">OUTLINECLIPSECRET</h2>
+  <h2 class="privacy-mask">OUTLINEMASKSECRET</h2>
+  <h2 class="privacy-filter">OUTLINEBLURSECRET</h2>
+  <h2 class="privacy-transparent">OUTLINECOLORSECRET</h2>
+  <h2 class="privacy-transparent"><span style="color:#111">OUTLINEREASSERTED</span></h2>
+
+  <div lang="fr"><p>INHERITEDFRENCH</p></div>
+
+  <figure aria-label="FIGUREONLYALT"><div class="swatch"></div></figure>
+  <img alt="IMAGEONLYALT" width="120" height="54"
+       src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='54'%3E%3Crect width='120' height='54' fill='%2322c55e'/%3E%3C/svg%3E">
+  <div role="img" aria-label="ROLEIMAGEONLYALT" class="swatch"></div>
+  <img class="privacy-mask" alt="MASKEDIMAGEALTSECRET" width="120" height="54"
+       src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='54'%3E%3Crect width='120' height='54' fill='%23dc2626'/%3E%3C/svg%3E">
+  <img style="display:none" alt="HIDDENIMAGEALTSECRET" width="120" height="54"
+       src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='54'%3E%3C/svg%3E">
+
+  <svg viewBox="0 0 240 36" width="240" height="36" aria-label="SVG navigation probe">
+    <a href="#svgdest"><text x="2" y="24">SVGINTERNALJUMP</text></a>
+  </svg>
+  <a id="unsafe-js" href="JaVaScRiPt:alert(1)">UNSAFEJSLINK</a>
+  <a id="unsafe-data" href="data:text/html,unsafe">UNSAFEDATALINK</a>
+  <h2 id="svgdest">SVGDESTINATION</h2>
+
+  <pre id="pre-probe">PREALPHA    PREBETA
+PRESECOND  COLUMN</pre>
+
+  <p id="privacy-clip" class="privacy-clip">CLIPPATHSECRET
+    <a href="https://snapdom.dev/effect-secret">CLIPEFFECTLINKSECRET</a></p>
+  <p id="privacy-mask" class="privacy-mask">MASKSECRET</p>
+  <p id="privacy-filter" class="privacy-filter">BLURSECRET</p>
+  <p id="privacy-transparent" class="privacy-transparent">COLORTRANSPARENTSECRET</p>
+  <input id="privacy-security" type="text" value="TEXTSECURITYSECRET"
+         style="-webkit-text-security:disc;width:220px">
+  <input id="privacy-password" type="password" value="PASSWORDSOURCESECRET" style="width:220px">
+  <p id="safe-shadow" class="safe-shadow">SHADOWVISIBLESAFE</p>
+  <p id="auto-visible" class="auto-visible">CONTENTAUTOVISIBLE</p>
+  <svg width="260" height="30" aria-hidden="true">
+    <text id="privacy-svg" x="0" y="20" fill="none" stroke="none">SVGPAINTSECRET</text>
+  </svg>
+  <p id="privacy-overflow"><a href="https://snapdom.dev/partial-visible">OVERFLOWPARTIALSECRET</a></p>
+
+  <p id="long-prose"></p>
+</div>
+<script type="module">
+  import './_pdf.js'
+  document.getElementById('long-prose').textContent =
+    Array.from({ length: 420 }, (_, i) => `LINEBOUNDARY${String(i).padStart(3, '0')}`).join(' ')
+  window.__ready = true
+</script>
+</body>
+</html>

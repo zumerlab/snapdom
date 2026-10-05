@@ -178,3 +178,6 @@ EXPERIMENTAL_NOTES.md
 RELEASE_REVIEW.md
 RELEASE_CHECKLIST.md
 CHINESE_TRANSLATION_GUIDE.md
+
+# PDF verification artifacts
+packages/plugins/pdf/out/

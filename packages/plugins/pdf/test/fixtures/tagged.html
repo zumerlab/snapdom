@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: tagged</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 600px; background: #fff; padding: 24px; color: #111;
+            font: 16px/1.6 Arial, Helvetica, sans-serif; }
+  h1 { font-size: 26px; margin: 0 0 12px; }
+  h2 { font-size: 20px; margin: 24px 0 8px; }
+  p, li { margin: 0 0 8px; }
+  ul { margin: 0 0 14px; padding-left: 22px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #e5e7eb; }
+  figure { margin: 0 0 14px; }
+  figcaption { color: #6b7280; font-size: 14px; }
+  .swatch { width: 120px; height: 60px; background: linear-gradient(135deg, #4f46e5, #06b6d4); }
+</style>
+</head>
+<body>
+<!-- The structure a tagged PDF has to expose, and the things that must NOT be in
+     it. Every assertion in verify.mjs reads this back through pdf.js's own
+     getStructTree(), not off the bytes: a tree only a regex can find is a tree no
+     screen reader will ever walk, and pdf.js only returns one if the parent tree
+     resolves — which is the half that is easy to write wrong and impossible to
+     see in a structure inspector. -->
+<div id="target">
+  <h1>TAGGEDTITLE</h1>
+  <p>TAGGEDINTRO with an <em>inline emphasis</em> that must NOT become its own
+  structure element — a tree with a node per span is richer on paper and unreadable
+  in practice.</p>
+
+  <h2>TAGGEDSECTION</h2>
+  <section>
+    <p>TAGGEDBODY sits inside a section, so the section is a Sect and the paragraph
+    is its child.</p>
+    <ul>
+      <li>TAGGEDITEMONE</li>
+      <li>TAGGEDITEMTWO</li>
+    </ul>
+  </section>
+
+  <h2>TAGGEDTABLE</h2>
+  <table>
+    <thead><tr><th>TAGGEDCOLONE</th><th>TAGGEDCOLTWO</th></tr></thead>
+    <tbody>
+      <tr><td>TAGGEDCELLA</td><td>TAGGEDCELLB</td></tr>
+      <tr><td>TAGGEDCELLC</td><td>TAGGEDCELLD</td></tr>
+    </tbody>
+  </table>
+
+  <figure aria-label="TAGGEDALTTEXT">
+    <div class="swatch"></div>
+    <figcaption>TAGGEDCAPTION</figcaption>
+  </figure>
+
+  <p lang="fr">TAGGEDFRENCH — this paragraph declares its own language, which is what
+  decides how it gets pronounced.</p>
+
+  <div role="heading" aria-level="3">TAGGEDARIAHEAD</div>
+  <p>TAGGEDAFTERARIA</p>
+</div>
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>
