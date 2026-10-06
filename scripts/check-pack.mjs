@@ -102,7 +102,7 @@ try {
     'package/package.json', 'package/README.md', 'package/LICENSE',
     ...pluginEntries.flatMap(([, path]) => [path, path.replace(/\.js$/, '.d.ts')].map((p) => 'package/' + p.slice(2))),
     'package/capture-frames.js', 'package/privacy-policy.js', 'package/redact-clone.js',
-    'package/pdf/REFERENCE.md', 'package/pdf/LICENSE', 'package/pdf/src/mega/README.md', 'package/CHANGELOG.md',
+    'package/pdf/README.md', 'package/pdf/REFERENCE.md', 'package/pdf/LICENSE', 'package/pdf/src/mega/README.md', 'package/CHANGELOG.md',
     ...readdirSync(join(ROOT, 'packages/plugins/pdf/src'), { recursive: true }).filter(p => p.endsWith('.js')).map(p => 'package/pdf/src/' + p),
     'package/vector/CONTRACT.md', 'package/vector/LICENSE', 'package/vector/README.md',
     ...['src', 'svd'].flatMap(dir => readdirSync(join(ROOT, 'packages/plugins/vector', dir), { recursive: true }).filter(p => p.endsWith('.js')).map(p => `package/vector/${dir}/${p}`)),

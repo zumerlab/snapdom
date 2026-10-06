@@ -25,6 +25,7 @@
     "README.md",
     "LICENSE",
     "pdf/src/",
+    "pdf/README.md",
     "pdf/REFERENCE.md",
     "pdf/LICENSE",
     "CHANGELOG.md",
@@ -52,8 +53,12 @@
     "url": "https://github.com/zumerlab/snapdom/issues"
   },
   "homepage": "https://snapdom.dev/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tinchox5"
+  },
   "peerDependencies": {
-    "@zumer/snapdom": "^3.0.0"
+    "@zumer/snapdom": "^3.3.0"
   },
   "devDependencies": {
     "@zumer/snapdom": "file:../.."
