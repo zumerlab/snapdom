@@ -1,5 +1,7 @@
 # SnapDOM: v3 reference
 
+Last updated: 2026-10-05.
+
 SnapDOM is a browser capture engine for web interfaces.
 
 It captures a DOM subtree, its computed styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, searchable, paginated PDFs and editable vector artwork and recordings.
