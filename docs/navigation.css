@@ -166,9 +166,34 @@
   .site-head .site-nav-panel { display: block; position: static; width: auto; padding: 0; border: 0; box-shadow: none; }
 }
 @media (max-width: 600px) {
-  .site-head-inner { width: calc(100% - 28px); min-height: 60px; }
-  .site-head .site-shell-brand { font-size: 21px; }
+  .site-head-inner { width: calc(100% - 28px); min-height: 64px; gap: 10px; }
+  .site-head .site-shell-brand { font-size: 21px; gap: 8px; white-space: nowrap; }
+  .site-head :is(.site-search-button, .site-menu-button, .site-shell-github) {
+    box-sizing: border-box;
+    flex: none;
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+    border-radius: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .site-head .site-search-button { width: 56px; font: 12px/1.2 Arial, Helvetica, sans-serif; }
+  .site-head .site-menu-button { width: 60px; }
+  .site-head .site-shell-github { width: 50px; }
+  .site-head .site-shell-stars { display: grid; gap: 2px; padding: 0; border: 0; color: #F5A623; font-size: 16px; line-height: 1; }
+  .site-head .site-shell-stars [data-star-count] { color: #0F1E4D; font-size: 12px; }
   .site-head.is-menu-open .site-nav { grid-template-columns: 1fr; padding: 12px 14px 20px; }
+}
+@media (max-width: 360px) {
+  .site-head-inner { gap: 6px; }
+  .site-head .site-shell-brand { font-size: 18px; gap: 6px; }
+  .site-head .site-shell-mark { width: 30px; }
+  .site-head .site-search-button { width: 48px; }
+  .site-head .site-menu-button { width: 50px; }
+  .site-head .site-shell-github { width: 46px; }
 }
 
 /* ── Footer directory ── */
