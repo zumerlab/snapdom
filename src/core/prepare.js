@@ -334,11 +334,10 @@ export async function prepareClone(element, options = {}) {
   }
 
   for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
-    // Clip mode: the window is derived from gBCRs, which already encode the root's own
-    // scroll — un-scrolling the root here would compensate twice (blank output when
-    // capturing a scrolled documentElement).
-    if (sessionCache.clip && originalNode === element) continue
-    wrapScrolledClone(cloneNode, originalNode)
+    // Clip rects already encode viewport scroll: compensating the document's scrolling
+    // element twice blanks output. Ordinary element roots still need their wrapper.
+    if (sessionCache.clip && originalNode === element && element === element.ownerDocument.scrollingElement) continue
+    wrapScrolledClone(cloneNode, originalNode, sessionCache.nodeMap, sessionCache.styleCache)
   }
   // #505: html/body overflow can apply to the viewport, not their own (possibly
   // zero-height) box. Inside foreignObject they lose that special treatment.
@@ -478,13 +477,15 @@ export function applyStyleClass(node, key, keyToClass) {
 
 /**
  * Scroll compensation for one clone/source pair: hides scrollbars and wraps the clone's
- * children in a translate(-scrollX,-scrollY) inner div, adjusting fixed/absolute
- * descendants first (#364). No-op for unscrolled sources. Shared by prepareClone's
- * whole-map pass and burst's differential recapture (delta entries only).
+ * children in a translate(-scrollX,-scrollY) inner div, compensating positioned
+ * descendants with external containing blocks (#364/#518). No-op for unscrolled sources.
+ * Shared by prepareClone's whole-map pass and differential recapture (delta entries only).
  * @param {Element} cloneNode
  * @param {Element} originalNode
+ * @param {Map<Node, Node>} nodeMap - clone → source
+ * @param {WeakMap<Element, CSSStyleDeclaration>} styleCache
  */
-export function wrapScrolledClone(cloneNode, originalNode) {
+export function wrapScrolledClone(cloneNode, originalNode, nodeMap, styleCache) {
   const scrollX = originalNode.scrollLeft
   const scrollY = originalNode.scrollTop
   const hasScroll = scrollX || scrollY
@@ -501,14 +502,50 @@ export function wrapScrolledClone(cloneNode, originalNode) {
     const positioned = cloneNode.querySelectorAll('*')
     for (const child of positioned) {
       if (child.nodeType !== 1 || child.namespaceURI !== 'http://www.w3.org/1999/xhtml') continue
-      const pos = child.style.position
-      if (pos === 'fixed' || pos === 'absolute') {
-        const curTop = parseFloat(child.style.top) || 0
-        const curLeft = parseFloat(child.style.left) || 0
-        child.style.top = `${curTop + scrollY}px`
-        child.style.left = `${curLeft + scrollX}px`
-        if (pos === 'fixed') child.style.position = 'absolute'
+      const source = nodeMap?.get(child)
+      const cs = source && (styleCache?.get(source) || getStyle(source))
+      const pos = child.style.position || cs?.position
+      if (pos !== 'fixed' && pos !== 'absolute') continue
+      // Frozen fixed/sticky clones carry painted coordinates: retain their cancellation
+      // of the wrapper translation. Ordinary boxes scroll with an internal CB (#518).
+      const frozen = cs && cs.position !== 'absolute' && pos === 'absolute'
+      let cb = null
+      if (source && !frozen) {
+        for (let ancestor = source.parentElement || source.getRootNode()?.host; ancestor;
+          ancestor = ancestor.parentElement || ancestor.getRootNode()?.host) {
+          const acs = styleCache?.get(ancestor) || getStyle(ancestor)
+          if ((pos === 'absolute' && acs.position !== 'static') ||
+              (acs.transform && acs.transform !== 'none') ||
+              (acs.translate && acs.translate !== 'none') ||
+              (acs.rotate && acs.rotate !== 'none') ||
+              (acs.scale && acs.scale !== 'none') ||
+              (acs.filter && acs.filter !== 'none') ||
+              (acs.backdropFilter && acs.backdropFilter !== 'none') ||
+              (acs.perspective && acs.perspective !== 'none') ||
+              /transform|perspective|filter/.test(acs.willChange || '') ||
+              /layout|paint|strict|content/.test(acs.contain || '')) {
+            cb = ancestor
+            break
+          }
+          if (ancestor === originalNode) break
+        }
       }
+      if (cb) {
+        // The new wrapper replaces the scroller as CB. Freeze used offsets so %
+        // insets don't resolve against the wrapper's content height instead.
+        if (cb === originalNode) {
+          child.style.top = cs.top
+          child.style.left = cs.left
+          child.style.right = cs.right
+          child.style.bottom = cs.bottom
+        }
+        continue
+      }
+      const curTop = parseFloat(child.style.top || cs?.top) || 0
+      const curLeft = parseFloat(child.style.left || cs?.left) || 0
+      child.style.top = `${curTop + scrollY}px`
+      child.style.left = `${curLeft + scrollX}px`
+      if (pos === 'fixed') child.style.position = 'absolute'
     }
   } catch { /* non-blocking */ }
 

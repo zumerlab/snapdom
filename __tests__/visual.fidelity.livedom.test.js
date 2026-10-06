@@ -13,7 +13,9 @@
 // to catch. Each scene is a construction that a past bug placed wrong.
 import { describe, it, expect, afterEach } from 'vitest'
 import { page } from '@vitest/browser/context'
-import { snapdom } from '../src/index.js'
+// Exercise the distributed bundle, rebuilt by globalSetup. Its lazy exporters stay
+// inside the bundle, avoiding a late source-module request after the native screenshot.
+import { snapdom } from '../dist/snapdom.mjs'
 
 // One threshold for every scene. Measured chromium/firefox/webkit, correct capture vs the live
 // screenshot: grid 3.4/3.4/3.7, flex 1.7, image 2.8/1.3/2.8, translate 5.2/5.2/5.4 — the residue
