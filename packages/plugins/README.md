@@ -17,6 +17,20 @@ npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 
 Plugins 4.x in this checkout require SnapDOM 3.3.0 or newer within 3.x. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed and available on npm in `@zumer/snapdom-plugins` 4.x. The `@latest` command above installs the published release. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
 
+## Releasing from the repository root
+
+```sh
+npm run bump:plugins:dry
+npm run bump:plugins
+npm run release:plugins
+npm run publish:plugins -- --dry-run
+npm run publish:plugins
+```
+
+`bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
+
+`release:plugins` runs the full cross-browser suite with required visual baselines, the PDF and Vector checks, and consumer packaging checks, then creates the plugin tarball. It does not publish. `publish:plugins` publishes only `@zumer/snapdom-plugins` under the `latest` tag.
+
 ## Usage
 
 Import plugins individually (recommended for tree-shaking):

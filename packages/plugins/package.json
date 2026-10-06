@@ -1,8 +1,12 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Official plugins for SnapDOM",
   "type": "module",
+  "scripts": {
+    "bump:dry": "npx @zumerbox/bump -d",
+    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog"
+  },
   "exports": {
     ".": "./index.js",
     "./timestamp-overlay": "./timestamp-overlay.js",

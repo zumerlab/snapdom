@@ -1,5 +1,13 @@
 # Plugin changes
 
+## 4.0.1
+
+- Add GitHub Sponsors funding metadata.
+- Raise the SnapDOM peer dependency to ^3.3.0 and document the minimum supported core version.
+- Explicitly include the PDF README in the package and update packaging checks.
+
+Requires SnapDOM 3.3.0 or newer within 3.x.
+
 ## 4.0.0
 
 - Replace pdf-image with the full PDF exporter previously distributed as PDF Pro. Import pdf from @zumer/snapdom-plugins/pdf; toPdf returns a Blob, with optional download, selectable text, links and pagination.
