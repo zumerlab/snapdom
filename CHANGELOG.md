@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.3.3](https://github.com/zumerlab/snapdom/compare/v3.3.0...v3.3.3)
+
+> 9 October 2026
+
+- feat(vector): improve SVG export by omitting inactive mask longhands and retaining active masks [`12a197c`](https://github.com/zumerlab/snapdom/commit/12a197cd5d5a1aa97d486f7e3006596735ae804e)
+- fix: preserve positioned content in scrolled captures [`84096ea`](https://github.com/zumerlab/snapdom/commit/84096ea66b28a7b6521bacb51993c381a636e7c2)
+- chore(plugins): update to version 4.0.1, add GitHub Sponsors metadata, and enhance release scripts [`a9e72f8`](https://github.com/zumerlab/snapdom/commit/a9e72f886a467977ab9ec5a5f239d7a3804639e3)
+- chore(plugins): add funding and require SnapDOM 3.3.0 [`61e7ff5`](https://github.com/zumerlab/snapdom/commit/61e7ff5e3e15e7e6fd2097a084b542b2972a04db)
+- chore(plugins): update to version 4.0.1 and add plugin bumping scripts [`1fbe3d9`](https://github.com/zumerlab/snapdom/commit/1fbe3d9cc76abc878eb202d9685366a5f3fc7a89)
+
+
 #### [v3.3.0](https://github.com/zumerlab/snapdom/compare/v3.2.0...v3.3.0)
 
 > 4 October 2026
