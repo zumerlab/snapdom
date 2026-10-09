@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom",
-  "version": "3.3.0",
+  "version": "3.3.3",
   "description": "SnapDOM is a high-performance engine for capturing, modifying, and converting DOM elements into any format.",
   "type": "module",
   "main": "./dist/snapdom.js",
