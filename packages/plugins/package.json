@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "Official plugins for SnapDOM",
   "type": "module",
   "scripts": {
