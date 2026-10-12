@@ -186,6 +186,12 @@ export function isShadowRoot(node) {
   return node?.nodeType === 11 && !!node.host
 }
 
+/** Shadow boundary parent, without confusing anchor URL hosts with ShadowRoot hosts. */
+export function shadowHost(node) {
+  const parent = node?.parentNode
+  return parent?.nodeType === 11 ? parent.host : null
+}
+
 /** Realm-safe `node instanceof Document`. */
 export function isDocument(node) {
   return node?.nodeType === 9

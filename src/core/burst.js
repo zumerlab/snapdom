@@ -68,7 +68,7 @@ import {
   invalidateSnapshotsUnder,
 } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
-import { isPasswordInput } from '../utils/helpers.js'
+import { isPasswordInput, shadowHost } from '../utils/helpers.js'
 
 /** Per-element state lookup; the bounded LRU below retains and disposes live memos. */
 const burstStates = new WeakMap()
@@ -130,7 +130,7 @@ function geometrySignature(element) {
       values.push(rect.x, rect.y, rect.width, rect.height)
     } catch { values.push('?') }
     if (el.parentElement) el = el.parentElement
-    else el = el.getRootNode?.()?.host || null
+    else el = shadowHost(el) || null
   }
   return values.join('|')
 }

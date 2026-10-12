@@ -16,7 +16,7 @@
  * @module styles
  */
 
-import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, isShadowRoot, snapshotComputedStyle } from '../utils/index.js'
+import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, isShadowRoot, shadowHost, snapshotComputedStyle } from '../utils/index.js'
 import { isFirefox } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
 import { scanAuthorStyles, scanSheetProps, addAnimationProps } from './styleScan.js'
@@ -50,10 +50,7 @@ function isOwnedNode(node) {
   while (el) {
     if (isInternalNode(el)) return true
     if (el.parentElement) el = el.parentElement
-    else {
-      const root = el.getRootNode?.()
-      el = root && root.host ? root.host : null
-    }
+    else el = shadowHost(el)
   }
   return false
 }
@@ -93,7 +90,7 @@ function countMutationSources(records) {
     const doc = rec.target.ownerDocument || document
     mutationCounts.set(doc, (mutationCounts.get(doc) || 0) + 1)
     let el = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement || rec.target.host
-    for (; el; el = el.parentElement || el.getRootNode?.()?.host) {
+    for (; el; el = el.parentElement || shadowHost(el)) {
       mutationCounts.set(el, (mutationCounts.get(el) || 0) + 1)
     }
   }
@@ -1953,7 +1950,7 @@ function axesOf(el, memo) {
   // matrix(a, b, c, d, e, f) / matrix3d: b and c (m12, m21) are the rotation and skew terms.
   if ((cs.rotate && cs.rotate !== 'none') || (m && (t.startsWith('matrix3d') ? m[1] || m[4] : m[1] || m[2]))) v = SKEWED
   else {
-    const parent = el.parentElement || el.getRootNode?.().host
+    const parent = el.parentElement || shadowHost(el)
     v = parent ? axesOf(parent, memo) : PLAIN
     if (v === PLAIN && ((cs.scale && cs.scale !== 'none') || (cs.zoom && cs.zoom !== '1') ||
       (m && (t.startsWith('matrix3d') ? m[0] !== 1 || m[5] !== 1 : m[0] !== 1 || m[3] !== 1)))) v = SCALED

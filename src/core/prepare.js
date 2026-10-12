@@ -11,7 +11,7 @@
  * @module prepare
  */
 
-import { generateCSSClasses, stripTranslate, debugWarn, getStyle, isShadowRoot } from '../utils/index.js'
+import { generateCSSClasses, stripTranslate, debugWarn, getStyle, isShadowRoot, shadowHost } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { flushStyleInvalidations, invalidateHoverChanges } from '../modules/styles.js'
@@ -91,7 +91,7 @@ export async function prepareClone(element, options = {}) {
   // styles are restored first, and concurrent captures share the same warmup.
   if (visibilityWarmups.size) {
     const containsComposed = (root, child) => {
-      for (let node = child; node; node = node.assignedSlot || node.parentElement || node.getRootNode()?.host) {
+      for (let node = child; node; node = node.assignedSlot || node.parentElement || shadowHost(node)) {
         if (node === root) return true
       }
       return false
@@ -511,8 +511,8 @@ export function wrapScrolledClone(cloneNode, originalNode, nodeMap, styleCache) 
       const frozen = cs && cs.position !== 'absolute' && pos === 'absolute'
       let cb = null
       if (source && !frozen) {
-        for (let ancestor = source.parentElement || source.getRootNode()?.host; ancestor;
-          ancestor = ancestor.parentElement || ancestor.getRootNode()?.host) {
+        for (let ancestor = source.parentElement || shadowHost(source); ancestor;
+          ancestor = ancestor.parentElement || shadowHost(ancestor)) {
           const acs = styleCache?.get(ancestor) || getStyle(ancestor)
           if ((pos === 'absolute' && acs.position !== 'static') ||
               (acs.transform && acs.transform !== 'none') ||

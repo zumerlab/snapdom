@@ -412,6 +412,28 @@ describe('auto burst — frame-driven sources', () => {
 })
 
 describe('auto burst — transactional edges', () => {
+  it.each([['a', 'https://x.com'], ['a', '#x'], ['area', 'https://x.com'], ['area', '#x']])(
+    'counts mutations in a removed %s with href %s', (tag, href) => {
+      const host = mount('<div></div>')
+      const anchor = document.createElement(tag)
+      anchor.appendChild(document.createElement('span'))
+      host.prepend(anchor)
+      anchor.href = href
+      const target = host.lastElementChild
+      getOutsideMutationCount(target)
+      flushStyleInvalidations()
+      const before = getOutsideMutationCount(target)
+
+      anchor.remove()
+      anchor.firstElementChild.setAttribute('title', 'after')
+      host.setAttribute('title', 'last record')
+      flushStyleInvalidations()
+      // The record after the detached edit must also be processed. The flush catches
+      // observer exceptions, so checking only that it does not throw is insufficient.
+      expect(getOutsideMutationCount(target)).toBe(before + 3)
+    },
+  )
+
   it('counts shadow mutations within their host subtree and keeps documents independent', () => {
     const host = mount('<div class="count-target"></div><iframe></iframe>')
     const target = host.firstElementChild
