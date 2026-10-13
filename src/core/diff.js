@@ -327,6 +327,7 @@ async function diffCapture(element, state, context) {
   // whose computed geometry drifted — the same values a full pipeline would snapshot at the
   // current epoch, so byte-fidelity holds without bailing on layout-changing mutations.
   const sessionLike = { styleMap: R.styleMap, styleCache: R.styleCache, nodeMap: R.nodeMap, options: context }
+  const resizedParents = new WeakSet()
   for (const [cloneN, srcN] of R.nodeMap.entries()) {
     if (!srcN || srcN.nodeType !== 1 || !srcN.isConnected) continue
     const key = R.styleMap.get(cloneN)
@@ -337,12 +338,26 @@ async function diffCapture(element, state, context) {
     let drifted = false
     for (const p in frozen) {
       cs ||= getComputedStyle(srcN)
-      if (!sameFrozenLength(cs.getPropertyValue(p), frozen[p])) { drifted = true; break }
+      let live = cs.getPropertyValue(p)
+      // Width softening and overflowing flex items synthesize a floor from the
+      // used width. Comparing that floor to the live keyword "auto" always drifts.
+      if (p === 'min-width' && live === 'auto' && !resizedParents.has(srcN.parentElement)) {
+        let width = parseFloat(cs.width)
+        if (cs.boxSizing !== 'border-box' && key.includes('box-sizing:border-box')) {
+          width += ['padding-left', 'padding-right', 'border-left-width', 'border-right-width']
+            .reduce((n, prop) => n + (parseFloat(cs.getPropertyValue(prop)) || 0), 0)
+        }
+        live = `${width}px`
+      }
+      if (!sameFrozenLength(live, frozen[p])) { drifted = true; break }
     }
     if (drifted) {
       // A retained image was reduced for its old box. Rebuild from the source if that box
       // changes, rather than stretching already-discarded pixels during reconciliation.
       if (context.__compressedAssets?.has(cloneN)) return null
+      // A changed container can stop overflowing even when its items' used widths
+      // stay constant; refresh their synthesized floors too. nodeMap is parent-first.
+      resizedParents.add(srcN)
       __diffStats.reconciled++
       await inlineAllStyles(srcN, cloneN, sessionLike, context)
     }

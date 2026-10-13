@@ -139,6 +139,39 @@ describe('differential recapture', () => {
     expect(__diffStats.reconciled).toBe(0)       // …without declaring the whole tree drifted
   })
 
+  it('does not reconcile unchanged overflowing flex floors on every frame', async () => {
+    const host = document.createElement('div')
+    host.style.cssText = 'width:60px;font:16px monospace'
+    host.innerHTML = '<div style="display:flex"><span>123456</span><span>123456</span><span>123456</span></div>'
+    document.body.append(host)
+    expect(host.scrollWidth).toBeGreaterThan(host.clientWidth)
+    await engageBurst(host)
+    host.querySelector('span').textContent = '654321'
+    await new Promise(r => setTimeout(r, 0))
+    __diffStats.reconciled = 0
+    const served = __diffStats.served
+    const diff = await snapdom(host)
+    expect(__diffStats.served).toBe(served + 1)
+    expect(__diffStats.reconciled).toBe(0)
+    const full = await snapdom(host, { burst: false })
+    expect(diff.url).toBe(full.url)
+  })
+
+  it('refreshes flex floors when a sibling changes the available width', async () => {
+    const host = document.createElement('div')
+    host.style.cssText = 'width:200px;font:16px monospace'
+    host.innerHTML = '<div style="display:flex"><div style="display:flex;flex:1;min-width:0"><span>123456</span><span>123456</span><span>123456</span></div><span class="other">123456</span></div>'
+    document.body.append(host)
+    await engageBurst(host)
+    host.querySelector('.other').textContent = '1'
+    await new Promise(r => setTimeout(r, 0))
+    const served = __diffStats.served
+    const diff = await snapdom(host)
+    expect(__diffStats.served).toBe(served + 1)
+    const full = await snapdom(host, { burst: false })
+    expect(diff.url).toBe(full.url)
+  })
+
   // backdrop-filter is pre-composed by emulateBackdropFilters (the svg rasterizer cannot be
   // trusted with it, #457). That pass copies and prunes the WHOLE prepared clone, so a
   // subtree splice cannot refresh the copied backdrop byte-faithfully. The frosted case
