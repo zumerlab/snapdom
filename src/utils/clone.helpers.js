@@ -1061,7 +1061,7 @@ export function freezeInflatedFontSizes(nodeMap, doc = document) {
     const cs = view.getComputedStyle(src)
     const found = src.localName === 'textarea' || (src.localName === 'input' && VALUE_FIELDS.has(src.type))
       ? fieldWord(src, cs, doc)
-      : textWord(src)
+      : textWord(src, cs.textAlign === 'justify' || cs.textAlignLast === 'justify')
     if (!found) continue
     // An ancestor transform scales the live distance and not the probe's.
     const box = src.getBoundingClientRect()
@@ -1071,20 +1071,40 @@ export function freezeInflatedFontSizes(nodeMap, doc = document) {
     for (const p of INFLATION_FONT_PROPS) span.style.setProperty(p, cs.getPropertyValue(p))
     span.textContent = found.word
     probe.appendChild(span)
-    jobs.push({ clone, cs, span, live: found.distance / scale, centers: found.centers })
+    jobs.push({ clone, cs, span, live: found.distance / scale, centers: found.centers, height: found.height })
   }
   if (!jobs.length) return
   doc.body.appendChild(probe)
   try {
-    for (const { clone, cs, span, live, centers } of jobs) {
+    for (const { clone, cs, span, live, centers, height } of jobs) {
       const text = span.firstChild
       // letter-spacing is not inflated: it follows every character, the last one included.
       const spacing = (parseFloat(cs.letterSpacing) || 0) * (centers ? text.length - 1 : text.length)
-      const ref = centers
+      const range = height ? doc.createRange() : null
+      if (range) range.selectNodeContents(span)
+      const ref = height ? range.getBoundingClientRect().height : centers
         ? Math.abs(centerOf(text, text.length - 1) - centerOf(text, 0))
         : span.getBoundingClientRect().width
-      const ratio = (live - spacing) / (ref - spacing)
+      let ratio = (live - (height ? 0 : spacing)) / (ref - (height ? 0 : spacing))
       if (!(ratio > 1.005 && Number.isFinite(ratio))) continue
+      if (height) {
+        // Justification expands Range widths, not glyph heights. Firefox rounds glyph
+        // heights to pixels, so find the middle of the matching font-size interval
+        // instead of amplifying that rounding through a height ratio.
+        const bounds = []
+        for (const strict of [false, true]) {
+          let lo = parseFloat(cs.fontSize), hi = lo * (ratio + 1)
+          for (let i = 0; i < 10; i++) {
+            const mid = (lo + hi) / 2
+            span.style.fontSize = `${mid}px`
+            const h = range.getBoundingClientRect().height
+            if (strict ? h > live : h >= live) hi = mid
+            else lo = mid
+          }
+          bounds.push((lo + hi) / 2)
+        }
+        ratio = (bounds[0] + bounds[1]) / 2 / parseFloat(cs.fontSize)
+      }
       clone.style.setProperty('font-size', `${parseFloat(cs.fontSize) * ratio}px`)
       if (cs.lineHeight !== 'normal') clone.style.setProperty('line-height', `${parseFloat(cs.lineHeight) * ratio}px`)
     }
@@ -1103,11 +1123,12 @@ function centerOf(text, i) {
 }
 
 /**
- * The first word of `el`'s own text and its live width.
+ * The first word of `el`'s own text and its live width (height for justified text).
  * @param {Element} el
- * @returns {{word: string, distance: number, centers: boolean}|null}
+ * @param {boolean} [height]
+ * @returns {{word: string, distance: number, centers: boolean, height: boolean}|null}
  */
-function textWord(el) {
+function textWord(el, height = false) {
   for (let n = el.firstChild; n; n = n.nextSibling) {
     if (n.nodeType !== 3) continue
     const m = /\S+/.exec(n.data)
@@ -1117,7 +1138,7 @@ function textWord(el) {
     range.setEnd(n, m.index + m[0].length)
     const rects = range.getClientRects()
     // A word broken across lines (overflow-wrap) has no single width to compare.
-    return rects.length === 1 ? { word: m[0], distance: rects[0].width, centers: false } : null
+    return rects.length === 1 ? { word: m[0], distance: height ? rects[0].height : rects[0].width, centers: false, height } : null
   }
   return null
 }
