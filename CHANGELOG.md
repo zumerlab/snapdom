@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.3.4](https://github.com/zumerlab/snapdom/compare/v3.3.3...v3.3.4)
+
+> 13 October 2026
+
+- fix(flex): preserve subpixel overflow [`e1fbac7`](https://github.com/zumerlab/snapdom/commit/e1fbac75bf2579204e24252288e51f9f1a1a02c7)
+- fix(firefox): preserve justified text size [`9834923`](https://github.com/zumerlab/snapdom/commit/98349234e8875ad0525278c8f93bd44483e8d4c1)
+- fix(flex): keep overflowing flex items at their live width (#520) [`4c47d70`](https://github.com/zumerlab/snapdom/commit/4c47d70ed597d90cde32392266b31a977be925d6)
+- fix(styles): preserve used border widths [`875fb3f`](https://github.com/zumerlab/snapdom/commit/875fb3fd8e9ac09c33396c0ba0fb870abe6ff313)
+- fix: handle detached links in ancestor walks (#519) [`294dae5`](https://github.com/zumerlab/snapdom/commit/294dae56e856ca19496f8f118ff9ffb81e210d52)
+
+
 #### [v3.3.3](https://github.com/zumerlab/snapdom/compare/v3.3.0...v3.3.3)
 
 > 9 October 2026
