@@ -1649,7 +1649,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (flexItem) {
     const mw = pre.getPropertyValue('min-width')
     if (!mw || mw === 'auto' || mw === '0px') {
-      snap['min-width'] = '0px'
+      snap['min-width'] = flexItemFloor(source, pre, mw) || '0px'
     }
   }
 
@@ -2120,4 +2120,21 @@ function stripHeightForWrappers(el, cs, snap) {
   // 7) Now drop height and block-size from the snapshot
   delete snap.height
   delete snap['block-size']
+}
+
+/**
+ * #520: a flex item with min-width:auto stops shrinking at its content. When its container
+ * already overflows on the live page, items sit at that floor, and the #406 `min-width:0`
+ * lets the clone squeeze them into the box. Pin the floor to the live used width only then,
+ * so ordinary items stay shrinkable (#406) and the shared style cache is not fragmented.
+ * @returns {string|null}
+ */
+function flexItemFloor(source, pre, mw) {
+  if (mw !== 'auto') return null
+  const ox = pre.getPropertyValue('overflow-x')
+  if (ox && ox !== 'visible') return null
+  const parent = source.parentElement
+  if (!parent || !(parent.scrollWidth > parent.clientWidth + 1)) return null
+  const w = parseFloat(pre.getPropertyValue('width'))
+  return w > 0 ? `${Math.round(w * 1000) / 1000}px` : null
 }
