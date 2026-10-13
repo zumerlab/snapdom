@@ -1503,13 +1503,24 @@ function normalizeInlineStyleToComputed(source, clone, computed) {
   if (!source.style || source.style.length === 0) return
   const important = importantPropsFor(source)
   const canSkip = important != null && !CONTEXT_DEPENDENT_VALUE_RE.test(source.getAttribute('style') || '')
+  let sameBorderWidths
   for (let i = 0; i < source.style.length; i++) {
     const prop = source.style[i]
-    if (canSkip && !important.has(prop) && !(prop.startsWith('background') && isTextField(source))) continue
+    // Even px borders are context-dependent: the live device grid snaps a positive
+    // width to whole pixels. Keeping an authored 0.05px inline value overrides the
+    // snapshot's used width and re-snaps it on the SVG grid (#520).
+    const borderWidth = prop.startsWith('border-') && prop.endsWith('-width')
+    if (canSkip && borderWidth && sameBorderWidths === undefined) {
+      const authored = source.style.borderWidth
+      const previous = snapshotCache.get(source)
+      sameBorderWidths = (previous && snapshotIsCurrent(previous, source) &&
+        BORDER_WIDTHS.every(p => previous.snapshot[p] === authored)) || computed.borderWidth === authored
+    }
+    if (canSkip && !important.has(prop) && (!borderWidth || sameBorderWidths) && !(prop.startsWith('background') && isTextField(source))) continue
     const val = computed.getPropertyValue(prop)
     // A retained <style> can still contain an important ID selector. The live inline
     // !important wins it; dropping that priority here reverses the cascade in the clone.
-    if (val) clone.style.setProperty(prop, val, source.style.getPropertyPriority(prop))
+    if (val && (!borderWidth || val !== source.style.getPropertyValue(prop))) clone.style.setProperty(prop, val, source.style.getPropertyPriority(prop))
   }
 }
 
