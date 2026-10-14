@@ -204,6 +204,7 @@ const png = await result.toPng();</pre>
           <tr><td class="num">format</td><td class="num">"png" | "jpeg" | "jpg" | "webp" | "svg"</td><td class="num">"png"</td><td>Output format for the downloaded file.</td></tr>
         </tbody>
       </table>
+      <p><code>download()</code> always rasterizes at DPR 1, so the file matches the element's CSS size and a <code>dpr</code> option is ignored. Pass <code>scale: devicePixelRatio</code> for a file as sharp as the screen.</p>
       <p><strong>Example:</strong></p>
       <pre class="code-block">await result.download({
   format: 'jpg',

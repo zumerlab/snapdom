@@ -158,7 +158,7 @@ const result = await snapdom(card, {
 });
 ```
 
-`width` 和 `height` 指定输出尺寸；只设置一个时保持宽高比。只有两者都未设置时才应用 `scale`，最终像素尺寸还会乘以 `dpr`。
+`width` 和 `height` 指定输出尺寸；只设置一个时保持宽高比。只有两者都未设置时才应用 `scale`，最终像素尺寸还会乘以 `dpr`。`download()` 始终使用 DPR 1，文件尺寸与元素的 CSS 尺寸一致；如需与屏幕同样清晰的文件，请传入 `scale: devicePixelRatio`。
 
 | 常用选项 | 默认值 | 用途 |
 | --- | --- | --- |

@@ -157,7 +157,7 @@ const result = await snapdom(card, {
 });
 ```
 
-`width` and `height` define output size. If only one is set, the aspect ratio is preserved. `scale` applies when neither is set, and `dpr` multiplies the pixel dimensions.
+`width` and `height` define output size. If only one is set, the aspect ratio is preserved. `scale` applies when neither is set, and `dpr` multiplies the pixel dimensions. `download()` always uses DPR 1, so the file matches the element's CSS size; pass `scale: devicePixelRatio` for a file as sharp as the screen.
 
 | Common option | Default | Purpose |
 | --- | --- | --- |

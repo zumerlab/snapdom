@@ -98,7 +98,7 @@ With `engine: 'svg'`, `url` and synchronous `result.toRaw()` return the serializ
 
 - `width`/`height`: absolute output dimensions before raster `dpr`; one dimension preserves aspect ratio. They take precedence over `scale`.
 - `scale`: output multiplier, default `1`; applies when neither dimension is set.
-- `dpr`: raster density, default `devicePixelRatio`.
+- `dpr`: raster density, default `devicePixelRatio`. `download()` always uses DPR 1; use `scale` for a sharper downloaded file.
 - `embedFonts`: `'auto'` by default; embeds used webfonts and skips system-font-only captures. `true` forces discovery, `false` skips text-font embedding. Icon glyphs have a separate raster path.
 - `backgroundColor`: transparent by default; JPEG and WebP exports default to white.
 - `quality`: JPEG/WebP quality, default `0.92`.

@@ -92,7 +92,7 @@
         <tbody>
           <tr><td class="num">debug</td><td class="num">boolean</td><td class="num">false</td><td>Log suppressed errors to <code>console.warn</code>.</td></tr>
           <tr><td class="num">scale</td><td class="num">number</td><td class="num">1</td><td>Output scale, used only when neither width nor height is set.</td></tr>
-          <tr><td class="num">dpr</td><td class="num">number</td><td class="num">devicePixelRatio</td><td>Device pixel ratio for raster output.</td></tr>
+          <tr><td class="num">dpr</td><td class="num">number</td><td class="num">devicePixelRatio</td><td>Device pixel ratio for raster output. <code>download()</code> always uses 1; use <code>scale</code> for a sharper file.</td></tr>
           <tr><td class="num">width / height</td><td class="num">number</td><td class="num">null</td><td>Absolute output size; one dimension preserves aspect ratio.</td></tr>
           <tr><td class="num">format</td><td class="num">png | jpeg | jpg | webp | svg</td><td class="num">png</td><td>Default for format-selecting exports; named helpers choose their codec. <code>jpg</code> resolves to <code>jpeg</code>.</td></tr>
           <tr><td class="num">type</td><td class="num">png | jpeg | jpg | webp | svg</td><td class="num">undefined</td><td>Deprecated alias kept synchronized with canonical <code>format</code>; prefer <code>format</code>, though either name is honored.</td></tr>

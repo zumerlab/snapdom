@@ -196,7 +196,7 @@ const inheritedPng = await pngCapture.toBlob();
 
 ### Output size and crop
 
-`width` and `height` set the output size before raster `dpr`. One dimension preserves aspect ratio; specifying both can distort it. Either dimension takes precedence over `scale`. When neither is set, `scale` multiplies the captured size. Set `dpr: 1` when an exact raster pixel count matters.
+`width` and `height` set the output size before raster `dpr`. One dimension preserves aspect ratio; specifying both can distort it. Either dimension takes precedence over `scale`. When neither is set, `scale` multiplies the captured size. Set `dpr: 1` when an exact raster pixel count matters. `download()` always uses DPR 1, so pass `scale` (for example `scale: devicePixelRatio`) for a sharper downloaded file.
 
 ```js
 const capture = await snapdom(element);
