@@ -255,10 +255,11 @@ export function isRedundantLogicalProp(prop, styles) {
   if (direction && direction !== 'ltr') return false
   return true
 }
-// Slack added to a frozen width to clear the computed-style serialization error (≤0.0005px on
-// a 1/1000-rounded length). Deliberately tiny: it is paid once per box and the shrink-to-fit
-// parent holding a row of them is only paid once in total (#491).
-const WIDTH_EPSILON = 0.001
+// Slack added to a frozen width or height to clear the computed-style serialization error
+// (≤0.0005px below 1000px, where Blink's 6 significant digits are 3 decimals). Deliberately
+// tiny: it is paid once per box and the shrink-to-fit parent holding a row of them is only paid
+// once in total (#491).
+const SIZE_EPSILON = 0.001
 
 /**
  * Whether getStyleKey softens the width for this tag/display (inline-sized text tags, the table
@@ -364,25 +365,35 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
       }
     }
     if (value && value !== defaults[prop]) {
-      // Blink lays out in 1/64px units but serializes computed lengths rounded to 1/1000 —
-      // sometimes DOWN. Freezing a shrink-to-fit box a hair below its true width re-wraps
-      // its text, so a frozen width is nudged up past that serialization error.
+      // Blink lays out in 1/64px units, serializes computed lengths to 6 significant digits
+      // (1/1000 below 1000px), sometimes DOWN, and floors a length back onto that grid when
+      // parsing it. Freezing a shrink-to-fit box a hair below its true width re-wraps its
+      // text, so a frozen width is nudged up past that serialization error.
       //
       // The nudge must stay AT the error (#491). Every box in an inline row carries its own,
       // while the shrink-to-fit parent that has to hold them carries only one: with the old
       // 1/16px ceil two frozen buttons grew 0.094px inside a parent that grew 0.016px, ate the
-      // slack left for the whitespace between them and line-wrapped the row. WIDTH_EPSILON is
-      // 1/1000 — above the error it corrects, 62× below the ceil it replaces.
+      // slack left for the whitespace between them and line-wrapped the row. SIZE_EPSILON is
+      // 1/1000, above the error it corrects and 62× below the ceil it replaces.
       //
-      // Skipped entirely for boxes whose text cannot break (#474): they can only clip
+      // Skipped entirely for widths whose text cannot break (#474): they can only clip
       // ≤0.0005px, so the nudge is pure accumulation with nothing to gain.
-      if (!noWrapBox && (prop === 'width' || prop === 'inline-size') && value.endsWith('px') && value.includes('.')) {
+      //
+      // A frozen height takes the same nudge. A 38.390625px paragraph read back as "38.3906px"
+      // laid out 1/64px short, and on a 4136px page of them the lower text lines painted one
+      // pixel high. Stacked heights do not accumulate it the way a row of widths does: each
+      // one lands back on its own grid value. Snapping to the nearest 1/64 instead broke the
+      // zoomed ancestor of d508, whose computed values are not on that grid. Pinned by
+      // __tests__/snapdom.frozenHeightPrecision.test.js.
+      const sized = prop === 'height' || prop === 'block-size' ||
+        (!noWrapBox && (prop === 'width' || prop === 'inline-size'))
+      if (sized && value.endsWith('px') && value.includes('.')) {
         const n = parseFloat(value)
         if (Number.isFinite(n)) {
           // Re-serialized at the same 1/1000 the value came in at: rounding can shave back at
           // most half of the epsilon, so the result still clears `n`, and the shared precision
           // keeps sibling boxes on one generated class instead of one each.
-          entries.push(`${prop}:${(n + WIDTH_EPSILON).toFixed(3)}px`)
+          entries.push(`${prop}:${(n + SIZE_EPSILON).toFixed(3)}px`)
           continue
         }
       }
