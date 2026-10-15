@@ -17,7 +17,7 @@
 .pane.no-demo { grid-template-columns: 248px minmax(0, 1fr); }
 .pane.no-demo .pane-demo { display: none; }
 .pane-side, .pane-demo { position: sticky; top: 88px; }
-.pane-side { display: grid; gap: 16px; }
+.pane-side { display: grid; gap: 16px; align-content: start; max-height: calc(100vh - 104px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .pane-read { min-width: 0; max-width: 760px; }
 .pane.no-demo .pane-read { max-width: 900px; }
 
@@ -29,7 +29,7 @@
 }
 @media (max-width: 1080px) {
   .pane, .pane.no-demo { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .pane-side { position: static; grid-row: auto; }
+  .pane-side { position: static; grid-row: auto; max-height: none; overflow: visible; }
   .pane-demo, .pane-read { grid-column: 1; }
 }
 @media (max-width: 600px) {

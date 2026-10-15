@@ -37,7 +37,7 @@ for p in ROOT.rglob('*.html'):
     if 'pro' in p.relative_to(ROOT).parts and 'product-content' not in s and 'plugin-page' not in s:
         s = re.sub(r'<style>(.*?)</style>', lambda m: '<style>' + scope_css(m[1]) + '</style>', s, flags=re.S)
         s = s.replace('</head>', f'<link rel="stylesheet" href="{root}shared.css"><link rel="stylesheet" href="{root}navigation.css"><link rel="stylesheet" href="{root}product.css"><script defer src="{root}site.js"></script></head>')
-        s = s.replace('<body>', '<body>' + ns['header']('Plugins',root) + '<div class="product-content">', 1)
+        s = s.replace('<body>', '<body>' + ns['header']('Showcase',root) + '<div class="product-content">', 1)
         s = s.replace('</body>', '</div>' + ns['footer'](root) + '</body>')
         s = re.sub(r'<div class="bar">.*?</div>', '', s, flags=re.S)
     s = re.sub(r'<div class="pane-toc">.*?</div>', '', s, flags=re.S)
@@ -47,7 +47,7 @@ for p in ROOT.rglob('*.html'):
     if head:
         cur = re.search(r'aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">([^<]+)<', head[0])
         cur = cur[1] if cur else ''
-        cur = {'Labs': 'Showcase', 'Guides': 'How-to', 'Capabilities': 'Plugins', 'Playground': 'Plugins'}.get(cur, cur)
+        cur = {'Labs': 'Showcase', 'Guides': 'How-to', 'Capabilities': 'Showcase', 'Playground': 'Showcase', 'Plugins': 'Showcase'}.get(cur, cur)
         s = s[:head.start()] + ns['header'](cur, root) + s[head.end():]
     s = re.sub(r'<footer class="site-foot">.*?</footer>', lambda m: ns['footer'](root), s, count=1, flags=re.S)
     # Source examples and inline JS are reference content, not navigation labels.

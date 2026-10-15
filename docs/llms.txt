@@ -39,7 +39,7 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 - [Cache and preCapture](https://snapdom.dev/docs/cache/): resource reuse, repeat captures and intent events
 - [How-to](https://snapdom.dev/how-to/): capture recipes and framework guides (React, Vue, Next.js, Svelte, Angular, Lit)
 - [Compare](https://snapdom.dev/compare/): capture approaches and alternatives
-- [Plugins](https://snapdom.dev/plugins.html#what-you-can-make): what a capture can become (images, PDF, HTML, GIF/video, ASCII, agent context) and who provides each, core or plugin
+- [Plugins](https://snapdom.dev/showcase/#plugins): what a capture can become (images, PDF, HTML, GIF/video, ASCII, agent context) and who provides each, core or plugin
 - [Ecosystem](https://snapdom.dev/ecosystem/): official and community plugins, PDF, Vector, SnapEye, SnapSurf and SnapDIFF; differences and combined workflows
 - [Blog](https://snapdom.dev/blog/): capture architecture, tiled rasterization and plugin experiments
 - [SnapDOM v3 release](https://snapdom.dev/blog/snapdom-v3/): automatic capture reuse, new APIs, rendering fixes and upgrade notes
@@ -195,6 +195,6 @@ It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cros
 ## Project links
 
 - [Website](https://snapdom.dev/)
-- [Plugins gallery](https://snapdom.dev/plugins.html)
+- [Plugins gallery](https://snapdom.dev/showcase/#plugins)
 - [GitHub](https://github.com/zumerlab/snapdom)
 - [npm](https://www.npmjs.com/package/@zumer/snapdom)

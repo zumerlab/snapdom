@@ -64,7 +64,7 @@ SECTIONS = [
                       ('blog/painting-without-canvas/index.html','Painting without a canvas',None)])]},
  {'name':'Showcase', 'menu':'Showcase', 'filter':'Filter demos', 'groups':[
    ('Showcase','labs',[('showcase/index.html','Live demos',D(badge='Showcase',
-     lead='Fidelity demos, every export format, one demo per plugin and the labs. Each one runs SnapDOM on the element beside it.'))]),
+     lead='Live capture demos, every official plugin and the labs, on one page. Each demo runs SnapDOM on the element beside it.'))]),
    ('Labs','labs',[('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
                    ('labs/capture-stages/index.html','Capture stages',None),('labs/target-range/index.html','Target range',None),
                    ('labs/webgl-live-mirror/index.html','Live mirror',None),('labs/webgl-seamless-dom/index.html','Seamless DOM',None),
@@ -72,9 +72,6 @@ SECTIONS = [
  {'name':'Community', 'menu':'Made with', 'filter':'Filter community', 'groups':[
    ('Ecosystem','ecosystem',[('ecosystem/index.html','Plugins and tools','link')]),
    ('Made with','context',[('made-with/index.html','Projects using SnapDOM',None)])]},
- {'name':'Plugins', 'menu':'Plugins', 'filter':'Filter plugins', 'groups':[
-   ('Plugins','export',[('plugins.html','Official plugins',D(end='<!-- ── Plugin detail modal'))]),
-   ('Reference','export',[('docs/plugins/index.html','Plugin API','link')])]},
 ]
 
 START, END = '<!-- pane:start -->', '<!-- pane:end -->'
@@ -172,16 +169,19 @@ def convert(section, gi, path, title, demo, flat):
     label, sec, _ = section['groups'][gi]
 
     side = []
-    for glabel, gsec, items in section['groups']:
-        links = ''
-        for p, t, _ in items:
-            here = p == path
-            if here and toc:
-                links += ''.join(f'<a href="#{h}">{E(t)}</a>' for h, t in toc)
-            else:
-                links += f'<a href="{rel(path, p)}"{CUR if here else ""}>{E(t)}</a>'
-        open_ = any(p == path for p, _, _ in items)
-        side.append(f'<div class="sec-{gsec}"><button type="button" class="pane-nav-head" aria-expanded="{str(open_).lower()}"><span class="sec-dot"></span>{E(glabel)}</button><div class="pane-nav-items">{links}</div></div>')
+    group_html = lambda label, sec_, links, open_: (f'<div class="sec-{sec_}"><button type="button" class="pane-nav-head" aria-expanded="{str(open_).lower()}"><span class="sec-dot"></span>{E(label)}</button><div class="pane-nav-items">{links}</div></div>')
+    # A page whose toc carries a group per entry (the showcase) shows those groups as the
+    # sidebar; a section group with the same label adds its page links under it.
+    grouped = toc and len(toc[0]) > 2 and any(p == path for _, _, items in section['groups'] for p, _, _ in items)
+    pages = {glabel: (gsec, items) for glabel, gsec, items in section['groups']}
+    if grouped:
+        for label in dict.fromkeys(t[2] for t in toc):
+            links = ''.join(f'<a href="#{t[0]}">{E(t[1])}</a>' for t in toc if t[2] == label)
+            links += ''.join(f'<a href="{rel(path, p)}">{E(t)}</a>' for p, t, _ in pages.get(label, ('', []))[1])
+            side.append(group_html(label, pages.get(label, ({'Capture': 'capture', 'Plugins': 'export'}.get(label, 'labs'),))[0], links, True))
+    for glabel, gsec, items in ([] if grouped else section['groups']):
+        links = ''.join(f'<a href="{rel(path, p)}"{CUR if p == path else ""}>{E(t)}</a>' for p, t, _ in items)
+        side.append(group_html(glabel, gsec, links, any(p == path for p, _, _ in items)))
     sidebar_html = (f'<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="{section["filter"]}" aria-label="{section["filter"]}"></label>'
                     f'<nav class="pane-nav" aria-label="{section["name"]}">{"".join(side)}</nav></aside>')
 

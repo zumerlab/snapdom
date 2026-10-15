@@ -355,3 +355,27 @@ if (topics.length) {
 } else {
   configureDemo()
 }
+
+// A page of anchored sections (the showcase) marks the section in view in the sidebar
+// and keeps that link visible inside the sidebar's own scroll.
+if (!topics.length) {
+  const links = navLinks.filter(a => a.hash && document.getElementById(a.hash.slice(1)))
+  const targets = links.map(a => document.getElementById(a.hash.slice(1)))
+  const side = document.querySelector('.pane-side')
+  let queued = false
+  const mark = () => {
+    queued = false
+    // The section in view is the last one whose heading sits in the upper half of the viewport.
+    let i = targets.findLastIndex(el => el.querySelector('h2, h3')?.getBoundingClientRect().top <= innerHeight / 2)
+    if (i < 0) i = 0
+    links.forEach((a, j) => {
+      if (j !== i) return a.removeAttribute('aria-current')
+      if (a.getAttribute('aria-current') === 'page') return
+      a.setAttribute('aria-current', 'page')
+      const top = a.getBoundingClientRect().top - side.getBoundingClientRect().top + side.scrollTop
+      if (top < side.scrollTop || top > side.scrollTop + side.clientHeight - 40) side.scrollTo({ top: top - side.clientHeight / 3 })
+    })
+  }
+  addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(mark) } }, { passive: true })
+  mark()
+}

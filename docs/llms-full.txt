@@ -703,7 +703,7 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 - SnapDOM v3 release: https://snapdom.dev/blog/snapdom-v3/
 - DOM capture boundaries: https://snapdom.dev/blog/dom-capture-boundaries/
 - Tiled rasterization: https://snapdom.dev/blog/huge-page-mosaic/
-- Plugin gallery: https://snapdom.dev/plugins.html
+- Plugin gallery: https://snapdom.dev/showcase/#plugins
 - Plugin contract: https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md
 
 ## PDF and Vector exports

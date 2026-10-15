@@ -1,10 +1,10 @@
 ECO = [
  {'label':'Overview','section':'ecosystem','items':[{'t':'Plugins and tools','id':'overview','overview':True}]},
  {'label':'Extend a capture','section':'export','items':[
-  {'t':'Official plugins','sub':'The optional plugin package.','lead':'Prepare captured content with filters, timestamps, text replacement, private-field masking and tint. Add HTML snapshots, ASCII art, GIF, video, text or JSON context and annotated element maps. PDF belongs to this package too.','go':('Browse all plugins','../plugins.html#official'),'demo':'capture'},
+  {'t':'Official plugins','sub':'The optional plugin package.','lead':'Prepare captured content with filters, timestamps, text replacement, private-field masking and tint. Add HTML snapshots, ASCII art, GIF, video, text or JSON context and annotated element maps. PDF belongs to this package too.','go':('Browse all plugins','../showcase/#plugins'),'demo':'capture'},
   {'t':'PDF','sub':'Document export · official plugin.','lead':'Turn captured HTML into paginated documents with selectable text, links, bookmarks and optional form fields. This is the exporter previously offered as PDF Pro.','note':'The plugin package is available on npm in @zumer/snapdom-plugins 4.x and requires SnapDOM 3.x.','go':('Open the PDF page','../pro/pdf/'),'demo':'capture'},
   {'t':'Vector','sub':'Editable artwork · vector plugin.','lead':'Reconstruct text and supported shapes as editable SVG artwork or Figma content. Core SVG preserves HTML through foreignObject; Vector converts supported content into vector elements.','note':'Vector is available on npm as @zumer/snapdom-plugins/vector in plugins 4.x and requires SnapDOM 3.x.','go':('Open the Vector page','../pro/vector/'),'demo':'capture'},
-  {'t':'Community plugins','sub':'Share your own extension.','lead':'Build a plugin in your own repository and submit it to the directory. Community extensions are maintained by their authors, alongside the official package.','go':('Browse community plugins','../plugins.html#community'),'demo':'capture'}]},
+  {'t':'Community plugins','sub':'Share your own extension.','lead':'Build a plugin in your own repository and submit it to the directory. Community extensions are maintained by their authors, alongside the official package.','go':('Browse community plugins','../showcase/#community-plugins'),'demo':'capture'}]},
  {'label':'Tools','section':'ecosystem','items':[
   {'t':'SnapDIFF','sub':'Visual regression testing in the browser.','lead':'Compare captures against baselines, inspect changed pixels and use the result in a browser test suite or CI.','demo':'diff',
    'try':'Take a baseline of the card, change its title, then compare. Changed pixels turn red, the rest fades.',
@@ -24,7 +24,7 @@ ECO = [
 def eco_topic(p):
     if p.get('overview'):
         cells = [(i['t'], g['section'], 'Experimental' if i.get('exp') else 'Tool' if g['label'] == 'Tools' else 'Plugin', i['id']) for g in ECO[1:] for i in g['items']]
-        rows = [('Export an element as an image or file','SnapDOM core + plugins','../plugins.html'),('Check that nothing changed visually','SnapDIFF','#snapdiff'),('Give a coding agent before/after evidence','SnapEye','#snapeye'),('Let an agent reach a state and verify it','SnapSurf (experimental)','#snapsurf')]
+        rows = [('Export an element as an image or file','SnapDOM core + plugins','../showcase/#plugins'),('Check that nothing changed visually','SnapDIFF','#snapdiff'),('Give a coding agent before/after evidence','SnapEye','#snapeye'),('Let an agent reach a state and verify it','SnapSurf (experimental)','#snapsurf')]
         table = ('<div class="compare-table"><table><thead><tr><th scope="col">Job</th><th scope="col">Use</th></tr></thead><tbody>'
                  + ''.join(f'<tr><td>{a}</td><td><a href="{h}">{b}</a></td></tr>' for a, b, h in rows) + '</tbody></table></div>')
         steps = ('<ol class="pane-steps">' + ''.join(f'<li><h3>{a}</h3><p>{b}</p></li>' for a, b in [

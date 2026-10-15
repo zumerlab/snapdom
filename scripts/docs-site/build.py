@@ -10,13 +10,13 @@ OUT = os.path.join(HERE, '..', '..', 'docs')
 
 MENU = [
  ('Learn', [('Docs','docs/','capture','API, options and quick start'),('How-to','how-to/','start','Recipes and framework guides'),('Compare','compare/','ecosystem','SnapDOM vs html2canvas and others')]),
- ('Build', [('Plugins','plugins.html','export','13 official plugins and what they make'),('Showcase','showcase/','labs','Live demos and labs')]),
- ('Community', [('Blog','blog/','record','Notes from the team'),('Ecosystem','ecosystem/','ecosystem','SnapDIFF, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
+ ('Explore', [('Showcase','showcase/','labs','Live demos, plugins and labs'),('Blog','blog/','record','Notes from the team')]),
+ ('Community', [('Ecosystem','ecosystem/','ecosystem','SnapDIFF, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
 ]
 FOOT = [
  ('Learn', [('Documentation','docs/'),('Quick start','docs/#quick-start'),('How-to recipes','how-to/'),('Framework guides','how-to/#frameworks'),('Compare','compare/')]),
- ('Build', [('Plugins','plugins.html'),('Writing plugins','plugins.html#build-plugin'),('Showcase','showcase/'),('Labs','showcase/#labs')]),
- ('Community', [('Blog','blog/'),('Ecosystem','ecosystem/'),('Made with','made-with/'),('Community plugins','plugins.html#community'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
+ ('Explore', [('Showcase','showcase/'),('Plugins','showcase/#plugins'),('Writing plugins','showcase/#build-plugin'),('Labs','showcase/#labs'),('Blog','blog/')]),
+ ('Community', [('Ecosystem','ecosystem/'),('Made with','made-with/'),('Community plugins','showcase/#community-plugins'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
 ]
 
 CUR = ' aria-current="page"'
