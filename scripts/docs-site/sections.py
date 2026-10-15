@@ -17,10 +17,10 @@ TRICKY = ('<div class="sample-card tricky-card" data-target><style>.tricky-card 
 D = lambda **k: k  # demo settings
 SECTIONS = [
  {'name':'Docs', 'menu':'Docs', 'filter':'Filter docs', 'groups':[
-   ('Getting started','start',[('docs/index.html','Overview',D(demo='capture',method='toPng',label='snapdom.toPng(card)'))]),
-   ('Capture API','capture',[('docs/api/index.html','API reference',D(demo='capture',method='result',label='snapdom(card)')),
-                             ('docs/cache/index.html','Cache and preCapture',D(demo='capture',method='toPng',label='Repeat capture'))]),
-   ('Options','options',[('docs/options/index.html','Options',D(demo='capture',method='toPng',options={'scale':2},label='{ scale: 2 }'))]),
+   ('Getting started','start',[('docs/index.html','Overview',None)]),
+   ('Capture API','capture',[('docs/api/index.html','API reference',None),
+                             ('docs/cache/index.html','Cache and preCapture',None)]),
+   ('Options','options',[('docs/options/index.html','Options',None)]),
    ('Plugins','export',[('docs/plugins/index.html','Plugin API',None)])]},
  {'name':'How-to', 'menu':'How-to', 'filter':'Filter recipes', 'groups':[
    ('Overview','start',[('how-to/index.html','How to capture the DOM',None)]),
@@ -180,7 +180,9 @@ def convert(section, gi, path, title, demo, flat):
     side = []
     for glabel, gsec, items in section['groups']:
         links = ''
-        for p, t, _ in items:
+        if len(flat) == 1 and toc:
+            links = ''.join(f'<a href="#{h}">{E(t)}</a>' for h, t in toc)
+        for p, t, _ in ([] if links else items):
             here = p == path
             links += f'<a href="{rel(path, p)}"{CUR if here else ""}>{E(t)}</a>'
         open_ = any(p == path for p, _, _ in items)

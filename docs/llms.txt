@@ -45,7 +45,7 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 - [Blog](https://snapdom.dev/blog/): capture architecture, tiled rasterization and plugin experiments
 - [SnapDOM v3 release](https://snapdom.dev/blog/snapdom-v3/): automatic capture reuse, new APIs, rendering fixes and upgrade notes
 
-- [Playground](https://snapdom.dev/playground/): nine editable capture presets, export settings and generated code
+- [Plugin demos](https://snapdom.dev/showcase/#plugins): one live demo per official plugin, with the code it needs
 - [PDF live demos](https://snapdom.dev/pro/pdf/): reports, paginated ledgers, multilingual text, form controls and transparency; PDFs generated from the live DOM
 - [PDF API reference](https://snapdom.dev/pro/pdf/docs.html): capture-time options, pagination, text, fields, metadata and encryption
 - [Vector live demos](https://snapdom.dev/pro/vector/): editable components, SVG, charts and forms; browser-generated SVG and Figma clipboard export

@@ -17,6 +17,6 @@ Put capture-time measurement options on `pdf()` and paper/output options on `toP
 
 ## Live demo and verification
 
-From the monorepo root, run `npm run compile` and `npm run site`, then open `/pro/pdf/` or `/playground/`. These demos generate real PDFs from editable DOM samples. The retained `/pro/` URL does not denote a paid product.
+From the monorepo root, run `npm run compile` and `npm run site`, then open `/pro/pdf/` or `/showcase/`. These demos generate real PDFs from editable DOM samples. The retained `/pro/` URL does not denote a paid product.
 
 Run `npm run test:pdf` for the PDF engine suites. See [verification notes](test/README.md).

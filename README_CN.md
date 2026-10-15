@@ -369,7 +369,7 @@ const after = await snapdom(card, options); // 使用当前策略
 
 ## 文档
 
-- [交互式 Playground](https://snapdom.dev/playground/)、[PDF 演示](https://snapdom.dev/pro/pdf/)与 [Vector 演示](https://snapdom.dev/pro/vector/)
+- [插件演示](https://snapdom.dev/showcase/#plugins)、[PDF 演示](https://snapdom.dev/pro/pdf/)与 [Vector 演示](https://snapdom.dev/pro/vector/)
 - [v2 源码](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
 - [框架指南](https://snapdom.dev/guides/)与[使用示例](https://snapdom.dev/how-to/)

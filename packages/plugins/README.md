@@ -547,4 +547,4 @@ MIT
 
 ## Live demos
 
-Run `npm run compile` and `npm run site` from the monorepo root, then open `/playground/`, `/pro/pdf/` or `/pro/vector/`. The demos generate actual files from editable DOM samples; the `/pro/` paths are retained for existing links and do not denote paid plugins.
+Run `npm run compile` and `npm run site` from the monorepo root, then open `/showcase/`, `/pro/pdf/` or `/pro/vector/`. The demos generate actual files from editable DOM samples; the `/pro/` paths are retained for existing links and do not denote paid plugins.

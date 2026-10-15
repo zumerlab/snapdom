@@ -776,5 +776,5 @@ Vector reconstructs supported text and shapes as vector elements; it is distinct
 
 Live PDF documentation: https://snapdom.dev/pro/pdf/. Full API: https://snapdom.dev/pro/pdf/docs.html.
 Live Vector documentation: https://snapdom.dev/pro/vector/. Full API: https://snapdom.dev/pro/vector/docs.html.
-General capture Playground: https://snapdom.dev/playground/. Source directory: https://github.com/zumerlab/snapdom/tree/main/packages/plugins.
+Plugin demos: https://snapdom.dev/showcase/#plugins. Source directory: https://github.com/zumerlab/snapdom/tree/main/packages/plugins.
 The /pro/ URL segment is preserved for existing links; it does not indicate a paid license. Current PDF/Vector demos generate outputs in the browser from editable samples rather than serving pre-release files.

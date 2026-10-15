@@ -32,4 +32,4 @@ clipboard export does not require installing that plugin.
 
 ## Live demo
 
-Run `npm run compile` and `npm run site` from the monorepo root, then open `/pro/vector/` or `/playground/`. The demo exports real SVG and can copy artwork to Figma. The retained `/pro/` URL does not denote a paid product. See [the public contract](CONTRACT.md) for supported behavior and limits.
+Run `npm run compile` and `npm run site` from the monorepo root, then open `/pro/vector/` or `/showcase/`. The demo exports real SVG and can copy artwork to Figma. The retained `/pro/` URL does not denote a paid product. See [the public contract](CONTRACT.md) for supported behavior and limits.

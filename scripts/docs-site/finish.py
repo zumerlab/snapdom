@@ -32,6 +32,8 @@ for p in ROOT.rglob('*.html'):
     s = p.read_text(); root = '../' * (len(p.relative_to(ROOT).parts)-1)
     # Downloadable fixtures must remain self-contained when served outside docs.
     if 'data-standalone-fixture' in s: continue
+    # Redirect stubs (the old /playground/) stay bare and out of the search index.
+    if 'http-equiv="refresh"' in s: continue
     if 'pro' in p.relative_to(ROOT).parts and 'product-content' not in s and 'plugin-page' not in s:
         s = re.sub(r'<style>(.*?)</style>', lambda m: '<style>' + scope_css(m[1]) + '</style>', s, flags=re.S)
         s = s.replace('</head>', f'<link rel="stylesheet" href="{root}shared.css"><link rel="stylesheet" href="{root}navigation.css"><link rel="stylesheet" href="{root}product.css"><script defer src="{root}site.js"></script></head>')
@@ -39,7 +41,6 @@ for p in ROOT.rglob('*.html'):
         s = s.replace('</body>', '</div>' + ns['footer'](root) + '</body>')
         s = re.sub(r'<div class="bar">.*?</div>', '', s, flags=re.S)
     s = re.sub(r'<div class="pane-toc">.*?</div>', '', s, flags=re.S)
-    s = s.replace('plugins.html#playground', 'playground/')
     # Source examples and inline JS are reference content, not navigation labels.
     parts = re.split(r'(<(?:pre|code|script)\b[^>]*>.*?</(?:pre|code|script)>)', s, flags=re.S)
     for i in range(0,len(parts),2):
@@ -58,6 +59,7 @@ for p in ROOT.rglob('*.html'):
 index=[]
 for p in ROOT.rglob('*.html'):
     s=p.read_text()
+    if 'http-equiv="refresh"' in s: continue
     title=re.search(r'<title>(.*?)</title>',s,re.S)
     if not title: continue
     body=re.search(r'<(?:article|main)\b[^>]*>(.*?)</(?:article|main)>',s,re.S)
