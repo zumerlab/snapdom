@@ -926,7 +926,15 @@
       /* Not a <pre>: the site styles every pre as a dark code block with tall lines, which stretches the drawing. */
       .output .pl-ascii { white-space: pre; font: 8px/1 ui-monospace, Menlo, Consolas, monospace; color: #0F1E4D; background: #fff; border: 1px solid #c6d2e8; padding: 12px; overflow: auto; text-align: left; max-width: 100%; }
       @media (max-width: 600px) { .output .pl-ascii { font-size: 5.5px; padding: 8px; } }
-      .pl-select { font: inherit; padding: 6px 8px; margin-right: 6px; }
+      .pl-opts { display: flex; flex-wrap: wrap; gap: 10px 20px; max-width: 660px; margin: 0 0 12px; font: 700 10px var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase; color: var(--sd-annot); }
+      .pl-opts label { display: flex; align-items: center; gap: 6px; }
+      .pl-opts label[hidden] { display: none; }
+      .pl-opts select, .pl-opts input[type=text] { font: 13px var(--font-body, Arial); letter-spacing: 0; text-transform: none; padding: 4px 6px; border: 1px solid var(--sd-border-soft); background: var(--sd-surface); color: var(--sd-text); }
+      .pl-opts input[type=range] { width: 110px; }
+      .pl-opts output { min-width: 4ch; color: var(--sd-text); }
+      /* code-blocks.js highlights it and adds Copy; the call wraps instead of scrolling sideways. */
+      .pl-code { max-width: 720px; margin: 0 0 14px; }
+      pre.pl-code.site-code-block > code { white-space: pre-wrap !important; overflow-wrap: anywhere !important; }
       .pane-content .pl-stage { margin: 56px 0 -24px; }
     </style>
 
@@ -1016,13 +1024,6 @@
         <div class="pl-big">Snap ✨</div>
         <p style="margin-top:10px">Warm gradient, white text, one emoji.</p>
       </div>
-      <select class="pl-select" id="pl-filter-preset" aria-label="Effect">
-        <option value="grayscale">filter · grayscale</option>
-        <option value="sepia">filter · sepia</option>
-        <option value="vintage">filter · vintage</option>
-        <option value="invert">filter · invert</option>
-        <option value="tint">color-tint · royalblue</option>
-      </select>
       <button data-umami-event="Plugin filter" onclick="runPluginDemo('filter', this)">Capture with effect</button>
       <div class="output" id="pl-filter-out"></div>
     </section>
@@ -1061,7 +1062,7 @@
         <p style="margin:0 0 12px; opacity:.85">A surface with <strong style="color:#ffd166">varied</strong> controls and a pseudo-element dot.</p>
         <span class="xp-pill">SHF · 2.4 GHz</span>
       </div>
-      <button data-umami-event="Plugin toHtml" onclick="exportToHtml(this)">Export to HTML</button>
+      <button data-umami-event="Plugin toHtml" onclick="runPluginDemo('html', this)">Export to HTML</button>
       <div class="output" id="xp-html-out"></div>
     </section>
 
@@ -1084,7 +1085,7 @@
       <div class="card xp-anim" id="xp-gif-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
       </div>
-      <button data-umami-event="Plugin toGif" onclick="recordGif(this)">Record GIF</button>
+      <button data-umami-event="Plugin toGif" onclick="runPluginDemo('gif', this)">Record GIF</button>
       <div class="output" id="xp-gif-out"></div>
     </section>
 
@@ -1094,7 +1095,7 @@
       <div class="card xp-anim" id="xp-vid-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
       </div>
-      <button data-umami-event="Plugin toMp4" onclick="recordVideo(this)">Record video</button>
+      <button data-umami-event="Plugin toMp4" onclick="runPluginDemo('video', this)">Record video</button>
       <div class="output" id="xp-vid-out"></div>
     </section>
 
@@ -1829,118 +1830,198 @@
       out.appendChild(cta);
     }
 
-    window.exportToHtml = async function (btn) {
-      const out = document.getElementById('xp-html-out');
-      btn.disabled = true; out.innerHTML = '<div class="progress-message">Exporting…</div>';
-      try {
-        const { htmlExport } = await import(`${PLUGIN_CDN}/html-export?external=@zumer/snapdom`);
-        const result = await snapdom(document.getElementById('xp-html-src'), { plugins: [htmlExport()] });
-        const html = await result.toHtml();
-        const iframe = document.createElement('iframe');
-        iframe.setAttribute('sandbox', '');
-        iframe.title = 'exported document';
-        iframe.style.cssText = 'width:100%;height:240px;border:0;border-radius:8px;background:#fff';
-        iframe.srcdoc = html;
-        out.innerHTML = '';
-        out.appendChild(iframe);
-        out.appendChild(xpDownloadBtn(new Blob([html], { type: 'text/html' }), 'capture.html'));
-        sdExportStar(out, 'html');
-      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
-    };
-
-    window.recordGif = async function (btn) {
-      const out = document.getElementById('xp-gif-out');
-      btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording frames…</div>';
-      try {
-        const { gifExport } = await import(`${PLUGIN_CDN}/gif-export?external=@zumer/snapdom`);
-        const src = document.getElementById('xp-gif-src');
-        const result = await snapdom(src, { plugins: [gifExport()] });
-        const blob = await result.toGif({ fps: 12, duration: 1500 });
-        const url = URL.createObjectURL(blob);
-        const img = new Image();
-        const w = Math.round(src.getBoundingClientRect().width);
-        img.style.cssText = `width:100%;max-width:${w}px;height:auto;border-radius:8px;background:#fff`;
-        img.onload = () => URL.revokeObjectURL(url);
-        img.src = url;
-        out.innerHTML = '';
-        out.appendChild(img);
-        out.appendChild(document.createElement('br'));
-        out.appendChild(xpDownloadBtn(blob, 'capture.gif'));
-        sdExportStar(out, 'gif');
-      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
-    };
-
-    window.recordVideo = async function (btn) {
-      const out = document.getElementById('xp-vid-out');
-      btn.disabled = true; out.innerHTML = '<div class="progress-message">Recording…</div>';
-      try {
-        const { videoExport } = await import(`${PLUGIN_CDN}/video-export?external=@zumer/snapdom`);
-        const src = document.getElementById('xp-vid-src');
-        const result = await snapdom(src, { plugins: [videoExport()] });
-        const blob = await result.toMp4({ fps: 12, duration: 2000 });
-        const v = document.createElement('video');
-        v.controls = true; v.loop = true; v.muted = true; v.playsInline = true;
-        const w = Math.round(src.getBoundingClientRect().width);
-        v.style.cssText = `width:100%;max-width:${w}px;height:auto;border-radius:8px`;
-        v.src = URL.createObjectURL(blob);
-        out.innerHTML = '';
-        out.appendChild(v);
-        out.appendChild(document.createElement('br'));
-        out.appendChild(xpDownloadBtn(blob, blob.type.includes('mp4') ? 'capture.mp4' : 'capture.webm'));
-        sdExportStar(out, 'video');
-        v.play().catch(() => {});
-      } catch (e) { xpError(out, e); } finally { btn.disabled = false; }
-    };
-
-
-    // One table for the one-plugin demos: which module, which factory, what to export.
+    // One table for the plugin demos: module, factory, export call, the options a visitor can
+    // change (their initial values are the plugin defaults unless the demo needs another), and
+    // how to show the result. `build` maps the controls to the factory's options.
     const PLUGIN_DEMOS = {
-      redact: { mod: 'redact-inputs', make: m => m.redactInputs() },
-      timestamp: { mod: 'timestamp-overlay', make: m => m.timestampOverlay({ position: 'top-right' }) },
-      replace: { mod: 'replace-text', make: m => m.replaceText({ replacements: [{ find: 'DRAFT', replace: 'APPROVED' }, { find: /\d{4}-\d{2}-\d{2}/, replace: '[date hidden]' }] }) },
-      filter: { mod: () => document.getElementById('pl-filter-preset').value === 'tint' ? 'color-tint' : 'filter',
-        make: m => m.colorTint ? m.colorTint({ color: 'royalblue', opacity: 0.4 }) : m.filter({ preset: document.getElementById('pl-filter-preset').value }) },
-      ascii: { mod: 'ascii-export', make: m => m.asciiExport({ width: 96 }),
-        show: async r => Object.assign(document.createElement('div'), { className: 'pl-ascii', textContent: await r.toAscii() }) },
-      agent: { mod: 'agent-map', make: m => m.agentMap(),
-        show: async r => {
-          const { image, map } = await r.toAgentMap()
-          const box = document.createElement('div')
-          const img = new Image(); img.src = image; img.alt = 'Capture with numbered elements'; img.style.maxWidth = '100%'
-          box.append(img, Object.assign(document.createElement('pre'), { className: 'pl-text', textContent: '[\n' + map.map(e => '  ' + JSON.stringify(e)).join(',\n') + '\n]' }))
-          return box
-        } },
-      context: { mod: 'context-export', make: m => m.contextExport(),
-        show: async r => Object.assign(document.createElement('pre'), { className: 'pl-text', textContent: await r.toContext() }) },
-      pdf: { mod: 'pdf', make: m => m.pdf(),
-        show: async r => {
-          const blob = await r.toPdf({ page: 'a4' })
+      redact: { mod: 'redact-inputs', fn: 'redactInputs', call: 'toPng',
+        options: [{ opt: 'types', list: ['email', 'tel', 'text'], value: ['email', 'tel'] }] },
+      timestamp: { mod: 'timestamp-overlay', fn: 'timestampOverlay', call: 'toPng',
+        options: [
+          { opt: 'position', values: ['top-left', 'top-right', 'bottom-left', 'bottom-right'], value: 'top-right' },
+          { opt: 'format', values: ['datetime', 'date', 'time', 'iso'], value: 'datetime' },
+          { opt: 'fontSize', min: 9, max: 24, value: 11 },
+        ] },
+      replace: { mod: 'replace-text', fn: 'replaceText', call: 'toPng',
+        options: [{ opt: 'find', text: 'DRAFT' }, { opt: 'replace', text: 'APPROVED' }],
+        build: o => ({ replacements: [{ find: o.find, replace: o.replace }] }) },
+      filter: { mod: o => o.preset === 'color-tint' ? 'color-tint' : 'filter', fn: o => o.preset === 'color-tint' ? 'colorTint' : 'filter', call: 'toPng',
+        options: [
+          { opt: 'preset', values: ['grayscale', 'sepia', 'blur', 'invert', 'vintage', 'dramatic', 'color-tint'], value: 'grayscale' },
+          { opt: 'color', color: '#4169e1', when: o => o.preset === 'color-tint' },
+          { opt: 'opacity', min: 0, max: 1, step: 0.1, value: 0.4, when: o => o.preset === 'color-tint' },
+        ],
+        build: o => o.preset === 'color-tint' ? { color: o.color, opacity: o.opacity } : { preset: o.preset } },
+      pdf: { mod: 'pdf', fn: 'pdf', call: 'toPdf',
+        options: [
+          { opt: 'page', values: ['a4', 'letter', 'fit'], value: 'a4' },
+          { opt: 'orientation', values: ['portrait', 'landscape'], value: 'portrait' },
+          { opt: 'watermark', text: '' },
+        ],
+        build: o => ({ page: o.page, orientation: o.orientation, ...(o.watermark && { watermark: { text: o.watermark } }) }),
+        show: async blob => {
           const box = document.createElement('div')
           // Headless and mobile browsers often cannot show a PDF inline, so open it in a tab instead.
           const open = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), target: '_blank', rel: 'noopener', textContent: `Open PDF (${Math.round(blob.size / 1024)} KB)` })
           box.append(open, document.createElement('br'), xpDownloadBtn(blob, 'capture.pdf'))
           return box
         } },
-      vector: { mod: 'vector', make: m => m.vector(),
-        show: async r => {
-          const svg = await r.toVector()
+      vector: { mod: 'vector', fn: 'vector', call: 'toVector',
+        show: async svg => {
           const blob = new Blob([svg], { type: 'image/svg+xml' })
           const box = document.createElement('div')
           const img = new Image(); img.src = URL.createObjectURL(blob); img.alt = 'Editable vector SVG'; img.style.maxWidth = '100%'
           box.append(img, document.createElement('br'), xpDownloadBtn(blob, 'capture.svg'))
           return box
         } },
+      html: { mod: 'html-export', fn: 'htmlExport', call: 'toHtml', el: 'xp-html',
+        options: [{ opt: 'fullDocument', bool: true, value: true }],
+        show: async html => {
+          const box = document.createElement('div')
+          const iframe = document.createElement('iframe')
+          iframe.setAttribute('sandbox', '')
+          iframe.title = 'exported document'
+          iframe.style.cssText = 'width:100%;height:240px;border:0;border-radius:8px;background:#fff'
+          iframe.srcdoc = html
+          box.append(iframe, xpDownloadBtn(new Blob([html], { type: 'text/html' }), 'capture.html'))
+          return box
+        } },
+      ascii: { mod: 'ascii-export', fn: 'asciiExport', call: 'toAscii',
+        options: [
+          { opt: 'width', min: 40, max: 140, step: 4, value: 96 },
+          { opt: 'charset', values: [' .:-=+*#%@', ' ░▒▓█', ' .oO@'], value: ' .:-=+*#%@' },
+          { opt: 'contrast', min: 0, max: 2, step: 0.25, value: 0 },
+          { opt: 'invert', bool: true, value: false },
+        ],
+        show: async text => Object.assign(document.createElement('div'), { className: 'pl-ascii', textContent: text }) },
+      gif: { mod: 'gif-export', fn: 'gifExport', call: 'toGif', el: 'xp-gif',
+        options: [
+          { opt: 'fps', min: 4, max: 24, value: 12 },
+          { opt: 'duration', min: 500, max: 4000, step: 500, value: 1500 },
+          { opt: 'maxColors', values: [16, 64, 256], value: 256 },
+        ],
+        show: async (blob, src) => {
+          const url = URL.createObjectURL(blob)
+          const img = new Image()
+          img.style.cssText = `width:100%;max-width:${Math.round(src.getBoundingClientRect().width)}px;height:auto;border-radius:8px;background:#fff`
+          img.onload = () => URL.revokeObjectURL(url)
+          img.src = url
+          const box = document.createElement('div')
+          box.append(img, document.createElement('br'), xpDownloadBtn(blob, 'capture.gif'))
+          return box
+        } },
+      video: { mod: 'video-export', fn: 'videoExport', call: 'toMp4', el: 'xp-vid',
+        options: [
+          { opt: 'fps', min: 4, max: 30, value: 12 },
+          { opt: 'duration', min: 1000, max: 5000, step: 500, value: 2000 },
+        ],
+        show: async (blob, src) => {
+          const v = document.createElement('video')
+          v.controls = true; v.loop = true; v.muted = true; v.playsInline = true
+          v.style.cssText = `width:100%;max-width:${Math.round(src.getBoundingClientRect().width)}px;height:auto;border-radius:8px`
+          v.src = URL.createObjectURL(blob)
+          const box = document.createElement('div')
+          box.append(v, document.createElement('br'), xpDownloadBtn(blob, blob.type.includes('mp4') ? 'capture.mp4' : 'capture.webm'))
+          v.play().catch(() => {})
+          return box
+        } },
+      context: { mod: 'context-export', fn: 'contextExport', call: 'toContext',
+        options: [
+          { opt: 'format', values: ['outline', 'json'], value: 'outline' },
+          { opt: 'geometry', bool: true, value: false },
+        ],
+        show: async ctx => Object.assign(document.createElement('pre'), { className: 'pl-text', textContent: typeof ctx === 'string' ? ctx : JSON.stringify(ctx, null, 2) }) },
+      agent: { mod: 'agent-map', fn: 'agentMap', call: 'toAgentMap',
+        options: [
+          { opt: 'image', values: ['annotated', 'raw'], value: 'annotated' },
+          { opt: 'fields', values: ['minimal', 'full'], value: 'minimal' },
+          { opt: 'semantic', bool: true, value: false },
+        ],
+        show: async ({ image, map }) => {
+          const box = document.createElement('div')
+          const img = new Image(); img.src = image; img.alt = 'Capture with numbered elements'; img.style.maxWidth = '100%'
+          box.append(img, Object.assign(document.createElement('pre'), { className: 'pl-text', textContent: '[\n' + map.map(e => '  ' + JSON.stringify(e)).join(',\n') + '\n]' }))
+          return box
+        } },
     };
 
+    const jsLiteral = v => Array.isArray(v) ? `[${v.map(jsLiteral).join(', ')}]`
+      : v && typeof v === 'object' ? `{ ${Object.entries(v).map(([k, x]) => `${k}: ${jsLiteral(x)}`).join(', ')} }`
+      : typeof v === 'string' ? `'${v.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'` : String(v);
+    const demoValues = {};
+    const pick = (v, o) => typeof v === 'function' ? v(o) : v;
+    const pluginOptions = (demo, o) => demo.build ? demo.build(o) : o;
+
+    function renderCode(key) {
+      const demo = PLUGIN_DEMOS[key], o = demoValues[key];
+      const opts = pluginOptions(demo, o);
+      document.getElementById(`pl-${key}-code`).textContent =
+        `import { ${pick(demo.fn, o)} } from '@zumer/snapdom-plugins/${pick(demo.mod, o)}'\n\n` +
+        `const result = await snapdom(el, { plugins: [${pick(demo.fn, o)}(${Object.keys(opts).length ? jsLiteral(opts) : ''})] })\n` +
+        `await result.${demo.call}()`;
+      for (const label of document.querySelectorAll(`#pl-${key}-opts [data-when]`)) {
+        label.hidden = !demo.options.find(s => s.opt === label.dataset.when).when(o);
+      }
+    }
+
+    // Controls go between the subject and the button; the code line under them follows every change.
+    for (const [key, demo] of Object.entries(PLUGIN_DEMOS)) {
+      const button = document.querySelector(`button[onclick^="runPluginDemo('${key}'"]`);
+      const o = demoValues[key] = {};
+      const box = Object.assign(document.createElement('div'), { className: 'pl-opts', id: `pl-${key}-opts` });
+      for (const spec of demo.options || []) {
+        o[spec.opt] = spec.value ?? spec.text ?? spec.color;
+        const label = document.createElement('label');
+        if (spec.when) label.dataset.when = spec.opt;
+        label.append(spec.opt);
+        const update = (value) => { o[spec.opt] = value; renderCode(key); };
+        if (spec.list) {
+          for (const item of spec.list) {
+            const cb = Object.assign(document.createElement('input'), { type: 'checkbox', checked: spec.value.includes(item) });
+            cb.addEventListener('change', () => update(spec.list.filter((x, i) => label.querySelectorAll('input')[i].checked)));
+            label.append(cb, item);
+          }
+        } else if (spec.values) {
+          const select = document.createElement('select');
+          for (const v of spec.values) select.append(new Option(typeof v === 'string' && v.includes(' ') ? `'${v}'` : v, v, false, v === spec.value));
+          select.addEventListener('change', () => update(typeof spec.value === 'number' ? Number(select.value) : select.value));
+          label.append(select);
+        } else if (spec.bool) {
+          const cb = Object.assign(document.createElement('input'), { type: 'checkbox', checked: spec.value });
+          cb.addEventListener('change', () => update(cb.checked));
+          label.append(cb);
+        } else if (spec.color) {
+          const input = Object.assign(document.createElement('input'), { type: 'color', value: spec.color });
+          input.addEventListener('input', () => update(input.value));
+          label.append(input);
+        } else if ('text' in spec) {
+          const input = Object.assign(document.createElement('input'), { type: 'text', value: spec.text, size: 12 });
+          input.addEventListener('input', () => update(input.value));
+          label.append(input);
+        } else {
+          const input = Object.assign(document.createElement('input'), { type: 'range', min: spec.min, max: spec.max, step: spec.step || 1, value: spec.value });
+          const shown = Object.assign(document.createElement('output'), { value: spec.value });
+          input.addEventListener('input', () => { shown.value = input.value; update(Number(input.value)); });
+          label.append(input, shown);
+        }
+        box.append(label);
+      }
+      const code = Object.assign(document.createElement('pre'), { className: 'pl-code', id: `pl-${key}-code` });
+      button.before(box, code);
+      renderCode(key);
+    }
+
     window.runPluginDemo = async function (key, btn) {
-      const demo = PLUGIN_DEMOS[key];
-      const out = document.getElementById(`pl-${key}-out`);
+      const demo = PLUGIN_DEMOS[key], o = demoValues[key];
+      const prefix = demo.el || `pl-${key}`;
+      const src = document.getElementById(`${prefix}-src`);
+      const out = document.getElementById(`${prefix}-out`);
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Capturing…</div>';
       try {
-        const name = typeof demo.mod === 'function' ? demo.mod() : demo.mod;
-        const plugin = demo.make(await import(`${PLUGIN_CDN}/${name}?external=@zumer/snapdom`));
-        const result = await snapdom(document.getElementById(`pl-${key}-src`), { plugins: [plugin] });
-        const node = demo.show ? await demo.show(result) : await result.toPng();
+        const module = await import(`${PLUGIN_CDN}/${pick(demo.mod, o)}?external=@zumer/snapdom`);
+        const result = await snapdom(src, { plugins: [module[pick(demo.fn, o)](pluginOptions(demo, o))] });
+        const value = await result[demo.call]();
+        const node = demo.show ? await demo.show(value, src) : value;
         out.innerHTML = '';
         out.appendChild(node);
         sdExportStar(out, key);
