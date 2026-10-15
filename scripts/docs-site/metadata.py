@@ -18,6 +18,8 @@ today=date.today().isoformat()
 entries={}
 for file in sorted(DOCS.rglob('*.html')):
     source=file.read_text()
+    # Redirect stubs point at another page; only destinations belong in the sitemap.
+    if re.search(r'<meta\b[^>]*http-equiv=[\"\']refresh[\"\']',source,re.I):continue
     robots=re.search(r'<meta\b[^>]*name=[\"\']robots[\"\'][^>]*content=[\"\']([^\"\']+)',source,re.I)
     if robots and 'noindex' in robots[1].lower():continue
     canonical=re.search(r'<link\b[^>]*rel=[\"\']canonical[\"\'][^>]*href=[\"\']([^\"\']+)',source,re.I)

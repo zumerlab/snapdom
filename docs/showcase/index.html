@@ -93,12 +93,11 @@
        Third-party CSS is loaded non-render-blocking (media=print onload swap) so first paint
        isn't gated on external round-trips. Fonts use display=swap: text paints immediately in a
        fallback and swaps in when the webface loads (CLS stays 0: the swap already reserves space).
-       Orbit CSS is only used by the Orbit demo far below the fold. -->
+       Orbit CSS lives in showcase/orbit.html: its :has() rules here would make every
+       mutation on this page invalidate every memoized capture. -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mansalva&display=swap" media="print" onload="this.media='all'">
-  <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous" media="print" onload="this.media='all'">
   <noscript>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mansalva&display=swap">
-    <link rel="stylesheet" href="https://unpkg.com/@zumer/orbit/dist/orbit.min.css" crossorigin="anonymous">
   </noscript>
   <link rel="stylesheet" href="../shared.css">
 
@@ -360,7 +359,7 @@
 
     .blend-card { background-image: url("https://picsum.photos/id/15/800/400"); background-color: rgba(0, 60, 50, 0.65); background-blend-mode: multiply; background-size: cover; background-position: center; background-repeat: no-repeat; color: white; padding: 2.5em 2em; font-weight: bold; border-radius: 16px; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,0.3); min-height: 180px; display: flex; align-items: center; justify-content: center; }
 
-    #orbit-box { font-family: sans-serif; font-optical-sizing: auto; background-color: rgb(16, 16, 16) !important; color: rgba(255, 255, 255, 0.451); }
+    .orbit-frame { display: block; width: 100%; height: 400px; border: 0; margin-bottom: 1.4em; }
 
     /* Mask demos */
     .mask-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
@@ -474,7 +473,7 @@
       .transition-box { padding: 1em; font-size: 0.9em; }
       .dancers { font-size: 1.3rem; }
       .export-text { font-size: 1em; }
-      #orbit-box { height: 220px !important; min-width: 0; font-size: 0.8em; }
+      .orbit-frame { height: 220px; }
       .mask-grid { grid-template-columns: 1fr; }
       .benchmark-output { height: 200px; }
       .benchmark-container { gap: 1rem; }
@@ -486,108 +485,6 @@
     }
   </style>
   <style>
-    .container-gyro {
-      background: black;
-    }
-
-
-    .gyro {
-      transform-style: preserve-3d;
-      perspective: 300px;
-    }
-
-    .z-15 {
-      transform: translateZ(-15px);
-    }
-
-    .z-35 {
-      transform: translateZ(-35px);
-    }
-
-    .z-75 {
-      transform: translateZ(-75px);
-    }
-
-    .z-85 {
-      transform: translateZ(-85px);
-    }
-
-    .z-110 {
-      transform: translateZ(-110px);
-    }
-
-    .z-120 {
-      transform: translateZ(-120px);
-    }
-
-    .z-155 {
-      transform: translateZ(-155px);
-    }
-
-    .cyan {
-      --o-fill: var(--o-cyan)
-    }
-
-    .cyan-light {
-      --o-fill: var(--o-cyan-light)
-    }
-
-    .cyan-dark-transparent {
-      --o-fill: var(--o-cyan-dark);
-      opacity: 0.6
-    }
-
-    .pink {
-      --o-fill: var(--o-pink)
-    }
-
-    .transparent {
-      --o-fill: none
-    }
-
-    .white {
-      color: white
-    }
-
-    .dashed-small {
-      opacity: 0.5;
-      height: 3px;
-      background: var(--o-cyan-darker);
-    }
-
-    .dashed-big {
-      opacity: 0.8;
-      height: 6px;
-      background: var(--o-cyan);
-
-    }
-
-    .gyro {
-      animation: tiltLoop 10s ease-in-out 5 alternate;
-    }
-
-    @keyframes tiltLoop {
-      0% {
-        transform: rotateX(-35deg) rotateY(-35deg);
-      }
-
-      25% {
-        transform: rotateX(-35deg) rotateY(35deg);
-      }
-
-      50% {
-        transform: rotateX(35deg) rotateY(35deg);
-      }
-
-      75% {
-        transform: rotateX(35deg) rotateY(-35deg);
-      }
-
-      100% {
-        transform: rotateX(-35deg) rotateY(-35deg);
-      }
-    }
-
     /* NEW badge — demo menu & section headings */
     .new-badge {
       display: inline-flex;
@@ -738,75 +635,11 @@
     <section id="orbit">
       <h2 id="orbit-css-toolkit-go-to-repo">Orbit CSS toolkit - <a href="https://github.com/zumerlab/orbit/?utm_source=snapdom"
           data-umami-event="To orbit repo" target="_blank">Go to repo</a></h2>
-      <div class="card black" id="orbit-box"
-        style="height: 400px; overflow: hidden; background-color: black !important;">
-        <div class="bigbang container-gyro">
-          <div class="gravity-spot gyro">
-            <div class="orbit-6 from-120 range-240 small-dash z-15">
-              <!-- small dash elements -->
-            </div>
-            <div class="orbit-6 z-35">
-              <o-arc value="25" class="from-215 shrink-70 outer-orbit pink"></o-arc>
-            </div>
-            <div class="orbit-5">
-              <o-arc value="25" class="from-315 shrink-80 inner-orbit cyan-light"></o-arc>
-            </div>
-            <div class="orbit-5 from-48 range-130">
-              <o-arc class=" shrink-40 outer-orbit cyan-dark-transparent"></o-arc>
-            </div>
-            <div class="orbit-5 from-180 range-100 big-dash">
-              <!-- small dash elements -->
-            </div>
-            <div class="orbit-4 z-85">
-              <o-arc value="40" class="from-10 shrink-40 pink"></o-arc>
-            </div>
-            <div class="orbit-6 from-320 z-110">
-              <o-arc value="40" class="shrink-40 cyan-light"></o-arc>
-            </div>
-            <div class="orbit-6  from-30 z-120">
-              <o-arc class="shrink-60 cyan-light"></o-arc>
-              <o-arc class="shrink-60 transparent"></o-arc>
-              <o-arc class="shrink-60 cyan-light"></o-arc>
-              <o-arc class="shrink-60 transparent"></o-arc>
-            </div>
-            <div class="orbit-6  from-100 z-155">
-              <o-arc value="40" class="shrink-90 inner-orbit cyan-light"></o-arc>
-            </div>
-            <div class="orbit-6 from-185 range-80 z-75">
-              <o-arc class="grow-0.5x cyan-dark-transparent"></o-arc>
-            </div>
-            <div class="orbit-0 white">ORBIT</div>
-          </div>
-        </div>
-      </div>
-
-
-
-      <script>
-        const container = document.querySelector('.container-gyro');
-        const gyro = document.querySelector('.gyro');
-        const sd = document.querySelector('.small-dash')
-        const bd = document.querySelector('.big-dash')
-
-        const smallDashs = [];
-        const bigDashs = [];
-
-        for (let i = 0; i < 30; i++) {
-          smallDashs.push("<div class='vector shrink-40 outer-orbit dashed-small'></div>");
-        }
-
-        for (let i = 0; i < 15; i++) {
-          bigDashs.push("<div class='vector shrink-40 outer-orbit dashed-big'></div>");
-        }
-
-        sd.innerHTML = smallDashs.join('');
-        bd.innerHTML = bigDashs.join('');
-
-      </script>
+      <iframe class="orbit-frame" id="orbit-frame" src="orbit.html" title="Orbit CSS demo" loading="lazy"></iframe>
 
       <button data-umami-event="Capture orbit"
-        onclick="captureOrbit('orbit-box', 'orbit-output', this)">Capture</button>
-      <button data-umami-event="Download orbit" onclick="downloadDemo('orbit-box')">Download</button>
+        onclick="captureOrbit('orbit-output', this)">Capture</button>
+      <button data-umami-event="Download orbit" onclick="downloadOrbit()">Download</button>
       <div class="output" id="orbit-output">
 
       </div>
@@ -1766,21 +1599,19 @@
 
 
     let orbitCaptureLock = false
-    async function captureOrbit(id, outputId, btn) {
-      if (orbitCaptureLock) return
-      orbitCaptureLock = true
-      const el = document.getElementById(id)
+    async function captureOrbit(outputId, btn) {
+      const orbit = document.getElementById('orbit-frame').contentWindow.orbitSnap
       const output = document.getElementById(outputId)
-      if (!el || !output) { orbitCaptureLock = false; return }
+      if (orbitCaptureLock || !orbit || !output) return
+      orbitCaptureLock = true
       if (btn) btn.disabled = true
       output.innerHTML = ''
       try {
         const opts = { outerShadows: true, cache: 'auto' }
         if (isSafari()) {
-          output.appendChild(svgIframe(await snapdom.toRaw(el, opts)))
+          output.appendChild(svgIframe(await orbit.snapdom.toRaw(orbit.box, opts)))
         } else {
-          const img = await snapdom.toImg(el, opts)
-          output.appendChild(img)
+          output.appendChild(await orbit.snapdom.toImg(orbit.box, opts))
         }
       } finally {
         orbitCaptureLock = false
@@ -1788,6 +1619,11 @@
       }
     }
 
+
+    async function downloadOrbit() {
+      const orbit = document.getElementById('orbit-frame').contentWindow.orbitSnap
+      if (orbit) await orbit.snapdom.download(orbit.box, { format: 'png', name: 'orbit-box', quality: 1, outerShadows: false })
+    }
 
     async function downloadDemo(id) {
       const el = id === 'body' ? document.body : document.getElementById(id)
@@ -2379,7 +2215,6 @@
   </script>
 
 
-  <script src="https://unpkg.com/@zumer/orbit/dist/orbit.min.js" crossorigin></script>
 </body>
 
 </html>
