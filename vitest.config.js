@@ -33,7 +33,8 @@ const networkGate = createNetworkGate({ workers: browsers.length })
 // all three engines), which is what makes the author-style scan "unreliable" and switches
 // every gate to its probe-everything path. The test page lives on localhost, so a second
 // host is enough — the same machine on 127.0.0.1. Tests call
-// `commands.serveCrossOriginCss(cssText)` and get a URL for a <link>.
+// `commands.serveCrossOriginCss(cssText)` and get a URL for a <link>. With `{ cors: true }`
+// the sheet still throws for the <link> (no crossorigin attribute), but a fetch can read it.
 // `commands.serveCrossOriginJpeg(repoPath)` serves a repo image from the same host with no
 // CORS headers: it paints in an <img>, and snapdom's fetch of it fails.
 const crossOrigin = (() => {
@@ -45,22 +46,22 @@ const crossOrigin = (() => {
     server = createServer((req, res) => {
       const file = files.get(req.url)
       if (!file) { res.writeHead(404); res.end(); return }
-      res.writeHead(200, { 'content-type': file.type, 'cache-control': 'no-store' })
+      res.writeHead(200, { 'content-type': file.type, 'cache-control': 'no-store', ...(file.cors && { 'access-control-allow-origin': '*' }) })
       res.end(file.body)
     })
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
     server.unref() // must not keep the run alive after the last test
     port = server.address().port
   }
-  async function serve(ext, type, body) {
+  async function serve(ext, type, body, cors = false) {
     if (!server) await start()
     const path = `/${files.size}.${ext}`
-    files.set(path, { type, body })
+    files.set(path, { type, body, cors })
     return `http://127.0.0.1:${port}${path}`
   }
   return {
     commands: {
-      serveCrossOriginCss: (_ctx, css) => serve('css', 'text/css', String(css)),
+      serveCrossOriginCss: (_ctx, css, { cors = false } = {}) => serve('css', 'text/css', String(css), cors),
       async serveCrossOriginJpeg(_ctx, file) {
         const { readFile } = await import('node:fs/promises')
         return serve('jpg', 'image/jpeg', await readFile(new URL(file, import.meta.url)))

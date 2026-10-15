@@ -10,7 +10,8 @@
  *
  * Correctness: a property outside the universe can't differ from the tag's UA default,
  * so the defaults-diff downstream would have dropped it anyway. Escape hatches:
- * - Any unreadable (cross-origin) stylesheet → null (callers fall back to full reads).
+ * - Any unreadable (cross-origin) stylesheet → null (callers fall back to full reads), unless
+ *   the caller hands scanAuthorStyles a parsed copy of it (styles.js fetches one per href).
  * - Shadow-root sheets are not part of this scan: styles.js unions them per capture through
  *   scanSheetProps, and shadow content without a capture session keeps full reads.
  * - Element inline-style props are unioned in per node at snapshot time.
@@ -198,7 +199,7 @@ function scanRules(rules, universe, pseudoSels, state) {
 /** One sheet through scanRules. False on a cross-origin sheet, whose cssRules getter throws. */
 function scanSheet(sheet, universe, pseudoSels, state) {
   let rules
-  try { rules = sheet.cssRules } catch { return false } // cross-origin
+  try { rules = sheet.cssRules } catch { rules = state.crossOriginRules?.(sheet) } // cross-origin
   if (!rules) return false
   return scanRules(rules, universe, pseudoSels, state)
 }
@@ -340,16 +341,18 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
  * - `importantProps`: every property some rule declares `!important`.
  * Pinned by __tests__/module.styleScan.test.js.
  * @param {Document} doc
+ * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - the rules of a sheet
+ *   whose cssRules throw, read from a copy; null keeps the scan unreliable
  * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
  */
-export function scanAuthorStyles(doc) {
+export function scanAuthorStyles(doc, crossOriginRules) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
   const unreliable = { universe: null, pseudoUniverse: null, usesHas: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set() }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), crossOriginRules }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }

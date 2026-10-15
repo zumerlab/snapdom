@@ -21,6 +21,7 @@ import { isFirefox } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
 import { scanAuthorStyles, scanSheetProps, addAnimationProps } from './styleScan.js'
 import { isInternalNode } from '../utils/ownership.js'
+import { snapFetch } from './snapFetch.js'
 
 /** element -> { env, stamp, snapshot, embedFonts, excludeStyleProps }. Cross-capture; a hit
  *  needs the env epoch and the node's stamp unchanged (snapshotIsCurrent). */
@@ -593,11 +594,38 @@ export function snapshotFor(source) {
  *  a reset-stamped prop the class diff can no longer override (e.g. the resolved-black
  *  `-webkit-text-fill-color` overriding a white `color`) must not be emitted either. */
 const universeCache = new WeakMap()
+/** href -> the rules of a parsed copy, or null while it loads or when it cannot be read. */
+const crossOriginCopies = new Map()
+
+/** Read a cross-origin sheet through a fetched copy. One unreadable sheet made the whole scan
+ *  unreliable: a Google Fonts <link> alone turned off the universe, the pseudo gates, the share
+ *  and stamp narrowing, so any mutation anywhere on the page (a ticking counter) re-captured
+ *  every memoized element. The first scan stays unreliable; the copy lands, bumps both epochs
+ *  like a font load, and later scans read it. A copy with @import stays unreliable, since
+ *  replaceSync drops those rules. Pinned by __tests__/module.styles.crossOriginScan.test.js.
+ *  @param {CSSStyleSheet} sheet
+ *  @returns {CSSRuleList|null} */
+function crossOriginRules(sheet) {
+  const href = sheet.href
+  if (!href || typeof CSSStyleSheet !== 'function') return null
+  if (crossOriginCopies.has(href)) return crossOriginCopies.get(href)
+  crossOriginCopies.set(href, null)
+  snapFetch(href, { as: 'text', silent: true }).then((res) => {
+    if (!res.ok || typeof res.data !== 'string' || /@import/i.test(res.data)) return
+    const copy = new CSSStyleSheet()
+    copy.replaceSync(res.data)
+    crossOriginCopies.set(href, copy.cssRules)
+    bumpEpoch()
+    __envEpoch++
+  }).catch(() => { })
+  return null
+}
+
 function scanFor(doc) {
   let rec = universeCache.get(doc)
   if (!rec || rec.epoch !== __epoch) {
     const prev = rec && rec.universe
-    rec = { epoch: __epoch, ...scanAuthorStyles(doc) }
+    rec = { epoch: __epoch, ...scanAuthorStyles(doc, crossOriginRules) }
     // A re-scan that finds the same props keeps the previous Set: its identity keys the base
     // reset memo (assembleCaptureCSS) and any DOM mutation bumps the epoch, so a new Set per
     // scan would rebuild the reset (0.12-0.65 ms) on every capture of a live page.
