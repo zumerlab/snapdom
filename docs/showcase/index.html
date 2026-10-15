@@ -1622,7 +1622,7 @@
 
     async function downloadOrbit() {
       const orbit = document.getElementById('orbit-frame').contentWindow.orbitSnap
-      if (orbit) await orbit.snapdom.download(orbit.box, { format: 'png', name: 'orbit-box', quality: 1, outerShadows: false })
+      if (orbit) await orbit.snapdom.download(orbit.box, { format: 'png', filename: 'orbit-box', quality: 1, outerShadows: false })
     }
 
     async function downloadDemo(id) {
@@ -1630,7 +1630,7 @@
       if (!el) return
       await snapdom.download(el, {
         format: 'png',
-        name: id,
+        filename: id,
         scale: id === 'body' ? 0.5 : 1,
         quality: 1,
         embedFonts: id === 'body' || id === 'fonts-box' ? true : false,
@@ -1693,7 +1693,7 @@
       if (btn) btn.disabled = true
       try {
         await withFrameInBox(video, box, (el) =>
-          snapdom.download(el, { format: 'png', name: 'video-frame', cache: 'disabled' })
+          snapdom.download(el, { format: 'png', filename: 'video-frame', cache: 'disabled' })
         )
       } finally {
         if (btn) btn.disabled = false

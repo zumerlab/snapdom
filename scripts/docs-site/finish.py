@@ -68,7 +68,8 @@ for p in ROOT.rglob('*.html'):
 index=[]
 for p in ROOT.rglob('*.html'):
     s=p.read_text()
-    if 'http-equiv="refresh"' in s: continue
+    # Redirect stubs and framed fixtures are not destinations of their own.
+    if 'http-equiv="refresh"' in s or 'data-standalone-fixture' in s: continue
     title=re.search(r'<title>(.*?)</title>',s,re.S)
     if not title: continue
     body=re.search(r'<(?:article|main)\b[^>]*>(.*?)</(?:article|main)>',s,re.S)
