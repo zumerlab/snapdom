@@ -15,7 +15,7 @@ const rounds = Number(process.argv[3] || 2)
 if (!Number.isInteger(samples) || samples < 3 || !Number.isInteger(rounds) || rounds < 1) {
   throw new Error('Use at least 3 samples and 1 round')
 }
-const origin = process.env.SITE_URL || 'http://127.0.0.1:8123'
+const origin = process.env.SITE_URL || 'http://127.0.0.1:4180'
 const outDir = resolve(process.env.BENCH_OUTPUT || 'output/engine-bench')
 mkdirSync(outDir, { recursive: true })
 const warmups = 3

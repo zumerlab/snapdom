@@ -22,14 +22,14 @@ const browser = await chromium.launch()
 const page = await browser.newPage({ deviceScaleFactor: 1 })
 page.on('pageerror', (e) => console.error('[page]', e.message))
 // This module is available only inside this benchmark's browser; the docs server serves no tests.
-await page.route('http://127.0.0.1:8123/__bench/domlens.js', (route) => route.fulfill({
+await page.route('http://127.0.0.1:4180/__bench/domlens.js', (route) => route.fulfill({
   body: domlensHelper,
   contentType: 'text/javascript',
 }))
-await page.goto('http://127.0.0.1:8123/compare/', { waitUntil: 'load' })
+await page.goto('http://127.0.0.1:4180/compare/', { waitUntil: 'load' })
 // Keep the helper in the module cache, then restore HTTP caching before measuring captures.
 await page.evaluate(async () => { await import('/__bench/domlens.js') })
-await page.unroute('http://127.0.0.1:8123/__bench/domlens.js')
+await page.unroute('http://127.0.0.1:4180/__bench/domlens.js')
 
 const rows = await page.evaluate(async ({ N }) => {
   const H = await import('/compare/live/harness.js')

@@ -14,7 +14,7 @@ const DOCS = join(ROOT, 'docs')
 const DIST = join(ROOT, 'dist')
 const PLUGINS = join(ROOT, 'packages/plugins')
 const pluginEntries = JSON.parse(readFileSync(join(PLUGINS, 'package.json'), 'utf8')).exports
-const PORT = Number(process.env.PORT) || 8123
+const PORT = Number(process.env.PORT) || 4180
 
 if (!existsSync(join(DIST, 'snapdom.mjs'))) {
   console.error('dist/snapdom.mjs not found — run `npm run compile` first')
