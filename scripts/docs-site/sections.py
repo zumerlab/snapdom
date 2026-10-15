@@ -22,33 +22,31 @@ SECTIONS = [
                              ('docs/cache/index.html','Cache and preCapture',None)]),
    ('Options','options',[('docs/options/index.html','Options',None)]),
    ('Plugins','export',[('docs/plugins/index.html','Plugin API',None)])]},
- {'name':'How-to', 'menu':'How-to', 'filter':'Filter recipes', 'groups':[
+ {'name':'How-to', 'menu':'How-to', 'filter':'Filter recipes and guides', 'groups':[
    ('Overview','start',[('how-to/index.html','How to capture the DOM',None)]),
-   ('Basics','start',[('how-to/screenshot-a-div/index.html','Screenshot a div',D(demo='capture',method='toPng')),
-                      ('how-to/html-to-png/index.html','Convert HTML to PNG',D(demo='capture',method='toPng')),
-                      ('how-to/html-to-svg/index.html','Convert HTML to SVG',D(demo='capture',method='toSvg')),
-                      ('how-to/html-to-canvas/index.html','Render HTML to Canvas',D(demo='capture',method='toCanvas')),
-                      ('how-to/high-resolution-element/index.html','Capture in high resolution',D(demo='capture',method='toPng',options={'scale':3}))]),
-   ('Real content','capture',[('how-to/export-dashboard-as-image/index.html','Export a dashboard',D(demo='capture',method='toPng',options={'scale':2})),
-                              ('how-to/export-react-component-as-image/index.html','Export a React component',D(demo='capture',method='toPng')),
-                              ('how-to/export-invoice-as-image/index.html','Export an invoice',D(demo='capture',method='toJpg',options={'quality':0.92})),
-                              ('how-to/generate-social-card-from-html/index.html','Generate a social card',D(demo='capture',method='toPng')),
-                              ('how-to/capture-before-pdf/index.html','Capture before a PDF',D(demo='capture',method='toCanvas',options={'scale':2})),
-                              ('how-to/export-chart-as-svg/index.html','Export a chart as SVG',D(demo='capture',method='toSvg')),
-                              ('how-to/save-chart-js-as-png/index.html','Save a Chart.js chart',D(demo='capture',method='toPng'))]),
-   ('Special cases','ecosystem',[('how-to/capture-element-without-puppeteer/index.html','Capture without Puppeteer',D(demo='capture',method='toPng')),
-                                 ('how-to/capture-shadow-dom/index.html','Capture Shadow DOM',D(demo='capture',method='toPng',target='shadow')),
-                                 ('how-to/capture-full-page/index.html','Capture a full page',D(demo='capture',method='toPng')),
-                                 ('how-to/capture-iframe/index.html','Capture an iframe',D(demo='capture',method='toPng',note='Captures the same-origin srcdoc frame together with its surrounding element.')),
-                                 ('how-to/visual-regression-screenshot/index.html','Visual regression',D(demo='diff',label='Baseline and diff'))])]},
- {'name':'Guides', 'menu':'Guides', 'filter':'Filter frameworks', 'groups':[
-   ('Overview','options',[('guides/index.html','SnapDOM in your framework',None)]),
-   ('Frameworks','options',[('guides/react/index.html','React',D(demo='capture',method='toPng',label='React · toPng()')),
-                            ('guides/vue/index.html','Vue',D(demo='capture',method='toPng',label='Vue · toPng()')),
-                            ('guides/nextjs/index.html','Next.js',D(demo='capture',method='toPng',label='Next.js · toPng()')),
-                            ('guides/svelte/index.html','Svelte',D(demo='capture',method='toPng',label='Svelte · toPng()')),
-                            ('guides/angular/index.html','Angular',D(demo='capture',method='toPng',label='Angular · toPng()')),
-                            ('guides/lit/index.html','Lit',D(demo='capture',method='toPng',target='shadow',label='Lit · toPng()'))])]},
+   ('Basics','start',[('how-to/screenshot-a-div/index.html','Screenshot a div',None),
+                      ('how-to/html-to-png/index.html','Convert HTML to PNG',None),
+                      ('how-to/html-to-svg/index.html','Convert HTML to SVG',None),
+                      ('how-to/html-to-canvas/index.html','Render HTML to Canvas',None),
+                      ('how-to/high-resolution-element/index.html','Capture in high resolution',None)]),
+   ('Real content','capture',[('how-to/export-dashboard-as-image/index.html','Export a dashboard',None),
+                              ('how-to/export-react-component-as-image/index.html','Export a React component',None),
+                              ('how-to/export-invoice-as-image/index.html','Export an invoice',None),
+                              ('how-to/generate-social-card-from-html/index.html','Generate a social card',None),
+                              ('how-to/capture-before-pdf/index.html','Capture before a PDF',None),
+                              ('how-to/export-chart-as-svg/index.html','Export a chart as SVG',None),
+                              ('how-to/save-chart-js-as-png/index.html','Save a Chart.js chart',None)]),
+   ('Special cases','ecosystem',[('how-to/capture-element-without-puppeteer/index.html','Capture without Puppeteer',None),
+                                 ('how-to/capture-shadow-dom/index.html','Capture Shadow DOM',None),
+                                 ('how-to/capture-full-page/index.html','Capture a full page',None),
+                                 ('how-to/capture-iframe/index.html','Capture an iframe',None),
+                                 ('how-to/visual-regression-screenshot/index.html','Visual regression',None)]),
+   ('Frameworks','options',[('guides/react/index.html','React',None),
+                            ('guides/vue/index.html','Vue',None),
+                            ('guides/nextjs/index.html','Next.js',None),
+                            ('guides/svelte/index.html','Svelte',None),
+                            ('guides/angular/index.html','Angular',None),
+                            ('guides/lit/index.html','Lit',None)])]},
  {'name':'Compare', 'menu':'Compare', 'filter':'Filter comparisons', 'groups':[
    ('Overview','ecosystem',[('compare/index.html','HTML-to-image libraries',None),('compare/live/index.html','Live benchmark',None)]),
    ('Head to head','ecosystem',[(f'compare/{lib}/index.html', 'vs ' + lib, D(demo='compare',lib=lib,target='tricky',label='SnapDOM · ' + lib,
@@ -64,21 +62,17 @@ SECTIONS = [
                       ('blog/dom-capture-boundaries/index.html','DOM capture boundaries',None),
                       ('blog/huge-page-mosaic/index.html','Tiled rasterization',None),
                       ('blog/painting-without-canvas/index.html','Painting without a canvas',None)])]},
- {'name':'Labs', 'menu':'Labs', 'filter':'Filter labs', 'groups':[
-   ('Overview','labs',[('labs.html','All labs',None)]),
-   ('Live demos','labs',[('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
-                         ('labs/capture-stages/index.html','Capture stages',None),('labs/target-range/index.html','Target range',None)]),
-   ('WebGL','labs',[('labs/webgl-live-mirror/index.html','Live mirror',None),('labs/webgl-seamless-dom/index.html','Seamless DOM',None),
-                    ('labs/webgl-shatter/index.html','Shattered capture',None)])]},
-
  {'name':'Showcase', 'menu':'Showcase', 'filter':'Filter demos', 'groups':[
    ('Showcase','labs',[('showcase/index.html','Live demos',D(badge='Showcase',
-     lead='Fidelity demos and every export format. Each one runs SnapDOM on the element beside it.'))])]},
+     lead='Fidelity demos, every export format, one demo per plugin and the labs. Each one runs SnapDOM on the element beside it.'))]),
+   ('Labs','labs',[('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
+                   ('labs/capture-stages/index.html','Capture stages',None),('labs/target-range/index.html','Target range',None),
+                   ('labs/webgl-live-mirror/index.html','Live mirror',None),('labs/webgl-seamless-dom/index.html','Seamless DOM',None),
+                   ('labs/webgl-shatter/index.html','Shattered capture',None)])]},
  {'name':'Community', 'menu':'Made with', 'filter':'Filter community', 'groups':[
    ('Ecosystem','ecosystem',[('ecosystem/index.html','Plugins and tools','link')]),
    ('Made with','context',[('made-with/index.html','Projects using SnapDOM',None)])]},
  {'name':'Plugins', 'menu':'Plugins', 'filter':'Filter plugins', 'groups':[
-   ('Build','capture',[('capabilities/index.html','Capabilities','link')]),
    ('Plugins','export',[('plugins.html','Official plugins',D(end='<!-- ── Plugin detail modal'))]),
    ('Reference','export',[('docs/plugins/index.html','Plugin API','link')])]},
 ]
@@ -180,11 +174,12 @@ def convert(section, gi, path, title, demo, flat):
     side = []
     for glabel, gsec, items in section['groups']:
         links = ''
-        if len(flat) == 1 and toc:
-            links = ''.join(f'<a href="#{h}">{E(t)}</a>' for h, t in toc)
-        for p, t, _ in ([] if links else items):
+        for p, t, _ in items:
             here = p == path
-            links += f'<a href="{rel(path, p)}"{CUR if here else ""}>{E(t)}</a>'
+            if here and toc:
+                links += ''.join(f'<a href="#{h}">{E(t)}</a>' for h, t in toc)
+            else:
+                links += f'<a href="{rel(path, p)}"{CUR if here else ""}>{E(t)}</a>'
         open_ = any(p == path for p, _, _ in items)
         side.append(f'<div class="sec-{gsec}"><button type="button" class="pane-nav-head" aria-expanded="{str(open_).lower()}"><span class="sec-dot"></span>{E(glabel)}</button><div class="pane-nav-items">{links}</div></div>')
     sidebar_html = (f'<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="{section["filter"]}" aria-label="{section["filter"]}"></label>'

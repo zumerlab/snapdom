@@ -272,7 +272,7 @@ async function refresh(element) {
 }
 ```
 
-`result.meta` 包含捕获几何信息，可用于将导出的图片覆盖到原界面上。[实验示例](https://snapdom.dev/labs.html)展示了纹理、镜像和过渡效果。
+`result.meta` 包含捕获几何信息，可用于将导出的图片覆盖到原界面上。[实验示例](https://snapdom.dev/showcase/#labs)展示了纹理、镜像和过渡效果。
 
 ## v3 有哪些新变化
 
@@ -372,7 +372,7 @@ const after = await snapdom(card, options); // 使用当前策略
 - [插件演示](https://snapdom.dev/showcase/#plugins)、[PDF 演示](https://snapdom.dev/pro/pdf/)与 [Vector 演示](https://snapdom.dev/pro/vector/)
 - [v2 源码](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
-- [框架指南](https://snapdom.dev/guides/)与[使用示例](https://snapdom.dev/how-to/)
+- [框架指南](https://snapdom.dev/how-to/#frameworks)与[使用示例](https://snapdom.dev/how-to/)
 - [官方插件](packages/plugins/README.md)、[插件规范](PLUGIN_SPEC.md)与[插件贡献指南](CONTRIBUTING_PLUGINS.md)
 - [架构](ARCHITECTURE.md)与[技术功能](FEATURES_CN.md)
 

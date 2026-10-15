@@ -697,7 +697,7 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 - Plugins: https://snapdom.dev/docs/plugins/
 - Cache and preCapture: https://snapdom.dev/docs/cache/
 - How-to: https://snapdom.dev/how-to/
-- Framework guides: https://snapdom.dev/guides/
+- Framework guides: https://snapdom.dev/how-to/#frameworks
 - Compare: https://snapdom.dev/compare/
 - Blog: https://snapdom.dev/blog/
 - SnapDOM v3 release: https://snapdom.dev/blog/snapdom-v3/

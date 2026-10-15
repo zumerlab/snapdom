@@ -24,7 +24,7 @@ ECO = [
 def eco_topic(p):
     if p.get('overview'):
         cells = [(i['t'], g['section'], 'Experimental' if i.get('exp') else 'Tool' if g['label'] == 'Tools' else 'Plugin', i['id']) for g in ECO[1:] for i in g['items']]
-        rows = [('Export an element as an image or file','SnapDOM core + plugins','../capabilities/'),('Check that nothing changed visually','SnapDIFF','#snapdiff'),('Give a coding agent before/after evidence','SnapEye','#snapeye'),('Let an agent reach a state and verify it','SnapSurf (experimental)','#snapsurf')]
+        rows = [('Export an element as an image or file','SnapDOM core + plugins','../plugins.html'),('Check that nothing changed visually','SnapDIFF','#snapdiff'),('Give a coding agent before/after evidence','SnapEye','#snapeye'),('Let an agent reach a state and verify it','SnapSurf (experimental)','#snapsurf')]
         table = ('<div class="compare-table"><table><thead><tr><th scope="col">Job</th><th scope="col">Use</th></tr></thead><tbody>'
                  + ''.join(f'<tr><td>{a}</td><td><a href="{h}">{b}</a></td></tr>' for a, b, h in rows) + '</tbody></table></div>')
         steps = ('<ol class="pane-steps">' + ''.join(f'<li><h3>{a}</h3><p>{b}</p></li>' for a, b in [

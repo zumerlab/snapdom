@@ -271,7 +271,7 @@ async function refresh(element) {
 }
 ```
 
-`result.meta` contains the capture geometry needed to place an exported image over the source interface. The [labs](https://snapdom.dev/labs.html) show textures, mirrors and transitions.
+`result.meta` contains the capture geometry needed to place an exported image over the source interface. The [labs](https://snapdom.dev/showcase/#labs) show textures, mirrors and transitions.
 
 ## What's new in v3
 
@@ -371,7 +371,7 @@ For a useful comparison, use the same scene, output format, scale and DPR. Compa
 - [Plugin demos](https://snapdom.dev/showcase/#plugins), [PDF demos](https://snapdom.dev/pro/pdf/) and [Vector demos](https://snapdom.dev/pro/vector/)
 - [v2 source](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/) and [options](https://snapdom.dev/docs/options/)
-- [Framework guides](https://snapdom.dev/guides/) and [how-to examples](https://snapdom.dev/how-to/)
+- [Framework guides](https://snapdom.dev/how-to/#frameworks) and [how-to examples](https://snapdom.dev/how-to/)
 - [Official plugins](packages/plugins/README.md), [plugin specification](PLUGIN_SPEC.md) and [contributing plugins](CONTRIBUTING_PLUGINS.md)
 - [Architecture](ARCHITECTURE.md) and [technical features](FEATURES.md)
 

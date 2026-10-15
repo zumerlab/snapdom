@@ -9,16 +9,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', '..', 'docs')
 
 MENU = [
- ('Learn', [('Docs','docs/','capture','API, options and quick start'),('How-to','how-to/','start','Short recipes, one task each'),('Guides','guides/','options','React, Vue, Svelte, Angular, Lit, Next.js'),('Compare','compare/','ecosystem','SnapDOM vs html2canvas and others')]),
- ('Build', [('Capabilities','capabilities/','capture','What you can make from a capture'),('Plugins','plugins.html','export','13 official plugins')]),
- ('Explore', [('Showcase','showcase/','labs','Live capture demos'),('Labs','labs.html','labs','Experiments on top of captures'),('Blog','blog/','record','Notes from the team')]),
- ('Community', [('Ecosystem','ecosystem/','ecosystem','SnapDIFF, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
+ ('Learn', [('Docs','docs/','capture','API, options and quick start'),('How-to','how-to/','start','Recipes and framework guides'),('Compare','compare/','ecosystem','SnapDOM vs html2canvas and others')]),
+ ('Build', [('Plugins','plugins.html','export','13 official plugins and what they make'),('Showcase','showcase/','labs','Live demos and labs')]),
+ ('Community', [('Blog','blog/','record','Notes from the team'),('Ecosystem','ecosystem/','ecosystem','SnapDIFF, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
 ]
 FOOT = [
- ('Learn', [('Documentation','docs/'),('Quick start','docs/#quick-start'),('How-to recipes','how-to/'),('Guides','guides/'),('Compare','compare/')]),
- ('Build', [('Capabilities','capabilities/'),('Plugins','plugins.html'),('Writing plugins','plugins.html#build-plugin')]),
- ('Explore', [('Showcase','showcase/'),('Labs','labs.html'),('Blog','blog/')]),
- ('Community', [('Ecosystem','ecosystem/'),('Made with','made-with/'),('Community plugins','plugins.html#community'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
+ ('Learn', [('Documentation','docs/'),('Quick start','docs/#quick-start'),('How-to recipes','how-to/'),('Framework guides','how-to/#frameworks'),('Compare','compare/')]),
+ ('Build', [('Plugins','plugins.html'),('Writing plugins','plugins.html#build-plugin'),('Showcase','showcase/'),('Labs','showcase/#labs')]),
+ ('Community', [('Blog','blog/'),('Ecosystem','ecosystem/'),('Made with','made-with/'),('Community plugins','plugins.html#community'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
 ]
 
 CUR = ' aria-current="page"'
@@ -136,7 +134,7 @@ def build(groups, render):
             i['group'] = g['label']
     return [render(i) for g in groups for i in g['items']]
 
-for name in ('capabilities.py', 'ecosystem.py', 'sections.py'):
+for name in ('ecosystem.py', 'sections.py'):
     exec(open(os.path.join(HERE, name)).read())
 
 exec(open(os.path.join(HERE, 'finish.py')).read(), {'__file__': os.path.join(HERE, 'finish.py')})

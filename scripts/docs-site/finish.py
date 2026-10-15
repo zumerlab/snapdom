@@ -3,7 +3,7 @@ from pathlib import Path
 import html, json, re
 ROOT = Path(__file__).resolve().parents[2] / 'docs'
 ns = {'__file__': str(Path(__file__).with_name('build.py'))}
-exec(Path(__file__).with_name('build.py').read_text().split("for name in ('capabilities.py'")[0], ns)
+exec(Path(__file__).with_name('build.py').read_text().split("for name in ('ecosystem.py'")[0], ns)
 
 def scope_css(css):
     # Walk nested media rules while leaving keyframes intact.
@@ -41,6 +41,15 @@ for p in ROOT.rglob('*.html'):
         s = s.replace('</body>', '</div>' + ns['footer'](root) + '</body>')
         s = re.sub(r'<div class="bar">.*?</div>', '', s, flags=re.S)
     s = re.sub(r'<div class="pane-toc">.*?</div>', '', s, flags=re.S)
+    # Every page gets the current menu and footer, keeping its active item. Pages
+    # that were folded into another keep pointing at the page that absorbed them.
+    head = re.search(r'<header class="site-head">.*?</header>', s, re.S)
+    if head:
+        cur = re.search(r'aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">([^<]+)<', head[0])
+        cur = cur[1] if cur else ''
+        cur = {'Labs': 'Showcase', 'Guides': 'How-to', 'Capabilities': 'Plugins', 'Playground': 'Plugins'}.get(cur, cur)
+        s = s[:head.start()] + ns['header'](cur, root) + s[head.end():]
+    s = re.sub(r'<footer class="site-foot">.*?</footer>', lambda m: ns['footer'](root), s, count=1, flags=re.S)
     # Source examples and inline JS are reference content, not navigation labels.
     parts = re.split(r'(<(?:pre|code|script)\b[^>]*>.*?</(?:pre|code|script)>)', s, flags=re.S)
     for i in range(0,len(parts),2):
