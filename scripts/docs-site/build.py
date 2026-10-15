@@ -15,8 +15,8 @@ MENU = [
 ]
 FOOT = [
  ('Learn', [('Documentation','docs/'),('Quick start','docs/#quick-start'),('How-to recipes','how-to/'),('Framework guides','how-to/#frameworks'),('Compare','compare/')]),
- ('Explore', [('Showcase','showcase/'),('Plugins','showcase/#plugins'),('Writing plugins','showcase/#build-plugin'),('Labs','showcase/#labs'),('Blog','blog/')]),
- ('Community', [('Ecosystem','ecosystem/'),('Made with','made-with/'),('Community plugins','showcase/#community-plugins'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
+ ('Explore', [('Showcase','showcase/'),('Plugins','showcase/#plugins'),('Writing plugins','docs/plugins/#build'),('Labs','showcase/#labs'),('Blog','blog/')]),
+ ('Community', [('Ecosystem','ecosystem/'),('Made with','made-with/'),('Community plugins','ecosystem/#community-plugins'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
 ]
 
 CUR = ' aria-current="page"'
