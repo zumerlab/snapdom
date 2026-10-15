@@ -87,7 +87,7 @@ Install the core and, when you need them, the official plugins; choose a core su
 npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-Plugins 4.x in this checkout require core 3.x. The full PDF and Vector exporters are open source under MIT here, but have not been published to npm; the `@latest` command above does not install these new exporters. Run `npm run compile` and `npm run site` to try them against the local build.
+Plugins 4.x require SnapDOM 3.3.0 or newer within 3.x. The full PDF and Vector exporters are MIT-licensed and available on npm in `@zumer/snapdom-plugins` 4.x. The `@latest` command above installs the published release.
 
 Or load it in a browser:
 
@@ -215,7 +215,7 @@ for (let y = 0; y < h0; y += pieceHeight) {
 
 ### Export HTML or structured context
 
-Official plugins are published separately as `@zumer/snapdom-plugins`. Plugins 4.x in this checkout require core 3.x and include the full PDF and Vector exporters under MIT. Their sources live in `packages/plugins/`.
+Official plugins are published separately as `@zumer/snapdom-plugins`. Plugins 4.x require SnapDOM 3.3.0 or newer within 3.x and include the full PDF and Vector exporters under MIT. Their sources live in `packages/plugins/`.
 
 ```js
 import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
@@ -232,7 +232,7 @@ The same plugin system supports overlays, redaction and custom exporters. Local 
 
 ### Export PDF and editable vectors
 
-These examples use plugins 4.x from this checkout. PDF returns a `Blob` with searchable, selectable text, links, pagination and optional form fields. Vector returns an SVG string without `<foreignObject>`, preserving supported shapes and editable text.
+These examples use the published `@zumer/snapdom-plugins` 4.x package. PDF returns a `Blob` with searchable, selectable text, links, pagination and optional form fields. Vector returns an SVG string without `<foreignObject>`, preserving supported shapes and editable text.
 
 ```js
 import { snapdom } from '@zumer/snapdom';

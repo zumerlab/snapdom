@@ -88,7 +88,7 @@ await result.download({ format: 'jpg', filename: 'card' });
 npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-本仓库的插件 4.x 要求核心 3.x。完整 PDF 和 Vector 导出器已在本仓库中以 MIT 许可证开源，但尚未发布到 npm；上面的 `@latest` 命令不会安装这两个新导出器。可运行 `npm run compile` 和 `npm run site`，使用本地构建体验演示。
+插件 4.x 要求 SnapDOM 3.3.0 或更高的 3.x 版本。完整 PDF 和 Vector 导出器采用 MIT 许可证，已随 `@zumer/snapdom-plugins` 4.x 发布到 npm。上面的 `@latest` 命令会安装已发布的版本。
 
 也可以在浏览器中加载：
 
@@ -216,7 +216,7 @@ for (let y = 0; y < h0; y += pieceHeight) {
 
 ### 导出 HTML 或结构化上下文
 
-官方插件单独发布为 `@zumer/snapdom-plugins`。本仓库的插件 4.x 要求核心 3.x，并将完整的 PDF 和 Vector 导出器以 MIT 许可证开源；源码位于 `packages/plugins/`。
+官方插件单独发布为 `@zumer/snapdom-plugins`。插件 4.x 要求 SnapDOM 3.3.0 或更高的 3.x 版本，并将完整的 PDF 和 Vector 导出器以 MIT 许可证开源；源码位于 `packages/plugins/`。
 
 ```js
 import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
@@ -233,7 +233,7 @@ const context = await result.toContext();
 
 ### 导出 PDF 和可编辑矢量图
 
-这些示例使用本仓库的插件 4.x。PDF 返回 `Blob`，支持可搜索、可选择的文本、链接、分页和可选的表单字段。Vector 返回不含 `<foreignObject>` 的 SVG 字符串，并保留受支持的形状和可编辑文本。
+这些示例使用已发布的 `@zumer/snapdom-plugins` 4.x 包。PDF 返回 `Blob`，支持可搜索、可选择的文本、链接、分页和可选的表单字段。Vector 返回不含 `<foreignObject>` 的 SVG 字符串，并保留受支持的形状和可编辑文本。
 
 ```js
 import { snapdom } from '@zumer/snapdom';
