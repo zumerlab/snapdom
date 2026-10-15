@@ -224,7 +224,6 @@
         </div>
 
         <section class="demo-panel sec-capture" aria-label="Live demo">
-          <header class="demo-panel-head"><span class="demo-panel-title">snapdom.toPng(stage)</span><button type="button" class="demo-act is-primary" id="hero-capture">Capture</button><button type="button" class="demo-act" id="hero-clear">Clear</button></header>
           <div class="demo-panel-body">
           <div class="stage" id="hero-stage">
             <div class="stage-third v" style="left:33.33%"></div>
@@ -435,12 +434,11 @@
       if (captureBusy || document.querySelector('.star-overlay')) return
       captureBusy = true
       const button = document.getElementById('hero-shutter')
-      const capture = document.getElementById('hero-capture')
       const status = document.getElementById('hero-status')
       const stage = document.getElementById('hero-stage')
       const tray = document.getElementById('hero-tray')
       const flash = document.getElementById('hero-flash')
-      button.disabled = capture.disabled = true
+      button.disabled = true
       try {
         flash.classList.remove('flashing')
         void flash.offsetWidth
@@ -484,7 +482,7 @@
           const overlay = document.createElement('div')
           overlay.className = 'star-overlay'
           overlay.innerHTML = '<div class="star-card"><a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span class="star-big">★</span>ENJOYING IT?<br>STAR THE REPO</a><button class="star-close" type="button" aria-label="Close">×</button></div>'
-          const close = () => { overlay.remove(); button.disabled = capture.disabled = false }
+          const close = () => { overlay.remove(); button.disabled = false }
           overlay.querySelector('.star-close').addEventListener('click', close)
           overlay.querySelector('a').addEventListener('click', close)
           tray.append(overlay)
@@ -493,17 +491,11 @@
         status.textContent = 'Error: ' + (error?.message || error)
       } finally {
         captureBusy = false
-        button.disabled = capture.disabled = !!document.querySelector('.star-overlay')
+        button.disabled = !!document.querySelector('.star-overlay')
       }
     }
 
     document.getElementById('hero-shutter').addEventListener('click', captureHero)
-    document.getElementById('hero-capture').addEventListener('click', captureHero)
-    document.getElementById('hero-clear').addEventListener('click', () => {
-      const tray = document.getElementById('hero-tray')
-      tray.innerHTML = '<span class="tray-empty">Prints land here</span>'
-      document.getElementById('hero-status').textContent = 'Press the shutter. This stage is captured for real.'
-    })
   </script>
 </body>
 </html>
