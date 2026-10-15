@@ -171,13 +171,12 @@ def convert(section, gi, path, title, demo, flat):
     side = []
     group_html = lambda label, sec_, links, open_: (f'<div class="sec-{sec_}"><button type="button" class="pane-nav-head" aria-expanded="{str(open_).lower()}"><span class="sec-dot"></span>{E(label)}</button><div class="pane-nav-items">{links}</div></div>')
     # A page whose toc carries a group per entry (the showcase) shows those groups as the
-    # sidebar; a section group with the same label adds its page links under it.
+    # sidebar; a section group with the same label lends it its colour.
     grouped = toc and len(toc[0]) > 2 and any(p == path for _, _, items in section['groups'] for p, _, _ in items)
     pages = {glabel: (gsec, items) for glabel, gsec, items in section['groups']}
     if grouped:
         for label in dict.fromkeys(t[2] for t in toc):
             links = ''.join(f'<a href="#{t[0]}">{E(t[1])}</a>' for t in toc if t[2] == label)
-            links += ''.join(f'<a href="{rel(path, p)}">{E(t)}</a>' for p, t, _ in pages.get(label, ('', []))[1])
             side.append(group_html(label, pages.get(label, ({'Capture': 'capture', 'Plugins': 'export'}.get(label, 'labs'),))[0], links, True))
     for glabel, gsec, items in ([] if grouped else section['groups']):
         links = ''.join(f'<a href="{rel(path, p)}"{CUR if p == path else ""}>{E(t)}</a>' for p, t, _ in items)

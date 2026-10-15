@@ -379,3 +379,17 @@ if (!topics.length) {
   addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(mark) } }, { passive: true })
   mark()
 }
+
+// ?embed shows only a lab's live demo, for the showcase to frame. Siblings on the way up
+// are hidden rather than the demo moved, so the lab's own selectors and scripts still match.
+if (new URLSearchParams(location.search).has('embed')) {
+  const demo = document.querySelector('.pane-content [class^="lab-"]')
+  if (demo) {
+    for (let el = demo; el !== document.body; el = el.parentElement) {
+      for (const sib of el.parentElement.children) if (sib !== el && sib.tagName !== 'SCRIPT' && sib.tagName !== 'STYLE') sib.style.display = 'none'
+      if (el !== demo) el.style.cssText += ';display:block;margin:0;padding:0;max-width:none;border:0'
+    }
+    document.documentElement.style.cssText += ';background:transparent'
+    document.body.style.cssText += ';margin:0;padding:0;background:transparent'
+  }
+}
