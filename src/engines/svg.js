@@ -26,6 +26,7 @@ import {
   estimateKeptHeight,
   limitDecimals,
   reconcileCloneLayout,
+  inertMeasurementCopy,
   composeResidual2D
 } from '../utils/capture.helpers.js'
 import {
@@ -268,7 +269,7 @@ export async function composeAndSerialize(state, ex) {
         const styleNode = elDoc.createElement('style')
         styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
         mShadow.appendChild(styleNode)
-        mShadow.appendChild(state.clone.cloneNode(true))
+        mShadow.appendChild(inertMeasurementCopy(state.clone))
         elDoc.body.appendChild(wrap)
         const csh = wrap.scrollHeight
         const csw = wrap.scrollWidth

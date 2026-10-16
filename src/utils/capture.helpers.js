@@ -700,6 +700,33 @@ export function estimateKeptHeight(container, options) {
 export const limitDecimals = (v, n = 3) =>
   Number.isFinite(v) ? Math.round(v * 10 ** n) / 10 ** n : v
 
+/**
+ * Deep-copy the clone for an in-document measurement mount without running page code (#523).
+ * `cloneNode` in the page document constructs every defined custom element, and connecting
+ * the copy runs its `connectedCallback`, so a Lit or widget page set itself up again on a
+ * throwaway node per capture. The copy is made in an inert document (no registry, nothing
+ * upgrades), and custom tags become spans, which mounting cannot upgrade either. A span lays
+ * out like the clone does in the foreignObject, where no definition exists and the base reset
+ * already uses span defaults for custom tags (`getDefaultStyleForTag`). `is` is dropped by
+ * recreating the element. Pinned by __tests__/snapdom.issue523.test.js.
+ * @param {Element} clone
+ * @returns {Element} copy owned by an inert document; appending it adopts it
+ */
+export function inertMeasurementCopy(clone) {
+  const doc = document.implementation.createHTMLDocument('')
+  let copy = doc.importNode(clone, true)
+  for (const el of [copy, ...copy.querySelectorAll('*')]) {
+    const custom = el.localName.includes('-')
+    if (!isHTMLEl(el) || !(custom || el.hasAttribute('is'))) continue
+    const plain = doc.createElement(custom ? 'span' : el.localName)
+    for (const a of el.attributes) if (a.name !== 'is') plain.setAttribute(a.name, a.value)
+    plain.append(...el.childNodes)
+    if (el === copy) copy = plain
+    else el.replaceWith(plain)
+  }
+  return copy
+}
+
 /** Divergence below this (px) is sub-pixel noise, not a layout difference. */
 const RECONCILE_EPS = 0.75
 
@@ -746,7 +773,7 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   const styleNode = elDoc.createElement('style')
   styleNode.textContent = cssText
   shadow.appendChild(styleNode)
-  const measured = clone.cloneNode(true)
+  const measured = inertMeasurementCopy(clone)
   shadow.appendChild(measured)
   elDoc.body.appendChild(wrap)
 
