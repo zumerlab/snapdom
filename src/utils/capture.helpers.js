@@ -131,7 +131,10 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
   }
   const hoisted = []
   for (const [cloneEl, orig] of nodeMap) {
-    if (!isHTMLEl(cloneEl) || (orig?.nodeType !== 1)) continue
+    if (orig?.nodeType !== 1) continue
+    // An outer <svg> is a CSS box like any HTML element (#522); inner SVG nodes are not.
+    const outerSvg = cloneEl.localName === 'svg' && isSVGEl(cloneEl) && !isSVGEl(orig.parentNode)
+    if (!isHTMLEl(cloneEl) && !outerSvg) continue
     if (orig === root || !composedContains(root, orig)) continue
     const cs = styleCache.get(orig) || getStyle(orig)
     const pos = cs.position
@@ -199,7 +202,8 @@ export function freezeViewportPositioned(root, cloneRoot, nodeMap, styleCache, e
     // System fonts and emoji can't be embedded and drift ~1-2px in the SVG-image render.
     // A shrink-to-fit box frozen at its exact live width then re-wraps its text on any
     // sub-pixel of drift — 2px of slack absorbs it and is visually imperceptible.
-    let boxW = w + 2, boxH = h
+    // No slack on an <svg>: a wider box shifts a viewBox drawing, and it holds no text runs.
+    let boxW = outerSvg ? w : w + 2, boxH = h
     // Chromium 148/149 raster bug: an absolute box whose top/left coincides EXACTLY with
     // the output window edge makes a LATER positioned sibling vanish when the SVG is
     // rasterized as an image — and a stuck sticky sits exactly there by definition.
