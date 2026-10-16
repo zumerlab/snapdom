@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Issue #522 · Fixed outer svg in a scrolled clip</title>
+  <style>
+    body { margin: 0; background: #edf1f5; color: #142336; font: 16px/1.5 Arial, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 120px 32px 32px; }
+    h1 { font-size: 26px; line-height: 36px; margin: 0 0 8px; }
+    button { font: inherit; padding: 8px 18px; cursor: pointer; }
+    .row { height: 160px; margin: 0 0 16px; background: #fff; border-left: 6px solid #9cc3e4; padding: 16px; box-sizing: border-box; }
+    .bar { position: fixed; top: 0; left: 0; right: 0; height: 64px; background: #173e62; color: #fff;
+      display: flex; align-items: center; padding: 0 24px 0 96px; font-weight: bold; font-size: 20px; }
+    .logo { position: fixed; top: 8px; left: 24px; }
+    .badge { position: fixed; right: 24px; bottom: 24px; }
+    #out { position: fixed; left: 24px; bottom: 24px; width: 360px; background: #fff; box-shadow: 0 4px 16px #0003; }
+    #out:empty { display: none; }
+    #out canvas { display: block; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="bar">Fixed header (HTML box)</div>
+  <!-- Outer <svg> with position:fixed: the box #522 lost. One with a viewBox, one without. -->
+  <svg class="logo" width="48" height="48" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="11" fill="#e4572e" />
+    <path d="M7 12l3 3 7-7" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" />
+  </svg>
+  <svg class="badge" width="140" height="56">
+    <rect width="140" height="56" rx="28" fill="#2e7d4f" />
+    <text x="70" y="35" text-anchor="middle" fill="#fff" font-family="Arial, sans-serif" font-size="18">fixed svg</text>
+  </svg>
+  <main>
+    <h1>Issue #522: a fixed outer &lt;svg&gt; in a clip of the scrolled viewport</h1>
+    <p>Scroll anywhere and capture the viewport. The red logo and the green badge are fixed <code>&lt;svg&gt;</code> elements; they must appear where they are on screen, just like the fixed header.</p>
+    <button id="capture">Capture viewport</button>
+    <div id="rows"></div>
+  </main>
+  <div id="out"></div>
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    const rows = document.querySelector('#rows')
+    for (let i = 1; i <= 24; i++) {
+      const row = document.createElement('div')
+      row.className = 'row'
+      row.textContent = `Row ${i}`
+      rows.appendChild(row)
+    }
+
+    document.querySelector('#capture').addEventListener('click', async () => {
+      const out = document.querySelector('#out')
+      out.replaceChildren()
+      const canvas = await snapdom.toCanvas(document.body, {
+        dpr: 1, embedFonts: false, burst: false, cache: 'disabled', clip: 'viewport',
+        exclude: ['#out']
+      })
+      out.appendChild(canvas)
+    })
+  </script>
+</body>
+</html>

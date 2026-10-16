@@ -322,6 +322,12 @@ const overrides = {
     snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, reconcile: true },
     setup: async (win) => { try { await win.__ready } catch { /* error is rendered below */ } },
   },
+  'd522-fixed-svg-clip': {
+    target: 'body',
+    snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, clip: 'viewport' },
+    setup: async (win) => { win.scrollTo(0, 900) },
+  },
+  'd523-reconcile-custom-element': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, reconcile: true } },
 }
 
 // `overrides[name].skip` wins: a demo skipped for its own reasons should not be reported as
