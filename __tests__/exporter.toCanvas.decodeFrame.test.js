@@ -6,7 +6,7 @@
 // Decoding inside a throwaway iframe makes those resources die with its document, and the
 // frame is recycled on a byte budget.
 import { describe, it, expect, afterEach } from 'vitest'
-import { toCanvas } from '../src/exporters/toCanvas.js'
+import { toCanvas, __setDecodeFrameIdleMs, DECODE_FRAME_IDLE_MS } from '../src/exporters/toCanvas.js'
 
 const decodeFrames = () => [...document.querySelectorAll('iframe[data-snapdom-internal]')]
 
@@ -110,5 +110,102 @@ describe('toCanvas — decode host', () => {
     expect([...canvas.getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([255, 0, 0, 255])
     // A leaked in-flight guard would allow drawing but prevent this retirement forever.
     expect(decodeFrames()).toHaveLength(0)
+  })
+})
+
+describe('toCanvas — decode host idle release', () => {
+  const options = { scale: 1, dpr: 1 }
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+  const red = (canvas) => [...canvas.getContext('2d').getImageData(1, 1, 1, 1).data]
+  let previous
+  afterEach(() => {
+    if (previous !== undefined) __setDecodeFrameIdleMs(previous)
+    previous = undefined
+  })
+
+  it('defaults to a few seconds of idle before releasing', () => {
+    expect(DECODE_FRAME_IDLE_MS).toBeGreaterThanOrEqual(1000)
+    expect(DECODE_FRAME_IDLE_MS).toBeLessThanOrEqual(30000)
+  })
+
+  it('removes the frame once it sits idle and recreates it on the next export', async () => {
+    previous = __setDecodeFrameIdleMs(40)
+    await toCanvas(bulkySvg(64), options)
+    const first = decodeFrames()[0]
+    expect(first.isConnected).toBe(true)
+
+    await wait(150)
+    expect(first.isConnected).toBe(false)
+    expect(decodeFrames()).toHaveLength(0)
+
+    const canvas = await toCanvas(bulkySvg(64), options)
+    expect(red(canvas)).toEqual([255, 0, 0, 255])
+    const next = decodeFrames()
+    expect(next).toHaveLength(1)
+    expect(next[0]).not.toBe(first)
+  })
+
+  it('keeps reusing one frame across a burst whose gaps are shorter than the timeout', async () => {
+    previous = __setDecodeFrameIdleMs(200)
+    await toCanvas(bulkySvg(64), options)
+    const frame = decodeFrames()[0]
+    // Frame identity, not contentDocument: Gecko swaps a fresh frame's initial about:blank
+    // document asynchronously, so the document can change once without any release.
+    for (let i = 0; i < 5; i++) {
+      await wait(60) // 5 x 60ms: the burst outlives the timeout, each gap does not
+      await toCanvas(bulkySvg(64), options)
+      expect(decodeFrames()).toEqual([frame])
+    }
+    await wait(400)
+    expect(frame.isConnected).toBe(false)
+  })
+
+  it('never releases under a decode that is still in flight', async () => {
+    // Zero idle: the small export's release is the earliest moment a release could fire.
+    previous = __setDecodeFrameIdleMs(0)
+    let heavyDone = false
+    const heavy = toCanvas(bulkySvg(13 * 1024 * 1024), options).then((c) => { heavyDone = true; return c })
+    const small = toCanvas(bulkySvg(64), options)
+    const frame = decodeFrames()[0]
+    expect(red(await small)).toEqual([255, 0, 0, 255])
+    await wait(10)
+    if (!heavyDone) expect(frame.isConnected).toBe(true)
+    // The heavy bitmap lives in that frame's document: it must still draw.
+    expect(red(await heavy)).toEqual([255, 0, 0, 255])
+    await wait(50)
+    expect(frame.isConnected).toBe(false)
+    expect(decodeFrames()).toHaveLength(0)
+  })
+
+  it('Infinity keeps the frame for the page lifetime (the pre-idle behaviour)', async () => {
+    previous = __setDecodeFrameIdleMs(Infinity)
+    await toCanvas(bulkySvg(64), options)
+    const frame = decodeFrames()[0]
+    await wait(80)
+    expect(frame.isConnected).toBe(true)
+  })
+
+  it('survives the page removing the frame while the idle timer is armed', async () => {
+    previous = __setDecodeFrameIdleMs(40)
+    await toCanvas(bulkySvg(64), options)
+    document.body.innerHTML = ''
+    const canvas = await toCanvas(bulkySvg(64), options)
+    expect(red(canvas)).toEqual([255, 0, 0, 255])
+    const frame = decodeFrames()[0]
+    expect(frame.isConnected).toBe(true)
+    await wait(150)
+    expect(frame.isConnected).toBe(false)
+    expect(decodeFrames()).toHaveLength(0)
+  })
+
+  it('a tiled retire still removes the frame immediately and leaves no timer behind', async () => {
+    previous = __setDecodeFrameIdleMs(40)
+    await toCanvas(bulkySvg(64), { ...options, __releaseDecodeFrame: true })
+    expect(decodeFrames()).toHaveLength(0)
+    await toCanvas(bulkySvg(64), options)
+    const frame = decodeFrames()[0]
+    expect(frame.isConnected).toBe(true)
+    await wait(150)
+    expect(frame.isConnected).toBe(false)
   })
 })
