@@ -778,22 +778,33 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   elDoc.body.appendChild(wrap)
 
   let pinned = 0
-  const layoutBox = (node, fallbackW, fallbackH) => {
-    const cs = getStyle(node)
+  // Each computed-style property read costs about as much as a getBoundingClientRect, and
+  // this runs for every node of a transformed or frozen branch, on both trees. So padding and
+  // border are read only for content-box nodes (border-box ones never use them), and the
+  // throwaway measured copy reads its computed style directly instead of filling the session
+  // style cache with entries for nodes that are removed a few lines below.
+  const SIDE_W = ['paddingLeft', 'paddingRight', 'borderLeftWidth', 'borderRightWidth']
+  const SIDE_H = ['paddingTop', 'paddingBottom', 'borderTopWidth', 'borderBottomWidth']
+  const measuredStyle = (node) => {
+    const win = node.ownerDocument?.defaultView
+    try { if (win) return win.getComputedStyle(node) } catch { /* fall through */ }
+    return getStyle(node)
+  }
+  const layoutBox = (node, fallbackW, fallbackH, cs = getStyle(node)) => {
     const borderBox = cs.boxSizing === 'border-box'
-    const read = (value, fallback, ...extras) => {
+    const read = (value, fallback, sides) => {
       const size = parseFloat(value)
       if (!Number.isFinite(size)) return fallback
-      const exact = size + (borderBox ? 0 : extras.reduce((sum, v) => sum + (parseFloat(v) || 0), 0))
+      let extra = 0
+      if (!borderBox) for (const prop of sides) extra += parseFloat(cs[prop]) || 0
+      const exact = size + extra
       // Computed width/height can stay logical/auto-like on unusual boxes. A real used
       // border-box is always within offset*'s sub-pixel rounding distance.
       return Math.abs(exact - fallback) <= 0.51 ? exact : fallback
     }
     return {
-      width: read(cs.width, fallbackW, cs.paddingLeft, cs.paddingRight,
-        cs.borderLeftWidth, cs.borderRightWidth),
-      height: read(cs.height, fallbackH, cs.paddingTop, cs.paddingBottom,
-        cs.borderTopWidth, cs.borderBottomWidth),
+      width: read(cs.width, fallbackW, SIDE_W),
+      height: read(cs.height, fallbackH, SIDE_H),
     }
   }
   try {
@@ -845,14 +856,14 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
               // in `measured` is divided back out and remains free to apply once at render.
               // Restore the measured root's scale first because source rects were normalized
               // by the live root above while measured rects still include the clone root.
-              const measuredBox = layoutBox(m, measuredLayoutW, measuredLayoutH)
+              const measuredBox = layoutBox(m, measuredLayoutW, measuredLayoutH, measuredStyle(m))
               sourceW = measuredW > 0 ? sourceW * msx * measuredBox.width / measuredW : sourceW
               sourceH = measuredH > 0 ? sourceH * msy * measuredBox.height / measuredH : sourceH
               measuredW = measuredBox.width
               measuredH = measuredBox.height
             } else if (transformed) {
               const sourceBox = layoutBox(src, sourceLayoutW, sourceLayoutH)
-              const measuredBox = layoutBox(m, measuredLayoutW, measuredLayoutH)
+              const measuredBox = layoutBox(m, measuredLayoutW, measuredLayoutH, measuredStyle(m))
               sourceW = sourceBox.width
               sourceH = sourceBox.height
               measuredW = measuredBox.width
