@@ -418,25 +418,48 @@ async function waitForImgPaint(img, verify, probe) {
 // Recycling only happens while no capture is mid-decode: an image's pixels belong to its
 // document's resource, so tearing that document down under an in-flight decode, or before the
 // final drawImage, would pull the bitmap out from under it.
+//
+// Idle release: an empty iframe that outlives every capture is visible to the page, and users
+// and tab-suspender extensions report it as a leak. So it is also removed once nothing has
+// been decoded for DECODE_FRAME_IDLE_MS. An acquire cancels the timer and the release that
+// brings the in-flight count to zero re-arms it, so captures closer together than that
+// (bursts, polling, GIF/video frames) keep one document, and no release can fire under a
+// running decode. The cost after an idle gap is one frame creation, measured at 0-2 ms on the
+// three engines (2026-10-17).
 // Pinned by __tests__/exporter.toCanvas.decodeFrame.test.js.
 const DECODE_FRAME_BUDGET_BYTES = 24 * 1024 * 1024
+const DECODE_FRAME_IDLE_MS = 5000
 let _decodeFrame = null
 let _decodeFrameBytes = 0
 let _decodeInFlight = 0
 let _retireDecodeFrame = false
+let _decodeFrameIdleMs = DECODE_FRAME_IDLE_MS
+let _decodeFrameIdleTimer = 0
+
+/** Remove the decode frame; its document's cached resources go with it. */
+function dropDecodeFrame() {
+  clearTimeout(_decodeFrameIdleTimer)
+  _decodeFrame?.remove()
+  _decodeFrame = null
+  _decodeFrameBytes = 0
+}
+
+/** Test-only: shorten the idle release so a test need not wait five seconds. */
+export function __setDecodeFrameIdleMs(ms) {
+  _decodeFrameIdleMs = ms ?? DECODE_FRAME_IDLE_MS
+}
 
 /** An <img> to decode `src` with, owned by the throwaway frame when there is one. */
 function acquireDecodeImage(src) {
   if (typeof document === 'undefined' || !document.body) return new Image()
+  clearTimeout(_decodeFrameIdleTimer)
   // The page may have torn the frame out from under us (anything that empties document.body);
   // a disconnected frame's document is gone with it.
   if (_decodeFrame && !_decodeFrame.contentDocument) {
-    try { _decodeFrame.remove() } catch { /* already gone */ }
-    _decodeFrame = null
+    dropDecodeFrame()
   }
   if (_decodeFrame && _decodeFrameBytes > DECODE_FRAME_BUDGET_BYTES && _decodeInFlight === 0) {
-    try { _decodeFrame.remove() } catch { /* already gone */ }
-    _decodeFrame = null
+    dropDecodeFrame()
   }
   if (!_decodeFrame) {
     const frame = document.createElement('iframe')
@@ -472,11 +495,12 @@ function releaseDecodeImage(img, retire = false) {
   img.__snapdomDecodeFrame = false
   _decodeInFlight = Math.max(0, _decodeInFlight - 1)
   if (retire) _retireDecodeFrame = true
-  if (_retireDecodeFrame && _decodeInFlight === 0) {
-    _decodeFrame?.remove()
-    _decodeFrame = null
-    _decodeFrameBytes = 0
+  if (_decodeInFlight > 0) return
+  if (_retireDecodeFrame) {
     _retireDecodeFrame = false
+    dropDecodeFrame()
+  } else {
+    _decodeFrameIdleTimer = setTimeout(dropDecodeFrame, _decodeFrameIdleMs)
   }
 }
 
