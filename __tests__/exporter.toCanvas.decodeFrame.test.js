@@ -5,8 +5,8 @@
 // multi-megabyte data: URL per frame, so the renderer grows by that much per frame, for good.
 // Decoding inside a throwaway iframe makes those resources die with its document, and the
 // frame is recycled on a byte budget.
-import { describe, it, expect, afterEach } from 'vitest'
-import { toCanvas, __setDecodeFrameIdleMs, DECODE_FRAME_IDLE_MS } from '../src/exporters/toCanvas.js'
+import { describe, it, expect, afterEach, vi } from 'vitest'
+import { toCanvas, __setDecodeFrameIdleMs } from '../src/exporters/toCanvas.js'
 
 const decodeFrames = () => [...document.querySelectorAll('iframe[data-snapdom-internal]')]
 
@@ -117,19 +117,10 @@ describe('toCanvas — decode host idle release', () => {
   const options = { scale: 1, dpr: 1 }
   const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
   const red = (canvas) => [...canvas.getContext('2d').getImageData(1, 1, 1, 1).data]
-  let previous
-  afterEach(() => {
-    if (previous !== undefined) __setDecodeFrameIdleMs(previous)
-    previous = undefined
-  })
-
-  it('defaults to a few seconds of idle before releasing', () => {
-    expect(DECODE_FRAME_IDLE_MS).toBeGreaterThanOrEqual(1000)
-    expect(DECODE_FRAME_IDLE_MS).toBeLessThanOrEqual(30000)
-  })
+  afterEach(() => __setDecodeFrameIdleMs())
 
   it('removes the frame once it sits idle and recreates it on the next export', async () => {
-    previous = __setDecodeFrameIdleMs(40)
+    __setDecodeFrameIdleMs(40)
     await toCanvas(bulkySvg(64), options)
     const first = decodeFrames()[0]
     expect(first.isConnected).toBe(true)
@@ -146,7 +137,7 @@ describe('toCanvas — decode host idle release', () => {
   })
 
   it('keeps reusing one frame across a burst whose gaps are shorter than the timeout', async () => {
-    previous = __setDecodeFrameIdleMs(200)
+    __setDecodeFrameIdleMs(200)
     await toCanvas(bulkySvg(64), options)
     const frame = decodeFrames()[0]
     // Frame identity, not contentDocument: Gecko swaps a fresh frame's initial about:blank
@@ -162,11 +153,12 @@ describe('toCanvas — decode host idle release', () => {
 
   it('never releases under a decode that is still in flight', async () => {
     // Zero idle: the small export's release is the earliest moment a release could fire.
-    previous = __setDecodeFrameIdleMs(0)
+    __setDecodeFrameIdleMs(0)
     let heavyDone = false
     const heavy = toCanvas(bulkySvg(13 * 1024 * 1024), options).then((c) => { heavyDone = true; return c })
     const small = toCanvas(bulkySvg(64), options)
-    const frame = decodeFrames()[0]
+    // WebKit acquires the frame after an await (the Safari pre-draw path), so it may not exist yet.
+    const frame = await vi.waitUntil(() => decodeFrames()[0], { interval: 1 })
     expect(red(await small)).toEqual([255, 0, 0, 255])
     await wait(10)
     if (!heavyDone) expect(frame.isConnected).toBe(true)
@@ -177,16 +169,8 @@ describe('toCanvas — decode host idle release', () => {
     expect(decodeFrames()).toHaveLength(0)
   })
 
-  it('Infinity keeps the frame for the page lifetime (the pre-idle behaviour)', async () => {
-    previous = __setDecodeFrameIdleMs(Infinity)
-    await toCanvas(bulkySvg(64), options)
-    const frame = decodeFrames()[0]
-    await wait(80)
-    expect(frame.isConnected).toBe(true)
-  })
-
   it('survives the page removing the frame while the idle timer is armed', async () => {
-    previous = __setDecodeFrameIdleMs(40)
+    __setDecodeFrameIdleMs(40)
     await toCanvas(bulkySvg(64), options)
     document.body.innerHTML = ''
     const canvas = await toCanvas(bulkySvg(64), options)
@@ -199,7 +183,7 @@ describe('toCanvas — decode host idle release', () => {
   })
 
   it('a tiled retire still removes the frame immediately and leaves no timer behind', async () => {
-    previous = __setDecodeFrameIdleMs(40)
+    __setDecodeFrameIdleMs(40)
     await toCanvas(bulkySvg(64), { ...options, __releaseDecodeFrame: true })
     expect(decodeFrames()).toHaveLength(0)
     await toCanvas(bulkySvg(64), options)

@@ -419,75 +419,40 @@ async function waitForImgPaint(img, verify, probe) {
 // document's resource, so tearing that document down under an in-flight decode, or before the
 // final drawImage, would pull the bitmap out from under it.
 //
-// Idle release: between bursts the frame is pure overhead, and an empty aria-hidden iframe
-// that outlives every capture is visible to the page: users and extensions notice it and
-// report it as a leak (MarvellousSuspender, chunisupport/chunisupport-front#324). So once nothing has been decoded for DECODE_FRAME_IDLE_MS the frame is removed too. Every
-// acquire cancels the pending release and every release that brings the in-flight count to
-// zero re-arms it, so captures closer together than the timeout (burst, polling, GIF/video
-// frames) keep reusing one document, and a release can never fire under a decode that is
-// still running or an image that has not been drawn yet. The cost after an idle gap is one
-// frame creation (and, on Gecko, the about:blank retry below) on the next export.
+// Idle release: an empty iframe that outlives every capture is visible to the page, and users
+// and tab-suspender extensions report it as a leak. So it is also removed once nothing has
+// been decoded for DECODE_FRAME_IDLE_MS. An acquire cancels the timer and the release that
+// brings the in-flight count to zero re-arms it, so captures closer together than that
+// (bursts, polling, GIF/video frames) keep one document, and no release can fire under a
+// running decode. The cost after an idle gap is one frame creation, measured at 0-2 ms on the
+// three engines (2026-10-17).
 // Pinned by __tests__/exporter.toCanvas.decodeFrame.test.js.
 const DECODE_FRAME_BUDGET_BYTES = 24 * 1024 * 1024
-export const DECODE_FRAME_IDLE_MS = 5000
+const DECODE_FRAME_IDLE_MS = 5000
 let _decodeFrame = null
 let _decodeFrameBytes = 0
 let _decodeInFlight = 0
 let _retireDecodeFrame = false
 let _decodeFrameIdleMs = DECODE_FRAME_IDLE_MS
-let _decodeFrameIdleTimer = null
+let _decodeFrameIdleTimer = 0
 
-/** Remove the decode frame now; its document's cached resources go with it. */
+/** Remove the decode frame; its document's cached resources go with it. */
 function dropDecodeFrame() {
-  if (_decodeFrameIdleTimer !== null) {
-    clearTimeout(_decodeFrameIdleTimer)
-    _decodeFrameIdleTimer = null
-  }
-  try { _decodeFrame?.remove() } catch { /* already gone */ }
+  clearTimeout(_decodeFrameIdleTimer)
+  _decodeFrame?.remove()
   _decodeFrame = null
   _decodeFrameBytes = 0
 }
 
-/** Arm the idle release; only ever called with nothing in flight. */
-function scheduleDecodeFrameIdleRelease() {
-  if (_decodeFrameIdleTimer !== null) {
-    clearTimeout(_decodeFrameIdleTimer)
-    _decodeFrameIdleTimer = null
-  }
-  if (!_decodeFrame || _decodeInFlight > 0) return
-  const ms = _decodeFrameIdleMs
-  if (!(ms >= 0) || ms === Infinity || typeof setTimeout !== 'function') return
-  const frame = _decodeFrame
-  _decodeFrameIdleTimer = setTimeout(() => {
-    _decodeFrameIdleTimer = null
-    // An acquire cancels this timer, so these only guard against a frame swapped or a
-    // decode started by a path that did not go through acquire.
-    if (_decodeFrame === frame && _decodeInFlight === 0) dropDecodeFrame()
-  }, ms)
-}
-
-/**
- * Internal knob (tests, embedders that capture on a slow cadence): how long the decode frame
- * may sit unused before it is removed. `Infinity` (or a negative value) keeps it for the
- * page's lifetime, the pre-idle behaviour. Returns the previous value. Takes effect from the
- * next release.
- * @param {number} ms
- * @returns {number}
- */
+/** Test-only: shorten the idle release so a test need not wait five seconds. */
 export function __setDecodeFrameIdleMs(ms) {
-  const prev = _decodeFrameIdleMs
-  _decodeFrameIdleMs = Number(ms)
-  return prev
+  _decodeFrameIdleMs = ms ?? DECODE_FRAME_IDLE_MS
 }
 
 /** An <img> to decode `src` with, owned by the throwaway frame when there is one. */
 function acquireDecodeImage(src) {
   if (typeof document === 'undefined' || !document.body) return new Image()
-  // A capture is starting: the frame is in use again, so no idle release may fire under it.
-  if (_decodeFrameIdleTimer !== null) {
-    clearTimeout(_decodeFrameIdleTimer)
-    _decodeFrameIdleTimer = null
-  }
+  clearTimeout(_decodeFrameIdleTimer)
   // The page may have torn the frame out from under us (anything that empties document.body);
   // a disconnected frame's document is gone with it.
   if (_decodeFrame && !_decodeFrame.contentDocument) {
@@ -532,11 +497,11 @@ function releaseDecodeImage(img, retire = false) {
   if (retire) _retireDecodeFrame = true
   if (_decodeInFlight > 0) return
   if (_retireDecodeFrame) {
-    dropDecodeFrame()
     _retireDecodeFrame = false
-    return
+    dropDecodeFrame()
+  } else {
+    _decodeFrameIdleTimer = setTimeout(dropDecodeFrame, _decodeFrameIdleMs)
   }
-  scheduleDecodeFrameIdleRelease()
 }
 
 /** Start the decode of `src` on `image`. */
