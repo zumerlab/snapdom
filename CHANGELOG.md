@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.3.5](https://github.com/zumerlab/snapdom/compare/v3.3.4...v3.3.5)
+
+> 17 October 2026
+
+- fix(reconcile): measure without upgrading page custom elements [`#523`](https://github.com/zumerlab/snapdom/pull/523)
+- fix(clip): re-anchor a fixed outer &lt;svg&gt; like a fixed HTML box [`#522`](https://github.com/zumerlab/snapdom/pull/522)
+- perf: release the idle decode iframe, cheaper reconcile walk [`6822e82`](https://github.com/zumerlab/snapdom/commit/6822e826e0e5910c3c6e567b501aa18045939ff6)
+- fix(styles): read cross-origin sheets through a fetched copy [`3592434`](https://github.com/zumerlab/snapdom/commit/35924344ab28c3d15f1d837795250e59f95f29db)
+- fix(styles): keep frozen heights from losing 1/64px in Chromium [`36e7e29`](https://github.com/zumerlab/snapdom/commit/36e7e29913c54e2bf6df6455740c9a2f37401264)
+- docs: note that download() uses DPR 1 and scale sets its resolution [`793500b`](https://github.com/zumerlab/snapdom/commit/793500bcb20f6e7f8a5345cbbbfec6a0b9cf21b3)
+
 #### [v3.3.4](https://github.com/zumerlab/snapdom/compare/v3.3.3...v3.3.4)
 
 > 13 October 2026
