@@ -12,7 +12,7 @@ const stages = {
 let active = 'All'
 const groups = new Map()
 for (const card of cards) {
-  const group = plugins.length ? Object.keys(stages).find(k => stages[k].includes(card.dataset.plugin)) : card.querySelector('.tag').textContent.trim()
+  const group = plugins.length ? Object.keys(stages).find(k => stages[k].includes(card.dataset.plugin)) : card.dataset.group || card.querySelector('.tag').textContent.trim()
   card.dataset.catalogueGroup = group
   if (!groups.has(group)) groups.set(group, [])
   groups.get(group).push(card)
