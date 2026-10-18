@@ -152,9 +152,19 @@ function ancestorFilterReach(el, clip) {
   return r
 }
 
+/** Whether a ::before/::after whose gate the element matches actually generates a box. A
+ *  matched gate alone said yes for every element under Tailwind v4's preflight
+ *  (`*, ::before, ::after { box-sizing: border-box }`, no `content`), which kept 137 of 161
+ *  boxes against 38 with no band at all (#525). */
+function generatesPseudo(el, gate, pseudo) {
+  try { if (!gate || !el.matches(gate)) return false } catch { return true }
+  const c = getStyle(el, pseudo).content
+  return !!c && c !== 'none' && c !== 'normal'
+}
+
 /**
- * How far the element's own painting can reach outside its border box. A box that may
- * generate ::before/::after keeps the full CLIP_CULL_MARGIN: its pseudos are not in its
+ * How far the element's own painting can reach outside its border box. A box with a
+ * generated ::before/::after keeps the full CLIP_CULL_MARGIN: its pseudos are not in its
  * rect. One em covers glyph overhang and focus rings; list items get room for an outside
  * marker.
  * @param {Element} el
@@ -164,9 +174,8 @@ function ancestorFilterReach(el, clip) {
  */
 function inkReach(el, cs, clip) {
   const { before, after } = pseudoGatesFor(el)
-  if (before === null || after === null) return CLIP_CULL_MARGIN
-  const sel = [before, after].filter(Boolean).join(',')
-  try { if (sel && el.matches(sel)) return CLIP_CULL_MARGIN } catch { return CLIP_CULL_MARGIN }
+  if (before === null || after === null ||
+      generatesPseudo(el, before, '::before') || generatesPseudo(el, after, '::after')) return CLIP_CULL_MARGIN
   if ((cs.borderImageSource && cs.borderImageSource !== 'none') ||
       (cs.webkitBoxReflect && cs.webkitBoxReflect !== 'none')) return CLIP_CULL_MARGIN
   const em = parseFloat(cs.fontSize) || 16

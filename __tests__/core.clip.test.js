@@ -370,6 +370,13 @@ describe('clip: ink-aware cull band (#525)', () => {
     expect(decodeSvg(await snapdom.toRaw(document.body, { clip }))).not.toContain('ABOVE_525')
   })
 
+  it('a content-less ::before/::after rule matching every element does not keep it (Tailwind preflight)', async () => {
+    const style = mount(document.createElement('style'))
+    style.textContent = '*,::before,::after{box-sizing:border-box;border:0 solid}'
+    const { clip } = scene('')
+    expect(decodeSvg(await snapdom.toRaw(document.body, { clip }))).not.toContain('ABOVE_525')
+  })
+
   it('keeps a block whose box-shadow paints into the window', async () => {
     // A spread, not a y offset: WebKit flips shadow offsets in svg-as-image.
     const { clip } = scene('box-shadow:0 0 0 80px rgb(255,0,0)')
@@ -379,7 +386,7 @@ describe('clip: ink-aware cull band (#525)', () => {
   it('keeps a block whose positioned ::after paints up into the window', async () => {
     // Upward, so the pseudo is in neither the block's rect nor its scrollHeight.
     const style = mount(document.createElement('style'))
-    style.textContent = '.a525{position:relative}.a525::after{content:"";position:absolute;left:0;right:0;top:-80px;height:40px;background:rgb(255,0,0)}'
+    style.textContent = '*,::before,::after{box-sizing:border-box}.a525{position:relative}.a525::after{content:"";position:absolute;left:0;right:0;top:-80px;height:40px;background:rgb(255,0,0)}'
     const wrap = mount(document.createElement('div'))
     wrap.style.cssText = 'position:absolute;left:0;top:0;width:300px'
     wrap.innerHTML = '<div class="w525" style="height:100px"></div><div style="height:60px"></div><div class="a525" style="height:40px">BELOW_525</div>'
