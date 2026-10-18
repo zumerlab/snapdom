@@ -347,3 +347,49 @@ describe('clip option (region capture)', () => {
     expect(b).toBe(a)
   })
 })
+
+// #525: the 200px band is a ceiling, not a constant. A box inside it is kept only when its
+// own painting (shadows, outline, filters, pseudos, ancestor filters) can reach the window.
+describe('clip: ink-aware cull band (#525)', () => {
+  const redAt = async (clip, y) => {
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const px = canvas.getContext('2d').getImageData(Math.round(clip.width / 2), y, 1, 1).data
+    return px[0] > 200 && px[1] < 60 && px[2] < 60 && px[3] > 200
+  }
+  // A 40px-tall block sitting 60px above a 100px window, so its gap is 60px.
+  const scene = (blockCss, extra = '') => {
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = `position:absolute;left:0;top:0;width:300px;${extra}`
+    wrap.innerHTML = `<div class="b525" style="height:40px;${blockCss}">ABOVE_525</div><div style="height:60px"></div><div class="w525" style="height:100px"></div>`
+    const r = wrap.querySelector('.w525').getBoundingClientRect()
+    return { wrap, clip: { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height } }
+  }
+
+  it('culls a plain block whose box misses the window by less than 200px', async () => {
+    const { clip } = scene('')
+    expect(decodeSvg(await snapdom.toRaw(document.body, { clip }))).not.toContain('ABOVE_525')
+  })
+
+  it('keeps a block whose box-shadow paints into the window', async () => {
+    // A spread, not a y offset: WebKit flips shadow offsets in svg-as-image.
+    const { clip } = scene('box-shadow:0 0 0 80px rgb(255,0,0)')
+    expect(await redAt(clip, 10)).toBe(true)
+  })
+
+  it('keeps a block whose positioned ::after paints up into the window', async () => {
+    // Upward, so the pseudo is in neither the block's rect nor its scrollHeight.
+    const style = mount(document.createElement('style'))
+    style.textContent = '.a525{position:relative}.a525::after{content:"";position:absolute;left:0;right:0;top:-80px;height:40px;background:rgb(255,0,0)}'
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'position:absolute;left:0;top:0;width:300px'
+    wrap.innerHTML = '<div class="w525" style="height:100px"></div><div style="height:60px"></div><div class="a525" style="height:40px">BELOW_525</div>'
+    const r = wrap.querySelector('.w525').getBoundingClientRect()
+    const clip = { x: r.left + scrollX, y: r.top + scrollY, width: r.width, height: r.height }
+    expect(await redAt(clip, 90)).toBe(true)
+  })
+
+  it('keeps a block an ancestor drop-shadow paints into the window', async () => {
+    const { clip } = scene('background:rgb(255,0,0);color:transparent', 'filter:drop-shadow(0 80px 0 rgb(255,0,0))')
+    expect(await redAt(clip, 10)).toBe(true)
+  })
+})

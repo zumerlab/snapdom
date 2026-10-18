@@ -11,7 +11,7 @@
  * @module clone
  */
 
-import { inlineAllStyles, observeShadowRoot } from '../modules/styles.js'
+import { inlineAllStyles, observeShadowRoot, pseudoGatesFor } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
 import { debugWarn, getStyle, isPasswordInput, maskValue, isTag, isSVGEl } from '../utils/index.js'
@@ -116,23 +116,85 @@ function makeHideSpacer(node) {
 /** display:none elements deepClone still clones whole (#507): see the skip in deepClone. */
 const HIDDEN_CLONED_TAGS = new Set(['style', 'option', 'optgroup'])
 
-/** Extra px around the clip rect kept alive so partially-bleeding effects (shadows, blur,
- *  overhanging glyphs) of near-edge elements still paint into the window. */
+/** Most px a box may sit outside the clip rect and still be kept: the ceiling for what its
+ *  shadows, blur and overhanging glyphs can paint back into the window. Within it,
+ *  inkReach decides per box (#525). */
 const CLIP_CULL_MARGIN = 200
 
 /** Replaced elements are atomic inline boxes, so a fixed-size husk holds their flow slot
  *  even at display:inline — and culling offscreen <img>/<canvas> skips fetch/encode work. */
 const CLIP_REPLACED_TAGS = new Set(['img', 'canvas', 'video', 'iframe', 'object', 'embed'])
 
+/** Sum of every px length in a computed value: an upper bound on how far its shadows reach. */
+function pxSum(v) {
+  let t = 0
+  for (const m of v.matchAll(/-?[\d.]+px/g)) t += Math.abs(parseFloat(m[0]))
+  return t
+}
+
+/** How far a filter spreads pixels: blur() is a standard deviation, painting out to ~3x. */
+function filterReach(cs) {
+  const f = cs.filter
+  if (!f || f === 'none') return 0
+  return f.includes('url(') ? CLIP_CULL_MARGIN : 3 * pxSum(f)
+}
+
+/** Filter reach summed over the ancestors up to the clip root, which blur and drop-shadow a
+ *  descendant's pixels into the window. Memoized per element for the capture. */
+function ancestorFilterReach(el, clip) {
+  if (!el) return 0
+  const memo = clip.filterReach ||= new WeakMap()
+  let r = memo.get(el)
+  if (r === undefined) {
+    r = filterReach(getStyle(el)) + (el === clip.root ? 0 : ancestorFilterReach(el.parentElement, clip))
+    memo.set(el, r)
+  }
+  return r
+}
+
 /**
- * Whether a box touches the clip rect, with CLIP_CULL_MARGIN of slack on every side.
+ * How far the element's own painting can reach outside its border box. A box that may
+ * generate ::before/::after keeps the full CLIP_CULL_MARGIN: its pseudos are not in its
+ * rect. One em covers glyph overhang and focus rings; list items get room for an outside
+ * marker.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs
+ * @param {{root: Element}} clip
+ * @returns {number}
+ */
+function inkReach(el, cs, clip) {
+  const { before, after } = pseudoGatesFor(el)
+  if (before === null || after === null) return CLIP_CULL_MARGIN
+  const sel = [before, after].filter(Boolean).join(',')
+  try { if (sel && el.matches(sel)) return CLIP_CULL_MARGIN } catch { return CLIP_CULL_MARGIN }
+  if ((cs.borderImageSource && cs.borderImageSource !== 'none') ||
+      (cs.webkitBoxReflect && cs.webkitBoxReflect !== 'none')) return CLIP_CULL_MARGIN
+  const em = parseFloat(cs.fontSize) || 16
+  const outline = cs.outlineStyle === 'none' ? 0 : pxSum(cs.outlineWidth) + pxSum(cs.outlineOffset)
+  const own = Math.max(em * (cs.display === 'list-item' ? 3 : 1), outline,
+    pxSum(cs.boxShadow), pxSum(cs.textShadow), filterReach(cs))
+  return own + ancestorFilterReach(el.parentElement, clip)
+}
+
+/**
+ * Whether a box's painting can reach the clip rect: inside it, or within its ink reach and
+ * never beyond CLIP_CULL_MARGIN. Only boxes inside that band pay the style read.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration|null} cs - the element's computed style when already read
  * @param {{left:number,top:number,right:number,bottom:number}} b
- * @param {{left:number,top:number,right:number,bottom:number}} rect
+ * @param {{rect: {left:number,top:number,right:number,bottom:number}, root: Element}} clip
  * @returns {boolean}
  */
-function intersectsClip(b, rect) {
-  return b.right >= rect.left - CLIP_CULL_MARGIN && b.left <= rect.right + CLIP_CULL_MARGIN &&
-         b.bottom >= rect.top - CLIP_CULL_MARGIN && b.top <= rect.bottom + CLIP_CULL_MARGIN
+function reachesClip(el, cs, b, clip) {
+  const rect = clip.rect
+  const gap = Math.max(rect.left - b.right, b.left - rect.right, rect.top - b.bottom, b.top - rect.bottom)
+  if (gap <= 0) return true
+  if (gap > CLIP_CULL_MARGIN) return false
+  // The escape scan revisits a subtree once per ancestor level, so the reach is memoized.
+  const memo = clip.inkReach ||= new WeakMap()
+  let reach = memo.get(el)
+  if (reach === undefined) memo.set(el, reach = inkReach(el, cs || getStyle(el), clip))
+  return gap <= reach
 }
 
 /**
@@ -153,7 +215,6 @@ function isOutsideClip(node, clip) {
   if (r.width === 0 && r.height === 0) return false
   const cs = getStyle(node)
   if (cs.display === 'inline' && !CLIP_REPLACED_TAGS.has((node.localName || '').toLowerCase())) return false
-  const rect = clip.rect
   // Scroll overflow grows right/down in horizontal-ltr; mirror for rtl / vertical modes.
   const sw = node.scrollWidth || 0
   const sh = node.scrollHeight || 0
@@ -168,13 +229,14 @@ function isOutsideClip(node, clip) {
     box.top = Math.min(r.top, r.bottom - sh)
     box.left = Math.min(box.left, r.right - sw)
   }
-  if (intersectsClip(box, rect)) return false
+  if (reachesClip(node, cs, box, clip)) return false
   // Escape scan: any descendant whose painted box reaches the window (gBCR reads only —
   // no style/clone/inline work) vetoes the cull; deeper levels then cull its siblings.
   const tw = (node.ownerDocument || document).createTreeWalker(node, NodeFilter.SHOW_ELEMENT)
   while (tw.nextNode()) {
-    const dr = /** @type {Element} */ (tw.currentNode).getBoundingClientRect()
-    if ((dr.width > 0 || dr.height > 0) && intersectsClip(dr, rect)) return false
+    const d = /** @type {Element} */ (tw.currentNode)
+    const dr = d.getBoundingClientRect()
+    if ((dr.width > 0 || dr.height > 0) && reachesClip(d, null, dr, clip)) return false
   }
   return true
 }
