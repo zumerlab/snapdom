@@ -29,7 +29,7 @@
 //
 //   beforeEach(networkGuard((name) => name.startsWith('cdn:')))
 //
-import { commands } from '@vitest/browser/context'
+import { commands } from 'vitest/browser'
 
 /** Prefix of every skip note this gate writes; scripts/vitest.mjs looks for it. */
 export const SKIP_NOTE = 'network gate: '

@@ -5,7 +5,7 @@
 // the boxes those pseudos can exist on, and the emitter still writes only what differs from
 // the element's own style.
 import { describe, it, expect, afterEach } from 'vitest'
-import { commands } from '@vitest/browser/context'
+import { commands } from 'vitest/browser'
 import { snapdom } from '../src/index.js'
 
 const mounted = []

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { page } from '@vitest/browser/context'
+import { page } from 'vitest/browser'
 import { snapdom } from '../src/index.js'
 
 const mounted = []

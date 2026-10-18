@@ -4,6 +4,7 @@
 
 import { defineConfig, configDefaults } from 'vitest/config'
 import { snapDiffCommands } from '@zumer/snapdiff/vitest'
+import { playwright } from '@vitest/browser-playwright'
 import { createNetworkGate } from './vitest.network.mjs'
 
 const ALL_BROWSERS = ['chromium', 'firefox', 'webkit']
@@ -105,7 +106,7 @@ export default defineConfig({
     globalSetup: ['./scripts/ensure-fresh-dist.mjs', './scripts/require-visual.mjs'],
     browser: {
       enabled: true,
-      provider: 'playwright',
+      provider: playwright(),
       screenshotFailures: false,
       instances: browsers.map((browser) => ({ browser })),
       commands: { ...visualCommands, ...networkGate.commands, ...crossOrigin.commands },
@@ -113,6 +114,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.js'],
+      // vitest 4 matches the include against nested paths too: packages/plugins/pdf/src/...
+      exclude: ['packages/**'],
     },
   },
 })

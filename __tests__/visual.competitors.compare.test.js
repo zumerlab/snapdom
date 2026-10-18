@@ -23,7 +23,7 @@
 //   VITE_COMPETITOR_COMPARE=1 npx vitest run __tests__/visual.competitors.compare.test.js --browser.headless
 //   BROWSER=all VITE_COMPETITOR_COMPARE=1 npx vitest run __tests__/visual.competitors.compare.test.js --browser.headless
 import { describe, it, expect, vi } from 'vitest'
-import { server } from '@vitest/browser/context'
+import { server } from 'vitest/browser'
 import { pageNeedsNetwork } from './helpers/network-gate.js'
 
 const RUN = !!import.meta.env.VITE_COMPETITOR_COMPARE

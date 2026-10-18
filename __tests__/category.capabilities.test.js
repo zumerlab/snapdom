@@ -19,7 +19,7 @@
 //       BROWSER=all npx vitest run __tests__/category.capabilities.test.js --browser.headless
 
 import { describe, test, expect, beforeEach, afterEach, afterAll } from 'vitest'
-import { server } from '@vitest/browser/context'
+import { server } from 'vitest/browser'
 import { loadLibs, LIB_NAMES, UNAVAILABLE } from './category.libs.js'
 import { buildCapabilityFixture, analyzeCapabilities as analyze, CAPS } from '../docs/compare/live/harness.js'
 import { networkGuard } from './helpers/network-gate.js'

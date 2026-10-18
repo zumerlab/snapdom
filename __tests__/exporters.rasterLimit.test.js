@@ -5,7 +5,7 @@
 // decodes the whole payload, rewrites the header, re-encodes and resamples at a fractional
 // scale — 5.2 ms/Mpx through it against 3.1 ms/Mpx just under it.
 import { describe, test, expect, afterEach } from 'vitest'
-import { server } from '@vitest/browser/context'
+import { server } from 'vitest/browser'
 import { snapdom } from '../src/index'
 
 const ENGINE = server?.browser || 'unknown'

@@ -23,7 +23,7 @@
 // The static review report is written to __snapshots__/visual/report.html.
 
 import { describe, it, beforeEach, afterEach, afterAll, inject, vi } from 'vitest'
-import { commands } from '@vitest/browser/context'
+import { commands } from 'vitest/browser'
 import { defineDemoSuite } from '@zumer/snapdiff/vitest/suite'
 import { networkGuard, networkStatus, pageNeedsNetwork } from './helpers/network-gate.js'
 import { skippedVisualDemos, assertVisualBaselineMode } from '../scripts/visual-policy.mjs'

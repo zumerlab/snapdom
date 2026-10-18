@@ -12,7 +12,7 @@
 // text-dense scene between two renderers, which would drown the structural signal this exists
 // to catch. Each scene is a construction that a past bug placed wrong.
 import { describe, it, expect, afterEach } from 'vitest'
-import { page } from '@vitest/browser/context'
+import { page } from 'vitest/browser'
 // Exercise the distributed bundle, rebuilt by globalSetup. Its lazy exporters stay
 // inside the bundle, avoiding a late source-module request after the native screenshot.
 import { snapdom } from '../dist/snapdom.mjs'

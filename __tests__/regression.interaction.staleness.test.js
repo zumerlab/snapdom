@@ -7,7 +7,7 @@
 //
 // The assertions are intentionally independent of event-delivery timing.
 import { describe, it, expect, afterEach, vi, inject } from 'vitest'
-import { userEvent } from '@vitest/browser/context'
+import { userEvent } from 'vitest/browser'
 import { snapdom } from '../src/index.js'
 
 // The real pointer is the slow part of this file, and only under BROWSER=all: the first

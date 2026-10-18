@@ -92,6 +92,8 @@ beforeEach(() => {
   vi.restoreAllMocks()
 
   // helper mocks are already installed; just reset the counters
+  // (vitest 4: restoreAllMocks no longer touches vi.fn() mocks, only spies)
+  vi.resetAllMocks()
 
   // limpiar caches y DOM
   try { cache.resource?.clear?.() } catch {}

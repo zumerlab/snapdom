@@ -4,7 +4,7 @@
 // elsewhere on the page re-captured a static element on every call. styles.js now reads such a
 // sheet through a fetched copy when the server allows it.
 import { describe, it, expect, afterEach } from 'vitest'
-import { commands } from '@vitest/browser/context'
+import { commands } from 'vitest/browser'
 import { snapdom } from '../src/index.js'
 
 const mounted = []

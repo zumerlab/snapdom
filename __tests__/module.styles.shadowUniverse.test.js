@@ -4,7 +4,7 @@
 // unions the sheets of the roots a node's style can come from, and each case below is one way
 // a rule reaches a node from a root that is not its own.
 import { describe, it, expect, afterEach } from 'vitest'
-import { commands } from '@vitest/browser/context'
+import { commands } from 'vitest/browser'
 import { universeFor } from '../src/modules/styles.js'
 
 const mounted = []
