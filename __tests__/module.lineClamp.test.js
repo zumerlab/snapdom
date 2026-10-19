@@ -196,3 +196,25 @@ describe('lineClampTree (#386)', () => {
     expect(failures).toEqual([])
   })
 })
+
+// #529: scrollHeight is an integer. With a fractional line box the one-line probe read half a
+// pixel short, two real lines overshot the 2x target by a pixel, and Firefox (14px Arial lays
+// out at 16.45px) got one line where the page shows two.
+describe('lineClamp with a fractional line height (#529)', () => {
+  it('keeps every clamped line', () => {
+    const el = document.createElement('div')
+    el.style.cssText = 'width:160px;font:14px Arial;line-height:16.45px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden'
+    el.textContent = 'Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt'
+    document.body.appendChild(el)
+    try {
+      const undo = lineClamp(el)
+      const baked = el.textContent
+      undo()
+      expect(baked.endsWith('…')).toBe(true)
+      // The cut must land on the second line, past the first line's last word.
+      expect(baked).toContain('consectetur')
+    } finally {
+      el.remove()
+    }
+  })
+})

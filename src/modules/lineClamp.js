@@ -84,9 +84,14 @@ export function lineClamp(el, cs) {
   text.restore()
   const lineH = perLine > 0 ? perLine : usedLineHeightPx(cs)
   const targetH = Math.round(lineH * lines + pad)
+  // scrollHeight is an integer, so the one-line probe can be half a pixel short and the
+  // error grows with every line: Firefox lays 14px Arial at 16.45px, the probe reads 16, two
+  // real lines read 33 against a target of 32, and the clamp cut to one line (#529). Still
+  // far short of a whole extra line.
+  const slack = 0.5 * (lines + 1)
 
   // Already fits in N lines: do nothing, same as the native clamp
-  if (el.scrollHeight <= targetH + 0.5) {
+  if (el.scrollHeight <= targetH + slack) {
     return () => {}
   }
 
@@ -96,7 +101,7 @@ export function lineClamp(el, cs) {
     const mid = (lo + hi) >> 1
     text.write(original.slice(0, safeCut(original, mid)) + '…')
     // Reading scrollHeight forces layout.
-    if (el.scrollHeight <= targetH + 0.5) {
+    if (el.scrollHeight <= targetH + slack) {
       best = mid; lo = mid + 1
     } else {
       hi = mid - 1
