@@ -605,6 +605,9 @@ export async function deepClone(node, sessionCache, options) {
     const h = height || node.getBoundingClientRect().height || 0
     if (w) clone.style.width = `${w}px`
     if (h) clone.style.height = `${h}px`
+    // Those are border-box sizes; on a content-box textarea the padding and border were
+    // added again and the field wrapped out of a tight row (#528).
+    if (w || h) clone.style.boxSizing = 'border-box'
   }
   if (isTag(node, 'input')) {
     const type = (node.type || 'text').toLowerCase()

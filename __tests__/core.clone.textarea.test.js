@@ -78,3 +78,21 @@ describe('textarea value survives the clone exactly once', () => {
     expect(count(svg, 'DEF')).toBe(0)
   })
 })
+
+// #528: the clone's textarea was sized with offsetWidth/offsetHeight, a border-box size, on a
+// content-box textarea, so it grew by its padding and border. In a row with no slack to spare
+// it wrapped onto the next line.
+describe('textarea keeps its live box (#528)', () => {
+  it('stays on the row it fits in', async () => {
+    const host = mount('<div style="width:320px;font:14px Arial;background:#fff">' +
+      '<span style="display:inline-block;width:100px;height:40px;background:#f00"></span>' +
+      '<textarea style="width:190px;height:20px;padding:5px;border:3px solid #00f;margin:0;vertical-align:top;resize:none"></textarea></div>')
+    const canvas = await snapdom.toCanvas(host.firstElementChild, { dpr: 1, cache: 'disabled', burst: false })
+    const px = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    const blueAt = (x, y) => { const i = (y * canvas.width + x) * 4; return px[i] < 60 && px[i + 1] < 60 && px[i + 2] > 200 }
+    // The textarea's left border, right of the red block on the first row.
+    let found = false
+    for (let x = 100; x < 120 && !found; x++) found = blueAt(x, 10)
+    expect(found).toBe(true)
+  })
+})
