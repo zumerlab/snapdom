@@ -51,7 +51,7 @@ function mount(html) {
 
 /** Width and height of the box holding every pure-red pixel. */
 async function redSize(el) {
-  const canvas = await (await snapdom(el, { dpr: 1, scale: 1, cache: 'disabled', burst: false })).toCanvas()
+  const canvas = await (await snapdom(el, { dpr: 1, scale: 1, cache: 'disabled', burst: false, layoutZoom: 'dpr' })).toCanvas()
   const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
   let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1
   for (let y = 0; y < height; y++) {
@@ -233,7 +233,7 @@ describe('#516 a dpr 1 export of a capture laid out on a finer grid', () => {
     document.body.appendChild(zoom)
     mounted.push(zoom)
     Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => 2.625 })
-    const canvas = await (await snapdom(zoom.firstElementChild, { cache: 'disabled', burst: false })).toCanvas({ dpr: 1 })
+    const canvas = await (await snapdom(zoom.firstElementChild, { cache: 'disabled', burst: false, layoutZoom: 'dpr' })).toCanvas({ dpr: 1 })
     const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
     // A column belongs to a vertical edge when most of the band the boxes share has ink in it.
     let edges = 0
@@ -253,7 +253,7 @@ describe('#516 a dpr 1 export of a capture laid out on a finer grid', () => {
       '<div style="border:1px solid #000;padding:0 3.2px;margin:3px">aa bb</div></div>'
     const el = mount(`<div style="width:198px;padding:5px;background:#fff;font:16px serif">${box.repeat(24)}</div>`)
     Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => 2.7272727 })
-    const res = await snapdom(el, { cache: 'disabled', burst: false })
+    const res = await snapdom(el, { cache: 'disabled', burst: false, layoutZoom: 'dpr' })
     const proto = CanvasRenderingContext2D.prototype
     const ownQuality = Object.getOwnPropertyDescriptor(proto, 'imageSmoothingQuality')
     const ownUA = Object.getOwnPropertyDescriptor(navigator, 'userAgent')

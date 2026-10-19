@@ -190,6 +190,11 @@ export function createContext(options = {}) {
     // to their live size. Opt-in (adds one in-document layout of the clone).
     reconcile: options.reconcile ?? false,
 
+    // Layout zoom (#508): lay the clone out on the live device-pixel grid. 'auto' only when the
+    // live document really is on that grid (not under CDP device emulation); 'dpr' always;
+    // false never. See liveLayoutZoom in src/engines/svg.js.
+    layoutZoom: options.layoutZoom === false || options.layoutZoom === 'dpr' ? options.layoutZoom : 'auto',
+
     // Burst memoization is default engine behavior (engages from the first capture, see
     // src/core/burst.js). true/false remain INTERNAL-ONLY escapes (tests/benchmarks need
     // deterministic full-pipeline runs), not public API.

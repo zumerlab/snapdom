@@ -508,8 +508,12 @@ export async function composeAndSerialize(state, ex) {
   // kept all of them zoomed. Not WebKit, which does not round line boxes by DPR. The support
   // check is for Firefox before 126, where `zoom` does not exist and the scale(1/zoom) group
   // alone would shrink the capture. Pinned by __tests__/engine.svg.layoutZoom.test.js.
+  // Only when the live page really lays out on that grid: devicePixelRatio alone does not say so.
+  // Device emulation (Playwright/Puppeteer `deviceScaleFactor`, DevTools device mode) reports
+  // dpr 2 but lays the page out at 1x, and zooming the clone there moved line breaks and
+  // `line-height: normal` lines away from the very page it captured (liveLayoutZoom below).
   const view = elDoc.defaultView || window
-  const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? (view.devicePixelRatio || 1) : 1
+  const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? resolveLayoutZoom(view, options.layoutZoom) : 1
   // toCanvas rasterizes Firefox exports smaller than this grid at it first (#516).
   options.__layoutZoom = layoutZoom
   const fo = document.createElementNS(svgNS, 'foreignObject')
@@ -634,4 +638,57 @@ export async function composeAndSerialize(state, ex) {
  *  hasBBoxAffectingTransform, nothing more. */
 function hasTFBBox(el) {
   return hasBBoxAffectingTransform(el)
+}
+
+/**
+ * The zoom the live document is actually laid out at, for the #508 layout zoom.
+ *
+ * On a real hi-DPI screen Chromium lays the page out on the device-pixel grid (zoom-for-DSF):
+ * at dpr 2 a 14.67px Arial line of `line-height: normal` is 17px tall, not 16, and text advances
+ * are the ones a `zoom: 2` box produces. Under CDP device emulation (Playwright/Puppeteer
+ * `deviceScaleFactor`, DevTools device mode) devicePixelRatio reads 2 but layout stays at 1x, so
+ * the zoomed clone drifted from the page it was taken from: 30 `<br>` lines 14.5-38px taller or
+ * shorter, a paragraph re-wrapped (-41.5px on its widest line), `font-variant: small-caps` text
+ * re-wrapped at every width of a sweep, while the unzoomed clone matched the screenshot exactly.
+ *
+ * Signal, font-independent and synchronous: border widths snap to whole pixels of the layout
+ * grid, so a 0.5px border computes to 0.5px on a 2x grid (0.380952px at 2.625, 0.666667px at 1.5)
+ * and to 1px on a 1x grid. A computed value of 1px or more therefore means "this document is
+ * laid out at 1x whatever dpr says" and the clone is laid out at 1x too. An engine that does not
+ * snap computed border widths reports 0.5px and keeps the previous behavior (zoom = dpr).
+ * Not cached: one tiny probe per capture, and dpr, browser zoom (Ctrl +) and the root's own
+ * `zoom` can all change on the same document between captures.
+ * @param {Window} view - the captured element's window
+ * @returns {number} devicePixelRatio, or 1 when the live layout grid is CSS pixels
+ */
+export function liveLayoutZoom(view) {
+  const dpr = view.devicePixelRatio || 1
+  if (dpr === 1) return 1
+  const doc = view.document
+  let zoom = dpr
+  try {
+    const probe = doc.createElement('div')
+    markInternalNode(probe)
+    probe.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;' +
+      'width:0!important;height:0!important;visibility:hidden!important;pointer-events:none!important;' +
+      'border:0 solid transparent!important;border-top-width:0.5px!important'
+    ;(doc.body || doc.documentElement).appendChild(probe)
+    const bt = parseFloat(view.getComputedStyle(probe).borderTopWidth)
+    probe.remove()
+    if (bt >= 1) zoom = 1
+  } catch { /* keep dpr */ }
+  return zoom
+}
+
+/**
+ * The `layoutZoom` option: 'auto' (default) follows the live layout grid (liveLayoutZoom),
+ * 'dpr' always zooms by devicePixelRatio (the 3.3.x behavior), false never zooms.
+ * @param {Window} view
+ * @param {'auto'|'dpr'|false} [mode='auto']
+ * @returns {number}
+ */
+function resolveLayoutZoom(view, mode = 'auto') {
+  if (mode === false) return 1
+  if (mode === 'dpr') return view.devicePixelRatio || 1
+  return liveLayoutZoom(view)
 }
