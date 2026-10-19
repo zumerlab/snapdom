@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.3.6](https://github.com/zumerlab/snapdom/compare/v3.3.5...v3.3.6)
+
+> 19 October 2026
+
+- fix(svg): only apply devicePixelRatio layout zoom when the page lays out on the device grid [`#526`](https://github.com/zumerlab/snapdom/pull/526)
+- fix(toCanvas): crop layered content correctly on WebKit [`#527`](https://github.com/zumerlab/snapdom/pull/527)
+- chore: update vitest and related dependencies to version 4.1.12; configure vitest to use playwright as the browser provider [`eb3e658`](https://github.com/zumerlab/snapdom/commit/eb3e658282f008ce66d7e4f4ffd641b28316eee8)
+- Add new PNG assets for "weizwz" and "xun082" to the documentation [`fa7e3d2`](https://github.com/zumerlab/snapdom/commit/fa7e3d2a0334d529e78144fd8c7b018bf015f60f)
+- Refactor code structure for improved readability and maintainability [`a74c682`](https://github.com/zumerlab/snapdom/commit/a74c68254d3247b1bccd980cfdc9ee963571d452)
+- Add ink-aware clip culling tests (#525) and improve ink reach logic in clone [`d662c21`](https://github.com/zumerlab/snapdom/commit/d662c2170082615e1e4adca7e79d7d5737aad199)
+- refactor(svg): drop the public layoutZoom option [`783f684`](https://github.com/zumerlab/snapdom/commit/783f6849ce613cac59960d1a835993bd29eb7788)
+- Add tests for the ::before/::after rule without content and improve pseudo-element generation logic in the cloning function. [`d14b2bd`](https://github.com/zumerlab/snapdom/commit/d14b2bddfa85742813014d1de11799922beaa8d2)
+
+
 #### [v3.3.5](https://github.com/zumerlab/snapdom/compare/v3.3.4...v3.3.5)
 
 > 17 October 2026
