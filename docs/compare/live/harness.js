@@ -52,6 +52,13 @@ export const COMPETITORS = {
     return async (el) => toDataUrl(await window.html2canvas(el, { logging: false, scale: 1 }))
   },
 
+  // The ESM build, not the script tag: its browser bundle also claims window.html2canvas,
+  // which would swap the row above for this one.
+  'html2canvas-pro 2.5.2': async () => {
+    const m = await cdn('https://cdn.jsdelivr.net/npm/html2canvas-pro@2.5.2/+esm')
+    return async (el) => toDataUrl(await m.default(el, { logging: false, scale: 1 }))
+  },
+
   'html-to-image 1.11.13': async () => {
     const m = await cdn('https://cdn.jsdelivr.net/npm/html-to-image@1.11.13/+esm')
     return async (el) => toDataUrl(await m.toPng(el, { pixelRatio: 1 }))
