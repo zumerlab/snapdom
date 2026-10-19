@@ -68,11 +68,25 @@ function clampSvgTextRasterSize(svg, session) {
  * Window an SVG before decode. The crop is expressed in the serialized SVG's viewBox
  * coordinates (result.meta), so a document exporter can rasterize a long capture page by
  * page instead of allocating one bitmap past the browser decode limits.
+ *
+ * WebKit: in an svg-as-image, every box of the foreignObject's HTML that paints through its
+ * own layer (position:relative/absolute, opacity, transform: the text and marks of any real
+ * layout) is drawn as if the viewBox started at 0 0. It ignores the viewBox min-x/min-y, and
+ * a translate on an ancestor <g> as well; only the foreignObject's own x/y moves it.
+ * Normal-flow blocks do move, which is why solid-band crops look right there. So every
+ * window of a horizontal strip came out with the first window's text over its own
+ * background. There the window is moved onto the viewport origin by shifting the root
+ * foreignObject instead, with the viewBox at `0 0 w h`. Measured in Playwright WebKit
+ * (3.3.5, 3.3.6-dev.1): windows 2-4 of a 4-slide strip went from window 1's pixels to their
+ * own. A header-only svg (toLargePng's sizing) has no foreignObject to move and keeps the
+ * viewBox rewrite.
  * @param {string} svg - decoded svg text
  * @param {{x:number,y:number,width:number,height:number}} crop - in viewBox units
+ * @param {{shiftContent?: boolean}} [opts] - move the root foreignObject instead of the
+ *   viewBox origin; defaults to WebKit, the engine that needs it
  * @returns {string}
  */
-export function cropSvgText(svg, crop) {
+export function cropSvgText(svg, crop, { shiftContent = isSafari() } = {}) {
   const nums = ['x', 'y', 'width', 'height'].map(k => Number(crop?.[k]))
   if (!nums.every(Number.isFinite) || nums[2] <= 0 || nums[3] <= 0) {
     throw new RangeError('[SnapDOM] crop needs finite x/y and a positive width/height.')
@@ -101,11 +115,46 @@ export function cropSvgText(svg, crop) {
   const densityY = Number.isFinite(attrH) && attrH > 0 ? attrH / vh : 1
   const width = Math.max(1, (right - left) * densityX)
   const height = Math.max(1, (bottom - top) * densityY)
-  const next = tag
+  const sized = tag
     .replace(/(\bwidth=")[^"]*/i, `$1${width}`)
     .replace(/(\bheight=")[^"]*/i, `$1${height}`)
-    .replace(/(\bviewBox=")[^"]*/i, `$1${left} ${top} ${right - left} ${bottom - top}`)
+  const shifted = shiftContent ? shiftRootForeignObject(svg, tag, left, top) : null
+  if (shifted) {
+    const next = sized.replace(/(\bviewBox=")[^"]*/i, (_, attr) => `${attr}0 0 ${right - left} ${bottom - top}`)
+    return next + shifted.slice(tag.length)
+  }
+  const next = sized.replace(/(\bviewBox=")[^"]*/i, `$1${left} ${top} ${right - left} ${bottom - top}`)
   return svg.replace(tag, next)
+}
+
+/**
+ * `svg` with the foreignObject that directly follows its root tag moved by (-dx, -dy), or
+ * null when there is none to move (header-only input, or a wrapper such as the layout-zoom
+ * <g> in between, whose foreignObject is not in viewBox units).
+ * @param {string} svg - starts with `tag`
+ * @param {string} tag - the root <svg ...> tag
+ * @param {number} dx
+ * @param {number} dy
+ * @returns {string|null}
+ */
+function shiftRootForeignObject(svg, tag, dx, dy) {
+  if (!svg.startsWith(tag)) return null
+  const m = /^\s*<foreignObject\b[^>]*>/i.exec(svg.slice(tag.length, tag.length + 2048))
+  if (!m) return null
+  const fo = m[0]
+  const move = (s, name, d) => {
+    const re = new RegExp(`(\\s${name}=")([^"]*)`)
+    const at = s.match(re)
+    const v = at ? parseFloat(at[2]) : 0
+    if (!Number.isFinite(v)) return null
+    return at
+      ? s.replace(re, (_, attr) => `${attr}${v - d}`)
+      : s.replace(/^(\s*<foreignObject\b)/i, (_, open) => `${open} ${name}="${-d}"`)
+  }
+  const moved = move(fo, 'x', dx)
+  const next = moved && move(moved, 'y', dy)
+  if (!next) return null
+  return tag + next + svg.slice(tag.length + fo.length)
 }
 
 // ——— helpers ———
