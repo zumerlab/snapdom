@@ -382,11 +382,16 @@ if (!topics.length) {
 
 // ?embed shows only a lab's live demo, for the showcase to frame. Siblings on the way up
 // are hidden rather than the demo moved, so the lab's own selectors and scripts still match.
+// Fixed siblings stay: they take no room and are the demo's own layers. Hiding the shatter
+// lab's full-screen WebGL canvas left the card vanishing with nothing drawn in its place.
 if (new URLSearchParams(location.search).has('embed')) {
   const demo = document.querySelector('.pane-content [class^="lab-"]')
   if (demo) {
     for (let el = demo; el !== document.body; el = el.parentElement) {
-      for (const sib of el.parentElement.children) if (sib !== el && sib.tagName !== 'SCRIPT' && sib.tagName !== 'STYLE') sib.style.display = 'none'
+      for (const sib of el.parentElement.children) {
+        if (sib === el || sib.tagName === 'SCRIPT' || sib.tagName === 'STYLE' || getComputedStyle(sib).position === 'fixed') continue
+        sib.style.display = 'none'
+      }
       if (el !== demo) el.style.cssText += ';display:block;margin:0;padding:0;max-width:none;border:0'
     }
     document.documentElement.style.cssText += ';background:transparent'
