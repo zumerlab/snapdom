@@ -153,6 +153,15 @@ export interface SnapdomOptions {
   reconcile?: boolean;
 
   /**
+   * Lay the clone out on the live device-pixel grid (Chromium/Firefox; never on WebKit), so line
+   * boxes, text advances and borders round the way the page does at devicePixelRatio > 1.
+   * `'auto'` (default) does it only when the live document is really laid out on that grid,
+   * which device emulation (Playwright/Puppeteer `deviceScaleFactor`, DevTools device mode) is
+   * not. `'dpr'` always zooms by devicePixelRatio (the 3.3.x behavior); `false` never zooms.
+   */
+  layoutZoom?: 'auto' | 'dpr' | false;
+
+  /**
    * Whether a long capture may yield to the page. `true` (default) clones in one task, the
    * fastest total. `false` hands the event loop a turn about every frame, so the page keeps
    * painting and taking input while it captures. `'auto'` (experimental, may change) does the
