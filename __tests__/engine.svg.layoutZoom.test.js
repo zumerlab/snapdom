@@ -3,25 +3,27 @@
 // and borders round on the same device-pixel grid as the page. What that must NOT change is where
 // content lands: viewBox, output size and every offset stay in CSS pixels.
 //
-// The runner's devicePixelRatio is 1, so it is stubbed here. A stubbed dpr is exactly what the
-// default `layoutZoom: 'auto'` refuses to trust (the runner still lays out at 1x, like device
-// emulation), so the geometry tests force the zoom with `layoutZoom: 'dpr'`. Pixel parity between
-// the two runs is only meaningful on scenes without text or fractional borders, which do not
-// depend on the grid; those are what these use.
+// The runner's devicePixelRatio is 1, so these stub a real hi-DPI screen (stubHiDPI: the dpr and
+// the finer live grid). A stubbed dpr alone is device emulation, which must not zoom. Pixel parity
+// between the two runs is only meaningful on scenes without text or fractional borders, which do
+// not depend on the grid; those are what these use.
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { liveLayoutZoom } from '../src/engines/svg.js'
 import { isSafari } from '../src/utils/browser.js'
+import { stubHiDPI } from './helpers/hidpi.js'
 
 const ZOOMS = !isSafari()
 const mounted = []
 const own = Object.getOwnPropertyDescriptor(window, 'devicePixelRatio')
+const ownGCS = window.getComputedStyle
 function stubDPR(v) { Object.defineProperty(window, 'devicePixelRatio', { configurable: true, get: () => v }) }
 afterEach(() => {
   for (const el of mounted.splice(0)) el.remove()
   if (own) Object.defineProperty(window, 'devicePixelRatio', own)
   else delete window.devicePixelRatio
+  window.getComputedStyle = ownGCS
 })
 function mount(html) {
   const host = document.createElement('div')
@@ -51,8 +53,8 @@ async function redBox(el, opts = {}) {
 describe('svg engine layout zoom (#508)', () => {
   it('wraps the foreignObject in scale(1/dpr) and zooms its container, not on WebKit', async () => {
     const el = mount('<div style="width:50px;height:30px;background:#f00"></div>')
-    stubDPR(2.625)
-    const svg = decode((await snapdom(el, { dpr: 1, cache: 'disabled', burst: false, layoutZoom: 'dpr' })).url)
+    stubHiDPI(2.625)
+    const svg = decode((await snapdom(el, { dpr: 1, cache: 'disabled', burst: false })).url)
     expect(svg).toMatch(/viewBox="0 0 50 30"/)
     if (ZOOMS) {
       expect(svg).toMatch(/<g transform="scale\(0\.38095\d*\)"><foreignObject[^>]* width="131\.25" height="78\.75"/)
@@ -75,8 +77,8 @@ describe('svg engine layout zoom (#508)', () => {
       '<div style="position:relative;width:60px;height:40px;background:#fff;box-shadow:0 0 0 8px #00f">' +
       '<i style="position:absolute;left:10px;top:12px;width:20px;height:16px;background:#f00"></i></div>')
     const flat = await redBox(el, { outerShadows: true })
-    stubDPR(2.625)
-    const zoomed = await redBox(el, { outerShadows: true, layoutZoom: 'dpr' })
+    stubHiDPI(2.625)
+    const zoomed = await redBox(el, { outerShadows: true })
     expect(flat.box[0]).toBeGreaterThan(10) // the bleed offset is really there
     expect([zoomed.w, zoomed.h]).toEqual([flat.w, flat.h])
     for (let k = 0; k < 4; k++) expect(Math.abs(zoomed.box[k] - flat.box[k])).toBeLessThanOrEqual(1)
@@ -89,8 +91,8 @@ describe('svg engine layout zoom (#508)', () => {
     const r = el.getBoundingClientRect()
     const clip = { x: r.left + scrollX + 120, y: r.top + scrollY + 90, width: 100, height: 60 }
     const flat = await redBox(el, { clip })
-    stubDPR(2.625)
-    const zoomed = await redBox(el, { clip, layoutZoom: 'dpr' })
+    stubHiDPI(2.625)
+    const zoomed = await redBox(el, { clip })
     expect(flat.box).toEqual([30, 20, 53, 37])
     expect([zoomed.w, zoomed.h]).toEqual([flat.w, flat.h])
     for (let k = 0; k < 4; k++) expect(Math.abs(zoomed.box[k] - flat.box[k])).toBeLessThanOrEqual(1)
@@ -104,7 +106,7 @@ describe('svg engine layout zoom (#508)', () => {
 describe('svg engine layout zoom follows the live layout grid', () => {
   const zoomOf = (svg) => (svg.match(/zoom: ([\d.]+) !important/) || [])[1] || null
 
-  it("'auto' (default) does not zoom when the page is laid out at 1x whatever dpr says", async () => {
+  it('does not zoom when the page is laid out at 1x whatever dpr says', async () => {
     const el = mount('<div style="width:50px;height:30px;background:#f00"></div>')
     stubDPR(2)
     if (ZOOMS) expect(liveLayoutZoom(window)).toBe(1)
@@ -113,7 +115,7 @@ describe('svg engine layout zoom follows the live layout grid', () => {
     expect(zoomOf(svg)).toBe(null)
   })
 
-  it.skipIf(!ZOOMS)("'auto' zooms when the live grid is finer than CSS pixels", () => {
+  it.skipIf(!ZOOMS)('zooms when the live grid is finer than CSS pixels', () => {
     // A zoomed root is a finer layout grid this runner can really produce: a 0.5px border then
     // computes to 0.5px, as it does on a real 2x screen.
     const root = document.documentElement
@@ -127,14 +129,11 @@ describe('svg engine layout zoom follows the live layout grid', () => {
     }
   })
 
-  it("'dpr' always zooms and false never does", async () => {
+  it('zooms by devicePixelRatio on a real hi-DPI screen', async () => {
     const el = mount('<div style="width:50px;height:30px;background:#f00"></div>')
-    stubDPR(2)
-    const forced = decode((await snapdom(el, { dpr: 1, cache: 'disabled', burst: false, layoutZoom: 'dpr' })).url)
-    const off = decode((await snapdom(el, { dpr: 1, cache: 'disabled', burst: false, layoutZoom: false })).url)
-    expect(zoomOf(forced)).toBe(ZOOMS ? '2' : null)
-    expect(zoomOf(off)).toBe(null)
-    expect(off).not.toContain('<g transform=')
+    stubHiDPI(2)
+    const svg = decode((await snapdom(el, { dpr: 1, cache: 'disabled', burst: false })).url)
+    expect(zoomOf(svg)).toBe(ZOOMS ? '2' : null)
   })
 
   it('leaves no probe behind in the document', () => {

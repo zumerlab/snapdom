@@ -513,7 +513,7 @@ export async function composeAndSerialize(state, ex) {
   // dpr 2 but lays the page out at 1x, and zooming the clone there moved line breaks and
   // `line-height: normal` lines away from the very page it captured (liveLayoutZoom below).
   const view = elDoc.defaultView || window
-  const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? resolveLayoutZoom(view, options.layoutZoom) : 1
+  const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? liveLayoutZoom(view) : 1
   // toCanvas rasterizes Firefox exports smaller than this grid at it first (#516).
   options.__layoutZoom = layoutZoom
   const fo = document.createElementNS(svgNS, 'foreignObject')
@@ -678,17 +678,4 @@ export function liveLayoutZoom(view) {
     if (bt >= 1) zoom = 1
   } catch { /* keep dpr */ }
   return zoom
-}
-
-/**
- * The `layoutZoom` option: 'auto' (default) follows the live layout grid (liveLayoutZoom),
- * 'dpr' always zooms by devicePixelRatio (the 3.3.x behavior), false never zooms.
- * @param {Window} view
- * @param {'auto'|'dpr'|false} [mode='auto']
- * @returns {number}
- */
-function resolveLayoutZoom(view, mode = 'auto') {
-  if (mode === false) return 1
-  if (mode === 'dpr') return view.devicePixelRatio || 1
-  return liveLayoutZoom(view)
 }
