@@ -1,10 +1,10 @@
 // Firefox drops background-clip:text inside an SVG foreignObject image, so gradient text whose
-// own colour is transparent captures as nothing at all. The snapshot substitutes a plain colour
-// — the average of the gradient's stops — which loses the gradient but keeps the words.
+// own colour is transparent captures as nothing at all. The snapshot substitutes a plain colour,
+// the average of the gradient's stops, and bgClipText.js then repaints the real gradient (#530);
+// the average stays where that repaint cannot run.
 // Imported from @frostin/snapdom (element-mirror).
 import { describe, it, expect, afterEach } from 'vitest'
 import { bgClipTextFallbackColor } from '../src/modules/styles.js'
-import { isFirefox } from '../src/utils/browser.js'
 import { snapdom } from '../src/index.js'
 
 describe('bgClipTextFallbackColor', () => {
@@ -58,25 +58,48 @@ describe('gradient text survives the capture', () => {
     expect(paintedPixels(canvas)).toBeGreaterThan(200)
   })
 
-  it('paints a solid substitute colour on Firefox, and the gradient elsewhere', async () => {
-    const canvas = await captureGradientText()
+  // A real red->blue gradient must paint a red-dominant AND a blue-dominant population. On
+  // Firefox that used to be the purple average of the stops; #530 repaints the gradient there.
+  const hues = (canvas) => {
     const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
-    const hues = new Set()
+    const out = new Set()
     for (let i = 0; i < data.length; i += 4) {
-      if (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240) continue
-      hues.add(`${data[i] > 128}|${data[i + 2] > 128}`)
+      if (data[i + 3] < 128 || (data[i] > 240 && data[i + 1] > 240 && data[i + 2] > 240)) continue
+      out.add(`${data[i] > 128}|${data[i + 2] > 128}`)
     }
-    if (isFirefox()) {
-      // The substitute is the average of red and blue: purple everywhere, no red-only or
-      // blue-only run left.
-      expect(hues.has('true|false')).toBe(false)
-      expect(hues.has('false|true')).toBe(false)
-    } else {
-      // A real red->blue gradient must paint a red-dominant AND a blue-dominant population.
-      // size >= 1 was satisfied by ANY ink — including the purple fallback wrongly engaging
-      // here, which is exactly the regression this branch exists to catch.
-      expect(hues.has('true|false')).toBe(true)
-      expect(hues.has('false|true')).toBe(true)
+    return out
+  }
+
+  it('paints the gradient, not a solid stand-in, on every engine', async () => {
+    const h = hues(await captureGradientText())
+    expect(h.has('true|false')).toBe(true)
+    expect(h.has('false|true')).toBe(true)
+  })
+
+  it('keeps wrapped, centered gradient text where the live layout put it (#530)', async () => {
+    host = document.createElement('div')
+    host.style.cssText = 'width:150px;background:white;padding:6px'
+    host.innerHTML = '<div style="font:bold 26px Arial;text-align:center;letter-spacing:2px;' +
+      'background-image:linear-gradient(180deg, rgb(255,0,0) 50%, rgb(0,0,255) 50%);' +
+      '-webkit-background-clip:text;background-clip:text;color:transparent">TOP<br>BOTTOM</div>'
+    document.body.appendChild(host)
+    const canvas = await snapdom.toCanvas(host, { dpr: 1, embedFonts: false })
+    const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+    // Red ink only in the top half, blue only in the bottom, and both centered.
+    const box = { r: [width, 0, height, 0], b: [width, 0, height, 0] }
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4
+      const k = data[i] > 180 && data[i + 2] < 80 ? 'r' : data[i + 2] > 180 && data[i] < 80 ? 'b' : null
+      if (!k) continue
+      const bb = box[k]
+      bb[0] = Math.min(bb[0], x); bb[1] = Math.max(bb[1], x); bb[2] = Math.min(bb[2], y); bb[3] = Math.max(bb[3], y)
     }
+    // Both inks must exist: the solid stand-in paints neither and left this vacuously green.
+    expect(box.r[1]).toBeGreaterThan(0)
+    expect(box.b[1]).toBeGreaterThan(0)
+    expect(box.r[3]).toBeLessThan(box.b[2])
+    const mid = (bb) => (bb[0] + bb[1]) / 2
+    expect(Math.abs(mid(box.r) - width / 2)).toBeLessThan(4)
+    expect(Math.abs(mid(box.b) - width / 2)).toBeLessThan(4)
   })
 })

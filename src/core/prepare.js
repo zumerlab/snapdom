@@ -14,6 +14,7 @@
 import { generateCSSClasses, stripTranslate, debugWarn, getStyle, isShadowRoot, shadowHost } from '../utils/index.js'
 import { deepClone } from './clone.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
+import { paintClippedText } from '../modules/bgClipText.js'
 import { flushStyleInvalidations, invalidateHoverChanges } from '../modules/styles.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree, resolveMediaQueries, freezeInflatedFontSizes } from '../utils/clone.helpers.js'
@@ -263,6 +264,9 @@ export async function prepareClone(element, options = {}) {
   } catch (e) {
     console.warn('[SnapDOM] Couldn\'t copy ::before/::after content; some decorations may be missing.', e)
   }
+  // Firefox gradient text (#530): last of the node passes, since the overlay it inserts is a
+  // clone child with no live counterpart.
+  if (sessionCache.bgClipText) paintClippedText(sessionCache.bgClipText)
   await resolveBlobUrlsInTree(clone, sessionCache)
 
   // Kept light-DOM <style> clones travel into the SVG, whose own tiny viewport would

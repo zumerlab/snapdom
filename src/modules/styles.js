@@ -1672,6 +1672,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     clone.style.setProperty('background-color', 'transparent', 'important')
     clone.style.setProperty('color', snap.__bgClipTextFix, 'important')
     clone.style.setProperty('-webkit-text-fill-color', snap.__bgClipTextFix, 'important')
+    // prepareClone repaints the real gradient once the clone is complete (bgClipText.js).
+    ;(session.bgClipText ||= []).push([source, clone])
   }
 
   addScrollbarGutter(source, pre, snap)
