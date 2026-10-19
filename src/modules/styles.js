@@ -17,7 +17,7 @@
  */
 
 import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, isShadowRoot, shadowHost, snapshotComputedStyle } from '../utils/index.js'
-import { isFirefox } from '../utils/browser.js'
+import { isFirefox, isSafari } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
 import { scanAuthorStyles, scanSheetProps, addAnimationProps } from './styleScan.js'
 import { isInternalNode } from '../utils/ownership.js'
@@ -955,6 +955,34 @@ function applyBgClipTextFallback(out) {
 }
 
 /**
+ * WebKit paints no text-shadow under `-webkit-text-stroke` inside an SVG foreignObject image
+ * (real Safari 27.0.1 and Playwright WebKit, hand-written svg: 802 shadow pixels without the
+ * stroke, 0 with it), while `filter: drop-shadow()` still paints (662). The clone trades the
+ * one for the other where they are the same picture: a leaf whose only ink is its text, and a
+ * single shadow, since chained drop-shadows also shadow each other. WebKit reads a
+ * drop-shadow blur as a deviation, twice a text-shadow's, hence the halving. #531, pinned by
+ * __tests__/module.styles.strokedTextShadow.test.js.
+ * @param {Element} source
+ * @param {HTMLElement} clone
+ * @param {CSSStyleDeclaration} cs - the source's computed style
+ */
+function strokedTextShadowToFilter(source, clone, cs) {
+  const shadow = cs.textShadow
+  if (!shadow || shadow === 'none' || !(parseFloat(cs.webkitTextStrokeWidth) > 0)) return
+  if (source.firstElementChild || cs.backgroundImage !== 'none' || cs.boxShadow !== 'none' ||
+      !/rgba\(.*,\s*0\)|transparent/.test(cs.backgroundColor) ||
+      ['Top', 'Right', 'Bottom', 'Left'].some((s) => parseFloat(cs[`border${s}Width`]) > 0)) return
+  // One layer: a comma outside a colour function would start a second.
+  if (shadow.replace(/\([^)]*\)/g, '').includes(',')) return
+  const color = (shadow.match(/(?:rgba?|hsla?|color|oklch|oklab|lab|lch)\([^)]*\)|#[\da-f]+|\b[a-z]+\b/i) || [])[0]
+  const [x = 0, y = 0, blur = 0] = (shadow.match(/-?[\d.]+px/g) || []).map(parseFloat)
+  if (!color) return
+  const filter = cs.filter && cs.filter !== 'none' ? `${cs.filter} ` : ''
+  clone.style.setProperty('text-shadow', 'none', 'important')
+  clone.style.setProperty('filter', `${filter}drop-shadow(${x}px ${y}px ${blur / 2}px ${color})`, 'important')
+}
+
+/**
  * A single colour standing in for a clipped-to-text background: the channel average of every
  * visible rgb()/rgba() in the background-image (computed gradients serialize their stops that
  * way), else the background-color.
@@ -1675,6 +1703,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     // prepareClone repaints the real gradient once the clone is complete (bgClipText.js).
     ;(session.bgClipText ||= []).push([source, clone])
   }
+
+  if (isSafari()) strokedTextShadowToFilter(source, clone, pre)
 
   addScrollbarGutter(source, pre, snap)
   if (clone.style?.length && snap['box-sizing'] === 'border-box' &&
