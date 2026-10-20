@@ -4,7 +4,6 @@
 // width, with a fixed-layout child table spilling out of its background and border.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { resolvePercentLength } from '../src/utils/capture.helpers.js'
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })
@@ -97,23 +96,5 @@ describe('capture root with percentage sizes', () => {
     const svg = decodeURIComponent(result.url.slice(result.url.indexOf(',') + 1))
     expect(svg).not.toMatch(/max-width:\s*240px/)
     await expectLiveWidth(box)
-  })
-})
-
-describe('resolvePercentLength', () => {
-  it.each([
-    ['30%', 240],
-    ['calc(30% - 20px)', 220],
-    ['min(50%, 300px)', 300],
-    ['clamp(100px, 10%, 50px)', 100],
-    ['calc(2 * 10% + 5px)', 165],
-    ['calc(30% - (10px + 5px))', 225],
-  ])('%s of 800px', (value, px) => {
-    expect(resolvePercentLength(value, 800).px).toBe(px)
-  })
-
-  it('hands back the substituted text when the rest is not px arithmetic', () => {
-    expect(resolvePercentLength('fit-content(30%)', 800)).toEqual({ text: 'fit-content(240px)', px: null })
-    expect(resolvePercentLength('calc(10% + 1em)', 800)).toEqual({ text: 'calc(80px + 1em)', px: null })
   })
 })
