@@ -884,16 +884,12 @@ more, and nothing can be fixed in both at once either: a correction here does no
 reach the PDF product, and the two will drift. That is the cost of the boundary being
 a repository rather than a rule.
 
-Three rules follow, and the first two are unchanged:
+Two rules follow:
 
 - **Nothing in `src/writer/` may name a product or know what it is drawing.** The
   warning prefix is injected by whoever loaded it (`setWarnPrefix`).
 - **A module only this product needs belongs to this product.** There is no shared
   package left to put it in, and reaching into the other repository is not available.
-- **The build enforces this, not review.** `packages/vector/build.mjs` fails if the
-  bundle names the other product, imports it, or leaves behind an import the buyer
-  cannot resolve. A rule with no test is a rule that gets re-broken by the next
-  person who needs one function.
 
 ## House rules
 
