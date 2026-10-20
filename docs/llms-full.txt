@@ -774,7 +774,7 @@ Keep the source element connected through export. Internal SVD documents, emitte
 
 Vector reconstructs supported text and shapes as vector elements; it is distinct from core toSvg(), which embeds HTML in foreignObject. Review engine diagnostics before using artwork that requires exact fidelity. Figma export writes to the async clipboard and requires a secure context and a user action.
 
-Live PDF documentation: https://snapdom.dev/pro/pdf/. Full API: https://snapdom.dev/pro/pdf/docs.html.
-Live Vector documentation: https://snapdom.dev/pro/vector/. Full API: https://snapdom.dev/pro/vector/docs.html.
+Live PDF documentation: https://snapdom.dev/plugins/pdf/. Full API: https://snapdom.dev/plugins/pdf/docs.html.
+Live Vector documentation: https://snapdom.dev/plugins/vector/. Full API: https://snapdom.dev/plugins/vector/docs.html.
 Plugin demos: https://snapdom.dev/showcase/#plugins. Source directory: https://github.com/zumerlab/snapdom/tree/main/packages/plugins.
 The /pro/ URL segment is preserved for existing links; it does not indicate a paid license. Current PDF/Vector demos generate outputs in the browser from editable samples rather than serving pre-release files.

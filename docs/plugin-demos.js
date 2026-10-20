@@ -76,8 +76,8 @@ async function renderPage(pdfjs, token) {
 }
 let pdfjsPromise
 function loadReader() {
-  return pdfjsPromise ||= import(new URL('./pro/pdf/assets/pdfjs/pdf.mjs',import.meta.url).href).then(pdfjs => {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('./pro/pdf/assets/pdfjs/pdf.worker.mjs',import.meta.url).href
+  return pdfjsPromise ||= import(new URL('./plugins/pdf/assets/pdfjs/pdf.mjs',import.meta.url).href).then(pdfjs => {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('./plugins/pdf/assets/pdfjs/pdf.worker.mjs',import.meta.url).href
     return pdfjs
   })
 }

@@ -36,28 +36,24 @@
 
 # SnapDOM
 
-SnapDOM 是面向 Web 界面的浏览器捕获引擎。它将渲染后的 DOM 状态连同样式、字体和图片保存为可复用的结果。
+SnapDOM 是一个高性能引擎，用于捕获、修改 DOM 元素并将其转换为任意格式。
 
-核心引擎可导出图片和 Canvas；插件可导出自包含的 HTML、页面上下文、供视觉智能体使用的元素映射、PDF、可编辑矢量图和录制内容。捕获结果也可用于 WebGL 纹理、视觉回归测试和界面过渡。整个过程在页面内运行，使用标准 Web API，核心引擎零依赖。
+核心引擎提供图片和 Canvas 导出。插件可将同一次捕获转换为自包含的 HTML、PDF、可编辑矢量图、GIF、视频或供智能体使用的上下文。整个过程在页面内运行，核心引擎零依赖。
 
 [文档与演示](https://snapdom.dev/) · [技术功能](FEATURES_CN.md) · [官方插件](packages/plugins/README.md) · [English](README.md)
 
-本仓库介绍的是 **v3.x.x**。下方迁移指南以 **v2.x.x** 为比较基准。[v2 源码](https://github.com/zumerlab/snapdom/tree/v2)仍可访问。
+## 为什么选择 SnapDOM
 
-## 可以用它做什么
-
-| 用途 | 输出 | 提供方 |
-| --- | --- | --- |
-| 分享卡片、图表、发票或仪表盘 | SVG、PNG、JPG、WebP、Canvas 或 Blob | 核心引擎 |
-| 将捕获结果用于纹理、覆盖层或过渡效果 | Canvas 与捕获几何信息 | 核心引擎 |
-| 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | `html-export` 插件 |
-| 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | `context-export` / `agent-map` 插件 |
-| 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | `pdf` / `gif-export` / `video-export` 插件 |
-| 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | `vector` 插件 |
-
-图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
+- **速度。** 未变化的元素会复用上一次捕获，小改动只重建受影响的子树。可在浏览器中[运行实时基准测试](https://snapdom.dev/compare/live/)。
+- **保真度。** 输出与浏览器实际绘制的结果一致。每个版本发布前都会在真实演示页面上运行像素测试套件。
+- **灵活性。** 一次捕获，导出多种格式。官方插件提供更多输出，同样的[插件钩子](PLUGIN_SPEC.md)也可用来编写你自己的插件。
+- **持续维护。** 过去一年大约每周发布一个版本，采用 MIT 许可证，[更新日志](CHANGELOG.md)公开。
 
 ## 快速开始
+
+```sh
+npm i @zumer/snapdom
+```
 
 ```js
 import { snapdom } from '@zumer/snapdom';
@@ -80,15 +76,28 @@ await result.download({ format: 'jpg', filename: 'card' });
 
 即使源元素随后发生变化，结果对象仍保留这次捕获。再次调用 `snapdom(card)` 才会捕获新状态。
 
+## 可以用它做什么
+
+| 用途 | 输出 | 提供方 |
+| --- | --- | --- |
+| 分享卡片、图表、发票或仪表盘 | SVG、PNG、JPG、WebP、Canvas 或 Blob | 核心引擎 |
+| 将捕获结果用于纹理、覆盖层或过渡效果 | Canvas 与捕获几何信息 | 核心引擎 |
+| 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | `html-export` 插件 |
+| 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | `context-export` / `agent-map` 插件 |
+| 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | `pdf` / `gif-export` / `video-export` 插件 |
+| 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | `vector` 插件 |
+
+图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
+
 ## 安装
 
-安装核心，并按需安装官方插件；请根据插件的 peer 依赖选择兼容的核心版本：
+安装核心，并按需安装官方插件：
 
 ```sh
 npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-插件 4.x 要求 SnapDOM 3.3.0 或更高的 3.x 版本。完整 PDF 和 Vector 导出器采用 MIT 许可证，已随 `@zumer/snapdom-plugins` 4.x 发布到 npm。上面的 `@latest` 命令会安装已发布的版本。
+插件 4.x 要求 SnapDOM 3.3.0 或更高的 3.x 版本。其中包含 PDF 和 Vector 导出器，与核心一样采用 MIT 许可证。源码位于 `packages/plugins/`。
 
 也可以在浏览器中加载：
 
@@ -109,16 +118,6 @@ import { htmlExport } from 'https://esm.sh/@zumer/snapdom-plugins@latest/html-ex
 ```
 
 `https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs` 提供同一份模块。这些示例加载核心和插件的最新发布版本。
-
-如需用本仓库的本地构建运行文档站点：
-
-```sh
-npm install
-npm run compile
-npm run site
-```
-
-本地站点使用本地构建产物，官网演示则加载已发布的包。
 
 ### 构建产物
 
@@ -146,7 +145,7 @@ npm run site
 
 `snapdom.toPng(element, options)` 等快捷方法在一次调用中完成捕获和导出。结果对象还提供 `toJpeg()`，作为 `toJpg()` 的别名。`toImg()` 仍然可用；导出 SVG 图片时建议使用 `toSvg()`。
 
-### 设置尺寸与内容
+### 设置尺寸与排除内容
 
 ```js
 const result = await snapdom(card, {
@@ -216,8 +215,6 @@ for (let y = 0; y < h0; y += pieceHeight) {
 
 ### 导出 HTML 或结构化上下文
 
-官方插件单独发布为 `@zumer/snapdom-plugins`。插件 4.x 要求 SnapDOM 3.3.0 或更高的 3.x 版本，并将完整的 PDF 和 Vector 导出器以 MIT 许可证开源；源码位于 `packages/plugins/`。
-
 ```js
 import { htmlExport, contextExport } from '@zumer/snapdom-plugins';
 
@@ -233,7 +230,7 @@ const context = await result.toContext();
 
 ### 导出 PDF 和可编辑矢量图
 
-这些示例使用已发布的 `@zumer/snapdom-plugins` 4.x 包。PDF 返回 `Blob`，支持可搜索、可选择的文本、链接、分页和可选的表单字段。Vector 返回不含 `<foreignObject>` 的 SVG 字符串，并保留受支持的形状和可编辑文本。
+PDF 返回 `Blob`，支持可搜索、可选择的文本、链接、分页和可选的表单字段。Vector 返回不含 `<foreignObject>` 的 SVG 字符串，并保留受支持的形状和可编辑文本。
 
 ```js
 import { snapdom } from '@zumer/snapdom';
@@ -257,7 +254,7 @@ const result = await snapdom.fromString('<article>Hello</article>');
 const image = await result.toPng();
 ```
 
-`fromString()` 在屏幕外挂载 HTML，并在捕获后移除。这段字符串会像你自己编写的页面标记一样被解析和激活：`<img onerror>` 之类的内联事件处理器会在调用方的源（origin）中执行，挂载被移除后也可能继续执行。不受信任的 HTML 请先清理，例如使用 DOMPurify。
+不受信任的 HTML 请先清理，例如使用 DOMPurify。这段字符串会像你自己编写的页面标记一样被解析和激活：`<img onerror>` 之类的内联事件处理器会在调用方的源（origin）中执行，挂载被移除后也可能继续执行。`fromString()` 在屏幕外挂载 HTML，并在捕获后移除。
 
 ### 用于 WebGL 纹理
 
@@ -273,6 +270,17 @@ async function refresh(element) {
 ```
 
 `result.meta` 包含捕获几何信息，可用于将导出的图片覆盖到原界面上。[实验示例](https://snapdom.dev/showcase/#labs)展示了纹理、镜像和过渡效果。
+
+## 限制
+
+- SnapDOM 需要浏览器 DOM。服务端 Node.js 进程需要浏览器环境才能运行它。
+- 跨源图片、字体和样式表必须可读取，或通过适当的代理访问。仅设置 `crossorigin` 不会获得权限，服务器也必须允许访问。跨源 iframe 使用占位框。
+- SVG 输出通过 `<foreignObject>` 包含 HTML，适合在浏览器中展示；其他 SVG 查看器和文档工具的支持程度各不相同。
+- 输出受浏览器渲染和图片尺寸限制影响；超长 PNG 文件的导出方式见[导出超长页面](#导出超长页面)。Safari 无法编码 WebP 时可能回退为 PNG。
+- Canvas、视频和其他持续变化的内容会重新捕获。JavaScript 对 CSSOM 的修改无法被自动观察，修改后请使用 `invalidate: true`。
+- 核心会捕获可见输入值。语义插件会在文本/映射输出中遮蔽敏感字段值，但如需同时隐藏附带图片中的这些像素，仍需使用 `redactInputs` 或 `exclude`。
+
+详细行为见[技术功能与浏览器处理](FEATURES_CN.md)。
 
 ## v3 有哪些新变化
 
@@ -295,7 +303,7 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 
 ## 从 v2 迁移
 
-主要调用方式仍是 `snapdom(element, options)`。本指南以 **v2.x.x** 为迁移基准。升级前请检查以下变化：
+主要调用方式仍是 `snapdom(element, options)`。本指南以 **v2.x.x** 为迁移基准，[v2 源码](https://github.com/zumerlab/snapdom/tree/v2)仍可访问。升级前请检查以下变化：
 
 | v2 | v3 | 需要调整的地方 |
 | --- | --- | --- |
@@ -331,9 +339,11 @@ await snapdom(card, {
 
 两个模式都默认为 `'hide'`。对每个节点，先检查 `data-capture="exclude"`，再检查 `exclude`，最后检查 `filter`。首个排除决定所用模式，并停止对该节点继续检查：即使 `filter` 也会以不同模式过滤该节点，只要先匹配 `exclude`，就使用 `excludeMode`。`filter` 保留 v2 的真值规则：任何假值返回都会过滤节点。
 
-### 读取应用动态状态的回调
+### 轮询时优先使用选择器而非回调
 
-当 `filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，每次新的捕获都会重新执行所需流程，让适用的回调读取当前应用状态，不复用旧捕获或先前回调的样式、替代图片决策。仅回调闭包状态改变时，无需使用 `invalidate`。这种即时性有代价：`filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，该捕获会关闭记忆化和差异化重捕获，因此带判断函数的轮询循环每一轮都要付出一次完整捕获的开销。规则能用选择器表达时，请传选择器，以保留复用：
+`filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，该捕获会关闭记忆化和差异化重捕获，因此带判断函数的轮询循环每一轮都要付出一次完整捕获的开销。规则能用选择器表达时，请传选择器，以保留复用。
+
+当 `filter`、`exclude`、`excludeStyleProps` 或 `fallbackURL` 使用函数时，每次新的捕获都会重新执行所需流程，让适用的回调读取当前应用状态，不复用旧捕获或先前回调的样式、替代图片决策。仅回调闭包状态改变时，无需使用 `invalidate`：
 
 ```js
 let privateMode = false;
@@ -350,17 +360,6 @@ const after = await snapdom(card, options); // 使用当前策略
 
 会影响捕获结果的插件暂停自动记忆化，除非声明 `pure: true`。只有确定性钩子才应这样声明；时间戳和读取外部状态的回调需要再次运行。参见 [v3 插件契约](PLUGIN_SPEC.md)。
 
-## 限制
-
-- SnapDOM 需要浏览器 DOM。服务端 Node.js 进程需要浏览器环境才能运行它。
-- 跨源图片、字体和样式表必须可读取，或通过适当的代理访问。仅设置 `crossorigin` 不会获得权限，服务器也必须允许访问。跨源 iframe 使用占位框。
-- SVG 输出通过 `<foreignObject>` 包含 HTML，适合在浏览器中展示；其他 SVG 查看器和文档工具的支持程度各不相同。
-- 输出受浏览器渲染和图片尺寸限制影响；超长 PNG 文件的导出方式见[导出超长页面](#导出超长页面)。Safari 无法编码 WebP 时可能回退为 PNG。
-- Canvas、视频和其他持续变化的内容会重新捕获。JavaScript 对 CSSOM 的修改无法被自动观察，修改后请使用 `invalidate: true`。
-- 核心会捕获可见输入值。语义插件会在文本/映射输出中遮蔽敏感字段值，但如需同时隐藏附带图片中的这些像素，仍需使用 `redactInputs` 或 `exclude`。
-
-详细行为见[技术功能与浏览器处理](FEATURES_CN.md)。
-
 ## 性能基准测试
 
 [测量记录](BENCHMARKS.md)分别介绍首次捕获、重复捕获和图片密集场景。[在线对比](https://snapdom.dev/compare/live/)会在你的浏览器中运行，并标明所加载的包版本。
@@ -369,7 +368,7 @@ const after = await snapdom(card, options); // 使用当前策略
 
 ## 文档
 
-- [插件演示](https://snapdom.dev/showcase/#plugins)、[PDF 演示](https://snapdom.dev/pro/pdf/)与 [Vector 演示](https://snapdom.dev/pro/vector/)
+- [插件演示](https://snapdom.dev/showcase/#plugins)、[PDF 演示](https://snapdom.dev/plugins/pdf/)与 [Vector 演示](https://snapdom.dev/plugins/vector/)
 - [v2 源码](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
 - [框架指南](https://snapdom.dev/how-to/#frameworks)与[使用示例](https://snapdom.dev/how-to/)

@@ -11,7 +11,7 @@
  * HTML, because a page whose argument is "check it yourself" cannot carry a number
  * nobody checked.
  *
- * What it produces, under `snapdom/docs/pro/vector/`:
+ * What it produces, under `snapdom/docs/plugins/vector/`:
  *
  *   assets/hero.svg      the emitted vector of the hero fixture
  *   assets/hero.png      the RASTER of the same capture — one snapdom() call, two
@@ -32,7 +32,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url))
 // The product pages are public content and live with the site, in the sibling
 // snapdom checkout that builds snapdom.dev. Only this generator stays here, because
 // producing the samples needs the engine.
-const SITE = path.join(HERE, '..', '..', '..', 'snapdom', 'docs', 'pro', 'vector')
+const SITE = path.join(HERE, '..', '..', '..', 'snapdom', 'docs', 'plugins', 'vector')
 const OUT = path.join(SITE, 'samples')
 const ASSETS = path.join(SITE, 'assets')
 const PAGE = path.join(SITE, 'index.html')

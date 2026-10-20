@@ -3,8 +3,8 @@
 <head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SnapDOM: Browser Capture Engine</title>
-  <meta name="description" content="Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.">
+  <title>SnapDOM: Capture, modify and convert DOM elements</title>
+  <meta name="description" content="A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
   <meta name="keywords" content="snapdom, DOM capture, html2canvas alternative, HTML to image, SVG export, JavaScript screenshot">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
@@ -12,13 +12,13 @@
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SnapDOM — browser capture engine">
-  <meta property="og:description" content="Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.">
+  <meta property="og:title" content="SnapDOM: capture, modify and convert DOM elements">
+  <meta property="og:description" content="A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
   <meta property="og:url" content="https://snapdom.dev/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="SnapDOM — browser capture engine">
-  <meta name="twitter:description" content="Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.">
+  <meta name="twitter:title" content="SnapDOM: capture, modify and convert DOM elements">
+  <meta name="twitter:description" content="A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
   <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
@@ -34,7 +34,7 @@
     "alternateName": "@zumer/snapdom",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
-    "description": "Capture web interfaces as reusable images and canvas. Plugins add HTML, context for agents, PDF, GIF and video. MIT licensed, with zero core dependencies.",
+    "description": "A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.",
     "url": "https://snapdom.dev/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
     "codeRepository": "https://github.com/zumerlab/snapdom",
@@ -151,6 +151,9 @@
     .output-card:hover .output-card-links a:first-child { text-decoration-thickness: 2px; }
     .output-card-links a.is-sub { color: var(--muted); font-size: 13px; font-weight: 400; }
     .index-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .index-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .why-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .hero-code { margin: 0; padding: 12px 16px; overflow-x: auto; white-space: nowrap; border-top: 1px solid rgba(217,226,247,.16); color: #dce4ff; background: var(--ink); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
     .showcase-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
     .showcase-visual { position: relative; min-height: 360px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: #fff; }
     .showcase-visual img { width: 300px; max-width: 80%; position: relative; }
@@ -165,7 +168,7 @@
       .hero { padding-top: 64px; }
       .hero-grid, .section-heading, .showcase-callout { grid-template-columns: 1fr; }
       .hero .demo-panel { max-width: 620px; }
-      .output-grid, .index-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .output-grid, .index-grid-4, .index-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .hero-tray { gap: 8px; }
       .print { width: 104px; min-width: 80px; flex: 0 1 104px; gap: 4px; padding: 5px; }
       .print-cap, .print-plug { font-size: 7px; letter-spacing: .3px; }
@@ -188,7 +191,7 @@
       .logo-list .logo-more { margin-left: auto; }
       .section { padding: 64px 0; }
       .showcase-visual { min-height: 280px; }
-      .output-grid, .index-grid-4 { grid-template-columns: minmax(0, 1fr); }
+      .output-grid, .index-grid-4, .index-grid-3 { grid-template-columns: minmax(0, 1fr); }
     }
   </style>
   <link rel="stylesheet" href="./navigation.css">
@@ -196,15 +199,15 @@
   <script defer src="./site.js"></script>
 <link rel="stylesheet" href="code.css"><script defer data-manual src="assets/prism/prism.min.js"></script><script defer src="code-blocks.js"></script></head>
 <body>
-  <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos, plugins and labs</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 
   <main>
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
-          <p class="eyebrow">Browser capture engine · zero dependencies</p>
-          <h1>HTML to images, documents and context.</h1>
-          <p class="lead">SnapDOM captures rendered HTML in your browser. Save it as an image, or add a plugin for PDF, HTML, recordings or agent context.</p>
+          <p class="eyebrow">High-performance DOM engine · zero dependencies</p>
+          <h1>Capture, modify and convert DOM elements into any format.</h1>
+          <p class="lead">SnapDOM runs in the browser. Images ship in the core; plugins turn the same capture into PDF, HTML, vector artwork, GIF, video or context for agents.</p>
           <div class="actions">
             <a class="btn btn-primary" href="./docs/">Get started</a>
             <a class="btn btn-secondary" href="#outputs">Choose your output</a>
@@ -215,9 +218,9 @@
               <button type="button" role="tab" aria-selected="false" data-install='&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;'>CDN</button>
             </div>
             <div class="install"><span id="install-command">npm i @zumer/snapdom@latest</span><button class="copy" type="button" id="install-copy">copy</button></div>
+            <div class="hero-code"><code>const image = await snapdom.toPng(document.querySelector('#card'))</code></div>
           </div>
           <div class="proof" aria-label="Project stats">
-            <span id="stable-documentation" hidden></span>
             <span><strong id="download-count">1m+</strong> downloads/month</span>
             <span><strong>MIT</strong> licensed</span>
           </div>
@@ -265,70 +268,81 @@
       </div>
     </section>
 
+    <section class="section section-white" id="why">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2>Why SnapDOM.</h2>
+          <p>Fast, faithful, extensible and maintained. Check each claim yourself.</p>
+        </div>
+        <div class="output-grid why-grid">
+          <article class="output-card sec-capture">
+            <h3><span class="sec-dot"></span>Speed</h3>
+            <p>Repeat captures of an unchanged element reuse the last result, and small changes rebuild only the subtree that moved.</p>
+            <div class="output-card-links"><a href="./compare/live/">Run the live benchmark</a></div>
+          </article>
+          <article class="output-card sec-export">
+            <h3><span class="sec-dot"></span>Fidelity</h3>
+            <p>The output matches what the browser painted. Every release runs a pixel suite of real demo pages before it ships.</p>
+            <div class="output-card-links"><a href="./compare/">See the comparison</a></div>
+          </article>
+          <article class="output-card sec-context">
+            <h3><span class="sec-dot"></span>Flexibility</h3>
+            <p>Capture once, export many formats. Official plugins add outputs, and the same hooks let you write your own.</p>
+            <div class="output-card-links"><a href="./docs/plugins/#build">Write a plugin</a></div>
+          </article>
+          <article class="output-card sec-record">
+            <h3><span class="sec-dot"></span>Maintenance</h3>
+            <p>About one release a week over the past year, MIT licensed, with a public changelog.</p>
+            <div class="output-card-links"><a href="https://github.com/zumerlab/snapdom/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Read the changelog</a></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="outputs">
       <div class="wrap">
         <div class="section-heading">
-          <h2>One interface.<br>Several ways to use it.</h2>
-          <p>Start with the result you need. The tag tells you whether it ships with the core or needs a plugin.</p>
+          <h2>Pick your output.</h2>
+          <p>Images ship with the core. Everything else is a plugin on the same capture.</p>
         </div>
         <div class="output-grid">
           <article class="output-card sec-capture">
             <div class="output-card-head"><h3><span class="sec-dot"></span>Images &amp; canvas</h3><span class="tag tag-core">Core</span></div>
             <span class="output-card-formats">PNG · JPEG · WebP · canvas · Blob</span>
             <p>Save a chart, dashboard or component as an image. Use canvas output as a WebGL texture.</p>
-            <div class="output-card-links"><a href="./showcase/#plugins">Start with images</a></div>
+            <div class="output-card-links"><a href="./docs/#quick-start">Start with images</a></div>
           </article>
           <article class="output-card sec-export">
             <div class="output-card-head"><h3><span class="sec-dot"></span>PDF documents</h3><span class="tag tag-plugin">Plugin</span></div>
             <span class="output-card-formats">PDF with text, links &amp; pages</span>
             <p>Turn an HTML report or invoice into a searchable document with page breaks and bookmarks.</p>
-            <div class="output-card-links"><a href="./pro/pdf/">Try PDF</a></div>
+            <div class="output-card-links"><a href="./plugins/pdf/">Try PDF</a></div>
           </article>
           <article class="output-card sec-export">
             <div class="output-card-head"><h3><span class="sec-dot"></span>HTML snapshots</h3><span class="tag tag-plugin">Plugin</span></div>
             <span class="output-card-formats">A self-contained HTML file</span>
             <p>Save the rendered markup with its styles and resources. Reopen it without rebuilding your app.</p>
-            <div class="output-card-links"><a href="./showcase/#plugins">Try HTML</a></div>
+            <div class="output-card-links"><a href="./showcase/#html-export-demo">Try HTML</a></div>
           </article>
           <article class="output-card sec-record">
             <div class="output-card-head"><h3><span class="sec-dot"></span>GIF &amp; video</h3><span class="tag tag-plugin">Plugins</span></div>
             <span class="output-card-formats">GIF · MP4 or WebM</span>
             <p>Record the live element over time for short animations, demos and review clips.</p>
-            <div class="output-card-links"><a href="./showcase/#plugins">Try GIF</a><a class="is-sub" href="./showcase/#video-export-demo">Or record video</a></div>
+            <div class="output-card-links"><a href="./showcase/#gif-export-demo">Try GIF</a><a class="is-sub" href="./showcase/#video-export-demo">Or record video</a></div>
           </article>
           <article class="output-card sec-context">
             <div class="output-card-head"><h3><span class="sec-dot"></span>Context for agents</h3><span class="tag tag-plugin">Plugins</span></div>
             <span class="output-card-formats">Text · JSON · annotated image</span>
             <p>Give an agent the captured text, form state and locations of interactive elements.</p>
-            <div class="output-card-links"><a href="./showcase/#plugins">Try an element map</a><a class="is-sub" href="./showcase/#plugins">Or get a text / JSON tree</a></div>
+            <div class="output-card-links"><a href="./showcase/#agent-map-demo">Try an element map</a><a class="is-sub" href="./showcase/#context-demo">Or get a text / JSON tree</a></div>
           </article>
           <article class="output-card sec-export">
             <div class="output-card-head"><h3><span class="sec-dot"></span>Vector artwork</h3><span class="tag tag-plugin">Plugin</span></div>
             <span class="output-card-formats">SVG shapes · Figma</span>
             <p>Turn captured text and supported shapes into editable SVG artwork or Figma content.</p>
-            <div class="output-card-links"><a href="./pro/vector/">Explore Vector</a></div>
+            <div class="output-card-links"><a href="./plugins/vector/">Explore Vector</a></div>
           </article>
         </div>
-      </div>
-    </section>
-
-    <section class="section section-white">
-      <div class="wrap">
-        <div class="section-heading">
-          <h2>How the pieces fit.</h2>
-          <p>SnapDOM captures the interface. Plugins prepare or export that capture. Separate tools compare results or operate a browser.</p>
-        </div>
-        <div class="pipeline"><div class="pipeline-box"><span class="pipeline-eyebrow"><span class="sec-dot" style="background:rgba(15,30,77,.3)"></span>Your source</span><strong>A rendered HTML interface</strong><p>An element, component, report or dashboard with its CSS and resources.</p></div><span class="pipeline-link" aria-hidden="true"><i></i><i></i></span><div class="pipeline-box is-engine sec-capture"><span class="pipeline-eyebrow"><span class="sec-dot"></span>SnapDOM core</span><strong>Capture its current state</strong><p>Styles, fonts, images, layout and control values.</p></div><span class="pipeline-link" aria-hidden="true"><i></i><i></i></span><div class="pipeline-box"><span class="pipeline-eyebrow">Choose your result</span><ul><li class="sec-capture"><span class="sec-dot"></span>Image / canvas<small>Core</small></li><li class="sec-export"><span class="sec-dot"></span>PDF document<small>Plugin</small></li><li class="sec-export"><span class="sec-dot"></span>HTML snapshot<small>Plugin</small></li><li class="sec-record"><span class="sec-dot"></span>GIF / video<small>Plugins</small></li><li class="sec-context"><span class="sec-dot"></span>Text / element map<small>Plugins</small></li></ul></div></div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="wrap">
-        <div class="section-heading">
-          <h2>Documentation and guides.</h2>
-          <p>Each area has its own colour. The same colour marks it in the sidebar, on its live demo and in its page titles.</p>
-        </div>
-        <div class="index-grid index-grid-4"><a class="sec-start" href="./docs/"><span class="sec-dot"></span><span class="index-grid-label">Getting started</span><span class="index-grid-meta">docs</span></a><a class="sec-capture" href="./docs/api/"><span class="sec-dot"></span><span class="index-grid-label">Capture API</span><span class="index-grid-meta">api</span></a><a class="sec-options" href="./docs/options/"><span class="sec-dot"></span><span class="index-grid-label">Options</span><span class="index-grid-meta">settings</span></a><a class="sec-prepare" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">Preparation</span><span class="index-grid-meta">5 plugins</span></a><a class="sec-export" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">Export</span><span class="index-grid-meta">plugins</span></a><a class="sec-record" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">Recording</span><span class="index-grid-meta">2 plugins</span></a><a class="sec-context" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">Agent context</span><span class="index-grid-meta">2 plugins</span></a><a class="sec-ecosystem" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">All plugins</span><span class="index-grid-meta">12</span></a><a class="sec-capture" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">Plugin demos</span><span class="index-grid-meta">live</span></a><a class="sec-labs" href="./showcase/"><span class="sec-dot"></span><span class="index-grid-label">Showcase</span><span class="index-grid-meta">live demos</span></a><a class="sec-start" href="./how-to/"><span class="sec-dot"></span><span class="index-grid-label">How-to recipes</span><span class="index-grid-meta">17 recipes</span></a><a class="sec-ecosystem" href="./compare/"><span class="sec-dot"></span><span class="index-grid-label">Compare</span><span class="index-grid-meta">7 comparisons</span></a><a class="sec-options" href="./how-to/#frameworks"><span class="sec-dot"></span><span class="index-grid-label">Guides</span><span class="index-grid-meta">6 frameworks</span></a><a class="sec-labs" href="./showcase/#labs"><span class="sec-dot"></span><span class="index-grid-label">Labs</span><span class="index-grid-meta">7 experiments</span></a><a class="sec-record" href="./blog/"><span class="sec-dot"></span><span class="index-grid-label">Blog</span><span class="index-grid-meta">4 posts</span></a><a class="sec-context" href="./made-with/"><span class="sec-dot"></span><span class="index-grid-label">Made with</span><span class="index-grid-meta">projects</span></a></div>
       </div>
     </section>
 
@@ -338,9 +352,19 @@
         <div class="showcase-copy">
           <p class="eyebrow">Live demos</p>
           <h2>Run the complete demo suite.</h2>
-          <p>Run SnapDOM against canvas, video, fonts, masks, transforms, Shadow DOM, iframes and plugin exporters. Every example uses the real library.</p>
+          <p>Every demo runs the published library in your browser, core and plugins. Open one and capture it.</p>
           <a class="btn btn-primary" href="./showcase/">Open the showcase</a>
         </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2>Start here.</h2>
+          <p>Quick start in two minutes, then the API, options and recipes. Blog, labs and projects live in the footer.</p>
+        </div>
+        <div class="index-grid index-grid-3"><a class="sec-start" href="./docs/#quick-start"><span class="sec-dot"></span><span class="index-grid-label">Quick start</span><span class="index-grid-meta">docs</span></a><a class="sec-capture" href="./docs/api/"><span class="sec-dot"></span><span class="index-grid-label">Capture API</span><span class="index-grid-meta">api</span></a><a class="sec-options" href="./docs/options/"><span class="sec-dot"></span><span class="index-grid-label">Options</span><span class="index-grid-meta">settings</span></a><a class="sec-start" href="./how-to/"><span class="sec-dot"></span><span class="index-grid-label">How-to recipes</span><span class="index-grid-meta">17 recipes</span></a><a class="sec-ecosystem" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">Plugins</span><span class="index-grid-meta">12</span></a><a class="sec-ecosystem" href="./compare/"><span class="sec-dot"></span><span class="index-grid-label">Compare</span><span class="index-grid-meta">7 comparisons</span></a></div>
       </div>
     </section>
 

@@ -1,0 +1,299 @@
+<!doctype html><html lang="en"><head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow"><title>SnapDOM PDF — open-source pdf export</title><meta name="description" content="Capture a live element, add selectable text and links, and paginate it into a PDF in your browser."><link rel="canonical" href="https://snapdom.dev/plugins/pdf/"><meta name="theme-color" content="#F7F9FC"><link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css"><link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css"><link rel="stylesheet" href="../../plugin-demos.css"><link rel="stylesheet" href="../../pdf-text-layer.css"><script defer src="../../site.js"></script><script type="module" src="../../plugin-demos.js"></script><script>
+  if (location.hostname === 'snapdom.dev') {
+    const umami = document.createElement('script')
+    umami.defer = true
+    umami.src = 'https://cloud.umami.is/script.js'
+    umami.dataset.websiteId = '7ec718e8-f0c5-4abb-8f4f-144f57f61937'
+    document.head.appendChild(umami)
+
+    const analytics = document.createElement('script')
+    analytics.async = true
+    analytics.src = 'https://www.googletagmanager.com/gtag/js?id=G-4G88ZHG7S1'
+    document.head.appendChild(analytics)
+    window.dataLayer = window.dataLayer || []
+    function gtag(){ dataLayer.push(arguments) }
+    gtag('js', new Date())
+    gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' })
+  }
+</script><link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head><body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><nav class="pane-nav" aria-label="Official export plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Export plugins</button><div class="pane-nav-items"><a href="../pdf/" aria-current="page">PDF</a><a href="../vector/">Vector</a><a href="../../showcase/#plugins">All plugins</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>PDF reference</button><div class="pane-nav-items"><a href="docs.html">Full API reference</a><a href="https://github.com/zumerlab/snapdom">Source · MIT</a><a href="../../showcase/#plugins">All plugin demos</a></div></div></nav></aside><div class="pane-demo sec-export"><section class="demo-panel" data-export-demo="pdf"><header class="demo-panel-head"><span class="demo-panel-title">Live PDF export</span></header><div class="demo-panel-body" tabindex="0" role="region" aria-label="Live export controls and preview"><form data-export-settings class="plugin-demo-settings"><label>Live sample<select name="sample"><option value="report">Report</option><option value="ledger">A4 ledger</option><option value="scripts">Multilingual text</option><option value="controls">Form controls</option><option value="transparent">Transparent artwork</option></select></label><label>Page size<select name="page"><option value="fit">Fit to content</option><option value="a4">A4</option><option value="letter">Letter</option></select></label><label><input type="checkbox" name="text" checked> Selectable text</label><label><input type="checkbox" name="fields" checked> Fillable fields</label><button type="submit" class="demo-act is-primary">Generate PDF</button></form><p class="demo-label">Editable source</p><div class="plugin-demo-source" tabindex="0" role="region" aria-label="Scrollable live sample"><div data-export-source></div></div><p class="demo-label">Generated output</p><div data-pdf-output class="plugin-demo-output"><p>Nothing generated yet.</p></div><nav data-pdf-pages aria-label="PDF preview pages" hidden><button type="button" data-pdf-prev>Previous</button><span data-pdf-page></span><button type="button" data-pdf-next>Next</button></nav><p data-export-file></p><p data-export-status role="status" aria-live="polite">Edit the source, then generate a PDF.</p><details><summary>Code for this demo</summary><pre><code data-export-code></code></pre></details></div></section></div><article class="pane-read sec-export"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Build</span><span aria-hidden="true">/</span><span>Plugins</span><span aria-hidden="true">/</span><span>PDF</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Export a searchable PDF.</h1><p class="doc-lead">Capture a live element, add selectable text and links, and paginate it into a PDF in your browser.</p></header><aside class="callout"><div class="callout-label">Open source</div><p>PDF is MIT-licensed source inside <code>packages/plugins/pdf</code>. Available in <code>@zumer/snapdom-plugins@4</code> for SnapDOM 3.x. These demos use the official plugin; <code>npm run site</code> uses your local build.</p></aside><div class="pane-content pdf-reference"><section>
+  <span class="eyebrow">How it works</span>
+  <h2 id="the-page-image-plus-a-pdf-text-layer">The page image plus a PDF text layer</h2>
+  <p class="sub">The page image is SnapDOM's capture. The plugin places a second, invisible text
+  layer over it using positions derived from SnapDOM's final serialized clone. No headless browser
+  or separate layout engine rebuilds the page.</p>
+
+  <dl class="spec">
+    <div>
+      <dt>Fidelity</dt>
+      <dd>The visible result preserves SnapDOM's rendering of gradients, shadows, filters, web
+      fonts and the rest of the captured element. The text layer adds document behaviour without
+      replacing that image.</dd>
+    </div>
+    <div>
+      <dt>Multilingual text</dt>
+      <dd>CJK, Cyrillic, Greek, Arabic, Hebrew and emoji carry a <b>/ToUnicode</b> CMap, so selection,
+      search and copy work for every script, whether or not a glyph travels with the file.</dd>
+    </div>
+    <div>
+      <dt>Pagination</dt>
+      <dd>Ten page sizes from A6 to tabloid, a custom <b>[width, height]</b> in points, or one
+      page the size of the element. Breaks are pulled up off table rows, list items and figures,
+      and <b>break-before: page</b> is honoured. Headers, footers and page numbers take their room
+      out of the page rather than covering it. Text-form headers/footers and page numbers are real
+      PDF text; Element-form bands are captured images.</dd>
+    </div>
+    <div>
+      <dt>What reaches the layer</dt>
+      <dd>Text nodes, <b>input</b>/<b>textarea</b>/<b>select</b> values, open shadow roots, and
+      CSS transforms: rotation and skew go into the text matrix. Passwords are bulleted, never
+      written.</dd>
+    </div>
+    <div>
+      <dt>What does not</dt>
+      <dd>Layout-hidden and transparent content is removed. Ambiguous clip, mask and filter geometry
+      is omitted fail-safe. Arbitrary overlap is different: a rectangle or blur can cover pixels
+      without removing the underlying semantic text, so it is not a redaction mechanism.</dd>
+    </div>
+    <div>
+      <dt>Embedded fonts</dt>
+      <dd>The faces the page painted with travel inside the file, <b>subset</b> to the glyphs the
+      document actually drew. A ~320&nbsp;kB face reaches a Latin page as a few kB. Turn on
+      <b>vectorText</b> and eligible runs are painted as real vector glyphs instead of sitting
+      invisible over the raster: crisp at any zoom, and an image-free export of the same page drops
+      from ~420&nbsp;kB to ~22&nbsp;kB.</dd>
+    </div>
+    <div>
+      <dt>Fillable forms</dt>
+      <dd>A captured form is still a form. Inputs, textareas, checkboxes, radio groups and selects
+      become real AcroForm fields (fillable, tabbable, extractable) carrying their name, value,
+      options, checked state, required and read-only flags, and the accessible label as the tooltip a
+      screen reader speaks. No JavaScript actions, no submit URLs, and a password field is written
+      empty.</dd>
+    </div>
+    <div>
+      <dt>Encrypted downloads</dt>
+      <dd>A file that leaves the browser can be <b>AES-256</b> encrypted on the way out, so the
+      download itself is protected once it is attached and forwarded. Standard security handler
+      revision 6, from the browser's own <b>crypto.subtle</b>, so no cipher code ships in the plugin and
+      RC4 is not offered at any setting. A user password is required: the flavour of "encryption" that
+      opens without asking is refused rather than produced.</dd>
+    </div>
+    <div>
+      <dt>Identity and determinism</dt>
+      <dd>Title, author, subject and keywords reach <b>/Info</b> and a mirrored XMP packet; a title
+      also makes viewers show the document's name instead of its filename. Dates are never invented
+      and the trailer <b>/ID</b> is a content hash, so the same unencrypted input produces the same bytes.</dd>
+    </div>
+    <div>
+      <dt>Progress, cancellation, diagnostics</dt>
+      <dd>Long exports report progress and take an <b>AbortSignal</b>. Every fidelity trade-off is
+      also a structured diagnostic with a stable code, so a build can gate on "no annotations lost"
+      without parsing console prose.</dd>
+    </div>
+    <div>
+      <dt>Transparency</dt>
+      <dd>A capture with alpha carries a Flate <b>/SMask</b>. Flatten it onto a colour to remove
+      the mask. For every image, <b>codec: auto</b> compares JPEG with lossless Flate and keeps
+      the smaller result. The lossless candidate is written in the narrowest colour space that
+      reproduces the pixels exactly, which is one byte per pixel instead of three on the grey or
+      few-coloured regions most page artwork turns out to be.</dd>
+    </div>
+    <div>
+      <dt>Document features</dt>
+      <dd>Headings become bookmarks and named destinations. Optional generated contents, repeated
+      table headers, cover/back pages and watermarks make this a document exporter rather than a
+      canvas wrapper.</dd>
+    </div>
+    <div>
+      <dt>Accessibility structure</dt>
+      <dd>Tagged output covers headings, prose, lists, tables, sections and figures. The
+      <b>PDF/UA-1 claim is earned, never configured</b>: it is written only when every text operation
+      rode an embedded face, the export is tagged, has a language and displays a title, and no painted
+      image lacks alternative text. When a blocker remains the claim is withheld and the blocker is
+      <em>named</em>.</dd>
+    </div>
+    <div>
+      <dt>Ships as</dt>
+      <dd>A <b>minified</b> ES module to ship, an <b>unminified</b> one to read, TypeScript
+      declarations, versioned reference and MIT license. Browser use without a
+      bundler requires an import map for the external SnapDOM peer.</dd>
+    </div>
+    <div>
+      <dt>Verified by</dt>
+      <dd>The full Chromium suite parses PDFs back with pdf.js, checks raw
+      <b>bytes</b> (xref offsets, stream lengths, the lot), and one fixture compares the text
+      layer against <b>pixels</b>. A separate gate imports and executes both plugin builds in
+      Chromium, Firefox and WebKit. That is a three-engine API/artifact smoke, not three full layout
+      suites.</dd>
+    </div>
+  </dl>
+</section>
+
+<section>
+  <span class="eyebrow">Quick start</span>
+  <h2 id="add-pdf-export-to-snapdom">Add PDF export to SnapDOM</h2>
+  <p class="sub">Register the plugin once and every capture gains <code>toPdf()</code> alongside
+  <code>toPng()</code> and <code>toCanvas()</code>. It reuses the existing capture rather than
+  running a second capture engine.</p>
+
+  <pre class="code"><code><span class="k">import</span> { snapdom } <span class="k">from</span> <span class="s">'@zumer/snapdom'</span>
+<span class="k">import</span> pdf <span class="k">from</span> <span class="s">'@zumer/snapdom-plugins/pdf'</span>
+
+snapdom.plugins(pdf())
+
+<span class="k">const</span> shot = <span class="k">await</span> snapdom(document.querySelector(<span class="s">'#report'</span>), {
+  scale: <span class="n">2</span>, dpr: <span class="n">1</span>
+})
+
+<span class="k">const</span> blob = <span class="k">await</span> shot.toPdf({
+  page: <span class="s">'a4'</span>,                              <span class="c">// 'fit' | 'a4' | 'a5' | 'letter' | …</span>
+  margin: <span class="n">36</span>,                              <span class="c">// points</span>
+  header: { left: <span class="s">'ACME'</span>, right: <span class="s">'Q3 ledger'</span> },   <span class="c">// real text, or pass an element</span>
+  pageNumbers: <span class="k">true</span>,                        <span class="c">// or { format, align, size, color }</span>
+  codec: <span class="s">'auto'</span>,                            <span class="c">// smaller JPEG or lossless Flate</span>
+  tagged: <span class="k">true</span>,                            <span class="c">// structure, not a PDF/UA badge</span>
+  download: <span class="s">'report.pdf'</span>                   <span class="c">// also downloads it</span>
+})</code></pre>
+  <p class="sub">On first PDF export, the plugin reads SnapDOM's final serialized clone, not the
+  original live DOM, so real node removal/replacement stays aligned. Page regions are rasterized
+  lazily and cached for later exports. Geometry-preserving final-artifact replacements stay aligned;
+  aspect-preserving width/height scaling is allowed, while incompatible viewBox, root paint/layout or
+  intrinsic-aspect changes fail instead of guessing coordinates. For secrets, remove or replace the
+  node/text; never treat an overlay or blur as redaction. Capture-model
+  options (<code>formValues</code>, <code>shadow</code>, <code>breakAvoid</code>, <code>outline</code>)
+  belong in <code>pdf({ ... })</code>.</p>
+
+  <dl class="spec opts">
+    <div><dt>page</dt><dd><code>'fit'</code> · one page the size of the element, or
+      <code>a3</code> / <code>a4</code> / <code>a5</code> / <code>a6</code> / <code>b4</code> /
+      <code>b5</code> / <code>letter</code> / <code>legal</code> / <code>tabloid</code> /
+      <code>executive</code>, or <code>[width, height]</code> in points.</dd></div>
+    <div><dt>orientation</dt><dd><code>'portrait'</code> or <code>'landscape'</code>.</dd></div>
+    <div><dt>margin</dt><dd>Points. <code>24</code>.</dd></div>
+    <div><dt>codec</dt><dd><code>auto</code> keeps the smaller JPEG or lossless Flate image.</dd></div>
+    <div><dt>quality</dt><dd>Quality of the JPEG candidate. <code>0.92</code>. It changes nothing while the lossless candidate wins, which on page artwork is until roughly <code>0.5</code>.</dd></div>
+    <div><dt>deflate</dt><dd>Deflate the content streams. <code>true</code>.</dd></div>
+    <div><dt>text</dt><dd>Emit the selectable layer. <code>true</code>. Turn it off and you get
+      an image-only PDF.</dd></div>
+    <div><dt>links</dt><dd>Emit same-document destinations and safe <code>http:</code>,
+      <code>https:</code>, <code>mailto:</code> and <code>tel:</code> annotations. <code>true</code>.</dd></div>
+    <div><dt>image</dt><dd>Draw the page image. <code>true</code>. Set <code>false</code> for an
+      image-free PDF that keeps the enabled text, links and structure. Element headers, footers and
+      watermarks are then omitted; cover/back pages keep semantics without their raster.</dd></div>
+    <div><dt>formValues</dt><dd>Put <code>input</code> / <code>textarea</code> / <code>select</code>
+      values in the layer. <code>true</code>.</dd></div>
+    <div><dt>shadow</dt><dd>Walk open shadow roots. <code>true</code>.</dd></div>
+    <div><dt>breakAvoid</dt><dd>Keep page breaks off rows, list items and figures.
+      <code>true</code>.</dd></div>
+    <div><dt>outline</dt><dd>Bookmarks from headings; capture-time. <code>true</code>.</dd></div>
+    <div><dt>forms</dt><dd>Measure form controls so the export can write fillable fields;
+      capture-time. <code>true</code>.</dd></div>
+    <div><dt>tagged / lang</dt><dd>Structure the document and set its spoken language.</dd></div>
+    <div><dt>embedFonts</dt><dd>Embed the capture's <code>@font-face</code> binaries, subset to the
+      glyphs the document drew. <code>true</code>. <code>'full'</code> embeds unsubsetted;
+      <code>false</code> embeds nothing.</dd></div>
+    <div><dt>vectorText</dt><dd>Paint eligible runs as real vector glyphs instead of leaving them
+      invisible over the raster. <code>false</code>. RTL and complex scripts stay on the raster.</dd></div>
+    <div><dt>fields</dt><dd>Write measured controls as real AcroForm fields. <code>true</code>.
+      <code>false</code> keeps their values in the invisible layer instead.</dd></div>
+    <div><dt>repeatHeaders</dt><dd>Repeat a continuing table's <code>thead</code> pixels and text.</dd></div>
+    <div><dt>header</dt><dd>A running head across the top of every page. Give it a string or
+      three independent segments, <code>{ left, center, right }</code>, each of which can be a
+      function of the page number. Either way it is drawn as <b>real text</b>: selectable, searchable,
+      crisp at any zoom. Pass an element instead and it is captured, for when you need a logo.
+      Either way it takes its height out of the printable area rather than sitting over it.</dd></div>
+    <div><dt>footer</dt><dd>The same, along the bottom.</dd></div>
+    <div><dt>pageNumbers</dt><dd><code>true</code>, or
+      <code>{ format, align, size, color, font }</code>. Drawn as real PDF text rather than
+      captured, so it stays crisp at any zoom and is searchable like the rest. It sits in the
+      bottom margin, under a footer if there is one.</dd></div>
+    <div><dt>debugText</dt><dd>Paint the invisible layer in red, so you can see where it sits.
+      <code>false</code>.</dd></div>
+    <div><dt>cover / toc / back</dt><dd>Captured front/back pages and generated linked contents.</dd></div>
+    <div><dt>watermark</dt><dd>Text or an element, drawn over every page.</dd></div>
+    <div><dt>encrypt</dt><dd><code>{userPassword, ownerPassword, permissions}</code>. AES-256 (R6).
+      The password is what protects the file; the permission flags are a request a viewer may honour.
+      Needs https or localhost.</dd></div>
+    <div><dt>meta</dt><dd><code>{title, author, subject, keywords, creator, created, modified}</code> <code>/Info</code> and XMP. Dates are written only when you pass them.</dd></div>
+    <div><dt>onProgress</dt><dd><code>({phase, done, total})</code> per step, for exports long enough
+      to need a bar.</dd></div>
+    <div><dt>signal</dt><dd>An <code>AbortSignal</code>. Aborting rejects between pages with
+      <code>AbortError</code> and produces nothing.</dd></div>
+    <div><dt>onReport</dt><dd>The structured diagnostics report once the Blob is finished, with stable
+      warning codes, counts, pages, bytes, fields and annotations.</dd></div>
+    <div><dt>download</dt><dd>A filename. Downloads the blob as well as returning it.</dd></div>
+    <div><dt>backgroundColor</dt><dd>Flatten at capture, plugin-default or export time. Resolution
+      remains a <code>snapdom(...)</code> concern.</dd></div>
+  </dl>
+  <p class="sub"><a href="docs.html"><b>Read the complete option, warning and limits reference </b></a></p>
+</section>
+
+<section id="pricing">
+  <span class="eyebrow">Open source</span>
+  <h2 id="included-in-the-snapdom-monorepo">Included in the SnapDOM monorepo</h2>
+  <p class="sub">The PDF plugin is available as MIT-licensed source in <code>packages/plugins/pdf</code>.
+  PDF and Vector are available on npm in <code>@zumer/snapdom-plugins</code> 4.x and require SnapDOM 3.x.</p>
+  <p><a href="docs.html">Read the reference </a> · <a href="https://github.com/zumerlab/snapdom">SnapDOM on GitHub</a></p>
+</section>
+
+<section>
+  <span class="eyebrow">Before you ask</span>
+  <h2 id="questions">Questions</h2>
+
+  <div class="faq">
+    <div>
+      <h3>Can I use it in something I sell to a client?</h3>
+      <p>Yes. The MIT license permits commercial use, modification and redistribution. Keep the license notice with redistributed copies.</p>
+    </div>
+    <div>
+      <h3>Is the text really selectable, or is it OCR?</h3>
+      <p>It is selectable without OCR. Eligible text is placed from browser geometry in SnapDOM's
+      final serialized clone, so structural exclusions and geometry-preserving replacements stay
+      aligned with the capture. Ambiguous paint effects are omitted fail-safe. Download a sample
+      and copy a paragraph.</p>
+    </div>
+    <div>
+      <h3>Is it open source?</h3>
+      <p>Yes. The PDF plugin is part of the SnapDOM monorepo under the MIT license.</p>
+    </div>
+    <div>
+      <h3>Can I read the code?</h3>
+      <p>Yes. Its source, reference and browser test suites live in <code>packages/plugins/pdf</code> in the SnapDOM monorepo.</p>
+    </div>
+    <div>
+      <h3>Does it need a server?</h3>
+      <p>The exporter itself runs in the browser and returns a <code>Blob</code>; it does not upload
+      the PDF. SnapDOM may still fetch resources used by the page, or use a proxy if your application
+      configured one.</p>
+    </div>
+    <div>
+      <h3>Why is the text raster and not vector?</h3>
+      <p>By default the visible pixels preserve SnapDOM's own rendering instead of asking a PDF layout
+      engine to reinterpret the page. Zoom far past the selected capture resolution and you will see
+      pixels. The invisible layer adds selection, search and copy without repainting the type.</p>
+      <p>You can have the other model: <code>vectorText: true</code> paints eligible runs as real
+      glyphs from the embedded fonts, and with <code>image: false</code> the result is a small, fully
+      vector text PDF. It is opt-in because it is a different fidelity promise. RTL and complex
+      scripts are never painted this way, and they stay on the raster.</p>
+    </div>
+    <div>
+      <h3>Can the PDF be password protected?</h3>
+      <p>Yes. <code>encrypt: { userPassword }</code> writes an AES-256 file, so the download is
+      protected once it is shared. It uses the browser's own crypto, so no cipher code ships in the
+      plugin, and it needs a secure context: https or localhost.</p>
+      <p>Two things it will not do. It does not offer RC4 or the older PDF revisions, whose 40-bit key
+      is broken. And it will not write an empty user password: that produces a file that is encrypted
+      and still opens without asking anyone anything, which is worse than no protection because it
+      looks like some. Permission flags (no printing, no copying) are written when you ask for them,
+      but they are a request a viewer may honour, not a lock.</p>
+    </div>
+    <div>
+      <h3>Which browsers?</h3>
+      <p>The complete fixture suite is Chromium-only. Both plugin builds must also pass the
+      release artifact smoke in Chromium, Firefox and WebKit. That supports the plugin/API contract
+      in all three; it does not pretend every complex layout has the same three-engine coverage.</p>
+    </div>
+  </div>
+</section>
+
+</div></article></main><footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer></body></html>

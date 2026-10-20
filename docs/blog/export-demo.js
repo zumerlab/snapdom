@@ -23,8 +23,8 @@ async function jspdf() {
 }
 async function offer(blob, name, evidence) {
   if (blob.type === 'application/pdf') {
-    const pdfjs = await import('../pro/pdf/assets/pdfjs/pdf.mjs')
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL('../pro/pdf/assets/pdfjs/pdf.worker.mjs', import.meta.url).href
+    const pdfjs = await import('../plugins/pdf/assets/pdfjs/pdf.mjs')
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('../plugins/pdf/assets/pdfjs/pdf.worker.mjs', import.meta.url).href
     const document = await pdfjs.getDocument({ data:new Uint8Array(await blob.arrayBuffer()) }).promise
     let textItems = 0, links = 0
     for (let i = 1; i <= document.numPages; i++) {

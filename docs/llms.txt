@@ -45,10 +45,10 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 - [SnapDOM v3 release](https://snapdom.dev/blog/snapdom-v3/): automatic capture reuse, new APIs, rendering fixes and upgrade notes
 
 - [Plugin demos](https://snapdom.dev/showcase/#plugins): one live demo per official plugin, with the code it needs
-- [PDF live demos](https://snapdom.dev/pro/pdf/): reports, paginated ledgers, multilingual text, form controls and transparency; PDFs generated from the live DOM
-- [PDF API reference](https://snapdom.dev/pro/pdf/docs.html): capture-time options, pagination, text, fields, metadata and encryption
-- [Vector live demos](https://snapdom.dev/pro/vector/): editable components, SVG, charts and forms; browser-generated SVG and Figma clipboard export
-- [Vector API reference](https://snapdom.dev/pro/vector/docs.html): supported content, approximation reports and clipboard constraints
+- [PDF live demos](https://snapdom.dev/plugins/pdf/): reports, paginated ledgers, multilingual text, form controls and transparency; PDFs generated from the live DOM
+- [PDF API reference](https://snapdom.dev/plugins/pdf/docs.html): capture-time options, pagination, text, fields, metadata and encryption
+- [Vector live demos](https://snapdom.dev/plugins/vector/): editable components, SVG, charts and forms; browser-generated SVG and Figma clipboard export
+- [Vector API reference](https://snapdom.dev/plugins/vector/docs.html): supported content, approximation reports and clipboard constraints
 
 ## Choose the output for the task
 
@@ -182,9 +182,9 @@ const svg = await artwork.toVector();
 // On a user click over HTTPS or localhost: await artwork.toFigma();
 ```
 
-PDF returns an `application/pdf` Blob; `download: 'report.pdf'` opts into downloading. Capture-model settings (`formValues`, `shadow`, `breakAvoid`, `outline`, `forms`) belong on `pdf()`. Paper, text, links, fields, headers/footers, metadata and encryption belong on `toPdf()` and may also be factory defaults. Read the [PDF reference](https://snapdom.dev/pro/pdf/docs.html) for diagnostics and accessibility limits; tagged output alone does not guarantee PDF/UA.
+PDF returns an `application/pdf` Blob; `download: 'report.pdf'` opts into downloading. Capture-model settings (`formValues`, `shadow`, `breakAvoid`, `outline`, `forms`) belong on `pdf()`. Paper, text, links, fields, headers/footers, metadata and encryption belong on `toPdf()` and may also be factory defaults. Read the [PDF reference](https://snapdom.dev/plugins/pdf/docs.html) for diagnostics and accessibility limits; tagged output alone does not guarantee PDF/UA.
 
-Vector exports native SVG shapes and text without `foreignObject`, unlike core `toSvg()`. Keep the source element connected through export. Its only public option is `exclude` (selector, predicate returning true to omit, or an array), with per-export values overriding factory defaults. `toFigma()` needs the async clipboard API and a user action over HTTPS or localhost. See the [Vector reference](https://snapdom.dev/pro/vector/docs.html). The retained `/pro/` URLs do not indicate a paid license.
+Vector exports native SVG shapes and text without `foreignObject`, unlike core `toSvg()`. Keep the source element connected through export. Its only public option is `exclude` (selector, predicate returning true to omit, or an array), with per-export values overriding factory defaults. `toFigma()` needs the async clipboard API and a user action over HTTPS or localhost. See the [Vector reference](https://snapdom.dev/plugins/vector/docs.html).
 
 ## Scope and limits
 
