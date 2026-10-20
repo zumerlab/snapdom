@@ -1009,3 +1009,140 @@ export function assembleCaptureCSS(state, fontsCSS) {
   state.scrollbarCSS = scrollbarCSS
   return { baseCSS, scrollbarCSS, fontsCSS }
 }
+
+const ROOT_PERCENT_PROPS = [
+  // [property, axis, kind]
+  ['max-width', 'x', 'max'], ['min-width', 'x', 'min'],
+  ['max-height', 'y', 'max'], ['min-height', 'y', 'min'],
+]
+
+/**
+ * The capture root's percentage min/max sizes, frozen to the pixels they resolved to in the
+ * page. `getComputedStyle` keeps those percentages unresolved (`max-width: 30%`, also inside
+ * calc()), and inside the foreignObject they resolve against the snapshot's own container,
+ * which is about as wide as the root itself: a popup with `max-width:30%` came out a third of
+ * its width and its children overflowed it. `width`/`height` need nothing here, their computed
+ * values are already the used pixels.
+ *
+ * Only the root, and only when one of the four values holds a `%`: every other capture reads
+ * four strings it already has. The basis is the original's containing block (padding box of
+ * the offset parent, or the viewport, for absolute/fixed; the parent's content box otherwise),
+ * read from layout that is clean at this point. The used size is the check: a max that resolves
+ * below it, or a min above it, did not apply in the page (an indefinite height, a containing
+ * block this guess got wrong), so it becomes `none`/`0` instead of a constraint the page never
+ * had. Horizontal writing modes only; vertical ones are left as they were.
+ * Pinned by __tests__/core.prepare.rootPercentSize.test.js.
+ * @param {Element} element - source root
+ * @param {HTMLElement} clone - its clone
+ * @param {CSSStyleDeclaration} cs - the root's computed style
+ */
+export function freezeRootPercentSizes(element, clone, cs) {
+  let found = null
+  for (const entry of ROOT_PERCENT_PROPS) {
+    const v = cs.getPropertyValue(entry[0])
+    if (v && v.includes('%')) (found ||= []).push([entry, v])
+  }
+  if (!found || !clone?.style) return
+  if ((cs.writingMode || 'horizontal-tb') !== 'horizontal-tb') return
+  const basis = percentBasis(element, cs)
+  if (!basis) return
+  for (const [[prop, axis, kind], value] of found) {
+    const base = axis === 'x' ? basis.w : basis.h
+    if (!(base >= 0)) continue
+    const { text, px } = resolvePercentLength(value, base)
+    const used = parseFloat(axis === 'x' ? cs.width : cs.height)
+    let out = px == null ? text : `${limit(px)}px`
+    if (px != null && Number.isFinite(used)) {
+      if (kind === 'max' && px < used - 0.5) out = 'none'
+      if (kind === 'min' && px > used + 0.5) out = '0px'
+    }
+    clone.style.setProperty(prop, out)
+  }
+}
+
+/**
+ * Width and height a percentage on `element`'s box resolves against: its containing block.
+ * @param {Element} element
+ * @param {CSSStyleDeclaration} cs
+ * @returns {{w:number,h:number}|null}
+ */
+function percentBasis(element, cs) {
+  const doc = element.ownerDocument
+  const root = doc.documentElement
+  const viewport = () => ({ w: root.clientWidth, h: root.clientHeight })
+  const pos = cs.position
+  if (pos === 'fixed') return viewport()
+  if (pos === 'absolute') {
+    const op = element.offsetParent
+    // No positioned ancestor: the initial containing block, which offsetParent reports as body.
+    if (!op || ((op === doc.body || op === root) && getComputedStyle(op).position === 'static')) return viewport()
+    return { w: op.clientWidth, h: op.clientHeight }
+  }
+  const parent = element.parentElement
+  if (!parent) return viewport()
+  const ps = getComputedStyle(parent)
+  const n = (p) => parseFloat(ps.getPropertyValue(p)) || 0
+  return {
+    w: parent.clientWidth - n('padding-left') - n('padding-right'),
+    h: parent.clientHeight - n('padding-top') - n('padding-bottom'),
+  }
+}
+
+/**
+ * `value` with every percentage replaced by its px against `base`, and the number it comes to
+ * when what is left is plain px arithmetic (`calc`, `min`, `max`, `clamp`, + - * /). Computed
+ * values only carry absolute lengths in px besides `%`, so anything else (a keyword such as
+ * `fit-content`, an `em` in a calc() the engine did not simplify) yields `px: null` and the
+ * caller writes the substituted text, which CSS resolves itself.
+ * @param {string} value
+ * @param {number} base
+ * @returns {{text:string, px:number|null}}
+ */
+export function resolvePercentLength(value, base) {
+  const text = value.replace(/(-?\d*\.?\d+(?:e[+-]?\d+)?)%/gi, (_, n) => `${limit(base * parseFloat(n) / 100)}px`)
+  return { text, px: evalPxExpression(text) }
+}
+
+const limit = (n) => Math.round(n * 1000) / 1000
+
+/** Evaluate a px-only CSS math expression; null when it is anything else. */
+function evalPxExpression(src) {
+  const tokens = src.toLowerCase().match(/-?\d*\.?\d+(?:e[+-]?\d+)?(?:px)?|calc\(|min\(|max\(|clamp\(|[()+\-*/,]|\S+/g) || []
+  let i = 0
+  const peek = () => tokens[i]
+  const fn = () => {
+    const t = tokens[i++]
+    if (t === '(' || t === 'calc(') { const v = sum(); if (tokens[i++] !== ')') throw 0; return v }
+    if (t === 'min(' || t === 'max(' || t === 'clamp(') {
+      const args = [sum()]
+      while (peek() === ',') { i++; args.push(sum()) }
+      if (tokens[i++] !== ')') throw 0
+      if (t === 'clamp(') { if (args.length !== 3) throw 0; return Math.max(args[0], Math.min(args[1], args[2])) }
+      return t === 'min(' ? Math.min(...args) : Math.max(...args)
+    }
+    if (t === '-') return -fn()
+    const m = /^(-?\d*\.?\d+(?:e[+-]?\d+)?)(px)?$/.exec(t || '')
+    if (!m) throw 0
+    return parseFloat(m[1])
+  }
+  const product = () => {
+    let v = fn()
+    while (peek() === '*' || peek() === '/') { const op = tokens[i++]; const r = fn(); v = op === '*' ? v * r : v / r }
+    return v
+  }
+  const sum = () => {
+    let v = product()
+    for (;;) {
+      const t = peek()
+      if (t === '+' || t === '-') { i++; const r = product(); v = t === '+' ? v + r : v - r; continue }
+      // "calc(240px -20px)" never occurs (CSS needs spaces around + and -), but a signed number
+      // token right after a term is how "- 20px" without the space tokenizes.
+      if (t && /^-\d|^-\./.test(t)) { v += fn(); continue }
+      return v
+    }
+  }
+  try {
+    const v = sum()
+    return i === tokens.length && Number.isFinite(v) ? v : null
+  } catch { return null }
+}
