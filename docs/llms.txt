@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-05.
 
-> SnapDOM is a browser capture engine for web interfaces.
+> SnapDOM is a high-performance engine for capturing, modifying, and converting DOM elements into any format. It is fast, pixel-faithful, extensible through plugins and continuously maintained.
 
 SnapDOM (`@zumer/snapdom`) captures a DOM subtree, its styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, searchable, paginated PDFs and editable vector artwork and recordings.
 

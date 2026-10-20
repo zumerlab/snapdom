@@ -82,7 +82,7 @@
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p>Both libraries render cloned DOM through <code>foreignObject</code> and export SVG, PNG, JPEG, WebP, Canvas and Blob. <strong>modern-screenshot</strong> has a TypeScript API. <strong>SnapDOM</strong> also provides a <a href="https://snapdom.dev/showcase/#plugins" data-umami-event="Cmp ms tldr plugins">plugin system</a> for HTML, structured context and maps, PDF images, GIF and video. Both are MIT-licensed.</p>
+      <p>Both libraries render cloned DOM through <code>foreignObject</code> and export SVG, PNG, JPEG, WebP, Canvas and Blob. <strong>modern-screenshot</strong> has a TypeScript API. <strong>SnapDOM</strong> also provides a <a href="https://snapdom.dev/showcase/#plugins" data-umami-event="Cmp ms tldr plugins">plugin system</a> for HTML, structured context and maps, searchable PDF, editable vector, GIF and video. Both are MIT-licensed.</p>
     </div>
 
     <section class="bench-section" id="benchmark">
@@ -148,10 +148,10 @@
         <div class="verdict-card snapdom">
           <h4>Choose SnapDOM when…</h4>
           <ul>
-            <li>You want to extend capture with <a href="https://snapdom.dev/showcase/#plugins" data-umami-event="Cmp ms verdict plugins">plugins</a> (watermarks, filters, custom exporters, PDF…).</li>
-            <li>Your UI uses Shadow DOM / Web Components and you need them captured reliably.</li>
-            <li>You hit edge cases (Safari rendering, complex <code>@font-face</code>, counters, line-clamp) and want them already handled.</li>
-            <li>You want one API spanning SVG, PNG, JPG, WebP, Canvas and Blob.</li>
+            <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
+            <li>The output must match what the browser rendered, verified against pixels.</li>
+            <li>You need more than images: PDF, editable vector, HTML or agent context through <a href="../../showcase/#plugins">plugins</a>, or your own.</li>
+            <li>You want a library with a release about every week.</li>
           </ul>
         </div>
         <div class="verdict-card other">
@@ -215,7 +215,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>What does SnapDOM offer that modern-screenshot doesn't?</summary>
-        <p>SnapDOM has a plugin lifecycle and official plugins for portable HTML, structured context and maps, PDF images, GIF and video. The two libraries share the core SVG, raster image, Canvas and Blob output formats.</p>
+        <p>SnapDOM has a plugin lifecycle and official plugins for portable HTML, structured context and maps, searchable PDF, editable vector, GIF and video. The two libraries share the core SVG, raster image, Canvas and Blob output formats.</p>
       </details>
 
       <details>

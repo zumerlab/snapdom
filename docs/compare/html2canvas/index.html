@@ -209,7 +209,7 @@
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
       <p><a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> reads the DOM and paints elements onto a <code>&lt;canvas&gt;</code>. Its default renderer implements CSS support itself, so its supported properties and output can differ from the browser's page rendering.</p>
-      <p><strong>SnapDOM</strong> clones the DOM, inlines styles and accessible fonts and images, and wraps the clone in an SVG <code>&lt;foreignObject&gt;</code>. It handles pseudo-elements, CSS variables, counters and open Shadow DOM, subject to browser rendering and resource-access limits.</p>
+      <p><strong>SnapDOM</strong> clones the DOM, inlines styles and accessible fonts and images, and wraps the clone in an SVG <code>&lt;foreignObject&gt;</code>. The browser paints that clone, so the output follows its own rendering, subject to resource-access limits.</p>
     </section>
 
     <section class="prose">
@@ -243,11 +243,10 @@
         <div class="verdict-card snapdom">
           <h4>Choose SnapDOM when…</h4>
           <ul>
-            <li>You use modern CSS: variables, <code>::before/::after</code>, gradients, transforms, line-clamp.</li>
-            <li>Your UI uses Web Components or Shadow DOM.</li>
-            <li>You need to embed custom fonts in the output.</li>
-            <li>You need plugins for transformations or exports such as HTML, structured context, maps, ASCII or PDF images.</li>
-            <li>You care about bundle size and zero dependencies.</li>
+            <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
+            <li>The output must match what the browser rendered, verified against pixels.</li>
+            <li>You need more than images: PDF, editable vector, HTML or agent context through <a href="../../showcase/#plugins">plugins</a>, or your own.</li>
+            <li>You want a library with a release about every week.</li>
           </ul>
         </div>
         <div class="verdict-card other">

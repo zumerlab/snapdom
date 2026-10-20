@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM Documentation — API, Options, Plugins & Cache</title>
-  <meta name="description" content="SnapDOM v3.x.x reference: capture browser UI once, export images, and use plugins for HTML, structured context, element maps and recordings." />
+  <meta name="description" content="SnapDOM v3.x.x reference: capture a DOM element once and convert it to any format. Images in the core; plugins add PDF, vector, HTML, context and recordings." />
   <meta name="keywords" content="snapdom documentation, snapdom api, snapdom options, snapdom plugins, snapdom cache, dom to image, html to image" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/docs/" />
@@ -14,7 +14,7 @@
 
   <meta property="og:type" content="website" />
   <meta property="og:title" content="SnapDOM Documentation" />
-  <meta property="og:description" content="Capture browser UI once. Export images, inspect capture geometry, or add HTML and structured context through plugins." />
+  <meta property="og:description" content="Capture a DOM element once and convert it to any format: images in the core, PDF, vector, HTML and context through plugins." />
   <meta property="og:url" content="https://snapdom.dev/docs/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -70,11 +70,11 @@
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter docs" aria-label="Filter docs"></label><nav class="pane-nav" aria-label="Docs"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Getting started</button><div class="pane-nav-items"><a href="./" aria-current="page">Overview</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Capture API</button><div class="pane-nav-items"><a href="api/">API reference</a><a href="cache/">Cache and preCapture</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Options</button><div class="pane-nav-items"><a href="options/">Options</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="plugins/">Plugin API</a></div></div></nav></aside>
 
 <article class="pane-read sec-start" data-title="Overview">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Docs</span><span aria-hidden="true">/</span><span>Getting started</span><span aria-hidden="true">/</span><span>Overview</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Documentation</span></h1><p class="doc-lead">Capture browser UI once, then choose image exports or plugin outputs such as HTML and structured context. This reference covers SnapDOM v3.x.x.</p><p class="pane-links doc-links"><a href="#quick-start">Quick start</a><a href="api/">API reference</a></p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Docs</span><span aria-hidden="true">/</span><span>Getting started</span><span aria-hidden="true">/</span><span>Overview</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Documentation</span></h1><p class="doc-lead">Capture a DOM element once, then convert it to any format. This reference covers SnapDOM v3.x.x.</p><p class="pane-links doc-links"><a href="#quick-start">Quick start</a><a href="api/">API reference</a></p></header>
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">What is SnapDOM</div>
-      <p><strong>SnapDOM is a browser capture engine for web interfaces.</strong> It captures a DOM subtree with its styles and assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. <strong>Plugins</strong> add HTML, text or JSON context, annotated element maps and image-based PDFs from that state, or record new captures as GIF or video.</p>
+      <p><strong>SnapDOM is a high-performance engine for capturing, modifying, and converting DOM elements into any format.</strong> One capture becomes SVG, PNG, JPG, WebP, canvas or a Blob, with its geometry. <strong>Plugins</strong> add paginated PDF, editable vector, HTML, text or JSON context and element maps from that state, or record new captures as GIF or video.</p>
     </div>
 
     <section class="prose">
@@ -173,7 +173,7 @@ yarn add @zumer/snapdom@latest</pre>
         <a class="related-card" href="../compare/html2canvas/">SnapDOM vs html2canvas</a>
         <a class="related-card" href="../guides/react/">SnapDOM in React</a>
         <a class="related-card" href="../how-to/screenshot-a-div/">How to screenshot a div</a>
-        <a class="related-card" href="../showcase/#plugins">Browse community plugins</a>
+        <a class="related-card" href="../ecosystem/#community-plugins">Browse community plugins</a>
       </div>
     </section>
 

@@ -145,7 +145,7 @@
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
       <p><a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> is a fork of <a href="../dom-to-image/">dom-to-image</a> with TypeScript support. Its image helpers return data URLs; it also provides Canvas and Blob exports.</p>
-      <p><strong>SnapDOM</strong> exposes capture and export lifecycle hooks. Official plugins add portable HTML, structured context and maps, PDF images, GIF and video alongside filters, timestamps and text transformations. These plugins are separate from the core image and canvas exporters.</p>
+      <p><strong>SnapDOM</strong> exposes capture and export lifecycle hooks. Official plugins add portable HTML, structured context and maps, searchable PDF, editable vector, GIF and video alongside filters, timestamps and text transformations. These plugins are separate from the core image and canvas exporters.</p>
     </section>
 
     <section class="prose">
@@ -178,10 +178,10 @@
         <div class="verdict-card snapdom">
           <h4>Choose SnapDOM when…</h4>
           <ul>
-            <li>You use Web Components or Shadow DOM heavily.</li>
-            <li>You need CSS counters or line-clamp ellipsis in the captured output.</li>
-            <li>You want to add filters, watermarks, ASCII or PDF export without forking the library.</li>
-            <li>You need fine-grained font control (<code>embedFonts</code>, <code>localFonts</code>, <code>excludeFonts</code>).</li>
+            <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
+            <li>The output must match what the browser rendered, verified against pixels.</li>
+            <li>You need more than images: PDF, editable vector, HTML or agent context through <a href="../../showcase/#plugins">plugins</a>, or your own.</li>
+            <li>You want a library with a release about every week.</li>
           </ul>
         </div>
         <div class="verdict-card other">
@@ -248,7 +248,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>What's actually different between html-to-image and SnapDOM?</summary>
-        <p>Both clone the DOM and render via <code>foreignObject</code>. SnapDOM adds capture lifecycle hooks, automatic reuse for eligible repeat captures, and official plugins for HTML, structured context and maps, PDF images, GIF and video. Compare the return types and options in the migration table.</p>
+        <p>Both clone the DOM and render via <code>foreignObject</code>. SnapDOM adds capture lifecycle hooks, automatic reuse for eligible repeat captures, and official plugins for HTML, structured context and maps, searchable PDF, editable vector, GIF and video. Compare the return types and options in the migration table.</p>
       </details>
 
       <details>

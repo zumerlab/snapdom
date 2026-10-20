@@ -221,7 +221,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>How do I render custom fonts correctly?</summary>
-        <p>SnapDOM v3.x.x defaults to <code>embedFonts: 'auto'</code>, which embeds used web fonts when their files are accessible. Use <code>localFonts</code> or <code>excludeFonts</code> when you need more control.</p>
+        <p>SnapDOM defaults to <code>embedFonts: 'auto'</code>, which embeds used web fonts when their files are accessible. Use <code>localFonts</code> or <code>excludeFonts</code> when you need more control.</p>
       </details>
 
       <details>
@@ -236,7 +236,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>Does it handle Shadow DOM and Web Components?</summary>
-        <p>Yes. SnapDOM walks open Shadow DOM trees during cloning, and preserves their rendered styles subject to the same resource and browser limits as other captures.</p>
+        <p>Open shadow roots need no extra setup. See <a href="../capture-shadow-dom/">Capture Shadow DOM</a>.</p>
       </details>
     </section>
 

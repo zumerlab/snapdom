@@ -197,7 +197,7 @@
 
     <section class="prose">
       <h2 id="og">5. Bonus — dynamic OG / share images</h2>
-      <p>SnapDOM is great for generating share cards on the fly when the user clicks "share". Capture the rendered card to a Blob, upload it to your CDN, and use that URL as the <code>og:image</code> for the share link:</p>
+      <p>Generate share cards on the fly when the user clicks "share". Capture the rendered card to a Blob, upload it to your CDN, and use that URL as the <code>og:image</code> for the share link:</p>
       <pre class="code-block"><span class="kw">async function</span> <span class="fn">share</span>() {
   <span class="kw">if</span> (!cardRef.current) <span class="kw">return</span>;
   const { snapdom } = await import('@zumer/snapdom');
@@ -221,12 +221,12 @@
 
       <details>
         <summary>The captured image is blank in production but works in dev</summary>
-        <p>Check that the target is mounted, has a nonzero size and contains the expected data. Wait for layout-changing assets such as fonts. SnapDOM v3.x.x embeds used web fonts with <code>embedFonts: 'auto'</code> by default; a blank capture can have causes beyond font loading.</p>
+        <p>Check that the target is mounted, has a nonzero size and contains the expected data. Wait for layout-changing assets such as fonts. SnapDOM embeds used web fonts with <code>embedFonts: 'auto'</code> by default; a blank capture can have causes beyond font loading.</p>
       </details>
 
       <details>
         <summary>Should I use SnapDOM or @vercel/og for OG images?</summary>
-        <p>Different tools. <code>@vercel/og</code> renders Satori-compatible JSX on the server (no real browser, no full CSS). SnapDOM runs client-side in a real browser and captures the rendered DOM, including supported pseudo-elements, custom fonts and open Web Components.</p>
+        <p>Different tools. <code>@vercel/og</code> renders Satori-compatible JSX on the server (no real browser, no full CSS). SnapDOM runs client-side in a real browser and captures the rendered DOM exactly as the browser lays it out.</p>
         <p>Use <code>@vercel/og</code> when the card is fully described in JSX and you don't need real browser fidelity. Use SnapDOM when you want to capture a piece of your live UI with its current browser layout.</p>
       </details>
 

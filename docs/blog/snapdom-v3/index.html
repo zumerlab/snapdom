@@ -113,6 +113,7 @@ button.addEventListener('click', () =&gt;
       <section class="prose" aria-labelledby="plugins">
         <h2 id="plugins">Core and official plugins share the v3 release line</h2>
         <p>The official <code>@zumer/snapdom-plugins</code> package is on v3 as well. It covers HTML exports, text and JSON context, annotated element maps, image-based PDFs, image effects, and GIF or video recording. Match its major version to the core when you upgrade. Recording exports take new frames from the live element when recording starts.</p>
+        <p><em>Update, October 2026: the plugins moved to 4.x, which requires SnapDOM 3.3.0 or newer, and now include a paginated <a href="../../plugins/pdf/">PDF exporter</a> with selectable text and an editable <a href="../../plugins/vector/">Vector exporter</a>.</em></p>
         <p>Plugins also get capture geometry, the exact export options and canvas cropping support. Those details matter when an export has to line up with the source interface or when a plugin needs to use the same crop as a core exporter. The <a href="../../showcase/#plugins">plugin gallery</a> has examples, and the <a href="../../docs/plugins/">plugin reference</a> documents the hooks and custom exports.</p>
         <p>The default renderer is still SVG. The experimental native <code>html-in-canvas</code> engine requires a compatible browser and a custom build; it is omitted from the standard bundle.</p>
       </section>

@@ -6,8 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM Showcase: Live DOM Capture Demos</title>
 
-  <meta name="description" content="Run SnapDOM against live browser elements: fonts, pseudo-elements, Shadow DOM, canvas, video, masks, plugins and export formats.">
-  <meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, shadow DOM, pseudo-elements, high fidelity, plugins">
+  <meta name="description" content="Run SnapDOM on live elements: benchmark it against html2canvas, export to any format, and try every official plugin and lab.">
+  <meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, DOM to any format, high fidelity, plugins">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://snapdom.dev/showcase/">
@@ -24,8 +24,8 @@
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="snapdom – browser capture engine">
-  <meta name="twitter:description" content="Try image exports, HTML, GIF and video alongside fonts, forms, Shadow DOM and canvas captures.">
+  <meta name="twitter:title" content="SnapDOM Showcase – live DOM capture demos">
+  <meta name="twitter:description" content="Benchmark SnapDOM, export to image, PDF, SVG, HTML, GIF or video, and try the labs.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
 
   <!-- === Favicons === -->
@@ -55,7 +55,7 @@
     "@id": "https://snapdom.dev/#website",
     "name": "SnapDOM",
     "url": "https://snapdom.dev/",
-    "description": "Documentation and demos for SnapDOM, the browser capture engine.",
+    "description": "Documentation and demos for SnapDOM, a high-performance engine for capturing, modifying, and converting DOM elements into any format.",
     "publisher": { "@id": "https://snapdom.dev/#organization" }
   }
   </script>
@@ -517,7 +517,7 @@
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Capture</button><div class="pane-nav-items"><a href="#benchmark">Benchmark</a><a href="#basic">Basic</a><a href="#opts-demo">Shadows</a><a href="#transition">Transition</a><a href="#orbit">Orbit</a><a href="#video">Video frame</a><a href="#fonts-demo">Fonts</a><a href="#shadow">Shadow DOM</a><a href="#canvas">Canvas</a><a href="#export">Export</a><a href="#pseudo">Pseudo</a><a href="#clip">Clip-Path</a><a href="#blend">Blend</a><a href="#iframe">Iframe</a><a href="#forms">Inputs</a><a href="#mask">Masking</a><a href="#cors">CORS</a><a href="#fullbody">Full page</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="#plugins">Overview</a><a href="#redact-demo">Hide private fields</a><a href="#timestamp-demo">Timestamp</a><a href="#replace-demo">Replace text</a><a href="#filter-demo">Filters and tint</a><a href="#pdf-demo">PDF</a><a href="#vector-demo">Editable SVG</a><a href="#html-export-demo">HTML export</a><a href="#ascii-demo">ASCII art</a><a href="#gif-export-demo">GIF recording</a><a href="#video-export-demo">Video recording</a><a href="#context-demo">Text context</a><a href="#agent-map-demo">Element map</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="#labs">Overview</a><a href="#lab-stop-motion">Stop motion</a><a href="#lab-paint-canvas">Paint on a capture</a><a href="#lab-target-range">Target range</a><a href="#lab-capture-stages">Capture stages</a><a href="#lab-webgl-live-mirror">Live mirror</a><a href="#lab-webgl-seamless-dom">Seamless DOM</a><a href="#lab-webgl-shatter">Shattered capture</a><a href="#demo-session">Repeat captures</a><a href="#demo-htmlcanvas">html-in-canvas</a></div></div></nav></aside>
 
 <article class="pane-read sec-labs" data-title="Live demos">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>Live demos</span></nav><span class="doc-meta">Showcase</span></div><h1>Showcase: live capture and export demos</h1><p class="doc-lead">Live capture demos, every official plugin and the labs, on one page. Each demo runs SnapDOM on the element beside it.</p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Live demos</span></nav><span class="doc-meta">Showcase</span></div><h1>Showcase: live capture and export demos</h1><p class="doc-lead">Live capture demos, every official plugin and the labs, on one page. Each demo runs SnapDOM on the element beside it.</p></header>
 <div class="pane-content"><!-- content -->
 
 
@@ -1106,7 +1106,7 @@
       <p class="demo-explanation"><code>context-export</code> adds <code>toContext()</code>: the captured UI as a short text outline with roles, text and state.</p>
       <div class="card pl-card" id="pl-context-src">
         <h3>Checkout</h3>
-        <table><tr><td>Plan</td><td>Pro, yearly</td></tr><tr><td>Seats</td><td>3</td></tr><tr><th>Total</th><th>$288</th></tr></table>
+        <table><tr><td>Plan</td><td>Team, yearly</td></tr><tr><td>Seats</td><td>3</td></tr><tr><th>Total</th><th>$288</th></tr></table>
         <label><input type="checkbox" checked> Send me the receipt</label>
         <div class="pl-row"><button type="button">Pay now</button></div>
       </div>
@@ -1536,7 +1536,6 @@
         shadow.innerHTML =
           `<div style='padding: 1.2em; background: #0F1E4D; font-weight: 600; text-align: center; color: #FFFFFF;'>Inside the <strong style="color:#8FB5FF">Shadow DOM</strong>: styles scoped, capture intact</div>`
       }
-      // await preCache()
     })
 
     const canvas = document.getElementById('myCanvas')

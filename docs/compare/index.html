@@ -70,6 +70,13 @@
     <section class="prose">
       <p class="muted"><strong>Last updated:</strong> September 2026 · maintained by the SnapDOM team.</p>
 
+      <h2 id="which-should-you-use">Which should you use?</h2>
+      <ul>
+        <li><strong>Capture in the user's browser:</strong> SnapDOM. Measure its speed in the <a href="./live/">live benchmark</a>, check fidelity against pixels, and add PDF, vector or HTML outputs through plugins. It ships a release about every week.</li>
+        <li><strong>Already on html2canvas, html-to-image or dom-to-image:</strong> run your failing component in the <a href="./live/">live lab</a>, then follow the migration table on its head-to-head page.</li>
+        <li><strong>Rendering without a user's browser:</strong> Puppeteer, Playwright or a hosted service.</li>
+      </ul>
+
       <h2 id="three-ways-to-turn-html-into-an-image">Three ways to turn HTML into an image</h2>
       <p>These tools capture rendered HTML, but they run in different environments. Choose the environment first, then compare output and performance:</p>
       <ul>
@@ -142,7 +149,7 @@
       <h2 id="the-libraries-reviewed">The libraries, reviewed</h2>
 
       <h3>SnapDOM</h3>
-      <p><strong>Browser capture with extensible outputs.</strong> SnapDOM clones styled DOM and renders it inside an SVG <code>&lt;foreignObject&gt;</code>. It supports pseudo-elements, CSS variables, transforms, counters, open Shadow DOM and accessible web fonts. Core exports include SVG, PNG, JPG, WebP, Canvas and Blob; official plugins add HTML, structured context and maps, PDF images, GIF and video. Browser security still blocks inaccessible resources and tainted canvas pixels.</p>
+      <p><strong>Fast, faithful, extensible.</strong> SnapDOM clones the styled DOM and renders it inside an SVG <code>&lt;foreignObject&gt;</code>, so the browser itself paints the result. Core exports include SVG, PNG, JPG, WebP, Canvas and Blob; official plugins add HTML, structured context and maps, searchable PDF, editable vector, GIF and video. Browser security still blocks inaccessible resources and tainted canvas pixels.</p>
 
       <h3>html2canvas</h3>
       <p><strong>Canvas rendering from the DOM.</strong> <a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> implements a CSS painter in JavaScript by default. Check its supported properties, captured output and repository when assessing it for your page.</p>
@@ -159,14 +166,6 @@
       <h3>Server-side &amp; hosted options</h3>
       <p>Use browser automation or a hosted service for captures that must run independently of the user's browser, navigation workflows or scheduled rendering. A controlled browser version helps make output repeatable; it does not make different engines byte-identical.</p>
 
-      <h2 id="which-should-you-use">Which should you use?</h2>
-      <ul>
-        <li><strong>Browser-side exports with custom outputs</strong> evaluate SnapDOM and its optional plugins.</li>
-        <li><strong>Existing capture bugs</strong> compare the affected component before migrating, then adapt return types and options.</li>
-        <li><strong>Bundle size matters</strong> inspect the build you import. SnapDOM has zero runtime dependencies and separate plugin imports.</li>
-        <li><strong>Existing dom-to-image integration</strong> review the migration table and test captured output.</li>
-        <li><strong>Controlled server rendering</strong> evaluate Puppeteer, Playwright or a hosted service.</li>
-      </ul>
 
       <h2 id="faq">FAQ</h2>
       <h3>What is the best HTML-to-image library in 2026?</h3>

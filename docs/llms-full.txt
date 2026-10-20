@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-05.
 
-SnapDOM is a browser capture engine for web interfaces.
+SnapDOM is a high-performance engine for capturing, modifying, and converting DOM elements into any format. It is fast, pixel-faithful, extensible through plugins and continuously maintained.
 
 It captures a DOM subtree, its computed styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, searchable, paginated PDFs and editable vector artwork and recordings.
 
@@ -682,7 +682,7 @@ If output differs, read `capture.warnings` after export, use `debug: true`, and 
 
 ## Ecosystem
 
-[SnapDOM Ecosystem](https://snapdom.dev/ecosystem/) compares tools built on the capture engine:
+[SnapDOM Ecosystem](https://snapdom.dev/ecosystem/) compares tools built on SnapDOM:
 
 - SnapEye provides capture, visual diff and recording operations for coding agents, with JSON results and artifacts. It uses SnapDIFF's diff engine and does not navigate or click.
 - SnapSurf provides browser navigation, compact page observations, typed changes and assertions through MCP or CLI. Its semantic verification is different from comparing pixels against a saved visual baseline.
@@ -708,7 +708,7 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 
 ## PDF and Vector exports
 
-Both exporters live inside the official plugin workspace: packages/plugins/pdf and packages/plugins/vector. Vector includes its internal SVD dependency in packages/plugins/vector/svd. The original Pro repositories are no longer required to use the integrated sources. @zumer/snapdom-plugins 4.0.0 is published on npm and available through npm-backed CDNs.
+Both exporters live inside the official plugin workspace: packages/plugins/pdf and packages/plugins/vector. Vector includes its internal SVD dependency in packages/plugins/vector/svd. @zumer/snapdom-plugins 4.0.0 is published on npm and available through npm-backed CDNs.
 
 PDF usage:
 
@@ -777,4 +777,4 @@ Vector reconstructs supported text and shapes as vector elements; it is distinct
 Live PDF documentation: https://snapdom.dev/plugins/pdf/. Full API: https://snapdom.dev/plugins/pdf/docs.html.
 Live Vector documentation: https://snapdom.dev/plugins/vector/. Full API: https://snapdom.dev/plugins/vector/docs.html.
 Plugin demos: https://snapdom.dev/showcase/#plugins. Source directory: https://github.com/zumerlab/snapdom/tree/main/packages/plugins.
-The /pro/ URL segment is preserved for existing links; it does not indicate a paid license. Current PDF/Vector demos generate outputs in the browser from editable samples rather than serving pre-release files.
+Old /pro/ URLs redirect to /plugins/. Current PDF/Vector demos generate outputs in the browser from editable samples rather than serving pre-release files.
