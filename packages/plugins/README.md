@@ -1,8 +1,9 @@
 # @zumer/snapdom-plugins
 
-Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a capture engine for
-web apps. Core exports images and canvases; this package adds HTML, structured context,
-element maps, PDF, editable vectors, ASCII, visual transforms and live GIF/video recording.
+Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a high-performance engine
+for capturing, modifying, and converting DOM elements into any format. Core exports images and
+canvases; this package adds HTML, structured context, element maps, PDF, editable vectors, ASCII,
+visual transforms and live GIF/video recording.
 
 Image, HTML and structured exports use captured state; GIF and video start a sequence of
 live captures when their export method is called.
@@ -16,20 +17,6 @@ npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
 Plugins 4.x in this checkout require SnapDOM 3.3.0 or newer within 3.x. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed and available on npm in `@zumer/snapdom-plugins` 4.x. The `@latest` command above installs the published release. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
-
-## Releasing from the repository root
-
-```sh
-npm run bump:plugins:dry
-npm run bump:plugins
-npm run release:plugins
-npm run publish:plugins -- --dry-run
-npm run publish:plugins
-```
-
-`bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
-
-`release:plugins` runs the full cross-browser suite with required visual baselines, the PDF and Vector checks, and consumer packaging checks, then creates the plugin tarball. It does not publish. `publish:plugins` publishes only `@zumer/snapdom-plugins` under the `latest` tag.
 
 ## Usage
 
@@ -243,7 +230,7 @@ console.log(art);
 ### `pdf`
 
 Adds `toPdf()`, returning a PDF Blob with the capture's appearance, selectable text,
-links and pagination. This is the MIT-licensed full exporter formerly distributed as PDF Pro.
+links and pagination. MIT licensed.
 It replaces `pdf-image`; there is no second image-only PDF implementation.
 
 ```js
@@ -541,10 +528,24 @@ See [PLUGIN_SPEC.md](../../PLUGIN_SPEC.md) for the full hook specification and [
 
 ---
 
+## Live demos
+
+Run `npm run compile` and `npm run site` from the monorepo root, then open `/showcase/`, `/plugins/pdf/` or `/plugins/vector/`. The demos generate actual files from editable DOM samples.
+
+## Releasing from the repository root
+
+```sh
+npm run bump:plugins:dry
+npm run bump:plugins
+npm run release:plugins
+npm run publish:plugins -- --dry-run
+npm run publish:plugins
+```
+
+`bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
+
+`release:plugins` runs the full cross-browser suite with required visual baselines, the PDF and Vector checks, and consumer packaging checks, then creates the plugin tarball. It does not publish. `publish:plugins` publishes only `@zumer/snapdom-plugins` under the `latest` tag.
+
 ## License
 
 MIT
-
-## Live demos
-
-Run `npm run compile` and `npm run site` from the monorepo root, then open `/showcase/`, `/plugins/pdf/` or `/plugins/vector/`. The demos generate actual files from editable DOM samples; the `/pro/` paths are retained for existing links and do not denote paid plugins.

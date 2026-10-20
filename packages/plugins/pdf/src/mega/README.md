@@ -1,4 +1,4 @@
-# pdfmega — the "pro pro" layer
+# pdfmega: the document-generator layer
 
 The modules that took `@zumer/snapdom-pdf` from *exact capture in a PDF* to
 *document generator*: identity, diagnostics, flow control, folios, fillable

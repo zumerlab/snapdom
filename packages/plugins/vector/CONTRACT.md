@@ -862,12 +862,13 @@ lossless one.** For text metrics the Plugin API payload is strictly richer —
 `letter-spacing`, per-range small caps and a text stroke all survive it and none
 of them survives a paste. See the TEXT block under `emit/figma-json.js`.
 
-## The two paid plugins are separate products, and now separate repositories
+## PDF and Vector stay independent
 
-`@zumer/snapdom-pdf` and `@zumer/snapdom-vector` are bought separately, and **neither
-may import the other.** This is a licence boundary before it is an architectural one:
-a vector customer who receives a slice of the PDF plugin has been shipped something
-nobody sold them.
+Both exporters are MIT licensed and ship together in `@zumer/snapdom-plugins` 4.x
+(`packages/plugins/pdf` and `packages/plugins/vector`), and **neither may import the
+other.** The rule started as a licence boundary, when `@zumer/snapdom-pdf` and
+`@zumer/snapdom-vector` were sold separately, and it stays because each exporter can
+then be shipped and fixed on its own.
 
 The history is worth keeping because it is the reason for the shape. Until 2026-08-08
 `emit/pdf.js` imported the byte-level writer through `../../../pdf/src/pdf-writer.js`

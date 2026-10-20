@@ -1,6 +1,6 @@
 # SnapDOM features
 
-SnapDOM captures rendered interface state in the browser. The core produces reusable image and canvas exports; plugins add HTML, structured context, element maps, PDF, editable vectors and recordings.
+SnapDOM is a high-performance engine for capturing, modifying, and converting DOM elements into any format. The core produces reusable image and canvas exports; plugins add HTML, structured context, element maps, PDF, editable vectors and recordings.
 
 This is the technical feature reference for v3. For setup and examples, see the [README](README.md) and [API documentation](https://snapdom.dev/docs/). [简体中文](FEATURES_CN.md).
 
