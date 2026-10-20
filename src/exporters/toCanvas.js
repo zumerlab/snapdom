@@ -870,6 +870,11 @@ export async function toCanvas(url, options) {
     }
 
     const paint = () => {
+      // The dpr scale is for this function's own CSS-pixel draws only. Left on the context it
+      // shipped with the canvas: a caller drawing on the result in bitmap pixels (a badge at
+      // canvas.width - 20) landed dpr times too far, outside a 2x canvas. save/restore hands
+      // the canvas back with the identity transform a new canvas has.
+      ctx.save()
       if (dpr !== 1) ctx.scale(dpr, dpr)
 
       if (backgroundColor) {
@@ -919,6 +924,7 @@ export async function toCanvas(url, options) {
         }
         ctx.restore()
       }
+      ctx.restore()
     }
     paint()
 
