@@ -1009,3 +1009,68 @@ export function assembleCaptureCSS(state, fontsCSS) {
   state.scrollbarCSS = scrollbarCSS
   return { baseCSS, scrollbarCSS, fontsCSS }
 }
+
+// [property, axis]; the CSS function that keeps the used size is the property's own min/max.
+const ROOT_PERCENT_PROPS = [['max-width', 'x'], ['min-width', 'x'], ['max-height', 'y'], ['min-height', 'y']]
+
+/**
+ * Freeze the capture root's percentage min/max sizes to the pixels they resolved to in the
+ * page. `getComputedStyle` keeps those percentages unresolved (`max-width: 30%`, also inside
+ * calc()), and inside the foreignObject they resolve against the snapshot's own container,
+ * which is about as wide as the root itself: a popup with `max-width:30%` came out a third of
+ * its width and its children overflowed it (#532). `width`/`height` need nothing here, their
+ * computed values are already the used pixels.
+ *
+ * Only the root, and only when one of the four values holds a `%`: every other capture reads
+ * four strings it already has. The basis is the original's containing block (padding box of
+ * the offset parent, or the viewport, for absolute/fixed; the parent's content box otherwise),
+ * read from layout that is clean at this point. Each value is written as `max(<value>, used)`
+ * for a max and `min(<value>, used)` for a min, so CSS does the arithmetic and a constraint
+ * the page did not apply (a percentage height of an indefinite block, a containing block this
+ * guess got wrong) can never make the clone smaller or larger than the live box.
+ * Horizontal writing modes only; vertical ones are left as they were.
+ * Pinned by __tests__/core.prepare.rootPercentSize.test.js.
+ * @param {Element} element - source root
+ * @param {HTMLElement} clone - its clone
+ * @param {CSSStyleDeclaration} cs - the root's computed style
+ */
+export function freezeRootPercentSizes(element, clone, cs) {
+  let basis = null
+  for (const [prop, axis] of ROOT_PERCENT_PROPS) {
+    const value = cs.getPropertyValue(prop)
+    if (!value.includes('%')) continue
+    if (cs.writingMode !== 'horizontal-tb') return
+    basis ||= percentBasis(element, cs)
+    const base = axis === 'x' ? basis.w : basis.h
+    const text = value.replace(/(-?\d*\.?\d+(?:e[+-]?\d+)?)%/gi, (_, n) => `${base * n / 100}px`)
+    const used = parseFloat(axis === 'x' ? cs.width : cs.height)
+    clone.style.setProperty(prop, Number.isFinite(used) ? `${prop.slice(0, 3)}(${text}, ${used}px)` : text)
+  }
+}
+
+/**
+ * Width and height a percentage on `element`'s box resolves against: its containing block.
+ * @param {Element} element
+ * @param {CSSStyleDeclaration} cs
+ * @returns {{w:number,h:number}}
+ */
+function percentBasis(element, cs) {
+  const doc = element.ownerDocument
+  const root = doc.documentElement
+  const viewport = { w: root.clientWidth, h: root.clientHeight }
+  if (cs.position === 'fixed') return viewport
+  if (cs.position === 'absolute') {
+    const op = element.offsetParent
+    // No positioned ancestor: the initial containing block, which offsetParent reports as body.
+    if (!op || ((op === doc.body || op === root) && getComputedStyle(op).position === 'static')) return viewport
+    return { w: op.clientWidth, h: op.clientHeight }
+  }
+  const parent = element.parentElement
+  if (!parent) return viewport
+  const ps = getComputedStyle(parent)
+  const n = (p) => parseFloat(ps.getPropertyValue(p)) || 0
+  return {
+    w: parent.clientWidth - n('padding-left') - n('padding-right'),
+    h: parent.clientHeight - n('padding-top') - n('padding-bottom'),
+  }
+}

@@ -20,7 +20,7 @@ import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree, resolveMediaQueries, freezeInflatedFontSizes } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
 import { prepareSelectionContext } from '../modules/selection.js'
-import { resolveClipRect, freezeViewportPositioned } from '../utils/capture.helpers.js'
+import { resolveClipRect, freezeViewportPositioned, freezeRootPercentSizes } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
 
 /** In-flight #488 reveals, `{ root, promise }`. A concurrent capture whose root contains or
@@ -383,6 +383,9 @@ export async function prepareClone(element, options = {}) {
     // Individual translate is separate from computed transform. Like its matrix e/f,
     // its page placement has already been discarded by the root's bbox compensation.
     clone.style.translate = 'none'
+    // Its containing block stayed in the page too: a percentage min/max size would resolve
+    // against the foreignObject instead. No-op unless one of them holds a `%`.
+    freezeRootPercentSizes(element, clone, computed)
   }
 
   // #75: a <pre>'s top margin pushed its last line out of the capture box.
