@@ -16,7 +16,8 @@ ECO = [
    'does':['Capture an element before a change, then compare it afterward.','Locate changed regions and inspect the current and diff images.','Record a transition and review its frames, GIF or video.'],
    'fit':'SnapEye does not navigate or click. A browser driver reaches interactive states; SnapEye measures their appearance. Its visual comparison uses SnapDIFF’s diff engine.',
    'links':[('SnapEye setup and API','https://github.com/zumerlab/snapeye'),('Task recipes','https://github.com/zumerlab/snapeye/blob/main/RECIPES.md')]},
-  {'t':'SnapSurf','sub':'Web navigation and verification for agents.','lead':'Navigate, locate controls, act and verify what changed. SnapSurf adds browser interaction around capture evidence.','exp':True,'demo':'map',
+  {'t':'SnapSurf','sub':'Web navigation and verification for agents.','lead':'Navigate, locate controls, act and verify what changed. SnapSurf adds browser interaction around capture evidence.','exp':True,
+   'badge':'<a href="https://mcprush.com/tinchox5/snapsurf-mcp-2"><img width="380" height="200" src="https://mcprush.com/badge/snapsurf-mcp/card.svg" alt="Snapsurf MCP server" loading="lazy" /></a>',
    'does':['Open a page, find a control, click or type, then verify.','Check changes to content, state, layout and clickability.','Assert expected changes and the absence of unwanted ones.'],
    'fit':'A semantic diff answers whether the observed page changed. It does not replace a pixel comparison against a saved visual baseline. Its managed browser has its own cookies and storage, separate from your everyday browser.',
    'links':[('SnapSurf setup and documentation','https://github.com/zumerlab/SnapSurf')]}]}]
@@ -51,13 +52,13 @@ def eco_topic(p):
         inner += '<h2>What it does</h2><ul class="pane-list">' + ''.join(f'<li>{d}</li>' for d in p['does']) + '</ul>'
         inner += f'<p>{E(p["fit"])}</p>'
         inner += '<p class="pane-links">' + ''.join(f'<a href="{h}">{E(l)}</a>' for l, h in p['links']) + '</p>'
-    mode = p['demo']
+    if p.get('badge'):
+        inner += f'<p>{p["badge"]}</p>'
+    mode = p.get('demo')
     if mode == 'capture':
         demo = {'demo':'capture','method':'toPng','transform': {'PDF':'pdf', 'Vector':'vector'}.get(p['t'])}
-    elif mode == 'map':
-        demo = {'demo':'capture','method':'toPng','transform':'map','demo-label':'SnapSurf · locate controls','note':'Real agent-map output; this panel demonstrates capture annotations, not the SnapSurf browser driver.'}
     else:
-        demo = {'demo':mode}
+        demo = mode and {'demo':mode}
     return topic(p, 'ecosystem' if tools else p['section'], inner, demo)
 
 ECO_META = '''  <meta charset="UTF-8">
