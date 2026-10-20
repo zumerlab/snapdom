@@ -82,10 +82,10 @@ await result.download({ format: 'jpg', filename: 'card' });
 | --- | --- | --- |
 | 分享卡片、图表、发票或仪表盘 | SVG、PNG、JPG、WebP、Canvas 或 Blob | 核心引擎 |
 | 将捕获结果用于纹理、覆盖层或过渡效果 | Canvas 与捕获几何信息 | 核心引擎 |
-| 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | `html-export` 插件 |
-| 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | `context-export` / `agent-map` 插件 |
-| 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | `pdf` / `gif-export` / `video-export` 插件 |
-| 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | `vector` 插件 |
+| 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | [`html-export`](packages/plugins/README.md#html-export) 插件 |
+| 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | [`context-export`](packages/plugins/README.md#context-export) / [`agent-map`](packages/plugins/README.md#agent-map) 插件 |
+| 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | [`pdf`](packages/plugins/pdf/README.md) / [`gif-export`](packages/plugins/README.md#gif-export) / [`video-export`](packages/plugins/README.md#video-export) 插件 |
+| 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | [`vector`](packages/plugins/vector/README.md) 插件 |
 
 图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
 

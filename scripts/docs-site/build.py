@@ -10,7 +10,7 @@ OUT = os.path.join(HERE, '..', '..', 'docs')
 
 MENU = [
  ('Learn', [('Docs','docs/','capture','API, options and quick start'),('How-to','how-to/','start','Recipes and framework guides'),('Compare','compare/','ecosystem','SnapDOM vs html2canvas and others')]),
- ('Explore', [('Showcase','showcase/','labs','Live demos, plugins and labs'),('Blog','blog/','record','Notes from the team')]),
+ ('Explore', [('Showcase','showcase/','labs','Live demos and labs'),('Plugins','showcase/#plugins','ecosystem','PDF, HTML, vector, GIF, video, agent context'),('Blog','blog/','record','Notes from the team')]),
  ('Community', [('Ecosystem','ecosystem/','ecosystem','SnapDIFF, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
 ]
 FOOT = [

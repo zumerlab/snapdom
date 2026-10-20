@@ -64,7 +64,7 @@ SECTIONS = [
                       ('blog/painting-without-canvas/index.html','Painting without a canvas',None)])]},
  {'name':'Showcase', 'menu':'Showcase', 'filter':'Filter demos', 'groups':[
    ('Showcase','labs',[('showcase/index.html','Live demos',D(badge='Showcase',
-     lead='Live capture demos, every official plugin and the labs, on one page. Each demo runs SnapDOM on the element beside it.'))]),
+     lead='Start with Basic capture to export an element as an image. The Plugins section adds optional outputs; Labs contains custom experiments built on captures.'))]),
    ('Labs','labs',[('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
                    ('labs/capture-stages/index.html','Capture stages',None),('labs/target-range/index.html','Target range',None),
                    ('labs/webgl-live-mirror/index.html','Live mirror',None),('labs/webgl-seamless-dom/index.html','Seamless DOM',None),

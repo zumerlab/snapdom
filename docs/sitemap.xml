@@ -70,7 +70,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/docs/</loc>
-    <lastmod>2026-10-14</lastmod>
+    <lastmod>2026-10-20</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/docs/api/</loc>
@@ -90,7 +90,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/ecosystem/</loc>
-    <lastmod>2026-10-14</lastmod>
+    <lastmod>2026-10-20</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/angular/</loc>
@@ -238,6 +238,6 @@
   </url>
   <url>
     <loc>https://snapdom.dev/showcase/</loc>
-    <lastmod>2026-10-15</lastmod>
+    <lastmod>2026-10-20</lastmod>
   </url>
 </urlset>

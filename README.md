@@ -81,10 +81,10 @@ The result keeps that capture even if the source element later changes. Call `sn
 | --- | --- | --- |
 | Share a card, chart, invoice or dashboard | SVG, PNG, JPG, WebP, canvas or Blob | Core |
 | Reuse a capture in a texture, overlay or transition | Canvas plus capture geometry | Core |
-| Save a page fragment for later display | HTML with captured styles and fonts | `html-export` plugin |
-| Give an agent or a log a view of page content | Text/JSON context, or an image with an element map | `context-export` / `agent-map` plugins |
-| Download a document or record changing content | Searchable, paginated PDF, animated GIF or browser-encoded video | `pdf` / `gif-export` / `video-export` plugins |
-| Export editable artwork or paste into Figma | Native SVG shapes and text, or a Figma clipboard payload | `vector` plugin |
+| Save a page fragment for later display | HTML with captured styles and fonts | [`html-export`](packages/plugins/README.md#html-export) plugin |
+| Give an agent or a log a view of page content | Text/JSON context, or an image with an element map | [`context-export`](packages/plugins/README.md#context-export) / [`agent-map`](packages/plugins/README.md#agent-map) plugins |
+| Download a document or record changing content | Searchable, paginated PDF, animated GIF or browser-encoded video | [`pdf`](packages/plugins/pdf/README.md) / [`gif-export`](packages/plugins/README.md#gif-export) / [`video-export`](packages/plugins/README.md#video-export) plugins |
+| Export editable artwork or paste into Figma | Native SVG shapes and text, or a Figma clipboard payload | [`vector`](packages/plugins/vector/README.md) plugin |
 
 Image, HTML and context exports use the captured state. GIF and video plugins record the live element over time.
 
