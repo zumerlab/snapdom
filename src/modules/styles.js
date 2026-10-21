@@ -767,6 +767,28 @@ export function pseudoUniverseFor(el) {
   return scanFor(doc).pseudoUniverse
 }
 
+/** The SVG geometry/transform properties (styleScan's SVG_GEOMETRY_PROPS) some document rule
+ *  or animation declares, for clone.js's copy onto SVG shapes. null (copy every one that
+ *  applies) for shadow content and an unreadable scan, like universeFor. */
+export function svgGeometryFor(el) {
+  const doc = el.ownerDocument || document
+  if (el.getRootNode && el.getRootNode() !== doc) return null
+  return scanFor(doc).svgGeometry
+}
+
+/** Whether a rule declaring one of those props can reach `el`: one matches() against the
+ *  selectors of those rules (styleScan's svgGeometrySel). True when there is no selector
+ *  gate (shadow content, an unreadable scan, a WAAPI animation or a selectorless block) or
+ *  the gate cannot be matched, so the fallback is the per-property gate alone. Inheritance
+ *  cannot carry these props: none of them is inherited, so the element itself must match.
+ *  @param {Element} el document content (svgGeometryFor answered a Set for it) */
+export function svgGeometryReaches(el) {
+  const sel = scanFor(el.ownerDocument || document).svgGeometrySel
+  if (sel == null) return true
+  if (!sel) return false
+  try { return el.matches(sel) } catch { return true }
+}
+
 /** Per-kind selector gates for the pseudo probe (see scanAuthorStyles). Same memo and
  *  same shadow-root escape as universeFor: null gates → probe every node. */
 const NULL_GATES = { before: null, after: null, firstLetter: null, marker: null, firstLine: null }

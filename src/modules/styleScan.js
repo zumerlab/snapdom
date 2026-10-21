@@ -19,6 +19,29 @@
  * @module styleScan
  */
 
+/** Properties an author rule can set on an SVG shape that its presentation attributes also
+ *  carry: geometry, transforms and vector-effect. SVG shapes get no style snapshot (see
+ *  NO_DEFAULTS_TAGS), so clone.js copies these from computed style, and only the ones some
+ *  rule or animation actually declares (`svgGeometry` of the scan). */
+export const SVG_GEOMETRY_PROPS = new Set([
+  'r', 'cx', 'cy', 'rx', 'ry', 'x', 'y', 'width', 'height', 'd',
+  'transform', 'translate', 'rotate', 'scale', 'transform-origin', 'transform-box', 'vector-effect',
+])
+
+/** WebKit lists `transform-origin` in a rule's declarations as its -x/-y/-z longhands.
+ *  True when `prop` is one of SVG_GEOMETRY_PROPS. */
+function addSvgGeometry(set, prop) {
+  if (SVG_GEOMETRY_PROPS.has(prop)) set.add(prop)
+  else if (prop.startsWith('transform-origin-')) set.add('transform-origin')
+  else return false
+  return true
+}
+
+/** A rule that can start an animation or transition: the selectors of these join the SVG
+ *  geometry gate when some @keyframes animates a geometry prop, since the element is reached
+ *  through the rule that names the animation, not the keyframe. */
+const SVG_ANIM_RE = /^(?:animation|transition)/
+
 /** Properties always read regardless of what the page's CSS mentions: layout and text
  *  essentials, plus everything presentational HTML attributes (width=, bgcolor=, dir=,
  *  align=…) can set without appearing in any stylesheet. Longhands, matching what
@@ -127,11 +150,16 @@ function scanRules(rules, universe, pseudoSels, state) {
     if (--state.budget < 0) return false
     const rule = rules[i]
     const style = rule.style
+    let svgGeo = false, svgAnim = false
     if (style) {
       const pseudoRule = !!rule.selectorText && PSEUDO_ELEMENT_SEL_RE.test(rule.selectorText)
       for (let j = 0; j < style.length; j++) {
         const prop = style[j]
         universe.add(prop)
+        if (state.svgGeometry) {
+          if (addSvgGeometry(state.svgGeometry, prop)) svgGeo = true
+          else if (SVG_ANIM_RE.test(prop)) svgAnim = true
+        }
         if (pseudoRule) state.pseudoProps.add(prop)
         if (style.getPropertyPriority(prop)) state.importantProps.add(prop)
         if (prop.length > 5 && (prop[0] === 'm' || prop[0] === 'p')) {
@@ -176,6 +204,7 @@ function scanRules(rules, universe, pseudoSels, state) {
         if (one && (state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) state.shareUnsafeSels.add(one)
       }
     }
+    if (svgGeo || svgAnim) addSvgGeometrySel(rule, sel, svgGeo, state)
     if (sel && sel.includes(':')) {
       for (const kind in PSEUDO_KINDS) {
         if (PSEUDO_KINDS[kind].test(sel)) pseudoSels[kind].push(stripPseudo(sel))
@@ -187,13 +216,30 @@ function scanRules(rules, universe, pseudoSels, state) {
       // constructor.name instead of instanceof: a rule from an iframe document belongs to
       // that window's CSSContainerRule, so the parent realm's constructor never claims it.
       const container = rule.constructor?.name === 'CSSContainerRule'
+      const scope = rule.constructor?.name === 'CSSScopeRule'
       if (container) state.inContainer++
+      if (scope) state.inScope = (state.inScope || 0) + 1
       const ok = scanRules(rule.cssRules, universe, pseudoSels, state)
       if (container) state.inContainer--
+      if (scope) state.inScope--
       if (!ok) return false
     }
   }
   return true
+}
+
+/** Record which elements a geometry-declaring rule can reach, as matches()-able selectors.
+ *  A keyframe only flags that its animating rules count (svgAnimSels); a declaration block
+ *  with no selector of its own, or one inside @scope (relative selectors), gives up the
+ *  selector gate and leaves the per-property gate alone. */
+function addSvgGeometrySel(rule, sel, geo, state) {
+  if (geo && rule.constructor?.name === 'CSSKeyframeRule') { state.svgKeyframes = true; return }
+  if (!sel || state.inScope) { if (geo) state.svgGeometryAll = true; return }
+  const into = geo ? state.svgGeometrySels : state.svgAnimSels
+  for (const part of splitTopLevel(sel, ',')) {
+    const one = part.trim()
+    if (one) into.add(PSEUDO_ELEMENT_SEL_RE.test(one) ? stripPseudo(one) : one)
+  }
 }
 
 /** One sheet through scanRules. False on a cross-origin sheet, whose cssRules getter throws. */
@@ -343,16 +389,16 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
  * @param {Document} doc
  * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - the rules of a sheet
  *   whose cssRules throw, read from a copy; null keeps the scan unreliable
- * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
+ * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, svgGeometry: Set<string>|null, svgGeometrySel: string|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
  */
 export function scanAuthorStyles(doc, crossOriginRules) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, pseudoUniverse: null, usesHas: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, pseudoUniverse: null, svgGeometry: null, svgGeometrySel: null, usesHas: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), crossOriginRules }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, inScope: 0, crossOriginRules }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -363,7 +409,17 @@ export function scanAuthorStyles(doc, crossOriginRules) {
       }
     }
     // Programmatic (WAAPI) animations don't live in stylesheets — union their keyframe props.
-    if (typeof doc.getAnimations === 'function') addAnimationProps(doc.getAnimations(), universe)
+    if (typeof doc.getAnimations === 'function') {
+      const animated = new Set()
+      addAnimationProps(doc.getAnimations(), animated)
+      for (const p of animated) {
+        universe.add(p)
+        // A WAAPI animation targets elements, not selectors: no selector gate then.
+        if (addSvgGeometry(state.svgGeometry, p)) state.svgGeometryAll = true
+      }
+    }
+    if (state.svgKeyframes) for (const one of state.svgAnimSels) state.svgGeometrySels.add(one)
+    const svgGeometrySel = state.svgGeometryAll ? null : Array.from(state.svgGeometrySels).join(',')
     // shareGate: null = a splitting selector the engine cannot match against (share off),
     // else the indexed list styleShareSafe filters by subtree presence and queries with.
     const shareSels = Array.from(state.shareUnsafeSels)
@@ -378,7 +434,7 @@ export function scanAuthorStyles(doc, crossOriginRules) {
     // Without it the pseudo took the base `0px 0px` and scaled toward its corner (#509).
     if (state.pseudoProps.has('transform') || state.pseudoProps.has('rotate') || state.pseudoProps.has('scale')) pseudoUniverse.add('transform-origin')
     if (state.pseudoProps.has('perspective')) pseudoUniverse.add('perspective-origin')
-    return { universe, pseudoUniverse, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
+    return { universe, pseudoUniverse, svgGeometry: state.svgGeometry, svgGeometrySel, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
   } catch {
     return unreliable
   }

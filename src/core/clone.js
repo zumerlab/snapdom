@@ -11,7 +11,7 @@
  * @module clone
  */
 
-import { inlineAllStyles, observeShadowRoot, pseudoGatesFor } from '../modules/styles.js'
+import { inlineAllStyles, observeShadowRoot, pseudoGatesFor, svgGeometryFor, svgGeometryReaches } from '../modules/styles.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
 import { debugWarn, getStyle, isPasswordInput, maskValue, isTag, isSVGEl } from '../utils/index.js'
@@ -32,6 +32,120 @@ import {
 import { isFirefox, isSafari, nextFrame } from '../utils/browser.js'
 import { cloneTextWithSelection, inlineTextFieldSelection } from '../modules/selection.js'
 import { isInternalNode } from '../utils/ownership.js'
+
+// #535: what an author rule can set on an SVG shape besides paint. Shapes get no style snapshot
+// (NO_DEFAULTS_TAGS keeps LeaderLine's attributes from being overwritten by defaults), so a
+// rule's `r`, `d`, `transform` or `vector-effect` reached the clone only through the copy in
+// deepClone. Per tag, the CSS properties that apply to it; the transform group to every
+// element that takes a transform.
+const SVG_TRANSFORM_PROPS = ['transform', 'translate', 'rotate', 'scale', 'transform-origin', 'transform-box']
+const SVG_GEOMETRY_BY_TAG = {
+  circle: ['cx', 'cy', 'r', 'vector-effect'],
+  ellipse: ['cx', 'cy', 'rx', 'ry', 'vector-effect'],
+  rect: ['x', 'y', 'width', 'height', 'rx', 'ry', 'vector-effect'],
+  path: ['d', 'vector-effect'],
+  line: ['vector-effect'],
+  polyline: ['vector-effect'],
+  polygon: ['vector-effect'],
+  use: ['x', 'y', 'width', 'height', 'vector-effect'],
+  g: [],
+  clipPath: [],
+}
+// Computed values that mean "nothing set" on an element without the attribute.
+const SVG_GEOMETRY_INITIAL = {
+  r: '0px', cx: '0px', cy: '0px', x: '0px', y: '0px', rx: 'auto', ry: 'auto', width: 'auto', height: 'auto',
+  d: 'none', 'vector-effect': 'none', transform: 'none', translate: 'none', rotate: 'none', scale: 'none',
+  'transform-origin': '0px 0px', 'transform-box': 'view-box',
+}
+const SVG_MOVERS = new Set(['transform', 'translate', 'rotate', 'scale'])
+const svgGeometryLists = new WeakMap()
+const SVG_GEOMETRY_ALL = new Map()
+
+/** The properties to copy for this SVG element: its tag's list, cut down to the ones some
+ *  document rule or animation declares (styleScan's svgGeometry), memoized per scan. null
+ *  when there are none, or when none of the rules declaring them matches this element: on
+ *  a page whose CSS never names them, or names them only for other elements (a
+ *  `button:hover { transform }`), that is every SVG element, for one matches() each. */
+function svgGeometryList(node) {
+  const tag = node.localName
+  const own = SVG_GEOMETRY_BY_TAG[tag]
+  if (!own) return null
+  const gate = svgGeometryFor(node)
+  if (gate && (gate.size === 0 || !svgGeometryReaches(node))) return null
+  let byTag = gate ? svgGeometryLists.get(gate) : SVG_GEOMETRY_ALL
+  if (!byTag) svgGeometryLists.set(gate, (byTag = new Map()))
+  let list = byTag.get(tag)
+  if (!list) {
+    list = [...own, ...SVG_TRANSFORM_PROPS].filter((p) => !gate || gate.has(p))
+    byTag.set(tag, list)
+  }
+  return list.length ? list : null
+}
+
+const SVG_NUMBER_RE = /^-?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?(?:px)?$/i
+/** `5.123456789` and the `5.12346px` it computes to: the same length, up to the engine's
+ *  float precision. */
+function sameSvgNumber(attr, value) {
+  const a = attr.trim()
+  if (!SVG_NUMBER_RE.test(a) || !SVG_NUMBER_RE.test(value)) return false
+  const x = parseFloat(a), y = parseFloat(value)
+  return Math.abs(x - y) <= 1e-4 * Math.max(1, Math.abs(x))
+}
+
+/** The matrix of the transform attribute, multiplied out by hand: consolidate() would rewrite
+ *  the live attribute. null for an empty list. */
+function svgAttrMatrix(node) {
+  const list = node.transform?.baseVal
+  if (!list?.numberOfItems) return null
+  let m = new DOMMatrix()
+  for (let i = 0; i < list.numberOfItems; i++) {
+    const t = list.getItem(i).matrix
+    m = m.multiply(new DOMMatrix([t.a, t.b, t.c, t.d, t.e, t.f]))
+  }
+  return m
+}
+
+/** A transform attribute and the computed transform it produced describe the same matrix. */
+function sameSvgTransform(node, value) {
+  const m = svgAttrMatrix(node)
+  const n = value === 'none' ? [1, 0, 0, 1, 0, 0] : value.startsWith('matrix(') ? value.slice(7, -1).split(',').map(Number) : null
+  if (!n || n.length !== 6) return false
+  if (!m) return n.join() === '1,0,0,1,0,0'
+  const k = [m.a, m.b, m.c, m.d, m.e, m.f]
+  for (let i = 0; i < 6; i++) if (Math.abs(k[i] - n[i]) > 1e-4 * Math.max(1, Math.abs(k[i]))) return false
+  return true
+}
+
+/**
+ * Copy the computed geometry/transform props in `list` that a rule set: the value differs from
+ * the element's own attribute (which the clone already carries), or, with no attribute, from
+ * the initial value. Nothing is written for a shape whose attributes drive it, so the clone of
+ * an attribute-only SVG is unchanged. transform-origin and transform-box only matter, and are
+ * only read, on an element that has a transform (from a rule or its attribute).
+ * Pinned by __tests__/core.clone.svgCssGeometry.test.js.
+ */
+function copySvgGeometry(node, clone, cs, list) {
+  let moved = false
+  for (const prop of list) {
+    if (!moved && (prop === 'transform-origin' || prop === 'transform-box') && !node.hasAttribute('transform')) continue
+    const v = cs.getPropertyValue(prop)
+    if (!v) continue // unsupported by this engine (`d` in WebKit)
+    if (SVG_MOVERS.has(prop) && v !== 'none') moved = true
+    const attr = SVG_MOVERS.has(prop) && prop !== 'transform' ? null : node.getAttribute(prop)
+    if (attr != null) {
+      if (v === attr || v === attr + 'px') continue
+      // An engine serializes the attribute's path data in its own precision (Firefox rounds
+      // to single floats), and writing that back moved arcs. A rule overriding a `d` that is
+      // already there is the one case this leaves out.
+      if (prop === 'd') continue
+      // WebKit leaves the attribute out of the computed transform: `none` there is not a
+      // rule clearing it, and writing it would.
+      if (prop === 'transform' && (v === 'none' || sameSvgTransform(node, v))) continue
+      if (sameSvgNumber(attr, v)) continue
+    } else if (v === SVG_GEOMETRY_INITIAL[prop]) continue
+    clone.style.setProperty(prop, v)
+  }
+}
 
 /* ────────────────────────────────────────────────────────────────────────────
  * Tag handler registry: per-tag clone strategies for elements whose content
@@ -766,6 +880,9 @@ export async function deepClone(node, sessionCache, options) {
         clone.style.setProperty('stop-color', cs.getPropertyValue('stop-color'))
         clone.style.setProperty('stop-opacity', cs.getPropertyValue('stop-opacity'))
       }
+      // #535: geometry, transforms and vector-effect from a rule, the same way.
+      const geometry = svgGeometryList(node)
+      if (geometry) copySvgGeometry(node, clone, cs, geometry)
     } catch { }
   }
   if (node.shadowRoot) {
