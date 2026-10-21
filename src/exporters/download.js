@@ -74,7 +74,7 @@ export async function download(url, options) {
     return
   }
 
-  const canvas = await toCanvas(url, nextOptions) // backgroundColor inline
+  const canvas = await toCanvas(url, { ...nextOptions, __encodeFormat: normalizedFormat }) // backgroundColor inline
 
   if (foundIOS) {
     const mimeType = `image/${normalizedFormat}`

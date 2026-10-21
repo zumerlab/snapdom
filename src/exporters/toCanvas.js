@@ -31,6 +31,11 @@ import { markInternalNode } from '../utils/ownership.js'
 // Pinned by __tests__/exporters.rasterLimit.test.js (skipped on webkit, which does cap at 16384).
 export const MAX_RASTER_SIDE = isSafari() ? 16384 : 32767
 export const MAX_RASTER_AREA = 16384 * 16384
+// #536: WebP stores each side in 14 bits, so no encoder can write past 16383px. Chromium
+// answers a larger canvas with "data:," from toDataURL (a zero-byte download, an <img>
+// that fails to load) and with a 16383px-tall blob from toBlob that drops the rest of the
+// capture. A canvas about to be encoded as WebP is clamped to it like any other limit.
+export const WEBP_MAX_SIDE = 16383
 
 /**
  * Downscale SVG text whose intrinsic width/height exceed the decode limits.
@@ -826,11 +831,17 @@ export async function toCanvas(url, options) {
     // i.e. 2 on Retina) can push a within-decode-limit capture past the canvas cap. Clamp the
     // whole draw so allocation/drawImage don't fail, preserving aspect ratio.
     const devW = outW * dpr, devH = outH * dpr
-    const over = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
+    const overCanvas = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
+    // The exporters that encode the canvas name the codec in __encodeFormat; a plain
+    // toCanvas() is held to the canvas limits only.
+    const overWebp = options.__encodeFormat === 'webp' ? Math.max(devW, devH) / WEBP_MAX_SIDE : 0
+    const over = Math.max(overCanvas, overWebp)
     if (over > 1) {
-      sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds canvas limits; downscaled`)
-      console.warn(
-        `[SnapDOM] ${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
+      const byWebp = overCanvas <= 1
+      sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds ${byWebp ? 'WebP' : 'canvas'} limits; downscaled`)
+      console.warn(byWebp
+        ? `[SnapDOM] ${Math.round(devW)}×${Math.round(devH)}px is larger than WebP can encode (${WEBP_MAX_SIDE}px per side); scaled down. For full size, export a PNG, an SVG, or crop.`
+        : `[SnapDOM] ${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
       )
       outW /= over
       outH /= over
