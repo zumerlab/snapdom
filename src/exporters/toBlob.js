@@ -31,8 +31,9 @@ export async function toBlob(url, options) {
 
   const large = format === 'png' && toLargePng(url, options)
   if (large) return large
-  const canvas = await toCanvas(url, options) // backgroundColor inline
+  const codec = format === 'jpg' ? 'jpeg' : format
+  const canvas = await toCanvas(url, { ...options, __encodeFormat: codec }) // backgroundColor inline
   return new Promise((resolve) =>
-    canvas.toBlob((blob) => resolve(blob), `image/${format === 'jpg' ? 'jpeg' : format}`, options.quality)
+    canvas.toBlob((blob) => resolve(blob), `image/${codec}`, options.quality)
   )
 }
