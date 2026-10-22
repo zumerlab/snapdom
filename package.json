@@ -40,7 +40,7 @@
     "test:visual": "REQUIRE_VISUAL=1 BROWSER=all node scripts/vitest.mjs run __tests__/visual.demos. --browser.headless --reporter=verbose",
     "test:pdf": "node packages/plugins/pdf/test/verify.mjs && node packages/plugins/pdf/test/megacheck.mjs && node packages/plugins/pdf/test/encryptcheck.mjs",
     "test:vector": "node packages/plugins/vector/test/verify-vector.mjs && node packages/plugins/vector/test/verify-h2d.mjs && node packages/plugins/vector/test/verify-plugin.mjs && node packages/plugins/vector/test/verify-mathml.mjs",
-    "test:coverage": "npx vitest run --browser.headless --coverage",
+    "test:coverage": "npx vitest run --browser.headless --coverage --exclude '__tests__/visual.*'",
     "cross:report": "node scripts/cross-report.mjs",
     "test:benchmark": "node scripts/benchmark-stable.mjs",
     "test:benchmark:legacy": "npx vitest bench --browser.headless --watch=false",
