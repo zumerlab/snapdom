@@ -24,7 +24,7 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { ligatureIconToImage } from '../modules/iconFonts.js'
-import { universeFor, inlineAllStyles, getStyleEpoch } from '../modules/styles.js'
+import { universeFor, inlineAllStyles, stylesLeakAcrossSubtrees } from '../modules/styles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { sanitizeCloneForXHTML } from '../utils/capture.helpers.js'
@@ -80,51 +80,6 @@ function subtreeUsesBackdropFilter(root, universe) {
     if (value && value !== 'none') return true
   }
   return false
-}
-
-/** Selector/counter semantics that let a mutation inside one subtree change rendering
- *  OUTSIDE it (sibling combinators, :has(), CSS counters) — the subtree-diff premise breaks.
- *  Memoized per document and style epoch, the scope the rules were read at. Not per universe
- *  Set: scanFor keeps the Set across epochs when the props match, and an adopted `:has()`
- *  rule adds no prop. */
-const relationalCache = new WeakMap()
-function stylesLeakAcrossSubtrees(doc) {
-  const epoch = getStyleEpoch()
-  const memo = relationalCache.get(doc)
-  if (memo && memo.epoch === epoch) return memo.leaky
-  let leaky = false
-  const state = { budget: 20000 }
-  const scanRules = (rules) => {
-    for (let i = 0; i < rules.length && !leaky; i++) {
-      if (--state.budget < 0) { leaky = true; return }
-      const r = rules[i]
-      const sel = r.selectorText
-      if (sel && /[+~]|:has\(/.test(sel)) { leaky = true; return }
-      const st = r.style
-      if (st && (st.counterReset || st.counterIncrement || st.counterSet ||
-        (st.content && st.content.includes('counter')))) { leaky = true; return }
-      if (r.cssRules && r.cssRules.length) scanRules(r.cssRules)
-    }
-  }
-  try {
-    for (const sheet of doc.styleSheets) {
-      let rules = null
-      try { rules = sheet.cssRules } catch { leaky = true }
-      if (leaky) break
-      if (rules) scanRules(rules)
-    }
-    if (!leaky) {
-      const adopted = /** @type {any} */ (doc).adoptedStyleSheets
-      if (Array.isArray(adopted)) {
-        for (const sheet of adopted) {
-          if (leaky) break
-          try { scanRules(sheet.cssRules) } catch { leaky = true }
-        }
-      }
-    }
-  } catch { leaky = true }
-  relationalCache.set(doc, { epoch, leaky })
-  return leaky
 }
 
 /** A frozen length is not the raw computed one: getStyleKey rounds widths UP to the next
