@@ -424,6 +424,12 @@ Every test script runs `npm run check` (lint, types, release checks, bundle) and
 
 ## Sponsors
 
+<p align="center">
+  <a href="https://github.com/syntaxfm"><img src="https://github.com/syntaxfm.png" width="96" height="96" alt="Syntax"></a>
+</p>
+
+<p align="center"><strong>Huge thanks to <a href="https://github.com/syntaxfm">Syntax</a> for sponsoring SnapDOM.</strong></p>
+
 Special thanks to [@megaphonecolin](https://github.com/megaphonecolin), [@sdraper69](https://github.com/sdraper69), [@reynaldichernando](https://github.com/reynaldichernando), [@gamma-app](https://github.com/gamma-app), [@jrjohnson](https://github.com/jrjohnson), and [@ryanander](https://github.com/ryanander) for supporting this project!
 
 If you'd like to support this project too, you can [become a sponsor](https://github.com/sponsors/tinchox5).

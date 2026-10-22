@@ -425,6 +425,12 @@ npm test            # Chromium；test:firefox、test:webkit，或用 test:full �
 
 ## 赞助者
 
+<p align="center">
+  <a href="https://github.com/syntaxfm"><img src="https://github.com/syntaxfm.png" width="96" height="96" alt="Syntax"></a>
+</p>
+
+<p align="center"><strong>衷心感谢 <a href="https://github.com/syntaxfm">Syntax</a> 对 SnapDOM 的赞助。</strong></p>
+
 特别感谢 [@megaphonecolin](https://github.com/megaphonecolin)、[@sdraper69](https://github.com/sdraper69)、[@reynaldichernando](https://github.com/reynaldichernando)、[@gamma-app](https://github.com/gamma-app)、[@jrjohnson](https://github.com/jrjohnson) 和 [@ryanander](https://github.com/ryanander) 对本项目的支持！
 
 如果你也愿意支持这个项目，可以[成为赞助者](https://github.com/sponsors/tinchox5)。
