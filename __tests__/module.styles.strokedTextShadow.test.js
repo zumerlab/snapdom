@@ -20,13 +20,14 @@ const magentaIn = async (url) => {
 }
 
 describe('stroked text keeps its text-shadow (#531)', () => {
-  for (const shadow of ['3px 3px 0 #f0f', '2px 4px 4px #f0f']) {
-    it(`paints ${shadow} like the live page`, async () => {
+  // A transparent background written as oklch() serializes that way in WebKit and read as opaque.
+  for (const [shadow, bg] of [['3px 3px 0 #f0f', 'none'], ['2px 4px 4px #f0f', 'none'], ['3px 3px 0 #f0f', 'oklch(0.5 0.1 30 / 0)']]) {
+    it(`paints ${shadow} like the live page (background ${bg})`, async () => {
       // A viewport the runner window holds at 1:1, or the screenshot comes back scaled.
       await page.viewport(800, 600)
       host = document.createElement('div')
       host.style.cssText = 'position:absolute;left:10px;top:10px;padding:8px;background:#fff'
-      host.innerHTML = `<div style="font:900 36px Arial;color:#ff0;-webkit-text-stroke:2px #000;text-shadow:${shadow}">Stroke</div>`
+      host.innerHTML = `<div style="font:900 36px Arial;color:#ff0;-webkit-text-stroke:2px #000;text-shadow:${shadow};background:${bg}">Stroke</div>`
       document.body.appendChild(host)
       const shot = await page.screenshot({ element: host, base64: true, save: false })
       const live = await magentaIn('data:image/png;base64,' + (shot.base64 || shot))

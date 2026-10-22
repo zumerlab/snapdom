@@ -22,6 +22,17 @@ describe('bgClipTextFallbackColor', () => {
     expect(bgClipTextFallbackColor('none', 'rgb(10, 20, 30)')).toBe('rgb(10, 20, 30)')
   })
 
+  // Firefox keeps these as authored in a computed gradient; a regex over rgb() found nothing,
+  // and the text captured with 0 painted pixels.
+  it('resolves oklch(), lab() and color() stops', () => {
+    // Engines round the conversion differently by one step.
+    const near = (got, want) => got.match(/\d+/g).forEach((c, i) => expect(Math.abs(c - want[i])).toBeLessThanOrEqual(1))
+    near(bgClipTextFallbackColor('linear-gradient(90deg, oklch(0.628 0.2577 29.23), oklch(0.452 0.313 264.05))', null), [128, 0, 128])
+    near(bgClipTextFallbackColor('linear-gradient(in oklab, color(srgb 1 0 0), color(srgb 0 0 1))', null), [128, 0, 128])
+    near(bgClipTextFallbackColor('linear-gradient(lab(54.29 80.8 69.89), lab(54.29 80.8 69.89))', null), [255, 0, 0])
+    expect(bgClipTextFallbackColor('none', 'oklch(0.5 0.1 30 / 0)')).toBeNull()
+  })
+
   it('returns null when there is no colour to stand in', () => {
     expect(bgClipTextFallbackColor('none', 'rgba(0, 0, 0, 0)')).toBeNull()
     expect(bgClipTextFallbackColor(undefined, undefined)).toBeNull()
@@ -41,11 +52,11 @@ describe('gradient text survives the capture', () => {
     return painted
   }
 
-  async function captureGradientText() {
+  async function captureGradientText(stops = 'rgb(255,0,0), rgb(0,0,255)') {
     host = document.createElement('div')
     host.style.cssText = 'width:200px;height:40px;background:white'
     host.innerHTML =
-      '<span style="font:bold 30px Arial;background-image:linear-gradient(90deg, rgb(255,0,0), rgb(0,0,255));' +
+      `<span style="font:bold 30px Arial;background-image:linear-gradient(90deg, ${stops});` +
       '-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent">HELLO</span>'
     document.body.appendChild(host)
     return snapdom.toCanvas(host, { dpr: 1, embedFonts: false })
@@ -75,6 +86,15 @@ describe('gradient text survives the capture', () => {
     expect(h.has('true|false')).toBe(true)
     expect(h.has('false|true')).toBe(true)
   })
+
+  // Tailwind v4's palette is oklch: its gradient headings vanished from Firefox captures.
+  for (const stops of ['oklch(0.628 0.2577 29.23), oklch(0.452 0.313 264.05)', 'color(display-p3 1 0 0), color(display-p3 0 0 1)']) {
+    it(`paints a ${stops.slice(0, stops.indexOf('('))}() gradient on every engine`, async () => {
+      const h = hues(await captureGradientText(stops))
+      expect(h.has('true|false')).toBe(true)
+      expect(h.has('false|true')).toBe(true)
+    })
+  }
 
   it('keeps wrapped, centered gradient text where the live layout put it (#530)', async () => {
     host = document.createElement('div')

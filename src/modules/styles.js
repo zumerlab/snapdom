@@ -1000,7 +1000,7 @@ function strokedTextShadowToFilter(source, clone, cs) {
   const shadow = cs.textShadow
   if (!shadow || shadow === 'none' || !(parseFloat(cs.webkitTextStrokeWidth) > 0)) return
   if (source.firstElementChild || cs.backgroundImage !== 'none' || cs.boxShadow !== 'none' ||
-      !/rgba\(.*,\s*0\)|transparent/.test(cs.backgroundColor) ||
+      colorToRgba(cs.backgroundColor)[3] !== 0 ||
       ['Top', 'Right', 'Bottom', 'Left'].some((s) => parseFloat(cs[`border${s}Width`]) > 0)) return
   // One layer: a comma outside a colour function would start a second.
   if (shadow.replace(/\([^)]*\)/g, '').includes(',')) return
@@ -1012,10 +1012,37 @@ function strokedTextShadowToFilter(source, clone, cs) {
   clone.style.setProperty('filter', `${filter}drop-shadow(${x}px ${y}px ${blur / 2}px ${color})`, 'important')
 }
 
+/** A computed colour function. Computed values resolve var() and color-mix(), so none nests. */
+const COLOR_FN_RE = /(?:rgba?|hsla?|oklch|oklab|lab|lch|color)\([^()]*\)/g
+let colorProbe
+
+/**
+ * The sRGB channels and alpha (0-255) of a computed colour, painted on a 1x1 canvas. Computed
+ * styles keep oklch(), lab() and color() as authored (Firefox, WebKit), so a regex over rgb()
+ * found no colour in a Tailwind v4 palette.
+ * @param {string} color
+ * @returns {Uint8ClampedArray}
+ */
+function colorToRgba(color) {
+  if (!colorProbe) {
+    const c = document.createElement('canvas')
+    c.width = c.height = 1
+    colorProbe = c.getContext('2d', { willReadFrequently: true })
+  }
+  colorProbe.clearRect(0, 0, 1, 1)
+  // An unparsable value leaves fillStyle as it was: reset it so that reads as transparent.
+  colorProbe.fillStyle = 'transparent'
+  colorProbe.fillStyle = color
+  colorProbe.fillRect(0, 0, 1, 1)
+  return colorProbe.getImageData(0, 0, 1, 1).data
+}
+
 /**
  * A single colour standing in for a clipped-to-text background: the channel average of every
- * visible rgb()/rgba() in the background-image (computed gradients serialize their stops that
- * way), else the background-color.
+ * visible colour in the background-image, else the background-color. Firefox serializes
+ * oklch(), lab(), color-mix() and display-p3 stops as colour functions, and before they were
+ * resolved the text captured with 0 painted pixels. Pinned by
+ * __tests__/module.styles.bgClipText.test.js.
  * @param {string} [backgroundImage]
  * @param {string} [backgroundColor]
  * @returns {string|null}
@@ -1023,12 +1050,9 @@ function strokedTextShadowToFilter(source, clone, cs) {
 export function bgClipTextFallbackColor(backgroundImage, backgroundColor) {
   const collect = (value) => {
     const colors = []
-    const re = /rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+%?))?\s*\)/g
-    let m
-    while ((m = re.exec(value || ''))) {
-      const raw = m[4]
-      const alpha = raw === undefined ? 1 : parseFloat(raw) / (raw.endsWith('%') ? 100 : 1)
-      if (alpha > 0.05) colors.push([+m[1], +m[2], +m[3]])
+    for (const fn of (value || '').match(COLOR_FN_RE) || []) {
+      const [r, g, b, a] = colorToRgba(fn)
+      if (a > 13) colors.push([r, g, b]) // alpha above 0.05
     }
     return colors
   }
