@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Text layout: direction, hyphens, shapes</title>
+  <style>
+    body { margin: 0; background: #eef1f4; color: #172334; font: 15px/1.45 Arial, sans-serif; }
+    main { padding: 24px; }
+    #target { width: 640px; background: #fff; padding: 20px; box-sizing: border-box; display: grid; gap: 14px; }
+    h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #5b6878; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .rtl { direction: rtl; border-inline-start: 4px solid rgb(50, 110, 210); padding-inline-start: 10px; }
+    .bidi { unicode-bidi: plaintext; }
+
+    .hy { width: 150px; hyphens: auto; -webkit-hyphens: auto; background: #f2f5f9; padding: 6px; text-align: justify; }
+
+    .shape { overflow: hidden; }
+    .shape .circle { float: left; width: 110px; height: 110px; border-radius: 50%; background: rgb(250, 190, 40); shape-outside: circle(50%); margin-right: 10px; }
+    .shape .poly { float: right; width: 90px; height: 120px; background: rgb(60, 170, 90); clip-path: polygon(100% 0, 100% 100%, 0 100%); shape-outside: polygon(100% 0, 100% 100%, 0 100%); }
+
+    .vertical { writing-mode: vertical-rl; height: 140px; border: 1px solid #c8d0da; padding: 6px; }
+    .sideways { writing-mode: vertical-lr; text-orientation: upright; height: 140px; border: 1px solid #c8d0da; padding: 6px; letter-spacing: 2px; }
+
+    ol.roman { list-style: lower-roman; margin: 0; padding-left: 36px; }
+    ol.roman li::marker { color: rgb(200, 40, 40); font-weight: bold; }
+    ol.alpha { list-style: upper-alpha; margin: 0; padding-left: 36px; }
+    ol.alpha li::marker { content: counter(list-item, upper-alpha) ") "; color: rgb(50, 110, 210); }
+    ol.nest { counter-reset: sec; list-style: none; margin: 0; padding-left: 0; }
+    ol.nest li { counter-increment: sec; }
+    ol.nest li::before { content: counters(sec, ".") " "; color: rgb(60, 140, 80); font-weight: bold; }
+    ol.nest ol { counter-reset: sec; list-style: none; padding-left: 18px; }
+
+    .vf { font-family: system-ui, sans-serif; font-size: 22px; }
+    .vf .thin { font-variation-settings: 'wght' 250; }
+    .vf .heavy { font-variation-settings: 'wght' 850; }
+
+    details { border: 1px solid #c8d0da; border-radius: 6px; padding: 6px 10px; }
+    details summary { font-weight: bold; cursor: pointer; }
+
+    .math { font-size: 20px; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="target">
+      <h2>Direction</h2>
+      <div class="cols">
+        <p class="rtl" lang="ar" style="margin:0">مرحبا بالعالم، هذا نص من اليمين إلى اليسار مع رقم 2026 وكلمة English في الوسط.</p>
+        <p class="rtl" style="margin:0">Right to left box, latin text: the punctuation lands on the left!</p>
+      </div>
+
+      <h2>Hyphens and shapes</h2>
+      <div class="cols">
+        <p class="hy" lang="en" style="margin:0">Internationalization and incomprehensibilities characteristically demonstrate automatic hyphenation.</p>
+        <div class="shape">
+          <div class="circle"></div>
+          <div class="poly"></div>
+          Text flows around a circle on the left and a triangle on the right, following their shape-outside instead of their boxes, all the way down this paragraph.
+        </div>
+      </div>
+
+      <h2>Writing modes</h2>
+      <div class="cols" style="grid-template-columns: auto auto 1fr; align-items: start">
+        <div class="vertical">縦書きの日本語テキストです。Vertical text.</div>
+        <div class="sideways">UPRIGHT</div>
+        <div>
+          <h2 style="margin-bottom:6px">Markers and counters</h2>
+          <div class="cols" style="gap: 8px">
+            <ol class="roman"><li>first</li><li>second</li><li>third</li><li>fourth</li></ol>
+            <ol class="alpha"><li>alpha</li><li>beta</li><li>gamma</li></ol>
+          </div>
+          <ol class="nest" style="margin-top:6px"><li>Intro<ol><li>Scope</li><li>Terms</li></ol></li><li>Method</li></ol>
+        </div>
+      </div>
+
+      <h2>Variable font axes</h2>
+      <div class="vf"><span class="thin">Thin 250</span> · <span>Regular</span> · <span class="heavy">Heavy 850</span></div>
+
+      <h2>Disclosure and MathML</h2>
+      <div class="cols">
+        <details open><summary>Open details</summary>The body of an open details element.</details>
+        <div class="math">
+          <math display="block"><mrow><mi>x</mi><mo>=</mo><mfrac><mrow><mo>−</mo><mi>b</mi><mo>±</mo><msqrt><mrow><msup><mi>b</mi><mn>2</mn></msup><mo>−</mo><mn>4</mn><mi>a</mi><mi>c</mi></mrow></msqrt></mrow><mrow><mn>2</mn><mi>a</mi></mrow></mfrac></mrow></math>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

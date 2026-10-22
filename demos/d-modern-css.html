@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Modern CSS colour and layout</title>
+  <style>
+    @layer base, theme;
+    @layer theme { .layered { background: rgb(46, 125, 79); color: #fff; } }
+    @layer base { .layered { background: rgb(200, 0, 0); color: #000; } }
+
+    body { margin: 0; background: #eef1f4; color: #172334; font: 15px/1.4 Arial, sans-serif; }
+    main { padding: 24px; }
+    #target { width: 640px; background: #fff; padding: 20px; box-sizing: border-box; display: grid; gap: 14px; }
+    h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #5b6878; }
+    .row { display: flex; gap: 10px; }
+    .chip { flex: 1; height: 54px; border-radius: 8px; display: grid; place-items: center; font-size: 12px; }
+
+    .oklch { background: oklch(70% 0.15 145); }
+    .lab { background: lab(60% 45 -40); color: #fff; }
+    .p3 { background: color(display-p3 0.9 0.4 0.1); color: #fff; }
+    .mix { background: color-mix(in oklch, rgb(30, 90, 200) 60%, rgb(250, 200, 0)); color: #fff; }
+
+    .ld-light { color-scheme: light; background: light-dark(rgb(250, 240, 200), rgb(30, 30, 60)); color: light-dark(#222, #eee); }
+    .ld-dark { color-scheme: dark; background: light-dark(rgb(250, 240, 200), rgb(30, 30, 60)); color: light-dark(#222, #eee); }
+
+    .gtext { font: bold 34px/1.1 Arial, sans-serif; background: linear-gradient(90deg, oklch(60% 0.25 30), oklch(65% 0.2 260)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .gtext.lab { background-image: linear-gradient(90deg, lab(55% 70 50), lab(50% 0 -70)); }
+
+    .conic { width: 90px; height: 90px; border-radius: 50%; background: conic-gradient(from 45deg, rgb(230, 70, 50), rgb(250, 190, 40), rgb(60, 170, 90), rgb(50, 110, 210), rgb(230, 70, 50)); }
+    .conic-hole { width: 90px; height: 90px; border-radius: 50%; background: radial-gradient(#fff 38%, transparent 39%), conic-gradient(rgb(50, 110, 210) 0 62%, #dde3ea 0); }
+
+    .cq { container-type: inline-size; border: 1px dashed #9aa6b4; padding: 8px; }
+    .cq-card { display: grid; grid-template-columns: 1fr; gap: 6px; padding: 8px; background: #f2f5f9; }
+    .cq-card b { display: block; }
+    @container (min-width: 300px) {
+      .cq-card { grid-template-columns: 70px 1fr; background: rgb(220, 236, 255); }
+    }
+    .cq.narrow { width: 200px; }
+    .cq.wide { width: 360px; }
+    .swatch { height: 40px; background: rgb(50, 110, 210); }
+
+    .bdb { font: 16px/2 Arial, sans-serif; }
+    .bdb span { background: linear-gradient(90deg, rgb(255, 220, 120), rgb(255, 150, 120)); padding: 3px 8px; border-radius: 8px; border: 2px solid rgb(180, 90, 40); }
+    .bdb .clone { -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="target">
+      <h2>Colour spaces</h2>
+      <div class="row">
+        <div class="chip oklch">oklch</div>
+        <div class="chip lab">lab</div>
+        <div class="chip p3">display-p3</div>
+        <div class="chip mix">color-mix</div>
+      </div>
+      <div class="row">
+        <div class="chip ld-light">light-dark, light</div>
+        <div class="chip ld-dark">light-dark, dark</div>
+        <div class="chip layered">@layer theme wins</div>
+      </div>
+
+      <h2>Gradient text in modern colour</h2>
+      <div class="gtext">oklch gradient text</div>
+      <div class="gtext lab">lab gradient text</div>
+
+      <h2>Conic gradients</h2>
+      <div class="row" style="flex: 0 0 auto; gap: 20px">
+        <div class="conic"></div>
+        <div class="conic-hole"></div>
+      </div>
+
+      <h2>Container queries</h2>
+      <div class="row" style="align-items: flex-start">
+        <div class="cq narrow"><div class="cq-card"><div class="swatch"></div><div><b>Narrow</b>stacked under 300px</div></div></div>
+        <div class="cq wide"><div class="cq-card"><div class="swatch"></div><div><b>Wide</b>two columns from 300px</div></div></div>
+      </div>
+
+      <h2>box-decoration-break</h2>
+      <div class="bdb" style="width: 280px">
+        <span>slice: one box broken across these two lines</span>
+      </div>
+      <div class="bdb" style="width: 280px">
+        <span class="clone">clone: every line gets its own box here</span>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
