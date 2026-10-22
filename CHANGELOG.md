@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.3.7](https://github.com/zumerlab/snapdom/compare/v3.3.6...v3.3.7)
+
+> 22 October 2026
+
+- fix(export): keep WebP exports within the format's 16383px side limit (#536) [`#537`](https://github.com/zumerlab/snapdom/pull/537)
+- fix(prepare): resolve percentage min/max sizes on the capture root [`#533`](https://github.com/zumerlab/snapdom/pull/533)
+- fix(toCanvas): return the canvas with an identity transform [`#534`](https://github.com/zumerlab/snapdom/pull/534)
+- fix(safari): keep text-shadow on stroked text [`#531`](https://github.com/zumerlab/snapdom/pull/531)
+- fix(firefox): paint background-clip: text gradients [`#530`](https://github.com/zumerlab/snapdom/pull/530)
+- fix(lineClamp): keep every clamped line with a fractional line height [`#529`](https://github.com/zumerlab/snapdom/pull/529)
+- fix(clone): keep a textarea's live size in the clone [`#528`](https://github.com/zumerlab/snapdom/pull/528)
+- fix(clone): copy SVG geometry set by CSS rules (#535) [`f320c1a`](https://github.com/zumerlab/snapdom/commit/f320c1a835536b1f7a417df00240e2c1b3e39c86)
+- docs(site): align the rest of the site with the new pitch [`ad2c112`](https://github.com/zumerlab/snapdom/commit/ad2c11258457353970e3741e1f7f920bf1b490ac)
+- fix(diff): detect filtered nth and imported sibling rules (#539) [`9713933`](https://github.com/zumerlab/snapdom/commit/9713933ab1262c4625382993d94b32841261747d)
+- test(export): cover dpr and type alias in the WebP limit, skip without a WebP encoder (#536) [`fead291`](https://github.com/zumerlab/snapdom/commit/fead291a70970c8dfa95d80418c3a5f317a0ef4a)
+
+
 #### [v3.3.6](https://github.com/zumerlab/snapdom/compare/v3.3.5...v3.3.6)
 
 > 19 October 2026
