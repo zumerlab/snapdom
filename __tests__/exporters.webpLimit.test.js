@@ -28,7 +28,11 @@ async function size(blob) {
   return out
 }
 
-describe('WebP export past the 16383px side limit', () => {
+// WebKit has no WebP encoder (toBlob answers image/png) and caps the canvas at 16384px,
+// which clamps these scenes before the WebP limit can.
+const encodesWebp = document.createElement('canvas').toDataURL('image/webp').startsWith('data:image/webp')
+
+describe.skipIf(!encodesWebp)('WebP export past the 16383px side limit', () => {
   test('toWebp() scales a tall capture down to an image that loads', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const result = await snapdom(mount(80, 17300), { dpr: 1, burst: false })
@@ -52,6 +56,21 @@ describe('WebP export past the 16383px side limit', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {})
     const result = await snapdom(mount(17300, 80), { dpr: 1, burst: false })
     const blob = await result.toBlob({ format: 'webp' })
+    expect(blob.type).toBe('image/webp')
+    expect(await size(blob)).toEqual([WEBP_MAX_SIDE, 75])
+  }, 60_000)
+
+  test('the limit is counted in device pixels, so dpr 2 can cross it', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await snapdom(mount(80, 9000), { dpr: 1, burst: false })
+    // 9000 CSS px at dpr 2 is 18000 device px: 160 * 16383 / 18000 = 145.6.
+    expect(await size(await result.toBlob({ format: 'webp', dpr: 2 }))).toEqual([145, WEBP_MAX_SIDE])
+  }, 60_000)
+
+  test('the deprecated type alias is clamped too', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const result = await snapdom(mount(17300, 80), { dpr: 1, burst: false })
+    const blob = await result.toBlob({ type: 'webp' })
     expect(blob.type).toBe('image/webp')
     expect(await size(blob)).toEqual([WEBP_MAX_SIDE, 75])
   }, 60_000)
