@@ -161,6 +161,35 @@ describe('selection capture (SEL-1)', () => {
     expect(clone.style.backgroundImage).toContain('rgb(0, 128, 0)')
   })
 
+  it('carries an authored ::selection text-decoration', async () => {
+    const style = mount(document.createElement('style'))
+    style.textContent = '.sel-deco::selection { text-decoration: underline wavy rgb(0, 0, 255); }'
+    const el = mount(document.createElement('div'))
+    el.className = 'sel-deco'
+    el.textContent = 'underlined'
+    select(el.firstChild, 0, el.firstChild, 10)
+    const { clone } = await prepareClone(el, createContext({ captureSelection: true }))
+    const span = clone.querySelector('[data-snapdom-selection]')
+    expect(span.style.textDecorationLine).toBe('underline')
+    expect(span.style.textDecorationStyle).toBe('wavy')
+    expect(span.style.textDecorationColor).toBe('rgb(0, 0, 255)')
+  })
+
+  it('keeps a field\'s own background image under the selection layers', async () => {
+    const input = mount(document.createElement('input'))
+    input.style.backgroundImage = 'linear-gradient(rgb(255, 0, 0), rgb(255, 0, 0))'
+    input.value = 'hello world'
+    input.focus()
+    input.setSelectionRange(0, 5)
+    const { clone, nodeMap } = await prepareClone(input, createContext({ captureSelection: true }))
+    applyTextFieldSelectionLayers(nodeMap)
+    const layers = clone.style.backgroundImage.split(/,\s*(?=linear-gradient)/)
+    // highlight first (painted on top), the field's own image last
+    expect(layers.length).toBe(2)
+    expect(layers[1]).toContain('rgb(255, 0, 0)')
+    expect(layers[0]).not.toContain('rgb(255, 0, 0)')
+  })
+
   it('survives the background-inline pass in a full capture', async () => {
     // Regression: the background pass rewrites a field's background longhands
     // from the source's computed style, which flattened the highlight into a

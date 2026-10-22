@@ -206,4 +206,65 @@ describe('multi-counter declarations (whitespace grammar)', () => {
     expect(ctx.get(root, 'x')).toBe(1) // reset default 0, increment default 1
     expect(ctx.get(root, 'y')).toBe(7) // reset 4, increment 3
   })
+
+  it('formats roman and lowercase alphabetic styles', () => {
+    const root = document.createElement('div')
+    const span = document.createElement('span')
+    span.style.counterReset = 'n 13'
+    span.style.counterIncrement = 'n'
+    root.appendChild(span)
+    document.body.appendChild(root)
+    const ctx = buildCounterContext(root)
+    expect(resolveCountersInContent('counter(n, lower-roman)', span, ctx)).toBe('xiv')
+    expect(resolveCountersInContent('counter(n, upper-roman)', span, ctx)).toBe('XIV')
+    expect(resolveCountersInContent('counter(n, lower-alpha)', span, ctx)).toBe('n')
+    expect(resolveCountersInContent('counter(n, lower-latin)', span, ctx)).toBe('n')
+    expect(resolveCountersInContent('counter(n, upper-latin)', span, ctx)).toBe('N')
+  })
+
+  it('clamps roman numerals to 1..3999, the range the notation can write', () => {
+    const root = document.createElement('div')
+    const low = document.createElement('span')
+    low.style.counterReset = 'n -5'
+    const high = document.createElement('span')
+    high.style.counterReset = 'm 5000'
+    root.append(low, high)
+    document.body.appendChild(root)
+    const ctx = buildCounterContext(root)
+    expect(resolveCountersInContent('counter(n, upper-roman)', low, ctx)).toBe('I')
+    expect(resolveCountersInContent('counter(m, upper-roman)', high, ctx)).toBe('MMMCMXCIX')
+  })
+
+  it('nests a child counter-reset on the parent stack, so counters() joins both levels', () => {
+    const outer = document.createElement('ol')
+    outer.style.counterReset = 'item 0'
+    const li = document.createElement('li')
+    li.style.counterIncrement = 'item 2'
+    const inner = document.createElement('ol')
+    inner.style.counterReset = 'item 4'
+    const leaf = document.createElement('li')
+    leaf.style.counterIncrement = 'item'
+    inner.appendChild(leaf)
+    li.appendChild(inner)
+    outer.appendChild(li)
+    document.body.appendChild(outer)
+    const ctx = buildCounterContext(outer)
+    expect(ctx.getStack(leaf, 'item')).toEqual([2, 5])
+    expect(resolveCountersInContent('counters(item, ".")', leaf, ctx)).toBe('2.5')
+  })
+
+  it('counter-set overwrites the current value without opening a new level', () => {
+    const root = document.createElement('div')
+    root.style.counterReset = 'c 1'
+    const span = document.createElement('span')
+    span.style.counterSet = 'c 7'
+    root.appendChild(span)
+    const orphan = document.createElement('i')
+    orphan.style.counterSet = 'fresh 3'
+    root.appendChild(orphan)
+    document.body.appendChild(root)
+    const ctx = buildCounterContext(root)
+    expect(ctx.getStack(span, 'c')).toEqual([7])
+    expect(ctx.get(orphan, 'fresh')).toBe(3)
+  })
 })
