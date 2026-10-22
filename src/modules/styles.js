@@ -639,6 +639,14 @@ function scanFor(doc) {
   }
   return rec
 }
+/** Whether author CSS can restyle outside a dirty subtree. Shares the property-universe
+ *  scan, including imports, fetched cross-origin rules, and the same epoch invalidation.
+ *  @param {Document} doc
+ *  @returns {boolean} */
+export function stylesLeakAcrossSubtrees(doc) {
+  return scanFor(doc).leaksAcrossSubtrees
+}
+
 /**
  * Whether the identity-share fast path is sound for THIS capture: no author selector that
  * can style two elements with identical tag + attributes + ancestor identity chain

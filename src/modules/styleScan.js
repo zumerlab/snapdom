@@ -148,6 +148,12 @@ function scanRules(rules, universe, pseudoSels, state) {
     // restyles ancestors AND, combined with a combinator, their other descendants. A document
     // that uses it keeps document-wide style invalidation (see nodeStamp in styles.js).
     if (sel && sel.includes(':has(')) state.usesHas = true
+    // A class change can shift filtered nth positions without dirtying the siblings.
+    // Keep the existing conservative combinator check (including An+B's '+').
+    // This rides the import/cross-origin-aware walk instead of scanning sheets again.
+    if (sel && /[+~]|:has\(|:nth-(?:last-)?child\([^)]*\bof\b/i.test(sel)) state.leaksAcrossSubtrees = true
+    if (style && (style.counterReset || style.counterIncrement || style.counterSet ||
+      (style.content && style.content.includes('counter')))) state.leaksAcrossSubtrees = true
     // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
     // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
     // every node out and delete the pseudo. Resolve & against the enclosing style rule,
@@ -233,7 +239,7 @@ export function addAnimationProps(animations, universe) {
 export function scanSheetProps(sheet) {
   const props = new Set()
   const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-  const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set() }
+  const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set() }
   return scanSheet(sheet, props, pseudoSels, state) ? props : null
 }
 
@@ -334,6 +340,8 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
  *   node; null means unreliable, probe every node.
  * - `usesHas`: some rule uses `:has()`, which turns per-node stamp narrowing off. True when
  *   unreliable.
+ * - `leaksAcrossSubtrees`: relational selectors or counters can restyle retained siblings.
+ *   True when unreliable, so differential capture falls back to the full pipeline.
  * - `shareGate`: the selectors that can split identity twins, each with its subject key for
  *   styleShareSafe's presence index. Null when one cannot be matched (share off).
  * - `marginUnstable` / `paddingUnstable`: a %, auto, calc() or var() value in that family
@@ -343,16 +351,16 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
  * @param {Document} doc
  * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - the rules of a sheet
  *   whose cssRules throw, read from a copy; null keeps the scan unreliable
- * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
+ * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, leaksAcrossSubtrees: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
  */
 export function scanAuthorStyles(doc, crossOriginRules) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, pseudoUniverse: null, usesHas: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, pseudoUniverse: null, usesHas: true, leaksAcrossSubtrees: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), crossOriginRules }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), crossOriginRules }
     for (const sheet of doc.styleSheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
@@ -378,7 +386,7 @@ export function scanAuthorStyles(doc, crossOriginRules) {
     // Without it the pseudo took the base `0px 0px` and scaled toward its corner (#509).
     if (state.pseudoProps.has('transform') || state.pseudoProps.has('rotate') || state.pseudoProps.has('scale')) pseudoUniverse.add('transform-origin')
     if (state.pseudoProps.has('perspective')) pseudoUniverse.add('perspective-origin')
-    return { universe, pseudoUniverse, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
+    return { universe, pseudoUniverse, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, leaksAcrossSubtrees: state.leaksAcrossSubtrees, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
   } catch {
     return unreliable
   }
