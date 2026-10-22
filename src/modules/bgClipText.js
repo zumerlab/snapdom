@@ -20,6 +20,7 @@ const BG_PROPS = ['background-image', 'background-size', 'background-position', 
  * Repaint every recorded gradient-text clone with its live gradient.
  * @param {Array<[Element, HTMLElement]>} pairs - [source, clone] for each element styles.js swapped to the solid fallback
  */
+/* c8 ignore start -- Firefox only (styles.js records pairs under isFirefox); coverage runs on chromium */
 export function paintClippedText(pairs) {
   for (const [source, clone] of pairs) {
     try { paintOne(source, clone) } catch { /* the solid fallback stays */ }
@@ -107,3 +108,4 @@ function paintOne(source, clone) {
   clone.style.setProperty('-webkit-text-fill-color', 'transparent', 'important')
   clone.insertBefore(svg, clone.firstChild)
 }
+/* c8 ignore stop */

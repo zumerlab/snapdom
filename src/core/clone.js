@@ -750,6 +750,7 @@ export async function deepClone(node, sessionCache, options) {
       applyInputVisual = applyVisual
       clone = replacement
     } else if (type === 'color' && isSafari()) {
+      /* c8 ignore start -- WebKit only; coverage runs on chromium */
       // WebKit paints a cloned colour well as a text field showing the hex value. The value
       // painted as a swatch is closer to the control than the value spelled out; !important
       // so the styles inlined from the (natively rendered) source cannot put the text back.
@@ -763,10 +764,12 @@ export async function deepClone(node, sessionCache, options) {
         swatch.style.setProperty('-webkit-appearance', 'none', 'important')
       }
       swatch.removeAttribute('value')
+      /* c8 ignore stop */
     } else if (
       (type === 'date' || type === 'time' || type === 'datetime-local') &&
       (isFirefox() || isSafari())
     ) {
+      /* c8 ignore start -- Firefox and WebKit only; coverage runs on chromium */
       // The formatted text of these controls lives in UA shadow content that neither engine
       // paints inside a foreignObject: WebKit shows the raw machine value, Firefox nothing at
       // all. A text clone carrying the locale-formatted value reads like the control instead.
@@ -777,6 +780,7 @@ export async function deepClone(node, sessionCache, options) {
       }
       clone.value = shown
       clone.setAttribute('value', shown)
+      /* c8 ignore stop */
     } else {
       // Password only, and only because the mask is fidelity-NEUTRAL: the control already
       // paints bullets, so a same-length bullet mask renders identically while the typed

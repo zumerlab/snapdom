@@ -1052,6 +1052,7 @@ export function freezeInflatedFontSizes(nodeMap, doc = document) {
   const view = doc.defaultView || window
   if (!isFirefox() || !doc.body ||
     !(view.visualViewport?.scale < 1 || view.screen.width < doc.documentElement.clientWidth)) return
+  /* c8 ignore start -- Firefox font inflation only; coverage runs on chromium */
   // Owned, so mounting it does not bump the style epoch the snapshot memo is keyed on.
   const probe = markInternalNode(doc.createElement('div'))
   probe.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;visibility:hidden'
@@ -1111,8 +1112,10 @@ export function freezeInflatedFontSizes(nodeMap, doc = document) {
   } finally {
     probe.remove()
   }
+  /* c8 ignore stop */
 }
 
+/* c8 ignore start -- helpers of freezeInflatedFontSizes, Firefox only */
 /** Horizontal center of character `i` of a text node, in page pixels. */
 function centerOf(text, i) {
   const range = text.ownerDocument.createRange()
@@ -1180,3 +1183,4 @@ function fieldWord(el, cs, doc) {
   const distance = Math.abs(edge(m.index + m[0].length) - edge(m.index + 1))
   return Number.isFinite(distance) ? { word: m[0], distance, centers: true } : null
 }
+/* c8 ignore stop */

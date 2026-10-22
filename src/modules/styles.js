@@ -962,6 +962,7 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
  */
 function applyBgClipTextFallback(out) {
   if (!isFirefox()) return
+  /* c8 ignore start -- Firefox only; coverage runs on chromium */
   const clip = out['background-clip'] || out['-webkit-background-clip']
   if (!clip || !clip.includes('text')) return
   const transparent = (v) => v === 'transparent' || v === 'rgba(0, 0, 0, 0)'
@@ -982,6 +983,7 @@ function applyBgClipTextFallback(out) {
   // !important; inlineAllStyles reads this marker. Non-enumerable: signature and key
   // iteration must not see it.
   Object.defineProperty(out, '__bgClipTextFix', { value: solid, enumerable: false })
+  /* c8 ignore stop */
 }
 
 /**
@@ -1123,6 +1125,7 @@ function hasSpecifiedWidth(el, cs, isFlexItem) {
       if (v != null) return !isContentWidthKeyword(String(v).trim().toLowerCase())
     }
   } catch { /* fall through to the layout probes */ }
+  /* c8 ignore start -- reached without Typed OM (Firefox); coverage runs on chromium */
   const inlineWidth = el.style && (el.style.width || el.style.inlineSize)
   if (inlineWidth && !isContentWidthKeyword(String(inlineWidth).trim().toLowerCase())) return true
   // A box that hugs its content is sized by it — `width: max-content` / `fit-content` land here
@@ -1130,6 +1133,7 @@ function hasSpecifiedWidth(el, cs, isFlexItem) {
   // is not simply the available width (that is what plain `width: auto` gives).
   if (!contentNarrowerThanBox(el, cs)) return false
   return isFlexItem || usedWidthDiffersFromAvailable(el, cs)
+  /* c8 ignore stop */
 }
 
 /** Computed `width` values that still let the box be sized by its content or its container. */
@@ -1147,6 +1151,7 @@ function isContentWidthKeyword(value) {
  * @param {Element} el
  * @param {CSSStyleDeclaration} cs
  */
+/* c8 ignore start -- only reached without Typed OM (Firefox) */
 function contentNarrowerThanBox(el, cs) {
   const box = el.getBoundingClientRect().width -
     (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0) -
@@ -1190,6 +1195,7 @@ function usedWidthDiffersFromAvailable(el, cs) {
   if (!(available > 0)) return false
   return Math.abs(el.getBoundingClientRect().width - available) > 0.5
 }
+/* c8 ignore stop */
 
 const __snapshotSig = new WeakMap()
 /** The snapshot's key into snapshotKeyCache, memoized per snapshot object. */

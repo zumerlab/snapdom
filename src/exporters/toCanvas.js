@@ -195,6 +195,7 @@ export function peekSvgHeader(u) {
 export function encodeSvgToDataURL(svgText) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgText)}`
 }
+/* c8 ignore start -- the shadow rewrites below run only from fixSafariShadows (WebKit); coverage runs on chromium */
 /** Split a declaration list on top-level `;` only, so the `;` inside a data: url() survives. */
 function splitDecls(s) {
   let parts = [], buf = '', depth = 0
@@ -373,6 +374,7 @@ function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
   svgText = svgText.replace(/style=(['"])([\s\S]*?)\1/gi, (m, q, body) => `style=${q}${rewriteList(body)}${q}`)
   return svgText
 }
+/* c8 ignore stop */
 
 /**
  * Safari shadow handling on decoded svg text. Returns the (possibly rewritten)
@@ -897,6 +899,7 @@ export async function toCanvas(url, options) {
       }
 
       if (shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
+        /* c8 ignore start -- WebKit only (shadowNaturalOnly); coverage runs on chromium */
         // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
         // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
         // re-rasterize the svg). Trades a bit of sharpness for correct shadows.
@@ -905,6 +908,7 @@ export async function toCanvas(url, options) {
         tmp.height = natH
         drawBanded(tmp.getContext('2d'), img, natW, natH, src)
         ctx.drawImage(tmp, 0, 0, outW, outH)
+        /* c8 ignore stop */
       } else {
         // Device pixels, identity transform: the bands are cut on whole device rows, and the
         // dpr scale is folded into the destination size instead of the transform.
@@ -957,6 +961,7 @@ export async function toCanvas(url, options) {
       let ink = true
       try { ink = probe(img) } catch { /* keep the draw */ }
       if (!ink) {
+        /* c8 ignore start -- the WebKit paint race (#219770); the probe exists only on Safari */
         const deadline = performance.now() + 600
         do {
           await frame()
@@ -964,6 +969,7 @@ export async function toCanvas(url, options) {
         } while (!ink && performance.now() < deadline)
         canvas.width = canvas.width // eslint-disable-line no-self-assign -- resets the bitmap and the transform
         paint()
+        /* c8 ignore stop */
       }
     }
     return canvas
