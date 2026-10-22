@@ -11,7 +11,7 @@
 //      agrees with itself.
 //
 // Neither should fail an ordinary contributor's run — a fork legitimately has no demos — so
-// this is opt-in and the release script turns it on. `npm run release` is the moment those
+// this is opt-in, and the package.json test scripts turn it on. A maintainer's run is the moment those
 // silences stop being acceptable.
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'

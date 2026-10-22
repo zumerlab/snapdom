@@ -7,7 +7,7 @@
 // run again here one engine at a time and one file at a time, so each has the link and the
 // machine to itself. Nothing to configure: a link that served the first pass leaves nothing
 // to rerun, and one that cannot serve even this pass (offline) leaves the tests skipped.
-// Under REQUIRE_VISUAL (npm run release) a test still skipped then fails the run: a release
+// Under REQUIRE_VISUAL (every package.json test script) a test still skipped then fails the run: a release
 // is not green on demos it never compared.
 //
 // Arguments are vitest's own: `node scripts/vitest.mjs run --browser.headless ...`.

@@ -20,7 +20,7 @@
  * plus a real import smoke test. The tarball must also carry NOTHING beyond the listed
  * files: `files: ["dist/"]` ships whatever sits in dist/, stale stubs included.
  *
- * Run: npm run test:pack
+ * Run: node scripts/check-pack.mjs
  */
 
 import { execFileSync } from 'node:child_process'

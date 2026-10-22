@@ -382,15 +382,10 @@ From this checkout:
 ```sh
 npm install
 npx playwright install
-npm run compile
-npm run lint
-npm run test:types
-npm run test:bundle
-BROWSER=all npx vitest run __tests__ --browser.headless
-npm run test:pack
+npm test            # Chromium; test:firefox, test:webkit, or test:full for all three
 ```
 
-`npm run site` serves the docs with the local build. `npm test` checks lint without changing files; use `npm run lint:fix` to apply fixes. See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation notes.
+Every test script runs `npm run check` (lint, types, release checks, bundle) and then the browser suite, visual demos included. Visual baselines live in `__snapshots__/`, which is not committed: on a fresh clone, record them once with `node scripts/vitest.mjs run --browser.headless` before relying on `npm test`. `npm run site` serves the docs with the local build. `npm test` never changes files; use `npm run lint:fix` to apply lint fixes. See [ARCHITECTURE.md](ARCHITECTURE.md) for implementation notes.
 
 ## Contributors
 

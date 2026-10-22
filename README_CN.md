@@ -383,15 +383,10 @@ const after = await snapdom(card, options); // 使用当前策略
 ```sh
 npm install
 npx playwright install
-npm run compile
-npm run lint
-npm run test:types
-npm run test:bundle
-BROWSER=all npx vitest run __tests__ --browser.headless
-npm run test:pack
+npm test            # Chromium；test:firefox、test:webkit，或用 test:full 运行三个浏览器
 ```
 
-`npm run site` 使用本地构建产物提供文档站点。`npm test` 检查 lint，但不会修改文件；如需自动修复，请运行 `npm run lint:fix`。实现说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+每个测试脚本都会先运行 `npm run check`（lint、类型、发布检查、bundle），再运行浏览器测试，包括可视化 demo。可视化基线位于未提交的 `__snapshots__/` 中：新克隆的仓库需先运行一次 `node scripts/vitest.mjs run --browser.headless` 录制基线，之后再依赖 `npm test`。`npm run site` 使用本地构建产物提供文档站点。`npm test` 不会修改文件；如需自动修复 lint，请运行 `npm run lint:fix`。实现说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 贡献者
 

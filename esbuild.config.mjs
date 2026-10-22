@@ -37,7 +37,7 @@ const banner = {
  * `format: 'iife'` is load-bearing, not decoration. Without it, platform:'neutral' emitted
  * the bundle as bare top-level statements, so a <script> tag published every minified
  * binding as a global: 442 of them, `Fi`, `rt`, `Zt`… one collision away from breaking an
- * unrelated page. Verified by scripts/check-pack.mjs (npm run test:pack), which runs the
+ * unrelated page. Verified by scripts/check-pack.mjs (run by hand), which runs the
  * packed file in an empty context and counts what leaks.
  *
  * `globalName` is deliberately ABSENT. With it, esbuild wraps the bundle as

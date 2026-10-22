@@ -1,6 +1,6 @@
 /**
  * Compile-only type tests for snapdom.d.ts. No runtime assertions — a clean
- * `tsc --noEmit` (via `npm run test:types`) IS the test. Not published (see
+ * `tsc --noEmit` (via `npm run check`) IS the test. Not published (see
  * package.json "files"); not picked up by vitest (name doesn't match *.test.ts).
  *
  * `// @ts-expect-error` lines assert that the given usage must NOT type-check —

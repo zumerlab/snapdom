@@ -14,7 +14,7 @@ npm run test:benchmark -- --scenes shadow --modes recapture --rounds 24
 npm run test:benchmark -- --cases card:fresh,table:recapture --rounds 32
 ```
 
-`npm run release` also runs this gate in Chromium after correctness and packaging checks.
+Benchmarks are run by hand; no release script runs them.
 Other engines are explicit runs with `--browser`; a Chromium result says nothing about their
 performance.
 
