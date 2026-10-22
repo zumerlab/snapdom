@@ -81,7 +81,7 @@
           <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">debug</td><td class="num">boolean</td><td class="num">false</td><td>Log suppressed errors to <code>console.warn</code>.</td></tr>
+          <tr><td class="num">debug</td><td class="num">boolean</td><td class="num">false</td><td>Log fallbacks and errors to the console. Off, SnapDOM logs nothing.</td></tr>
           <tr><td class="num">scale</td><td class="num">number</td><td class="num">1</td><td>Output scale, used only when neither width nor height is set.</td></tr>
           <tr><td class="num">dpr</td><td class="num">number</td><td class="num">devicePixelRatio</td><td>Device pixel ratio for raster output. <code>download()</code> always uses 1; use <code>scale</code> for a sharper file.</td></tr>
           <tr><td class="num">width / height</td><td class="num">number</td><td class="num">null</td><td>Absolute output size; one dimension preserves aspect ratio.</td></tr>
@@ -122,7 +122,7 @@
 
     <section class="prose">
       <h2 id="debug">debug</h2>
-      <p>Set <code>debug: true</code> to log suppressed errors with the <code>[snapdom]</code> prefix. The result also exposes <code>warnings</code> for recorded capture fallbacks and limits.</p>
+      <p>SnapDOM logs nothing to the console by default. Set <code>debug: true</code> to log fallbacks and errors with the <code>[SnapDOM]</code> prefix: failed fetches, cross-origin iframes, downscaled exports, invalid <code>exclude</code> selectors and similar. Without it, read <code>result.warnings</code> for recorded capture fallbacks and limits.</p>
       <pre class="code-block">await snapdom.toPng(el, { debug: true });</pre>
     </section>
 

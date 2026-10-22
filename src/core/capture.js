@@ -17,7 +17,7 @@ import { createSlicer } from '../utils/browser.js'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
 import { cache } from '../core/cache.js'
 import { createCaptureSession } from './session.js'
-import { sessionWarn } from '../utils/debug.js'
+import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { styleShareSafe } from '../modules/styles.js'
@@ -151,9 +151,9 @@ export async function captureDOM(element, options) {
 
       if (reconcileRisk > 0 && !options.reconcile) {
         sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
-        if (!cache.warnedReconcile) {
+        if (options.debug && !cache.warnedReconcile) {
           cache.warnedReconcile = true
-          console.warn('[SnapDOM] Some text may wrap differently in the capture. Pass { reconcile: true } to fix it (about 2x slower).')
+          debugWarn(options, 'Some text may wrap differently in the capture. Pass { reconcile: true } to fix it (about 2x slower).')
         }
       }
 
@@ -206,7 +206,7 @@ export async function captureDOM(element, options) {
       shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache, state.nodeMap)
     } catch (e) {
       sessionWarn(options.__session, 'shrink-failed', 'shrink pass failed', e)
-      console.warn('[SnapDOM] Couldn\'t close the gaps left by removed elements.', e)
+      debugWarn(options, 'Couldn\'t close the gaps left by removed elements.', e)
     }
   }
   try {
@@ -230,7 +230,7 @@ export async function captureDOM(element, options) {
       emulateBackdropFilters(state.element, state.clone, state.nodeMap)
     } catch (e) {
       sessionWarn(options.__session, 'backdrop-filter-failed', 'backdrop-filter emulation failed', e)
-      console.warn('[SnapDOM] Couldn\'t reproduce a backdrop-filter; captured without it.', e)
+      debugWarn(options, 'Couldn\'t reproduce a backdrop-filter; captured without it.', e)
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {
@@ -295,7 +295,8 @@ export async function captureDOM(element, options) {
         useProxy: state.options.useProxy,
         fontStylesheetDomains: state.options.fontStylesheetDomains,
         iconMatchers: state.options.__iconMatchers,
-        doc: ownerDoc
+        doc: ownerDoc,
+        debug: state.options.debug
       })
     })
   }

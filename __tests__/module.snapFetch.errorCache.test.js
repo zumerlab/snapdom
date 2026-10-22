@@ -19,7 +19,7 @@ function stubFailingFetch() {
   return calls
 }
 
-const OPTS = { as: 'text', silent: true }
+const OPTS = { as: 'text' }
 
 describe('snapFetch error cache', () => {
   it('serves a memoized failure without re-fetching', async () => {

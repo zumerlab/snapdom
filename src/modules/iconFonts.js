@@ -10,6 +10,7 @@
  */
 
 import { markInternalNode } from '../utils/ownership.js'
+import { debugWarn } from '../utils/debug.js'
 
 /** Families treated as icon fonts with no configuration. `iconFonts` adds to this list. */
 export const defaultIconFonts = [
@@ -49,15 +50,16 @@ function escapeRegExp(string) {
  * context and is passed explicitly.
  *
  * @param {string|RegExp|Array<string|RegExp>} [fonts]
+ * @param {{debug?: boolean}} [options] - read for `debug`
  * @returns {RegExp[]}
  */
-export function compileIconFontMatchers(fonts) {
+export function compileIconFontMatchers(fonts, options) {
   const list = Array.isArray(fonts) ? fonts : (fonts ? [fonts] : [])
   const out = []
   for (const f of list) {
     if (f instanceof RegExp) out.push(f)
     else if (typeof f === 'string') out.push(new RegExp(escapeRegExp(f), 'i'))
-    else console.warn('[SnapDOM] Ignored an iconFonts entry: use a string or a RegExp.', f)
+    else debugWarn(options, 'Ignored an iconFonts entry: use a string or a RegExp.', f)
   }
   return out
 }

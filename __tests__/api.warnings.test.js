@@ -27,7 +27,7 @@ describe('result.warnings', () => {
     expect(res.warnings[0]).toHaveProperty('message')
   })
 
-  it('oversized export records canvas-clamp (console.warn stays unconditional)', async () => {
+  it('oversized export records canvas-clamp; the console hears it only under debug', async () => {
     const el = document.createElement('div')
     el.style.cssText = 'width:200px;height:100px;background:#234'
     document.body.appendChild(el)
@@ -35,7 +35,11 @@ describe('result.warnings', () => {
     const res = await snapdom(el, { cache: 'disabled' })
     await res.toCanvas({ width: 30000, height: 20000, dpr: 1 })
     expect(res.warnings.some(w => w.code === 'canvas-clamp')).toBe(true)
+    expect(warn).not.toHaveBeenCalled()
+    const loud = await snapdom(el, { cache: 'disabled', debug: true })
+    await loud.toCanvas({ width: 30000, height: 20000, dpr: 1 })
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
+    el.remove()
   })
 })

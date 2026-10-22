@@ -173,6 +173,7 @@ const result = await snapdom(card, {
 | `canvas` | Unset | Reuse an existing canvas |
 | `invalidate` | `false` | Refresh after changes such as programmatic CSSOM edits |
 | `fast` | `true` | `false` keeps the page responsive during long captures |
+| `debug` | `false` | Log fallbacks and errors to the console; without it SnapDOM stays quiet and `result.warnings` reports them |
 
 [All options](https://snapdom.dev/docs/options/) include shadows, transforms, fonts, CORS, fallbacks and layout reconciliation.
 

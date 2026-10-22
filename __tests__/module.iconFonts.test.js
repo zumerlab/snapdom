@@ -55,10 +55,12 @@ describe('compileIconFontMatchers (per-capture matchers)', () => {
     expect(isIconFont('CAPTURE-B-BRAND', a)).toBe(false)
   })
 
-  it('ignores invalid values and warns on the console', () => {
+  it('ignores invalid values and warns on the console under debug', () => {
     const { compileIconFontMatchers, isIconFont } = mod
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const m = compileIconFontMatchers([123, { nope: true }])
+    compileIconFontMatchers([123])
+    expect(warn).not.toHaveBeenCalled()
+    const m = compileIconFontMatchers([123, { nope: true }], { debug: true })
     expect(warn).toHaveBeenCalled()
     expect(m).toEqual([])
     expect(isIconFont('qwerty', m)).toBe(false)

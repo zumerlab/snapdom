@@ -71,7 +71,7 @@ describe('deepClone – extra coverage', () => {
   const el = document.createElement('div')
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-  const out = await deepClone(el, session, { exclude: ['::bad('] })
+  const out = await deepClone(el, session, { exclude: ['::bad('], debug: true })
 
   expect(out).toBeInstanceOf(HTMLElement)
   expect(out.tagName).toBe('DIV')
@@ -99,7 +99,7 @@ it('exclude by selector with excludeMode = "remove" skips element from clonning'
     // predicate throws -> warn, node kept (a broken predicate must not silently drop content)
     const b = document.createElement('p')
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const out2 = await deepClone(b, session, { excludePredicates: [() => { throw new Error('boom') }] })
+    const out2 = await deepClone(b, session, { excludePredicates: [() => { throw new Error('boom') }], debug: true })
     expect(out2).toBeInstanceOf(HTMLElement)
     expect(warn).toHaveBeenCalled()
     warn.mockRestore()
@@ -128,8 +128,8 @@ it('exclude by selector with excludeMode = "remove" skips element from clonning'
     const el = document.createElement('div')
     const err = new Error('fail')
     const spy = vi.spyOn(el, 'cloneNode').mockImplementation(() => { throw err })
-    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
-    await expect(() => deepClone(el, session, {})).rejects.toThrow('fail')
+    const log = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await expect(() => deepClone(el, session, { debug: true })).rejects.toThrow('fail')
     expect(log).toHaveBeenCalled()
     spy.mockRestore()
     log.mockRestore()
@@ -772,7 +772,7 @@ describe('deepClone – Tier 2 fixes', () => {
   })
 
   // ── NEW-7 ─────────────────────────────────────────────────────────────────
-  it('NEW-7 — cross-origin iframe emits console.warn', async () => {
+  it('NEW-7 — cross-origin iframe warns under debug, and only there', async () => {
     const frame = document.createElement('iframe')
     // Simulate cross-origin: contentDocument access throws
     Object.defineProperty(frame, 'contentDocument', {
@@ -786,8 +786,10 @@ describe('deepClone – Tier 2 fixes', () => {
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     await deepClone(frame, session, { placeholders: false })
+    expect(warn).not.toHaveBeenCalled()
+    await deepClone(frame, session, { placeholders: false, debug: true })
     const called = warn.mock.calls.some(args =>
-      String(args[0]).toLowerCase().includes('cross-origin')
+      args.join(' ').toLowerCase().includes('cross-origin')
     )
     warn.mockRestore()
     expect(called).toBe(true)

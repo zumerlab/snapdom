@@ -110,7 +110,7 @@ export async function inlineImages(clone, options = {}) {
       return
     }
 
-    const r = await snapFetch(src, { as: 'dataURL', useProxy: options.useProxy })
+    const r = await snapFetch(src, { as: 'dataURL', useProxy: options.useProxy, debug: options.debug })
     if (r.ok && typeof r.data === 'string' && r.data.startsWith('data:')) {
       // Success path: inline DataURL and ensure dimensions for layout fidelity
       cache.image?.set(src, r.data)
@@ -133,7 +133,7 @@ export async function inlineImages(clone, options = {}) {
             : fallbackURL
 
         if (fallbackUrl) {
-          const fallbackData = await snapFetch(fallbackUrl, { as: 'dataURL', useProxy: options.useProxy })
+          const fallbackData = await snapFetch(fallbackUrl, { as: 'dataURL', useProxy: options.useProxy, debug: options.debug })
           if (fallbackData?.ok && typeof fallbackData.data === 'string') {
             img.src = fallbackData.data
             if (!img.width) img.width = fbW
@@ -186,7 +186,7 @@ export async function inlineImages(clone, options = {}) {
     const href = getSvgImageHref(el)
     if (!href || href.startsWith('data:') || href.startsWith('blob:')) return
 
-    const r = await snapFetch(href, { as: 'dataURL', useProxy: options.useProxy })
+    const r = await snapFetch(href, { as: 'dataURL', useProxy: options.useProxy, debug: options.debug })
     if (r.ok && typeof r.data === 'string' && r.data.startsWith('data:')) {
       el.setAttribute('href', r.data)
       el.removeAttribute('xlink:href')

@@ -248,7 +248,7 @@ Export methods accept relevant overrides, such as size, background and quality. 
 | `invalidate: boolean` | `false` | Force one fresh capture and clear style snapshots after otherwise unobservable changes |
 | `plugins: PluginUse[]` | unset | Per-capture plugin definitions; override globals by name |
 | `engine` | `'svg'` | Select `'svg'` or experimental `'html-in-canvas'`; native use requires the browser feature and build flag described above |
-| `debug: boolean` | `false` | Emit diagnostics through console warnings |
+| `debug: boolean` | `false` | Log fallbacks and errors to the console; off, SnapDOM logs nothing and `warnings` carries the degradations |
 
 Root `blur()` remains visible and its bleed is included even with `outerShadows: false`. Explicit clip edges do not expand. Descendant transforms remain part of the capture.
 

@@ -30,6 +30,7 @@ import {
   debugWarn
 } from '../utils/index.js'
 import { iconToImage } from '../modules/fonts.js'
+import { sessionWarn } from '../utils/debug.js'
 import { isIconFont } from '../modules/iconFonts.js'
 import {
   buildCounterContext,
@@ -916,7 +917,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           extractURL(cleanContent)
         if (rawUrl?.trim()) {
           try {
-            const dataUrl = await snapFetch(safeEncodeURI(rawUrl), { as: 'dataURL', useProxy: options.useProxy })
+            const dataUrl = await snapFetch(safeEncodeURI(rawUrl), { as: 'dataURL', useProxy: options.useProxy, debug: options.debug })
             if (dataUrl?.ok && typeof dataUrl.data === 'string') {
               const imgEl = document.createElement('img')
               imgEl.src = dataUrl.data
@@ -924,7 +925,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
               pseudoEl.appendChild(imgEl)
             }
           } catch (e) {
-            console.warn(`[SnapDOM] Couldn't draw the ${pseudo} icon of`, source, e)
+            debugWarn(options, `Couldn't draw the ${pseudo} icon of`, [source, e])
           }
         }
       } else if (!isIconFont2 && hasExplicitContent) {
@@ -960,7 +961,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           const newBgParts = await Promise.all(bgSplits.map((entry) => inlineSingleBackgroundEntry(entry, options)))
           pseudoEl.style.backgroundImage = newBgParts.join(', ')
         } catch (e) {
-          console.warn(`[SnapDOM] Couldn't load the ${pseudo} background image.`, e)
+          debugWarn(options, `Couldn't load the ${pseudo} background image.`, e)
         }
       }
       if (hasBgColor) pseudoEl.style.backgroundColor = bgColor
@@ -982,7 +983,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
             if (style[prop]) pseudoEl.style[prop] = style[prop]
           }
         } catch (e) {
-          console.warn(`[SnapDOM] Couldn't load the ${pseudo} mask image.`, e)
+          debugWarn(options, `Couldn't load the ${pseudo} mask image.`, e)
         }
       }
 
@@ -1016,7 +1017,8 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         clone.appendChild(pseudoEl)
       }
     } catch (e) {
-      console.warn(`[SnapDOM] Couldn't copy the ${pseudo} of`, source, e)
+      sessionWarn(options.__session, 'pseudo-failed', `${pseudo} could not be copied`, source)
+      debugWarn(options, `Couldn't copy the ${pseudo} of`, [source, e])
     }
   }
 

@@ -32,6 +32,7 @@ import {
 import { isFirefox, isSafari, nextFrame } from '../utils/browser.js'
 import { cloneTextWithSelection, inlineTextFieldSelection } from '../modules/selection.js'
 import { isInternalNode } from '../utils/ownership.js'
+import { sessionWarn } from '../utils/debug.js'
 
 // #535: what an author rule can set on an SVG shape besides paint. Shapes get no style snapshot
 // (NO_DEFAULTS_TAGS keeps LeaderLine's attributes from being overwritten by defaults), so a
@@ -518,7 +519,7 @@ export async function deepClone(node, sessionCache, options) {
           }
         }
       } catch {
-        console.warn(`[SnapDOM] Invalid exclude selector "${selector}"; ignored.`)
+        debugWarn(options, `Invalid exclude selector "${selector}"; ignored.`)
       }
     }
   }
@@ -532,7 +533,7 @@ export async function deepClone(node, sessionCache, options) {
           return makeHideSpacer(node)
         }
       } catch (err) {
-        console.warn('[SnapDOM] Your exclude function threw; the element was kept.', err)
+        debugWarn(options, 'Your exclude function threw; the element was kept.', err)
       }
     }
   }
@@ -545,7 +546,7 @@ export async function deepClone(node, sessionCache, options) {
         if (options.filterMode === 'remove') return null
       }
     } catch (err) {
-      console.warn('[SnapDOM] Your filter function threw; the element was kept.', err)
+      debugWarn(options, 'Your filter function threw; the element was kept.', err)
     }
   }
   // #507: nothing under a display:none element can paint, yet every descendant was cloned,
@@ -709,7 +710,7 @@ export async function deepClone(node, sessionCache, options) {
 
     }
   } catch (err) {
-    console.error('[SnapDOM] Couldn\'t copy this element:', node, err)
+    debugWarn(options, 'Couldn\'t copy this element:', [node, err])
     throw err
   }
   let applyInputVisual = null
@@ -1017,7 +1018,8 @@ async function cloneIframe(node, sessionCache, options) {
       const wrapper = await rasterizeIframe(node, sessionCache, options)
       return wrapper
     } catch (err) {
-      console.warn('[SnapDOM] Couldn\'t capture an iframe, so it was left out.', err)
+      sessionWarn(options.__session, 'iframe-failed', 'same-origin iframe failed to rasterize', err)
+      debugWarn(options, 'Couldn\'t capture an iframe, so it was left out.', err)
       // fall through
     }
   }
@@ -1026,9 +1028,10 @@ async function cloneIframe(node, sessionCache, options) {
   // so what lands in the capture is the striped placeholder below; only mention the opt-out,
   // never suggest enabling an option that is already on.
   if (!sameOrigin) {
-    console.warn(options.placeholders
-      ? '[SnapDOM] Can\'t capture a cross-origin iframe; showing a placeholder. Set placeholders: false to hide it.'
-      : '[SnapDOM] Can\'t capture a cross-origin iframe; left it out.', node)
+    sessionWarn(options.__session, 'iframe-cross-origin', `cross-origin iframe replaced by ${options.placeholders ? 'a placeholder' : 'a spacer'}`, node)
+    debugWarn(options, options.placeholders
+      ? 'Can\'t capture a cross-origin iframe; showing a placeholder. Set placeholders: false to hide it.'
+      : 'Can\'t capture a cross-origin iframe; left it out.', node)
   }
 
   // Placeholder or spacer, both sized to the frame's box.
@@ -1314,7 +1317,10 @@ async function cloneObjectEmbed(node, sessionCache, options) {
       if (out) return out
     } catch { /* fall through */ }
   }
-  if (url) console.warn(`[SnapDOM] Couldn't capture <${node.localName}>${type ? ` (${type})` : ''}; showing its fallback content.`)
+  if (url) {
+    sessionWarn(options.__session, 'embed-fallback', `<${node.localName}> not capturable, using its fallback content: ${url}`)
+    debugWarn(options, `Couldn't capture <${node.localName}>${type ? ` (${type})` : ''}; showing its fallback content.`)
+  }
   return undefined // generic clone: fallback children render, matching the no-plugin browser behavior
 }
 

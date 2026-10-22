@@ -13,6 +13,7 @@
 import { normalizeCachePolicy } from './cache.js'
 import { compileIconFontMatchers } from '../modules/iconFonts.js'
 import { isTag } from '../utils/helpers.js'
+import { debugWarn } from '../utils/debug.js'
 
 /** Formats a caller can name in `format` (or legacy `type`). Shared with the export
  *  normalizer in snapdom.js — the same set decides the alias there. */
@@ -89,10 +90,10 @@ export function createContext(options = {}) {
         document.createDocumentFragment().querySelector(e)
         excludeSelectors.push(e)
       } catch {
-        console.warn(`[SnapDOM] Invalid exclude selector "${e}"; ignored.`)
+        debugWarn(options, `Invalid exclude selector "${e}"; ignored.`)
       }
     } else if (typeof e === 'function') excludePredicates.push(e)
-    else if (e != null) console.warn('[SnapDOM] Ignored an exclude entry: use a CSS selector or a function.', e)
+    else if (e != null) debugWarn(options, 'Ignored an exclude entry: use a CSS selector or a function.', e)
   }
   const excludeMode = options.excludeMode ?? 'hide'
 
@@ -154,7 +155,7 @@ export function createContext(options = {}) {
     // Compiled here, once, and passed explicitly to every isIconFont call: this used to be
     // a module-level array each capture overwrote, so concurrent captures with different
     // lists read each other's matchers.
-    __iconMatchers: compileIconFontMatchers(options.iconFonts),
+    __iconMatchers: compileIconFontMatchers(options.iconFonts, options),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
     fontStylesheetDomains: Array.isArray(options.fontStylesheetDomains) ? options.fontStylesheetDomains : [],

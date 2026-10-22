@@ -20,6 +20,7 @@
 import { isSafari, getStyle } from '../utils/index.js'
 import { cache } from '../core/cache.js'
 import { runHook } from '../core/plugins.js'
+import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { isInternalNode, markInternalNode } from '../utils/ownership.js'
 import {
   assembleCaptureCSS,
@@ -322,7 +323,8 @@ export async function composeAndSerialize(state, ex) {
         'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
       reconcileCloneLayout(state.element, state.clone, cssAll, state.nodeMap, w0, h0)
     } catch (e) {
-      console.warn('[SnapDOM] reconcile couldn\'t run; captured without it.', e)
+      sessionWarn(state.options.__session, 'reconcile-failed', 'reconcile pass failed', e)
+      debugWarn(state.options, 'reconcile couldn\'t run; captured without it.', e)
     }
   }
 

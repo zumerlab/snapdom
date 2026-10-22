@@ -22,8 +22,8 @@ describe('asset fetch request identity and proxy routing', () => {
         status: init.credentials === 'include' ? 200 : 401,
       }))
     const url = `${location.origin}/audit-credentials-resource`
-    const first = await snapFetch(url, { as: 'text', credentials: 'omit', silent: true })
-    const second = await snapFetch(url, { as: 'text', credentials: 'include', silent: true })
+    const first = await snapFetch(url, { as: 'text', credentials: 'omit' })
+    const second = await snapFetch(url, { as: 'text', credentials: 'include' })
     expect(first.status).toBe(401)
     expect(second.data).toBe('private image')
     expect(fetch).toHaveBeenCalledTimes(2)
@@ -56,13 +56,12 @@ describe('asset fetch request identity and proxy routing', () => {
   it('returns a failed result for a malformed URL with logging enabled', async () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Invalid URL'))
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    await expect(snapFetch('https://', { errorTTL: 0 })).resolves.toMatchObject({ ok: false, reason: 'network' })
+    await expect(snapFetch('https://', { errorTTL: 0, debug: true })).resolves.toMatchObject({ ok: false, reason: 'network' })
   })
 
   it('does not throw if an error observer throws', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 404 }))
     await expect(snapFetch(`${location.origin}/audit-callback-resource`, {
-      silent: true,
       onError: () => { throw new Error('observer failed') },
     })).resolves.toMatchObject({ ok: false, status: 404, reason: 'http_error' })
   })

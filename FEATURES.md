@@ -77,7 +77,7 @@ A capture result can be exported several times without cloning the live element 
 
 Static shortcuts include `snapdom.toPng(element)`, `snapdom.toCanvas(element)` and `snapdom.download(element)`. `toImg()` is retained for compatibility; use `toSvg()` for an SVG image. JPEG and WebP default to a white background. On iOS, downloads can use the Web Share API.
 
-SVG captures contain HTML inside `<foreignObject>`; non-browser SVG viewers may not render them. `result.meta` exposes frozen capture geometry for overlays and image placement. `result.warnings` reports capture diagnostics.
+SVG captures contain HTML inside `<foreignObject>`; non-browser SVG viewers may not render them. `result.meta` exposes frozen capture geometry for overlays and image placement. `result.warnings` reports capture diagnostics. The console stays quiet by default; pass `debug: true` to log fallbacks and errors with a `[SnapDOM]` prefix.
 
 ### Oversized PNG files
 

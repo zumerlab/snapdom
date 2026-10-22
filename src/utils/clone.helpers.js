@@ -827,7 +827,7 @@ export async function blobUrlToDataUrl(blobUrl) {
 
   // 3) start the read and park the promise for dedupe
   const p = (async () => {
-    const r = await snapFetch(blobUrl, { as: 'dataURL', silent: true })
+    const r = await snapFetch(blobUrl, { as: 'dataURL' })
     if (!r.ok || typeof r.data !== 'string') {
       throw new Error(`Couldn't read ${blobUrl}`)
     }

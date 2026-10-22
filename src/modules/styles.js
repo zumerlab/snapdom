@@ -610,7 +610,7 @@ function crossOriginRules(sheet) {
   if (!href || typeof CSSStyleSheet !== 'function') return null
   if (crossOriginCopies.has(href)) return crossOriginCopies.get(href)
   crossOriginCopies.set(href, null)
-  snapFetch(href, { as: 'text', silent: true }).then((res) => {
+  snapFetch(href, { as: 'text' }).then((res) => {
     if (!res.ok || typeof res.data !== 'string' || /@import/i.test(res.data)) return
     const copy = new CSSStyleSheet()
     copy.replaceSync(res.data)

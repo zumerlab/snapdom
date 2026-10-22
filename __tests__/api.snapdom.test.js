@@ -149,8 +149,8 @@ it('warns about an invalid exclude selector once, not once per node', async () =
   document.body.appendChild(el)
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
   try {
-    await snapdom(el, { exclude: ['::bad('], cache: 'disabled', burst: false })
-    expect(warn.mock.calls.filter(([msg]) => String(msg).includes('::bad('))).toHaveLength(1)
+    await snapdom(el, { exclude: ['::bad('], cache: 'disabled', burst: false, debug: true })
+    expect(warn.mock.calls.filter((args) => args.join(' ').includes('::bad('))).toHaveLength(1)
   } finally {
     warn.mockRestore()
     el.remove()

@@ -22,7 +22,7 @@ import { safeEncodeURI } from '../utils/helpers.js'
  * @property {number}  [errorTTL=8000]           ms to cache errors to avoid retry storms.
  * @property {RequestCredentials} [credentials]  Override inferred credentials.
  * @property {Record<string,string>} [headers]   Optional headers.
- * @property {boolean} [silent=false]            If true, disables console logging for this call.
+ * @property {boolean} [debug=false]             Log failures to the console (deduped). Quiet otherwise.
  * @property {(r:SnapFetchResult)=>void} [onError] Optional hook when a fetch fails (ok=false).
  *
  * @typedef {Object} SnapFetchResult
@@ -231,7 +231,7 @@ export async function snapFetch(url, options = {}) {
   const useProxy = options.useProxy || ''
   const errorTTL = options.errorTTL ?? 8000
   const headers = options.headers || {}
-  const silent = !!options.silent
+  const debug = !!options.debug
 
   // --- Special schemes: no network, no caches, no proxy ---
 
@@ -351,7 +351,7 @@ export async function snapFetch(url, options = {}) {
       if (!resp.ok) {
         const result = { ok: false, data: null, status: resp.status, url: finalURL, fromCache: false, reason: 'http_error' }
         if (key !== null && errorTTL > 0) rememberError(key, result, errorTTL)
-        if (!silent) {
+        if (debug) {
           const short = `${resp.status} ${resp.statusText || ''}`.trim()
           snapLogger.warnOnce(
             `http:${resp.status}:${as}:${originForLog(url)}`,
@@ -398,7 +398,7 @@ export async function snapFetch(url, options = {}) {
         rememberError(key, result, errorTTL)
       }
 
-      if (!silent) {
+      if (debug) {
         const k = `${reason}:${as}:${originForLog(url)}`
         const tips = reason === 'timeout'
           ? `Timed out loading ${url} after ${timeout}ms. Raise the timeout option or set useProxy.`

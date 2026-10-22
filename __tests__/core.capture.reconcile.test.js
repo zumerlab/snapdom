@@ -261,7 +261,7 @@ describe('reconcile — layout reconciliation', () => {
     src.remove()
   })
 
-  it('warns once, suggesting reconcile:true, when width-softened text is captured without it', async () => {
+  it('warns once under debug, suggesting reconcile:true, when width-softened text is captured without it', async () => {
     cache.warnedReconcile = false
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {
@@ -272,14 +272,16 @@ describe('reconcile — layout reconciliation', () => {
       document.body.appendChild(el)
 
       await snapdom(el)
+      expect(warn).not.toHaveBeenCalled()
+      await snapdom(el, { debug: true, cache: 'disabled' })
       expect(warn).toHaveBeenCalledTimes(1)
-      expect(warn.mock.calls[0][0]).toContain('reconcile: true')
+      expect(warn.mock.calls[0][1]).toContain('reconcile: true')
 
       // Doesn't repeat on a later capture, even of a fresh equally-at-risk element.
       const el2 = document.createElement('table')
       el2.innerHTML = '<tr><td>more text</td></tr>'
       document.body.appendChild(el2)
-      await snapdom(el2)
+      await snapdom(el2, { debug: true })
       expect(warn).toHaveBeenCalledTimes(1)
       el2.remove()
     } finally {
@@ -295,7 +297,7 @@ describe('reconcile — layout reconciliation', () => {
       el = document.createElement('table')
       el.innerHTML = '<tr><td>some real text content</td></tr>'
       document.body.appendChild(el)
-      await snapdom(el, { reconcile: true })
+      await snapdom(el, { reconcile: true, debug: true })
       expect(warn).not.toHaveBeenCalled()
     } finally {
       warn.mockRestore()

@@ -45,6 +45,12 @@ export type WarningCode =
   | "backdrop-filter-failed"
   | "selection-compose-failed"
   | "shrink-failed"
+  | "svg-defs-failed"
+  | "pseudo-failed"
+  | "iframe-failed"
+  | "iframe-cross-origin"
+  | "embed-fallback"
+  | "reconcile-failed"
   | (string & {});
 
 /** Geometry of the rendered capture, expressed in viewBox-style CSS pixels. */
@@ -231,7 +237,10 @@ export interface SnapdomOptions {
    */
   engine?: 'svg' | 'html-in-canvas';
 
-  /** Verbose diagnostics via console.warn. Default false. */
+  /**
+   * Log capture fallbacks and errors to the console with a `[SnapDOM]` prefix. Default
+   * false: SnapDOM logs nothing, and degradations are read from `result.warnings`.
+   */
   debug?: boolean;
 
   /**

@@ -225,38 +225,38 @@ describe('snapFetch (proxy & credentials)', () => {
   })
 })
 
- describe('snapFetch (logging & silent mode)', () => {
-   it('dedupes console messages; silent:true suppresses logs', async () => {
+ describe('snapFetch (logging under debug)', () => {
+   it('stays quiet by default; under debug, dedupes console messages', async () => {
      const { snapFetch } = await importFresh()
      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
      const errSpy  = vi.spyOn(console, 'error').mockImplementation(() => {})
 
+     // Without debug: nothing reaches the console
+     mockFetchNetworkError()
+     const r0 = await snapFetch('https://cdn.example/b.png', { as: 'blob' })
+     expect(r0.ok).toBe(false)
+     expect(errSpy.mock.calls.length + warnSpy.mock.calls.length).toBe(0)
+
      // First: HTTP error (warn once)
      mockFetchOnce(404, '', {})
-     const r1 = await snapFetch(`${ORIGIN}/missing.png`, { as: 'blob' })
+     const r1 = await snapFetch(`${ORIGIN}/missing.png`, { as: 'blob', debug: true })
      expect(r1.ok).toBe(false)
 
      const warnCountAfter1 = warnSpy.mock.calls.length
+     expect(warnCountAfter1).toBe(1)
 
      // Second same error within logger TTL: no new warn
-     const r2 = await snapFetch(`${ORIGIN}/missing.png`, { as: 'blob' })
+     const r2 = await snapFetch(`${ORIGIN}/missing.png`, { as: 'blob', debug: true })
      expect(r2.ok).toBe(false)
      expect(warnSpy.mock.calls.length).toBe(warnCountAfter1)
 
      const totalBefore = errSpy.mock.calls.length + warnSpy.mock.calls.length
  mockFetchNetworkError()
- const r3 = await snapFetch(CROSS, { as: 'blob' })
+ const r3 = await snapFetch(CROSS, { as: 'blob', debug: true })
  expect(r3.ok).toBe(false)
  const totalAfter = errSpy.mock.calls.length + warnSpy.mock.calls.length
  // Aceptamos 0 o 1 log nuevo (dedupe-friendly):
  expect([0, 1]).toContain(totalAfter - totalBefore)
-
-     // Silent suppresses
-      mockFetchNetworkError()
-  const r4 = await snapFetch('https://cdn.example/b.png', { as: 'blob', silent: true })
-  expect(r4.ok).toBe(false)
-  const afterSilent = errSpy.mock.calls.length + warnSpy.mock.calls.length
-  expect(afterSilent).toBe(totalAfter)
 
      warnSpy.mockRestore()
      errSpy.mockRestore()
@@ -303,7 +303,7 @@ describe('snapFetch (credential inference fallback)', () => {
     // Absolute scheme with an empty host → `new URL()` throws in the credential-inference
     // block, exercising the catch that defaults credentials to "omit".
     mockFetchNetworkError()
-    const r = await snapFetch('https://', { as: 'blob', timeout: 200, silent: true })
+    const r = await snapFetch('https://', { as: 'blob', timeout: 200 })
     expect(r.ok).toBe(false)
   })
 })

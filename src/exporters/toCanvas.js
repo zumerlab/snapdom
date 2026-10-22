@@ -9,7 +9,7 @@
  * @module exporters/toCanvas
  */
 import { isSafari, isFirefox } from '../utils/browser'
-import { sessionWarn } from '../utils/debug.js'
+import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { isHTMLEl, isTag } from '../utils/helpers.js'
 import { markInternalNode } from '../utils/ownership.js'
 
@@ -42,10 +42,11 @@ export const WEBP_MAX_SIDE = 16383
  * The SVG carries a viewBox, so shrinking width/height just renders the same content at a
  * lower resolution (no clipping). Operates on decoded text (no re-encode round trips).
  * @param {string} svg - decoded svg text
- * @param {object} [session] - for sessionWarn
+ * @param {object} options - the export context, read for `__session` and `debug`
  * @returns {string}
  */
-function clampSvgTextRasterSize(svg, session) {
+function clampSvgTextRasterSize(svg, options) {
+  const session = options.__session
   try {
     const head = svg.match(/<svg\b[^>]*>/i)
     if (!head) return svg
@@ -58,8 +59,8 @@ function clampSvgTextRasterSize(svg, session) {
     const nw = Math.max(1, Math.floor(w * f))
     const nh = Math.max(1, Math.floor(h * f))
     sessionWarn(session, 'raster-clamp', `capture ${Math.round(w)}x${Math.round(h)}px exceeds decode limits; downscaled to ${nw}x${nh}px`)
-    console.warn(
-      `[SnapDOM] ${Math.round(w)}×${Math.round(h)}px is too large for the browser to draw; scaled down to ${nw}×${nh}px. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
+    debugWarn(options,
+      `${Math.round(w)}×${Math.round(h)}px is too large for the browser to draw; scaled down to ${nw}×${nh}px. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
     )
     return svg.replace(tag, tag
       .replace(/(\bwidth=")[\d.]+/i, `$1${nw}`)
@@ -718,7 +719,7 @@ export async function toCanvas(url, options) {
         }
         // A crop can turn an oversized source into a safe page-sized decode: clamp the
         // TRANSFORMED header, not the original full document.
-        if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options.__session) // #425: keep within decode limits
+        if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options) // #425: keep within decode limits
         src = encodeSvgToDataURL(svgText)
       } catch (error) {
         if (crop) throw error
@@ -839,9 +840,9 @@ export async function toCanvas(url, options) {
     if (over > 1) {
       const byWebp = overCanvas <= 1
       sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds ${byWebp ? 'WebP' : 'canvas'} limits; downscaled`)
-      console.warn(byWebp
-        ? `[SnapDOM] ${Math.round(devW)}×${Math.round(devH)}px is larger than WebP can encode (${WEBP_MAX_SIDE}px per side); scaled down. For full size, export a PNG, an SVG, or crop.`
-        : `[SnapDOM] ${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
+      debugWarn(options, byWebp
+        ? `${Math.round(devW)}×${Math.round(devH)}px is larger than WebP can encode (${WEBP_MAX_SIDE}px per side); scaled down. For full size, export a PNG, an SVG, or crop.`
+        : `${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
       )
       outW /= over
       outH /= over

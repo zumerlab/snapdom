@@ -77,7 +77,7 @@ SnapDOM 是一个高性能引擎，用于捕获、修改 DOM 元素并将其转�
 
 静态快捷方法包括 `snapdom.toPng(element)`、`snapdom.toCanvas(element)` 和 `snapdom.download(element)`。`toImg()` 为兼容性而保留，SVG 图片请使用 `toSvg()`。JPEG 和 WebP 默认使用白色背景。iOS 上下载可使用 Web Share API。
 
-SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可能无法渲染。`result.meta` 提供冻结的捕获几何信息，用于覆盖层和图片定位。`result.warnings` 提供捕获诊断信息。
+SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可能无法渲染。`result.meta` 提供冻结的捕获几何信息，用于覆盖层和图片定位。`result.warnings` 提供捕获诊断信息。默认情况下控制台不输出日志；传入 `debug: true` 可输出带 `[SnapDOM]` 前缀的降级和错误信息。
 
 ### 超大尺寸 PNG 文件
 

@@ -13,6 +13,7 @@
 
 import { generateCSSClasses, stripTranslate, debugWarn, getStyle, isShadowRoot, shadowHost } from '../utils/index.js'
 import { deepClone } from './clone.js'
+import { sessionWarn } from '../utils/debug.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { paintClippedText } from '../modules/bgClipText.js'
 import { flushStyleInvalidations, invalidateHoverChanges } from '../modules/styles.js'
@@ -241,7 +242,7 @@ export async function prepareClone(element, options = {}) {
   try {
     clone = await deepClone(element, sessionCache, options)
   } catch (e) {
-    console.warn('[SnapDOM] Capture failed while copying the element.', e)
+    debugWarn(sessionCache, 'Capture failed while copying the element.', e)
     throw e
   } finally {
     undoContentVisibility()
@@ -257,12 +258,14 @@ export async function prepareClone(element, options = {}) {
   try {
     inlineExternalDefsAndSymbols(clone, undefined, element)
   } catch (e) {
-    console.warn('[SnapDOM] Couldn\'t copy external SVG icons; some may be missing.', e)
+    sessionWarn(session, 'svg-defs-failed', 'external <use> references failed to inline', e)
+    debugWarn(sessionCache, 'Couldn\'t copy external SVG icons; some may be missing.', e)
   }
   try {
     await inlinePseudoElements(element, clone, sessionCache, options)
   } catch (e) {
-    console.warn('[SnapDOM] Couldn\'t copy ::before/::after content; some decorations may be missing.', e)
+    sessionWarn(session, 'pseudo-failed', '::before/::after pass failed', e)
+    debugWarn(sessionCache, 'Couldn\'t copy ::before/::after content; some decorations may be missing.', e)
   }
   // Firefox gradient text (#530): last of the node passes, since the overlay it inserts is a
   // clone child with no live counterpart.

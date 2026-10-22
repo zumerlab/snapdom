@@ -23,6 +23,7 @@ import { snapFetch } from './snapFetch.js'
 import { pseudoGatesFor, getStyleEnvEpoch, flushStyleInvalidations } from './styles.js'
 import { nextFrame } from '../utils/browser.js'
 import { markInternalNode } from '../utils/ownership.js'
+import { debugWarn } from '../utils/debug.js'
 
 /**
  * Draw one icon-font glyph on a canvas at devicePixelRatio and return it as a data URL.
@@ -306,7 +307,7 @@ const MAX_IMPORT_DEPTH = 4
  * @param {string} useProxy
  * @returns {Promise<string>}
  */
-async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
+async function inlineImportsAndRewrite(cssText, ownerHref, useProxy, debug) {
   if (!cssText) return cssText
 
   const visited = new Set()
@@ -317,7 +318,7 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
 
   async function resolveOnce(text, baseHref, depth = 0) {
     if (depth > MAX_IMPORT_DEPTH) {
-      console.warn(`[SnapDOM] Too many nested @import rules in ${baseHref}; stopped at ${MAX_IMPORT_DEPTH} levels.`)
+      debugWarn({ debug }, `Too many nested @import rules in ${baseHref}; stopped at ${MAX_IMPORT_DEPTH} levels.`)
       return text
     }
 
@@ -337,14 +338,14 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy) {
       const absUrl = normalizeUrl(rawUrl, baseHref)
 
       if (visited.has(absUrl)) {
-        console.warn(`[SnapDOM] Skipped an @import that loops back: ${absUrl}`)
+        debugWarn({ debug }, `Skipped an @import that loops back: ${absUrl}`)
         continue
       }
       visited.add(absUrl)
 
       let imported = ''
       try {
-        const r = await snapFetch(absUrl, { as: 'text', useProxy, silent: true })
+        const r = await snapFetch(absUrl, { as: 'text', useProxy })
         if (r.ok && typeof r.data === 'string') imported = r.data
       } catch { /* noop */ }
 
@@ -454,7 +455,7 @@ function extractSrcUrls(srcValue, baseHref) {
  * @param {string} [useProxy='']
  * @returns {Promise<string>}
  */
-async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
+async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '', debug = false) {
   let out = cssBlock
   for (const m of cssBlock.matchAll(URL_RE)) {
     const raw = extractURL(m[0])
@@ -475,14 +476,14 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '') {
     }
 
     try {
-      const r = await snapFetch(abs, { as: 'dataURL', useProxy, silent: true })
+      const r = await snapFetch(abs, { as: 'dataURL', useProxy })
       if (r.ok && typeof r.data === 'string') {
         const b64 = r.data
         cache.resource?.set(abs, b64)
         out = out.replace(m[0], `url(${b64})`)
       }
     } catch {
-      console.warn('[SnapDOM] Couldn\'t load font file:', abs)
+      debugWarn({ debug }, 'Couldn\'t load font file:', abs)
     }
   }
   return out
@@ -679,11 +680,11 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       const childHref = rule.href ? normalizeUrl(rule.href, baseHref) : baseHref
 
       if (ctx.depth >= MAX_IMPORT_DEPTH) {
-        console.warn(`[SnapDOM] Too many nested @import rules in ${childHref}; stopped at ${MAX_IMPORT_DEPTH} levels.`)
+        debugWarn(ctx, `Too many nested @import rules in ${childHref}; stopped at ${MAX_IMPORT_DEPTH} levels.`)
         continue
       }
       if (childHref && ctx.visitedSheets.has(childHref)) {
-        console.warn(`[SnapDOM] Skipped an @import that loops back: ${childHref}`)
+        debugWarn(ctx, `Skipped an @import that loops back: ${childHref}`)
         continue
       }
       if (childHref) ctx.visitedSheets.add(childHref)
@@ -761,7 +762,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       // embed while everything else looked fine.
       const familyDecl = `"${String(family).replace(/^\s*["']|["']\s*$/g, '').replace(/(["\\])/g, '\\$1')}"`
       if (/url\(/i.test(srcRaw)) {
-        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy)
+        const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy, ctx.debug)
         await emitFace(`@font-face{font-family:${familyDecl};src:${inlinedSrc};${descriptors}}`)
       } else {
         await emitFace(`@font-face{font-family:${familyDecl};src:${srcRaw};${descriptors}}`)
@@ -808,6 +809,7 @@ export async function embedCustomFonts({
   fontStylesheetDomains = [],
   iconMatchers = [],
   doc = document,
+  debug = false,
 } = {}) {
   // ---------- Normalize inputs ----------
   if (!(required instanceof Set)) required = new Set()
@@ -1005,12 +1007,12 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       }
 
       if (!cssText) {
-        const res = await snapFetch(link.href, { as: 'text', useProxy })
+        const res = await snapFetch(link.href, { as: 'text', useProxy, debug })
         if (res?.ok && typeof res.data === 'string') cssText = res.data
       }
 
       // Flatten nested @import and rewrite relative urls per-level using link.href as base
-      cssText = await inlineImportsAndRewrite(cssText, link.href, useProxy)
+      cssText = await inlineImportsAndRewrite(cssText, link.href, useProxy, debug)
 
       let facesOut = ''
       for (const face of cssText.match(FACE_RE) || []) {
@@ -1039,14 +1041,14 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         coveredFamilies.add(family.toLowerCase())
 
         const newFace = /url\(/i.test(srcRaw)
-          ? await inlineUrlsInCssBlock(face, link.href, useProxy)
+          ? await inlineUrlsInCssBlock(face, link.href, useProxy, debug)
           : face
         facesOut += newFace
       }
 
       if (facesOut.trim()) finalCSS += facesOut
     } catch {
-      console.warn('[SnapDOM] Couldn\'t read stylesheet:', link.href)
+      debugWarn({ debug }, 'Couldn\'t read stylesheet:', link.href)
     }
   }
 
@@ -1062,7 +1064,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     useProxy,
     iconMatchers,
     visitedSheets: new Set(),
-    depth: 0
+    depth: 0,
+    debug
   }
 
   // Constructed/adopted sheets do not appear in document.styleSheets, but their faces
@@ -1092,7 +1095,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   for (const p of provisionalFaces) {
     if (coveredFamilies.has(p.family)) continue
     finalCSS += /url\(/i.test(p.srcRaw)
-      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy)
+      ? await inlineUrlsInCssBlock(p.block, p.baseHref, useProxy, debug)
       : p.block
   }
 
@@ -1116,7 +1119,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
           b64 = cache.resource.get(f._snapdomSrc)
         } else {
           try {
-            const r = await snapFetch(f._snapdomSrc, { as: 'dataURL', useProxy, silent: true })
+            const r = await snapFetch(f._snapdomSrc, { as: 'dataURL', useProxy })
             if (r.ok && typeof r.data === 'string') {
               b64 = r.data
               cache.resource?.set(f._snapdomSrc, b64)
@@ -1124,7 +1127,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
               continue
             }
           } catch {
-            console.warn('[SnapDOM] Couldn\'t load font file:', f._snapdomSrc)
+            debugWarn({ debug }, 'Couldn\'t load font file:', f._snapdomSrc)
             continue
           }
         }
@@ -1152,7 +1155,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         b64 = cache.resource.get(src)
       } else {
         try {
-          const r = await snapFetch(src, { as: 'dataURL', useProxy, silent: true })
+          const r = await snapFetch(src, { as: 'dataURL', useProxy })
           if (r.ok && typeof r.data === 'string') {
             b64 = r.data
             cache.resource?.set(src, b64)
@@ -1160,7 +1163,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
             continue
           }
         } catch {
-          console.warn('[SnapDOM] Couldn\'t load font file from localFonts:', src)
+          debugWarn({ debug }, 'Couldn\'t load font file from localFonts:', src)
           continue
         }
       }

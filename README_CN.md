@@ -174,6 +174,7 @@ const result = await snapdom(card, {
 | `canvas` | 未设置 | 复用现有 Canvas |
 | `invalidate` | `false` | 在编程修改 CSSOM 等变化后刷新捕获 |
 | `fast` | `true` | 设为 `false` 时，长时间捕获期间页面仍可响应 |
+| `debug` | `false` | 在控制台输出降级和错误信息；关闭时 SnapDOM 不输出日志，可通过 `result.warnings` 查看 |
 
 [完整选项](https://snapdom.dev/docs/options/)还包括阴影、变换、字体、CORS、回退方案和布局校正。
 

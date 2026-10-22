@@ -50,7 +50,7 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
   }
   // Try to inline; never throw — degrade to "none" on failure
   try {
-    const dataUrl = await snapFetch(encodedUrl, { as: 'dataURL', useProxy: options.useProxy })
+    const dataUrl = await snapFetch(encodedUrl, { as: 'dataURL', useProxy: options.useProxy, debug: options.debug })
     // Guard: ensure it actually looks like an image data URL
     if (dataUrl.ok) {
       cache.background.set(cacheKey, dataUrl.data)

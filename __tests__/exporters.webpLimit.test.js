@@ -35,12 +35,12 @@ const encodesWebp = document.createElement('canvas').toDataURL('image/webp').sta
 describe.skipIf(!encodesWebp)('WebP export past the 16383px side limit', () => {
   test('toWebp() scales a tall capture down to an image that loads', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const result = await snapdom(mount(80, 17300), { dpr: 1, burst: false })
+    const result = await snapdom(mount(80, 17300), { dpr: 1, burst: false, debug: true })
     const img = await result.toWebp()
     expect(img.src.startsWith('data:image/webp')).toBe(true)
     // Aspect ratio is kept: 80 * 16383 / 17300 = 75.7.
     expect([img.naturalWidth, img.naturalHeight]).toEqual([75, WEBP_MAX_SIDE])
-    expect(warn.mock.calls.some(([msg]) => /WebP/.test(String(msg)))).toBe(true)
+    expect(warn.mock.calls.some((args) => /WebP/.test(args.join(' ')))).toBe(true)
   }, 60_000)
 
   test('download({ format: "webp" }) writes a non-empty file', async () => {
