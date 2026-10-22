@@ -181,6 +181,12 @@ const TABLE_TAGS = new Set(['table', 'thead', 'tbody', 'tfoot', 'tr', 'td', 'th'
 const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed', 'object', 'input', 'textarea', 'select'])
 // Width longhands we never freeze as a hard value when softening (physical + logical).
 const HARD_WIDTH_PROPS = new Set(['width', 'max-width', 'inline-size', 'max-inline-size'])
+// MathML token elements are sized by their glyph. WebKit picks the italic glyph of an <mi>
+// (mathvariant) while it computes the token's preferred width, and with the token and its
+// containers all carrying a frozen width that pass never runs: the formula captured in upright
+// letters. Measured in Playwright WebKit on demos/d-text-layout.html. Pinned by
+// __tests__/snapdom.mathmlTokens.test.js.
+const MATHML_TOKEN_TAGS = new Set(['mi', 'mn', 'mo', 'ms', 'mtext'])
 // Min-width longhands: kept verbatim when authored (or set to 0 by #406 on flex/grid items).
 const MIN_WIDTH_PROPS = new Set(['min-width', 'min-inline-size'])
 
@@ -352,6 +358,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
     if (shouldIgnoreProp(prop)) continue
     if (isRedundantLogicalProp(prop, snapshot)) continue
     const value = snapshot[prop]
+    if (HARD_WIDTH_PROPS.has(prop) && MATHML_TOKEN_TAGS.has(tagName)) continue
     if (soften) {
       if (HARD_WIDTH_PROPS.has(prop)) continue // never freeze a content/algorithm width
       if (MIN_WIDTH_PROPS.has(prop)) {         // keep an authored min-width verbatim
