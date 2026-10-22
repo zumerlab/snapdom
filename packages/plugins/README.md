@@ -538,11 +538,11 @@ Run `npm run compile` and `npm run site` from the monorepo root, then open `/sho
 npm run bump:plugins:dry
 npm run bump:plugins
 # review packages/plugins/CHANGELOG.md
-npm run release:plugins:push
+npm run release:plugins
 npm run publish:plugins
 ```
 
-`release:plugins:push` commits the plugin version, the lockfile and the changelog, then pushes. `publish:plugins` runs the PDF and vector checks, then publishes only `@zumer/snapdom-plugins` under `latest`. `bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
+`release:plugins` commits the plugin version, the lockfile and the changelog, then pushes. `publish:plugins` runs the PDF and vector checks, then publishes only `@zumer/snapdom-plugins` under `latest`. `bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
 
 ## License
 
