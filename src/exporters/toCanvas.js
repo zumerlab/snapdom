@@ -874,10 +874,12 @@ export async function toCanvas(url, options) {
     // a border on its own and drops some: at devicePixelRatio 2.727 the 1px boxes of the
     // issue's demo lost their left and right sides at 1x. Rasterizing at the grid and
     // resampling keeps every edge, the way a screenshot of the page scaled down would.
-    // Chromium antialiases those borders and needs nothing.
+    // Chromium antialiases those borders and needs nothing. The grid is 1 at DPR 1, and an
+    // export below it (scale 0.5) lost 18 of 40 edges the same way. Pinned by
+    // __tests__/exporter.toCanvas.downscaledBorders.test.js.
     let fine = null
     const grid = options.__layoutZoom || 1
-    if (!srcCanvas && grid > 1 && isFirefox()) {
+    if (!srcCanvas && isFirefox()) {
       const f = grid * refW / (outW * dpr)
       const fw = Math.round(outW * dpr * f), fh = Math.round(outH * dpr * f)
       if (f > 1.01 && fw <= MAX_RASTER_SIDE && fh <= MAX_RASTER_SIDE && fw * fh <= MAX_RASTER_AREA) fine = { w: fw, h: fh }
