@@ -30,8 +30,9 @@ const { PNG } = require('pngjs')
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const OUT = join(ROOT, 'output/live-parity')
 
-// A pixel differs when its channels differ by more than this in total: font hinting between
-// the page and the svg image moves edge pixels by a few levels, a real defect by far more.
+// A pixel differs when its channels differ by more than this in total, from every pixel of
+// the 3x3 around it in the capture: font hinting between the page and the svg image moves
+// edge pixels by a few levels and up to a pixel, a real defect by far more.
 const PIXEL_DELTA = 48
 // Demos above this share of differing pixels get their images written for review.
 const REPORT_RATIO = 0.005
@@ -175,10 +176,22 @@ function compare(live, cap, ox, oy, backdrop, crop, stride = 1) {
     for (let x = 0; x < w; x += stride) {
       seen++
       const i = ((y + crop.y) * live.width + x + crop.x) * 4
-      const j = ((y + oy) * cap.width + x + ox) * 4
-      const a = cap.data[j + 3] / 255
-      const c = [cap.data[j] * a + br * (1 - a), cap.data[j + 1] * a + bg * (1 - a), cap.data[j + 2] * a + bb * (1 - a)]
-      const d = Math.abs(live.data[i] - c[0]) + Math.abs(live.data[i + 1] - c[1]) + Math.abs(live.data[i + 2] - c[2])
+      // A pixel differs only when no pixel of the 3x3 around it in the capture matches it:
+      // WebKit places text after an inline box up to half a pixel off and draws a dashed
+      // border's dashes in another phase, which marked whole paragraphs and every box edge
+      // without anything a reader could see. A missing, extra or shifted box still differs.
+      let d = Infinity
+      for (let ny = -1; ny <= 1 && d > PIXEL_DELTA; ny++) {
+        for (let nx = -1; nx <= 1 && d > PIXEL_DELTA; nx++) {
+          const yy = y + oy + ny, xx = x + ox + nx
+          if (yy < 0 || xx < 0 || yy >= cap.height || xx >= cap.width) continue
+          const jj = (yy * cap.width + xx) * 4
+          const a = cap.data[jj + 3] / 255
+          d = Math.min(d, Math.abs(live.data[i] - (cap.data[jj] * a + br * (1 - a))) +
+            Math.abs(live.data[i + 1] - (cap.data[jj + 1] * a + bg * (1 - a))) +
+            Math.abs(live.data[i + 2] - (cap.data[jj + 2] * a + bb * (1 - a))))
+        }
+      }
       if (d > PIXEL_DELTA) bad++
       if (!diff) continue
       const k = (y * w + x) * 4
