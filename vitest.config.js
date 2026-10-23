@@ -54,15 +54,18 @@ const crossOrigin = (() => {
     server.unref() // must not keep the run alive after the last test
     port = server.address().port
   }
-  async function serve(ext, type, body, cors = false) {
+  // `name` lets a test know a URL before it serves the file (a sheet that imports one served
+  // after it). Guessing the next running index raced every other file serving at once: under
+  // BROWSER=all the guessed index went to another test's sheet.
+  async function serve(ext, type, body, cors = false, name = null) {
     if (!server) await start()
-    const path = `/${files.size}.${ext}`
+    const path = `/${name ?? files.size}.${ext}`
     files.set(path, { type, body, cors })
     return `http://127.0.0.1:${port}${path}`
   }
   return {
     commands: {
-      serveCrossOriginCss: (_ctx, css, { cors = false } = {}) => serve('css', 'text/css', String(css), cors),
+      serveCrossOriginCss: (_ctx, css, { cors = false, name = null } = {}) => serve('css', 'text/css', String(css), cors, name),
       async serveCrossOriginJpeg(_ctx, file) {
         const { readFile } = await import('node:fs/promises')
         return serve('jpg', 'image/jpeg', await readFile(new URL(file, import.meta.url)))

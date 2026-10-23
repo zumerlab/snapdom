@@ -38,13 +38,13 @@ describe('cross-origin font stylesheets with @import', () => {
   })
 
   it('stops at a sheet that imports itself back, and says so under debug', async () => {
-    // The server names files by a running index, so the next two URLs are known in advance:
-    // a imports b, b imports a.
+    // a imports b, b imports a. b is named before it is served so a can point at it; a
+    // guessed running index raced the other files serving sheets at the same time.
+    const tag = `loop-${Math.random().toString(36).slice(2)}`
     const probe = await commands.serveCrossOriginCss('')
-    const n = Number(probe.match(/\/(\d+)\.css$/)[1])
-    const at = (i) => probe.replace(/\d+\.css$/, `${i}.css`)
-    const a = await commands.serveCrossOriginCss(`@import url("${at(n + 2)}");`, { cors: true })
-    await commands.serveCrossOriginCss(`@import url("${a}");${FACE}`, { cors: true })
+    const b = probe.replace(/\/[^/]+\.css$/, `/${tag}-b.css`)
+    const a = await commands.serveCrossOriginCss(`@import url("${b}");`, { cors: true, name: `${tag}-a` })
+    await commands.serveCrossOriginCss(`@import url("${a}");${FACE}`, { cors: true, name: `${tag}-b` })
 
     const link = document.createElement('link')
     link.rel = 'stylesheet'
