@@ -172,11 +172,15 @@ function applyProxy(url, useProxy) {
   return `${useProxy}${sep}url=${encodeURIComponent(url)}`
 }
 
-/** FileReader round-trip. Rejects with `read_failed`, which the caller reports as a network error. */
+/** FileReader round-trip. Rejects with `read_failed`, which the caller reports as a network error.
+ *  The header loses its whitespace: Firefox copies the response's content type verbatim
+ *  (cdnjs serves fonts as `application/octet-stream; charset=utf-8`), and the space ended an
+ *  unquoted `url(data:…)` in the embedded @font-face, so the face was dropped and the text fell
+ *  back (d22, Firefox). Pinned by __tests__/module.snapFetch.dataUrlHeader.test.js. */
 function blobToDataURL(blob) {
   return new Promise((res, rej) => {
     const fr = new FileReader()
-    fr.onload = () => res(String(fr.result || ''))
+    fr.onload = () => res(String(fr.result || '').replace(/^data:[^,]*/, (head) => head.replace(/\s+/g, '')))
     fr.onerror = () => rej(new Error('read_failed'))
     fr.readAsDataURL(blob)
   })
