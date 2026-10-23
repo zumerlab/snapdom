@@ -10,6 +10,9 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { toCanvas } from '../src/exporters/toCanvas.js'
 import { isSafari } from '../src/utils/browser.js'
+// Draws of the svg onto a raster, without WebKit's paint probe: the probe reads strips of
+// eight source rows (inkProbe, toCanvas.js), which a band never is.
+const drawsOf = (spy) => spy.mock.calls.filter((a) => !(a.length === 9 && a[4] <= 8)).length
 
 let el = null
 afterEach(() => { el?.remove(); el = null; vi.restoreAllMocks() })
@@ -60,10 +63,9 @@ function differing(a, b) {
 describe('toCanvas — banded draw of large captures', () => {
   it('is drawn in bands past the area gate, and in one draw below it', async () => {
     const url = await snapdom.toRaw(mountTall(), { burst: false })
-    // Safari's waitForImgPaint probe-draws the image into a 16x16 canvas first: count only
-    // the draws that land on the output canvas.
+    // Safari's paint probe draws strips of the image first: drawsOf leaves them out.
     const spy = vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage')
-    const outputDraws = () => spy.mock.instances.filter((c) => c.canvas.width > 16).length
+    const outputDraws = () => drawsOf(spy)
     await toCanvas(url, { scale: 1, dpr: 1 })
     const big = outputDraws()
     spy.mockClear()
@@ -125,7 +127,7 @@ describe('toCanvas — resource-heavy payloads are drawn in one call', () => {
     const url = await snapdom.toRaw(mountPhoto(), { burst: false })
     const spy = vi.spyOn(CanvasRenderingContext2D.prototype, 'drawImage')
     await toCanvas(url, { scale: 1, dpr: 1 })
-    const outputDraws = spy.mock.instances.filter((c) => c.canvas.width > 16).length
+    const outputDraws = drawsOf(spy)
     expect(outputDraws).toBe(1)
   }, 60_000)
 })

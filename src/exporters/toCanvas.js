@@ -407,35 +407,60 @@ export async function fixSafariShadows(svg) {
 // tabs, and a capture must not hang there.
 const frame = () => new Promise(r => { requestAnimationFrame(r); setTimeout(r, 50) })
 
-/** A 16x16 ink test for the Safari paint waits: draws `img` whole and answers whether any
- *  pixel has alpha. Null where a 2d context is unavailable. */
-function inkProbe() {
+/**
+ * The ink test for the Safari paint waits: six full-width strips of `img`, eight source rows
+ * each, spread down its height and drawn at the scale of the real draw. It answers whether
+ * any pixel has alpha, with a signature of the pixels so a wait can tell when they stop
+ * changing. Null where a 2d context is unavailable.
+ *
+ * At the draw's own scale on purpose. A probe that drew the whole svg into 16x16 left WebKit
+ * holding a raster of its colour emoji for that tiny size, keyed by the URL, and every later
+ * draw of the URL, the real one included, came out without them: every capture with an emoji
+ * lost it in Safari 27.0.1 (d5's headings), while toImg, which never probes, kept it. Strips
+ * at the draw's scale give the same pixels as no probe at all; at another scale they still
+ * cost the emoji's sharpness (1155 coloured pixels against 1195 at 2x). No test iframe
+ * reproduces it, an uncomposited page never caches that raster: the live parity check holds
+ * it (d5 on WebKit, `npm run test:parity`), verified in Safari 27.0.1 on 2026-10-23.
+ * @param {HTMLImageElement} img - decoded, so its natural size is known
+ * @param {number} kx - device pixels per source pixel of the real draw, across
+ * @param {number} ky - the same, down
+ */
+function inkProbe(img, kx, ky) {
+  const w = img.naturalWidth, h = img.naturalHeight
+  const rows = Math.min(8, h)
   const probe = document.createElement('canvas')
-  probe.width = 16
-  probe.height = 16
+  probe.width = Math.max(1, Math.ceil(w * kx))
+  probe.height = Math.max(1, Math.ceil(rows * 6 * ky))
   const pctx = probe.getContext('2d', { willReadFrequently: true })
-  if (!pctx) return null
-  return (img) => {
-    pctx.clearRect(0, 0, 16, 16)
-    pctx.drawImage(img, 0, 0, 16, 16)
-    const d = pctx.getImageData(0, 0, 16, 16).data
-    for (let i = 3; i < d.length; i += 4) { if (d[i] > 0) return true }
-    return false
+  if (!pctx || !(w > 0 && h > 0)) return null
+  return () => {
+    pctx.clearRect(0, 0, probe.width, probe.height)
+    for (let s = 0; s < 6; s++) {
+      const y = Math.floor((h - rows) * s / 5)
+      pctx.drawImage(img, 0, y, w, rows, 0, s * rows * ky, w * kx, rows * ky)
+    }
+    const d = pctx.getImageData(0, 0, probe.width, probe.height).data
+    let ink = false, sig = 0
+    for (let i = 3; i < d.length; i += 4) {
+      if (d[i] > 0) ink = true
+      sig = (sig * 31 + d[i - 3] + d[i - 2] * 7 + d[i - 1] * 13 + d[i]) | 0
+    }
+    return { ink, sig }
   }
 }
 
 /**
  * WebKit paints svg-as-image resources late: img.decode() resolves before embedded
  * @font-face fonts (#219770) and nested raster images (#394) are ready, so the first
- * drawImage comes out blank or with fallback-font text. Attach offscreen and probe-draw
- * a tiny canvas until ink appears (bounded) — probing first instead of a blind
- * two-frame wait, because the common case already has ink on the first draw and the
- * fixed wait cost two frames (~33ms) on every Safari export. Svgs that carry
- * fonts/nested images get the longer deadline; a genuinely blank capture just runs
- * out the short one.
+ * drawImage comes out blank or with fallback-font text. Attach offscreen and probe
+ * until ink appears (bounded) — probing first instead of a blind two-frame wait,
+ * because the common case already has ink on the first draw and the fixed wait cost
+ * two frames (~33ms) on every Safari export. Svgs that carry fonts/nested images get
+ * the longer deadline and must also read the same twice; a genuinely blank capture
+ * just runs out the short one.
  * @param {HTMLImageElement} img
- * @param {boolean} verify - Svg has fonts/nested images (longer probe deadline)
- * @param {((img: HTMLImageElement) => boolean) | null} probe - from inkProbe()
+ * @param {boolean} verify - Svg has fonts/nested images (longer deadline, stable reads)
+ * @param {(() => {ink: boolean, sig: number}) | null} probe - from inkProbe()
  * @returns {Promise<boolean>} whether ink was seen (false on deadline, or when unknowable)
  */
 async function waitForImgPaint(img, verify, probe) {
@@ -448,12 +473,20 @@ async function waitForImgPaint(img, verify, probe) {
       await frame()
       return false
     }
+    // With embedded fonts or nested images, ink is not enough: the page's text paints at once
+    // and a nested image lands later, so the first ink accepted d449's iframe raster before
+    // it painted (it arrived 12 ms into the first decode, Safari 27.0.1) and the capture had
+    // a blank where the frame was. Wait for two equal reads in a row instead: +10 to 25 ms
+    // on such an export in Safari, measured against HEAD on d5 and d449. The live parity
+    // check holds it (d449 on WebKit).
     const deadline = performance.now() + (verify ? 600 : 150)
+    let last = null
     for (;;) {
-      let ink
-      try { ink = probe(img) } catch { return false }
-      if (ink) return true
-      if (performance.now() > deadline) return false
+      let read
+      try { read = probe() } catch { return false }
+      if (read.ink && (!verify || read.sig === last)) return true
+      last = read.sig
+      if (performance.now() > deadline) return read.ink
       await frame()
     }
   } finally {
@@ -775,12 +808,6 @@ export async function toCanvas(url, options) {
         channel.port2.postMessage(0)
       })
     }
-    const probe = isSafari() && !srcCanvas ? inkProbe() : null
-    let inkBefore = false
-    if (probe) {
-      inkBefore = await waitForImgPaint(img, needsPaintVerify, probe)
-    }
-
     const natW = srcCanvas ? srcCanvas.width : img.naturalWidth
     const natH = srcCanvas ? srcCanvas.height : img.naturalHeight
 
@@ -885,6 +912,16 @@ export async function toCanvas(url, options) {
       if (f > 1.01 && fw <= MAX_RASTER_SIDE && fh <= MAX_RASTER_SIDE && fw * fh <= MAX_RASTER_AREA) fine = { w: fw, h: fh }
     }
 
+    // The Safari paint waits probe at the scale the draw below will use (see inkProbe).
+    const naturalOnly = shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)
+    const drawW = naturalOnly ? natW : fine ? fine.w : outW * dpr
+    const drawH = naturalOnly ? natH : fine ? fine.h : outH * dpr
+    const probe = isSafari() && !srcCanvas ? inkProbe(img, drawW / Math.max(1, natW), drawH / Math.max(1, natH)) : null
+    let inkBefore = false
+    if (probe) {
+      inkBefore = await waitForImgPaint(img, needsPaintVerify, probe)
+    }
+
     const paint = () => {
       // The dpr scale is for this function's own CSS-pixel draws only. Left on the context it
       // shipped with the canvas: a caller drawing on the result in bitmap pixels (a badge at
@@ -900,7 +937,7 @@ export async function toCanvas(url, options) {
         ctx.restore()
       }
 
-      if (shadowNaturalOnly && (Math.round(outW * dpr) !== natW || Math.round(outH * dpr) !== natH)) {
+      if (naturalOnly) {
         /* c8 ignore start -- WebKit only (shadowNaturalOnly); coverage runs on chromium */
         // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
         // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
@@ -949,8 +986,8 @@ export async function toCanvas(url, options) {
     if (probe && inkBefore && needsPaintVerify) {
       // The pre-draw probe is not predictive of the full-size draw (#394, the other half):
       // WebKit decodes a large nested raster ASYNCHRONOUSLY at a subsampling level picked
-      // from the draw's scale, so the 16x16 probe proved a coarse frame, the real draw asked
-      // for a finer one and painted nothing while it decoded — and until it lands every
+      // from the draw's scale, so a probe at another scale proved a coarse frame, the real
+      // draw asked for a finer one and painted nothing while it decoded — and until it lands every
       // draw, the probe included, is blank (measured: probe ink, then full draw 0, probe 0,
       // both correct 100ms later). Probing AFTER the real draw reads that state exactly:
       // ink now means the frame the draw used was there; blank means wait for it and draw
@@ -961,13 +998,13 @@ export async function toCanvas(url, options) {
       // first capture of that sprite in the page: the first decode of the data: URL is the
       // trigger. Re-verified in real Safari 26.5.1 on 2026-09-02: 100/100 captures identical.
       let ink = true
-      try { ink = probe(img) } catch { /* keep the draw */ }
+      try { ink = probe().ink } catch { /* keep the draw */ }
       if (!ink) {
         /* c8 ignore start -- the WebKit paint race (#219770); the probe exists only on Safari */
         const deadline = performance.now() + 600
         do {
           await frame()
-          try { ink = probe(img) } catch { break }
+          try { ink = probe().ink } catch { break }
         } while (!ink && performance.now() < deadline)
         canvas.width = canvas.width // eslint-disable-line no-self-assign -- resets the bitmap and the transform
         paint()
