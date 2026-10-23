@@ -389,6 +389,16 @@ export async function prepareClone(element, options = {}) {
     // Its containing block stayed in the page too: a percentage min/max size would resolve
     // against the foreignObject instead. No-op unless one of them holds a `%`.
     freezeRootPercentSizes(element, clone, computed)
+    // So did its language. The default fonts, and how a font stack falls back for each
+    // script, depend on it: under <html lang="zh"> Chromium set the same CJK heading 15px
+    // wider than under none, and Firefox switched it from serif to sans-serif, so d42's
+    // heading came out regular and its digits in Times. Firefox and WebKit honour it inside
+    // the svg; Chromium's svg images keep their default fonts per language (13.8px off with
+    // or without it, `xml:lang` too). Pinned by __tests__/core.prepare.lang.test.js.
+    if (!clone.hasAttribute('lang')) {
+      const lang = element.closest?.('[lang]')?.getAttribute('lang') ?? element.ownerDocument?.documentElement?.getAttribute('lang')
+      if (lang) clone.setAttribute('lang', lang)
+    }
   }
 
   // #75: a <pre>'s top margin pushed its last line out of the capture box.
