@@ -49,6 +49,8 @@ const DEMOS = {
   'd-compress-codecs': { options: { compress: true }, setup: async () => { try { await window.__ready } catch { /* best-effort */ } } },
   'd-compress': { setup: async () => { await Promise.allSettled([...document.querySelectorAll('#target img')].map((im) => im.decode?.())) } },
   'd10-multi-background-text': { setup: () => until(() => document.querySelector('body > img')) },
+  // Appends its own toSvg capture to the body on load: wait until that image has painted.
+  'd60-saltosdelinea': { setup: async () => { await until(() => document.querySelector('body > img')); await document.querySelector('body > img')?.decode?.().catch(() => {}) } },
   'd12-backgrounds-test': {
     setup: () => until(() => document.querySelector('#output')?.children.length >= document.querySelectorAll('.test-node').length),
   },
@@ -80,6 +82,8 @@ const LIMITS = {
   'd498-layout-misalignment': 'headless Chromium paints no classic scrollbar in the reference',
   'd45-scrollbar-styles': 'headless Chromium paints no classic scrollbar in the reference',
   'd508-snapped-borders': 'a fractional zoom on an ancestor: compared after rescaling, off by sub-pixels',
+  'd11-toblob-test': 'a fixed element outside #target paints over its box in the reference',
+  'd42-nested-line-clamp': "a native button; Chromium's svg images ignore per-language default fonts",
 }
 
 const MIME = {
