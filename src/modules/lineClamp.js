@@ -10,6 +10,8 @@
  * @module lineClamp
  */
 
+import { isSafari } from '../utils/browser.js'
+
 /**
  * Bake text truncation for the element AND all descendants that CSS would
  * truncate: multi-line `-webkit-line-clamp` and single-line
@@ -143,11 +145,24 @@ export function textEllipsis(el, cs) {
   // Mutates the live element's text nodes in place (never textContent, #485).
   const text = textNodeWriter(el)
   const original = text.text
+  // The browser cuts at the line's END edge, so what stays visible is whatever sits at its
+  // start edge. When the text runs against the box's direction (Arabic in a left-to-right
+  // box, English in a right-to-left one) that is the LOGICAL END of the text, and keeping
+  // the prefix captured the other end of the string.
+  const keepEnd = startsWithLogicalEnd(el, cs, text.nodes)
+  const keep = (k) => {
+    if (!keepEnd) {
+      const i = safeCut(original, k)
+      return original.slice(0, i) + joiner(original, i) + '…'
+    }
+    const i = safeStart(original, original.length - k)
+    return joiner(original, i) + original.slice(i) + '…'
+  }
 
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    text.write(original.slice(0, safeCut(original, mid)) + '…')
+    text.write(keep(mid))
     if (el.scrollWidth <= el.clientWidth + 0.5) {
       best = mid; lo = mid + 1
     } else {
@@ -155,7 +170,7 @@ export function textEllipsis(el, cs) {
     }
   }
 
-  const written = (best >= 0 ? original.slice(0, safeCut(original, best)) : '') + '…'
+  const written = best >= 0 ? keep(best) : '…'
   text.write(written)
 
   return undoText(el, written, text)
@@ -200,6 +215,7 @@ function textNodeWriter(el) {
   }
   const original = nodes.map((n) => n.data)
   return {
+    nodes,
     text: original.join(''),
     write(value) {
       nodes[0].data = value
@@ -220,6 +236,67 @@ function safeCut(text, n) {
   if (n <= 0 || n >= text.length) return n
   const c = text.charCodeAt(n - 1)
   return c >= 0xd800 && c <= 0xdbff ? n - 1 : n
+}
+
+/** The suffix counterpart of safeCut: a start index that never orphans a low surrogate. */
+function safeStart(text, n) {
+  if (n <= 0 || n >= text.length) return n
+  const c = text.charCodeAt(n)
+  return c >= 0xdc00 && c <= 0xdfff ? n - 1 : n
+}
+
+// Scripts whose letters join (Arabic, Syriac, Thaana, N'Ko, Mongolian and the Arabic
+// presentation forms).
+const JOINING = /[\u0600-\u08FF\u1800-\u18AF\uFB50-\uFDFF\uFE70-\uFEFF]/
+
+/**
+ * A zero-width joiner when the cut at `i` splits a word of a joining script. Chromium and
+ * Firefox truncate the shaped line, so the letter at the cut keeps its joined form; cut in
+ * the text, it took its isolated or final form, wider, and the ellipsis fit one character
+ * fewer than the page's (Arabic in a 220px box). WebKit reshapes the truncated text itself
+ * and matches the plain cut, so it gets none.
+ */
+function joiner(text, i) {
+  return i > 0 && i < text.length && JOINING.test(text[i - 1]) && JOINING.test(text[i]) && !isSafari()
+    ? '\u200D'
+    : ''
+}
+
+/**
+ * Whether the line's start edge shows the logical end of the text: its last visible
+ * character sits nearer that edge than its first. Two range reads, only on boxes that
+ * overflow with an ellipsis. Pinned by __tests__/snapdom.rtl.test.js.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} cs
+ * @param {Text[]} nodes - the element's text nodes, in order
+ */
+function startsWithLogicalEnd(el, cs, nodes) {
+  let first = null, last = null
+  for (const n of nodes) {
+    const a = n.data.search(/\S/)
+    if (a < 0) continue
+    if (!first) first = [n, a]
+    last = [n, n.data.length - n.data.trimEnd().length]
+  }
+  if (!first) return false
+  const range = el.ownerDocument.createRange()
+  const rectOf = (node, start, end) => {
+    range.setStart(node, start)
+    range.setEnd(node, end)
+    return range.getBoundingClientRect()
+  }
+  const [fn, fa] = first
+  const [ln, trail] = last
+  const lastEnd = ln.data.length - trail
+  const head = rectOf(fn, fa, Math.min(fn.data.length, fa + 1))
+  const tail = rectOf(ln, Math.max(0, lastEnd - 1), lastEnd)
+  const box = el.getBoundingClientRect()
+  if (cs.direction === 'rtl') {
+    const edge = box.right - (parseFloat(cs.borderRightWidth) || 0) - (parseFloat(cs.paddingRight) || 0)
+    return Math.abs(tail.right - edge) < Math.abs(head.right - edge)
+  }
+  const edge = box.left + (parseFloat(cs.borderLeftWidth) || 0) + (parseFloat(cs.paddingLeft) || 0)
+  return Math.abs(tail.left - edge) < Math.abs(head.left - edge)
 }
 
 /** `-webkit-line-clamp` or `line-clamp` as a positive integer, 0 when neither is set. */

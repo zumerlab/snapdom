@@ -566,6 +566,10 @@ export function wrapScrolledClone(cloneNode, originalNode, nodeMap, styleCache) 
   // lets inherited props flow from the parent again (inline style beats the type selector)
   // while keeping non-inherited props at initial, so the wrapper stays visually transparent.
   inner.style.all = 'unset'
+  // `all` leaves `direction` alone, so baseCSS's `div{direction:ltr}` won over the
+  // scroller's: a right-to-left scroller lost its order and the translate pushed its
+  // content the wrong way, leaving a blank band where the page shows the scrolled items.
+  inner.style.direction = 'inherit'
   inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`
   inner.style.willChange = 'transform'
   inner.style.display = 'inline-block'

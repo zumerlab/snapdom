@@ -62,6 +62,23 @@ function bodyExtent(scroll, boxEnd, start, end) {
   return scroll > boxEnd + 0.5 ? scroll - start : end - start
 }
 
+/**
+ * The page's canvas colour as a declaration for a body capture's container: <html>'s
+ * background, or the body's when <html> has none, which is the box CSS propagates to the
+ * whole canvas. The clone paints the body box only, so the margins and the overflow a body
+ * capture keeps came out transparent where the page shows that colour (the left spill of a
+ * right-to-left page). Colour only: a propagated image keeps painting the body box.
+ * Pinned by __tests__/snapdom.rtl.test.js.
+ * @param {Document} doc
+ * @returns {string}
+ */
+function canvasBackground(doc) {
+  const visible = (c) => c && c !== 'transparent' && !/^rgba\(.*,\s*0\)$/.test(c)
+  const html = getStyle(doc.documentElement).backgroundColor
+  const color = visible(html) ? html : getStyle(doc.body).backgroundColor
+  return visible(color) ? `;background-color:${color} !important` : ''
+}
+
 /** A style signature (getStyleKey, utils/css.js) holding something that paints past the box. */
 const OUTER_INK_SIGNATURE = /(?:^|;)(?:box-shadow|text-shadow|outline-style|filter|-webkit-filter):/
 
@@ -665,7 +682,13 @@ export async function composeAndSerialize(state, ex) {
     // the cascade to importance.
     ((padL !== 0 || padT !== 0) ? `;padding:${padT}px 0 0 ${padL}px !important` : '') +
     // !important for the same `all:initial` serialization order as the padding.
-    (layoutZoom !== 1 ? `;zoom:${layoutZoom} !important` : '')
+    (layoutZoom !== 1 ? `;zoom:${layoutZoom} !important` : '') +
+    // `all` leaves `direction` alone, and baseCSS's per-tag defaults inherit the page's: on
+    // a right-to-left page `div{direction:rtl}` reached this box and right-aligned the clone
+    // inside it, 8px off the padding offset everything else assumes. Pinned by
+    // __tests__/snapdom.rtlPage.test.js.
+    ';direction:ltr !important' +
+    (bodyRoom ? canvasBackground(elDoc) : '')
 
   if (bodyRoom && (padL !== bodyRoom.left || padT !== bodyRoom.top) && state.__session) {
     anchorPagePositioned(state.element, state.nodeMap, state.__session.styleMap, state.styleCache,
