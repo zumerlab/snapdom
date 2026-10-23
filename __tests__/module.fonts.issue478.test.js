@@ -12,7 +12,7 @@
  * has no faces at all.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 
 vi.mock('../src/modules/snapFetch.js', () => ({
@@ -31,7 +31,7 @@ function addFace(css) {
 
 /** The key shape embedCustomFonts expects: family__weight__style__stretchPct */
 function required(family, weight = '400', style = 'normal', stretchPct = 100) {
-  return new Set([`${family}__${weight}__${style}__${stretchPct}`])
+  return new Set([[family, weight, style, stretchPct].join(FONT_KEY_SEP)])
 }
 
 function usedCodepoints(text = 'A') {

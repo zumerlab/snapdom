@@ -1,6 +1,6 @@
 import { it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { invalidateStyleCaches } from '../src/modules/styles.js'
 
@@ -19,7 +19,7 @@ function style(css) {
   mounted.push(node)
   return node
 }
-const required = (family) => ({ required: new Set([`${family}__400__normal__100`]), usedCodepoints: new Set([65]) })
+const required = (family) => ({ required: new Set([[family, '400', 'normal', 100].join(FONT_KEY_SEP)]), usedCodepoints: new Set([65]) })
 
 it('reassembles font CSS after a same-task stylesheet edit without discarding resource bytes', async () => {
   const sheet = style('@font-face{font-family:"EnvironmentFace";src:local("Arial")}')

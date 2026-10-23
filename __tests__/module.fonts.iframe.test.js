@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { snapdom } from '../src/api/snapdom.js'
 import { cache } from '../src/core/cache.js'
 
@@ -12,7 +12,7 @@ const FAMILY = 'IframeProbeFont'
 const FONT_DATA_URL = 'data:font/woff2;base64,AAAA'
 
 function makeRequired(family, weight = '400', style = 'normal', stretchPct = 100) {
-  return new Set([`${family}__${weight}__${style}__${stretchPct}`])
+  return new Set([[family, weight, style, stretchPct].join(FONT_KEY_SEP)])
 }
 
 function makeUsedCodepoints(text = 'A') {

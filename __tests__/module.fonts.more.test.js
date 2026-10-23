@@ -37,10 +37,13 @@ vi.mock('../src/modules/snapFetch.js', () => ({
   }),
 }))
 
-import { embedCustomFonts, ensureFontsReady } from '../src/modules/fonts.js'
+import { embedCustomFonts, ensureFontsReady, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
 import { isInternalNode } from '../src/utils/ownership.js'
+
+// Required-font keys written the readable way; FONT_KEY_SEP is the real separator (#542).
+const key = (k) => k.replaceAll('__', FONT_KEY_SEP)
 
 /* ----------------- helpers dom & utils ------------------ */
 function addLink(href) {
@@ -56,7 +59,7 @@ function addStyle(css) {
   document.head.appendChild(s)
   return s
 }
-const req = (...keys) => new Set(keys)
+const req = (...keys) => new Set(keys.map(key))
 const cps = (t) => new Set([...t].map(ch => ch.codePointAt(0)))
 
 beforeEach(() => {
@@ -139,7 +142,7 @@ describe('embedCustomFonts - external links & heuristics', () => {
     })
 
     const css = await embedCustomFonts({
-      required: new Set(['My Fancy Font__400__normal__100']),
+      required: new Set([key('My Fancy Font__400__normal__100')]),
       usedCodepoints: new Set(['B'.codePointAt(0)]),
     })
 
@@ -183,7 +186,7 @@ describe('embedCustomFonts - cache hits & fetch errors', () => {
     })
 
     const css = await embedCustomFonts({
-      required: new Set(['Bar__400__normal__100']),
+      required: new Set([key('Bar__400__normal__100')]),
       usedCodepoints: new Set(['C'.codePointAt(0)]),
     })
 

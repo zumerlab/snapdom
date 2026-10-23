@@ -271,14 +271,31 @@ function isLikelyFontStylesheet(href, requiredFamilies, allowedDomains = []) {
 }
 
 /**
- * The plain family names inside the required keys ("family__weight__style__stretchPct").
+ * Separates family, weight, style and stretch in a required-font key. It was `__`, which a
+ * family name can hold (Next.js dev's `__nextjs-Geist`, next/font's `__Inter_abc123`): the
+ * split took the wrong parts and the font was never embedded (#542). A family name cannot
+ * hold a control character. Pinned by __tests__/snapdom.issue542.test.js.
+ */
+export const FONT_KEY_SEP = '\x1f'
+
+/**
+ * The family name of a required-font key.
+ * @param {string} key
+ * @returns {string}
+ */
+export function fontKeyFamily(key) {
+  return String(key).split(FONT_KEY_SEP)[0]
+}
+
+/**
+ * The plain family names inside the required keys (family, weight, style, stretchPct).
  * @param {Set<string>} required
  * @returns {Set<string>}
  */
 function familiesFromRequired(required) {
   const out = new Set()
   for (const k of (required || [])) {
-    const fam = String(k).split('__')[0]?.trim()
+    const fam = fontKeyFamily(k).trim()
     if (fam) out.add(fam)
   }
   return out
@@ -831,7 +848,7 @@ export async function embedCustomFonts({
   // `Roboto` against `@font-face { font-family: roboto }` would silently fail to embed.
   const requiredIndex = new Map()
   for (const key of required) {
-    const [fam, w, s, st] = String(key).split('__')
+    const [fam, w, s, st] = String(key).split(FONT_KEY_SEP)
     if (!fam) continue
     const famKey = fam.toLowerCase()
     const arr = requiredIndex.get(famKey) || []
@@ -1222,7 +1239,7 @@ export function collectFontUsage(root, keep) {
     const families = pickAllFamilies(cs.fontFamily)
     if (!families.length) return
     for (const family of families) {
-      required.add(`${family}__${normWeight(cs.fontWeight)}__${normStyle(cs.fontStyle)}__${normStretchPct(cs.fontStretch)}`)
+      required.add([family, normWeight(cs.fontWeight), normStyle(cs.fontStyle), normStretchPct(cs.fontStretch)].join(FONT_KEY_SEP))
     }
   }
   // Same selector gate as inlinePseudoElements: skip the two pseudo style resolutions

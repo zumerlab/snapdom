@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
 
@@ -9,7 +9,7 @@ const REMOTE = 'https://cdn.example.com/evicted-payload.woff2'
 const B64 = 'data:font/woff2;base64,QUFBQQ=='
 
 function required(family, weight = '400', style = 'normal', stretchPct = 100) {
-  return new Set([`${family}__${weight}__${style}__${stretchPct}`])
+  return new Set([[family, weight, style, stretchPct].join(FONT_KEY_SEP)])
 }
 
 /** Minimal FontFaceSet stand-in carrying a _snapdomSrc face. */

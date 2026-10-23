@@ -1,6 +1,9 @@
 import { afterEach, expect, it } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { collectFontUsage } from '../src/modules/fonts.js'
+import { collectFontUsage, FONT_KEY_SEP } from '../src/modules/fonts.js'
+
+// Required-font keys written the readable way; FONT_KEY_SEP is the real separator (#542).
+const key = (k) => k.replaceAll('__', FONT_KEY_SEP)
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })
@@ -22,8 +25,8 @@ it('collects font families and glyphs from nested shadow roots and their pseudos
   nested.attachShadow({ mode: 'open' }).innerHTML =
     '<style>span::before{content:"Ω";font-family:ShadowPseudoFace}</style><span>Ж</span>'
   const usage = collectFontUsage(host)
-  expect([...usage.required]).toContain('ShadowAuditMono__400__normal__100')
-  expect([...usage.required]).toContain('ShadowPseudoFace__400__normal__100')
+  expect([...usage.required]).toContain(key('ShadowAuditMono__400__normal__100'))
+  expect([...usage.required]).toContain(key('ShadowPseudoFace__400__normal__100'))
   expect(usage.usedCodepoints.has('Ж'.codePointAt(0))).toBe(true)
   expect(usage.usedCodepoints.has('Ω'.codePointAt(0))).toBe(true)
 })

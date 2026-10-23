@@ -1,5 +1,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
+
+// Required-font keys written the readable way; FONT_KEY_SEP is the real separator (#542).
+const key = (k) => k.replaceAll('__', FONT_KEY_SEP)
 
 // Text asks for italic 400 in a family that declares italic only at 700 and a normal 400.
 // The italic 700 face matches by nearness, but the engine renders italic 400 by slanting the
@@ -21,7 +24,7 @@ describe('italic requested where the family has only a normal face at that weigh
     document.head.appendChild(style)
 
     const out = await embedCustomFonts({
-      required: new Set(['SlantFam__400__italic__100']),
+      required: new Set([key('SlantFam__400__italic__100')]),
       usedCodepoints: new Set([65]),
     })
     expect(out).toContain('AAAA')

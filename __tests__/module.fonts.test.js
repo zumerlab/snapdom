@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { iconToImage, embedCustomFonts } from '../src/modules/fonts.js'
+import { iconToImage, embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
+
+// Required-font keys written the readable way; FONT_KEY_SEP is the real separator (#542).
+const key = (k) => k.replaceAll('__', FONT_KEY_SEP)
 
 vi.mock('../src/modules/snapFetch.js', () => ({
   snapFetch: vi.fn(),
@@ -33,7 +36,7 @@ function addFontStylesheet(href = 'https://cdn.example.com/fonts.css') {
 
 // Helpers nuevos para la API smart
 function makeRequired(family, weight='400', style='normal', stretchPct=100) {
-  const key = `${family}__${weight}__${style}__${stretchPct}`
+  const key = [family, weight, style, stretchPct].join(FONT_KEY_SEP)
   return new Set([key])
 }
 
@@ -311,7 +314,7 @@ describe('embedCustomFonts - single weight fallback', () => {
 
     // Required variants:
     // ask for 700 normal stretch=100% (our faceMatchesRequired must accept nearest=400)
-    const required = new Set(['Mansalva__700__normal__100'])
+    const required = new Set([key('Mansalva__700__normal__100')])
 
     // Used codepoints: any latin char; we keep within declared unicode-range
     const usedCodepoints = new Set([65]) // 'A'

@@ -39,9 +39,12 @@ vi.mock('../src/modules/snapFetch.js', () => ({
 }))
 
 // ====== SUT + deps ======
-import { embedCustomFonts, collectUsedFontVariants } from '../src/modules/fonts.js'
+import { embedCustomFonts, collectUsedFontVariants, fontKeyFamily, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
+
+// Required-font keys written the readable way; FONT_KEY_SEP is the real separator (#542).
+const key = (k) => k.replaceAll('__', FONT_KEY_SEP)
 
 // ====== utilidades locales ======
 function addStyle (css) {
@@ -144,7 +147,7 @@ describe('embedCustomFonts – unicode-range & helpers', () => {
     })
 
     const css = await embedCustomFonts({
-      required: new Set(['CyrillicOnly__400__normal__100']),
+      required: new Set([key('CyrillicOnly__400__normal__100')]),
       usedCodepoints: new Set([0x0410]) // 'А' cirílica ⇒ intersecta
     })
 
@@ -170,7 +173,7 @@ describe('embedCustomFonts – cache.resource short-circuit', () => {
       }`)
 
     const css = await embedCustomFonts({
-      required: new Set(['Foo__400__normal__100']),
+      required: new Set([key('Foo__400__normal__100')]),
       usedCodepoints: new Set([0x41])
     })
 
@@ -196,7 +199,7 @@ describe('document.fonts con _snapdomSrc', () => {
     })
 
     const css = await embedCustomFonts({
-      required: new Set(['DynFont__400__normal__100']),
+      required: new Set([key('DynFont__400__normal__100')]),
       usedCodepoints: new Set([0x41])
     })
 
@@ -212,7 +215,7 @@ describe('document.fonts con _snapdomSrc', () => {
     ])
 
     const css = await embedCustomFonts({
-      required: new Set(['DynData__400__normal__100']),
+      required: new Set([key('DynData__400__normal__100')]),
       usedCodepoints: new Set([0x41])
     })
 
@@ -232,7 +235,7 @@ describe('document.fonts con _snapdomSrc', () => {
     })
 
     const css = await embedCustomFonts({
-      required: new Set(['DynFail__400__normal__100']),
+      required: new Set([key('DynFail__400__normal__100')]),
       usedCodepoints: new Set([0x41])
     })
 
@@ -254,7 +257,7 @@ describe('collectUsedFontVariants – full fallback chain (#357)', () => {
     document.body.appendChild(el)
 
     const variants = collectUsedFontVariants(el)
-    const families = new Set([...variants].map(k => String(k).split('__')[0]))
+    const families = new Set([...variants].map(k => fontKeyFamily(k)))
 
     expect(families.has('PrimaryFont')).toBe(true)
     expect(families.has('FallbackFont')).toBe(true)
@@ -268,7 +271,7 @@ describe('collectUsedFontVariants – full fallback chain (#357)', () => {
     document.body.appendChild(el)
 
     const variants = collectUsedFontVariants(el)
-    const families = new Set([...variants].map(k => String(k).split('__')[0]))
+    const families = new Set([...variants].map(k => fontKeyFamily(k)))
 
     expect(families.has('OnlyFont')).toBe(true)
     expect(families.has('serif')).toBe(false)
@@ -283,7 +286,7 @@ describe('collectUsedFontVariants – full fallback chain (#357)', () => {
     document.body.appendChild(parent)
 
     const variants = collectUsedFontVariants(parent)
-    const families = new Set([...variants].map(k => String(k).split('__')[0]))
+    const families = new Set([...variants].map(k => fontKeyFamily(k)))
 
     expect(families.has('ParentFont')).toBe(true)
     expect(families.has('ChildFont')).toBe(true)

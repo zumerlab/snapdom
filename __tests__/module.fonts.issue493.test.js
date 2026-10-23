@@ -11,10 +11,13 @@ vi.mock('../src/modules/snapFetch.js', () => ({
   }),
 }))
 
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { isIconFont, isIconFontStylesheet, compileIconFontMatchers } from '../src/modules/iconFonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
+
+// Required-font keys written the readable way; FONT_KEY_SEP is the real separator (#542).
+const key = (k) => k.replaceAll('__', FONT_KEY_SEP)
 
 const MIXED = 'https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@100..900&family=Noto+Sans+Symbols:wght@100..900&family=Noto+Sans:ital,wght@0,100..900;1,100..900&display=swap'
 const ICONS_ONLY = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200'
@@ -31,7 +34,7 @@ function addLink(href) {
   document.head.appendChild(link)
   return link
 }
-const req = (...keys) => new Set(keys)
+const req = (...keys) => new Set(keys.map(key))
 const cps = (t) => new Set([...t].map((ch) => ch.codePointAt(0)))
 
 beforeEach(() => {

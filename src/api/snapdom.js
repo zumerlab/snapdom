@@ -15,7 +15,7 @@ import { isSafari, nextFrame } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
-import { collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
+import { collectFontUsage, ensureFontsReady, fontKeyFamily } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
@@ -206,7 +206,7 @@ snapdom.capture = async (el, context, _token) => {
         const usage = collectFontUsage(el)
         if (!context.clip) context.__fontUsage = usage
         const required = usage.required
-        let families = new Set([...required].map(k => String(k).split('__')[0]).filter(Boolean))
+        let families = new Set([...required].map(fontKeyFamily).filter(Boolean))
         if (context.embedFonts === 'auto') {
           families = new Set([...families].filter((f) => docFamilies.has(f.toLowerCase())))
           if (families.size === 0) throw null

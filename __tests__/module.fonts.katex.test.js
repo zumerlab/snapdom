@@ -50,9 +50,12 @@ vi.mock('../src/modules/snapFetch.js', () => ({
   })
 }))
 
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
+
+// Required-font keys written the readable way; FONT_KEY_SEP is the real separator (#542).
+const key = (k) => k.replaceAll('__', FONT_KEY_SEP)
 
 function addLink(href) {
   const link = document.createElement('link')
@@ -62,7 +65,7 @@ function addLink(href) {
   return link
 }
 
-const req = (...keys) => new Set(keys)
+const req = (...keys) => new Set(keys.map(key))
 const cps = (t) => new Set([...t].map((ch) => ch.codePointAt(0)))
 
 beforeEach(() => {

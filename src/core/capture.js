@@ -14,7 +14,7 @@ import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { isSafari } from '../utils/index.js'
 import { createSlicer } from '../utils/browser.js'
-import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
+import { embedCustomFonts, collectFontUsage, ensureFontsReady, fontKeyFamily } from '../modules/fonts.js'
 import { cache } from '../core/cache.js'
 import { createCaptureSession } from './session.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
@@ -282,12 +282,12 @@ export async function captureDOM(element, options) {
           for (const f of ownerDoc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase())
         } catch { /* no Font Loading API — treat as no webfonts */ }
         const usesWebfont = docFamilies.size > 0 &&
-          Array.from(required).some((k) => docFamilies.has(String(k).split('__')[0].toLowerCase()))
+          Array.from(required).some((k) => docFamilies.has(fontKeyFamily(k).toLowerCase()))
         if (!usesWebfont) return
       }
       if (isSafari()) {
         const families = new Set(
-          Array.from(required).map((k) => String(k).split('__')[0]).filter(Boolean)
+          Array.from(required).map(fontKeyFamily).filter(Boolean)
         )
         await ensureFontsReady(families, 1, ownerDoc)
       }

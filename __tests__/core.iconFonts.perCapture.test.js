@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
-import { embedCustomFonts } from '../src/modules/fonts.js'
+import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { createContext } from '../src/core/context.js'
 import { compileIconFontMatchers } from '../src/modules/iconFonts.js'
 
@@ -28,7 +28,7 @@ afterEach(() => {
   styleEl?.remove()
 })
 
-const required = new Set([`${FAMILY}__400__normal__100`])
+const required = new Set([[FAMILY, '400', 'normal', 100].join(FONT_KEY_SEP)])
 
 describe('iconFonts reaches the embed pass per capture', () => {
   it('embeds the family when no iconFonts option names it', async () => {
