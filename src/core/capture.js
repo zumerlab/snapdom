@@ -11,7 +11,7 @@ import { prepareClone } from './prepare.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { emulateBackdropFilters } from '../modules/backdropFilter.js'
-import { ligatureIconToImage } from '../modules/iconFonts.js'
+import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { isSafari } from '../utils/index.js'
 import { createSlicer } from '../utils/browser.js'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady } from '../modules/fonts.js'
@@ -211,6 +211,10 @@ export async function captureDOM(element, options) {
   }
   try {
     await ligatureIconToImage(state.clone, state.element, state.nodeMap)
+  } catch { /* non-blocking */ }
+  try {
+    const styleMap = options.__session?.styleMap
+    if (styleMap) pinIconStruts(styleMap.keys(), styleMap, state.nodeMap, state.options.__iconMatchers)
   } catch { /* non-blocking */ }
 
   // Asset phases are network/decode-bound and independent: images ∥ backgrounds ∥ fonts run

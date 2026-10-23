@@ -902,13 +902,21 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
 
       // ---- Content handling (icon-font glyphs / url() / text) ----
       if (isIconFont2 && cleanContent && cleanContent.length === 1) {
-        const { dataUrl, width: w, height: h } =
+        const { dataUrl, height: h, advance, descent } =
           await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color, fontStyle)
         const imgEl = document.createElement('img')
         imgEl.src = dataUrl
-        imgEl.style = `height:${fontSize}px;width:${(w / h) * fontSize}px;object-fit:contain;`
+        // The bitmap starts at the glyph's em-square top, so it is lowered by however far its
+        // bottom reaches under the glyph's baseline. The host keeps its own display and
+        // vertical-align: pinIconStruts (iconFonts.js) holds the icon font's line metrics now,
+        // where #176 forced `inline` + `middle` on every icon host to approximate them, and that
+        // lifted a Material Icons ::before line's text 5px above the page's.
+        // Its width is the glyph's exact advance, not the bitmap's whole pixels: a host frozen
+        // to the glyph's width (Font Awesome's inline-block <i>, 23.25px) wrapped the 24px
+        // image onto a second line, 24px under the page's icon. Pinned by
+        // __tests__/module.iconStrut.test.js.
+        imgEl.style = `height:${fontSize}px;width:${(advance / h) * fontSize}px;object-fit:contain;vertical-align:${-descent}px;`
         pseudoEl.appendChild(imgEl)
-        clone.dataset.snapdomHasIcon = 'true'
       } else if (cleanContent && isImageContent) {
         // content: url(...) / image-set(...) / -webkit-image-set(...) — image-set() used to
         // fall through to the plain-text branch below, rendering the raw CSS source as

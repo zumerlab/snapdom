@@ -110,6 +110,7 @@ describe('iconToImage', () => {
       textBaseline: '',
       fillStyle: '',
       fillText: vi.fn(),
+      measureText: () => ({ actualBoundingBoxAscent: 0 }),
     }))
     toDataURLSpy = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => 'data:image/png;base64,TEST')
 
@@ -127,6 +128,7 @@ describe('iconToImage', () => {
       textBaseline: '',
       fillStyle: '',
       fillText: vi.fn(),
+      measureText: () => ({ actualBoundingBoxAscent: 0 }),
     }
     ctxSpy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context)
     toDataURLSpy = vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockImplementation(() => 'data:image/png;base64,TEST')

@@ -37,7 +37,9 @@ import { debugWarn } from '../utils/debug.js'
  * @param {number} [fontSize=32] - The font size in pixels
  * @param {string} [color="#000"] - The color to use
  * @param {string} [fontStyle="normal"] - The font style
- * @returns {Promise<{dataUrl:string,width:number,height:number}>} Data URL and intrinsic size
+ * @returns {Promise<{dataUrl:string,width:number,height:number,advance:number,descent:number}>} Data
+ *   URL, the bitmap's whole-pixel size, the glyph's exact advance, and how far the bitmap's
+ *   bottom reaches under the glyph's baseline (0 when unknown)
  */
 export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = '#000', fontStyle = 'normal') {
   fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, '')
@@ -76,11 +78,20 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   ctx.textBaseline = 'top'
   ctx.fillStyle = color
   ctx.fillText(unicodeChar, 0, 0)
+  // The bitmap is drawn from the em square's top; on the page the glyph sits on the alphabetic
+  // baseline, this far below that top. Read as the gap between the two baselines, since
+  // Chromium reports no emHeightDescent.
+  const fromTop = ctx.measureText(unicodeChar).actualBoundingBoxAscent
+  ctx.textBaseline = 'alphabetic'
+  const fromBaseline = ctx.measureText(unicodeChar).actualBoundingBoxAscent
+  const descent = height - (fromBaseline - fromTop)
 
   return {
     dataUrl: canvas.toDataURL(),
     width,
-    height
+    height,
+    advance: rect.width,
+    descent: Number.isFinite(descent) ? descent : 0
   }
 }
 

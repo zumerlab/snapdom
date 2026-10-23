@@ -476,13 +476,7 @@ export function applyStyleClass(node, key, keyToClass) {
 
   // Re-apply backgroundImage so it is not lost, when there is one
   const bgImage = node.style?.backgroundImage
-  const hasIcon = node.dataset?.snapdomHasIcon
   if (bgImage && bgImage !== 'none') node.style.backgroundImage = bgImage
-  /* c8 ignore next 4 */
-  if (hasIcon) {
-    node.style.verticalAlign = 'middle'
-    node.style.display = 'inline'
-  }
 }
 
 /**

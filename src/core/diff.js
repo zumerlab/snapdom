@@ -23,7 +23,7 @@ import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
-import { ligatureIconToImage } from '../modules/iconFonts.js'
+import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { universeFor, inlineAllStyles, stylesLeakAcrossSubtrees } from '../modules/styles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
@@ -259,6 +259,9 @@ async function diffCapture(element, state, context) {
     await resolveBlobUrlsInTree(sub, sessionCache)
     sanitizeCloneForXHTML(sub)
     try { await ligatureIconToImage(sub, src, delta) } catch { /* parity with full: non-blocking */ }
+    try {
+      pinIconStruts([sub, ...sub.querySelectorAll('*')], R.styleMap, delta, context.__iconMatchers)
+    } catch { /* parity with full: non-blocking */ }
     await Promise.all([
       inlineImages(sub, context),
       inlineBackgroundImages(src, sub, R.styleCache, context, delta),

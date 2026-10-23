@@ -410,3 +410,97 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = new M
 
   return replaced
 }
+
+const FONT_FAMILY_SIGNATURE = /(?:^|;)font-family:([^;]*)/
+/** The stand-ins pinIconStruts inserted, so a second visit of the same clone adds none. */
+const strutClones = new WeakSet()
+
+/**
+ * Keep an icon font's share of the line in the clone.
+ *
+ * Icon fonts are never embedded, so inside the svg an icon element lays out in the fallback
+ * font, and a line's height and baseline come from the first available font of every inline
+ * box on it, glyph or not. An empty 28px Material Icons <i> made its line 4px taller in
+ * Chromium and WebKit (Times is taller than Material Icons), and the error added up line
+ * after line until the last block fell off the bottom of the capture. Each icon element's
+ * line box is measured once per font in the live document, where the font is loaded, and
+ * reproduced in the clone: the element's own strut is zeroed with `line-height: 0` and a
+ * zero-width inline-block of the measured height, sitting on the measured baseline, stands
+ * in for it. The probe uses the element's exact font stack, so a family the name test
+ * mistakes for an icon font gets the strut it already had. Candidates come from the style
+ * signature, one test per signature. Pinned by __tests__/module.iconStrut.test.js.
+ * @param {Iterable<Element>} clones - the clone nodes to visit: every key of the session's
+ *   styleMap for a full capture, the rebuilt subtree for a differential one
+ * @param {Map<Element, string>} styleMap - clone -> style signature (session.styleMap)
+ * @param {Map<Node, Node>} nodeMap - clone -> source
+ * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
+ * @returns {number} how many elements got a strut
+ */
+export function pinIconStruts(clones, styleMap, nodeMap, matchers) {
+  if (!styleMap?.size) return 0
+  const iconic = new Map()
+  const struts = new Map()
+  let pinned = 0
+  for (const clone of clones) {
+    const key = styleMap.get(clone)
+    if (!key || clone.nodeType !== 1 || strutClones.has(clone.firstChild)) continue
+    let icon = iconic.get(key)
+    if (icon === undefined) {
+      const family = FONT_FAMILY_SIGNATURE.exec(key)?.[1]
+      iconic.set(key, icon = !!family && isIconFont(family, matchers))
+    }
+    if (!icon) continue
+    const pseudo = clone.dataset?.snapdomPseudo
+    const source = pseudo ? nodeMap.get(clone.parentNode) : nodeMap.get(clone)
+    if (source?.nodeType !== 1) continue
+    const cs = getComputedStyle(source, pseudo || null)
+    if (cs.display !== 'inline' && cs.display !== 'inline-block') continue
+    const id = `${cs.fontFamily}|${cs.fontSize}|${cs.fontWeight}|${cs.fontStyle}|${cs.fontStretch}|${cs.lineHeight}`
+    let strut = struts.get(id)
+    if (strut === undefined) struts.set(id, strut = measureStrut(source.ownerDocument, cs))
+    if (!strut) continue
+    const stand = clone.ownerDocument.createElement('span')
+    strutClones.add(stand)
+    stand.style.cssText = `display:inline-block;width:0;height:${strut.height}px;vertical-align:${-strut.descent}px`
+    clone.style.lineHeight = '0'
+    clone.insertBefore(stand, clone.firstChild)
+    if (stand.nextSibling === null) keepSpaceCollapsed(clone, source)
+    pinned++
+  }
+  return pinned
+}
+
+/**
+ * An empty inline is transparent to space collapsing: in "a <i></i> b" the page shows one
+ * space. The stand-in is an atomic inline and keeps both ("Parrafo  con" in the capture), so
+ * when the text before the element ends in a collapsible space, the clone drops the leading
+ * space of the text after it, the one the page collapsed.
+ */
+function keepSpaceCollapsed(clone, source) {
+  const ws = getComputedStyle(source.parentElement || source).whiteSpace
+  if (ws !== 'normal' && ws !== 'nowrap' && ws !== 'pre-line') return
+  const before = clone.previousSibling
+  const after = clone.nextSibling
+  if (before?.nodeType !== 3 || after?.nodeType !== 3) return
+  if (/[ \t\n]$/.test(before.data)) after.data = after.data.replace(/^[ \t\n]+/, '')
+}
+
+/** Height of a line holding only `cs`'s strut, and how far its bottom sits under the baseline. */
+function measureStrut(doc, cs) {
+  const probe = doc.createElement('div')
+  markInternalNode(probe)
+  probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;margin:0;padding:0;border:0;' +
+    `font-family:${cs.fontFamily};font-size:${cs.fontSize};font-weight:${cs.fontWeight};font-style:${cs.fontStyle};` +
+    `font-stretch:${cs.fontStretch};line-height:${cs.lineHeight}`
+  const mark = doc.createElement('span')
+  mark.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline'
+  probe.appendChild(mark)
+  ;(doc.body || doc.documentElement).appendChild(probe)
+  try {
+    const height = probe.getBoundingClientRect().height
+    const baseline = mark.getBoundingClientRect().top - probe.getBoundingClientRect().top
+    return height > 0 ? { height, descent: height - baseline } : null
+  } finally {
+    probe.remove()
+  }
+}
