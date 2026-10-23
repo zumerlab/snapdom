@@ -46,6 +46,25 @@ import {
 } from '../utils/transforms.helpers.js'
 
 /**
+ * Size a body capture along one axis, measured from the body's own border box. `scroll` is
+ * the container's scroll extent and `boxEnd` the end of its in-flow box: past it, the
+ * extent is content overflowing the body (an absolutely placed box, a body of fixed height)
+ * and counts from the body's start; short of it, the difference is only margins around
+ * the body and the body box is the size. Pinned by __tests__/snapdom.bodyExtent.test.js.
+ * @param {number} scroll
+ * @param {number} boxEnd
+ * @param {number} start - body start, relative to the container
+ * @param {number} end - body end, relative to the container
+ * @returns {number}
+ */
+function bodyExtent(scroll, boxEnd, start, end) {
+  return scroll > boxEnd + 0.5 ? scroll - start : end - start
+}
+
+/** A style signature (getStyleKey, utils/css.js) holding something that paints past the box. */
+const OUTER_INK_SIGNATURE = /(?:^|;)(?:box-shadow|text-shadow|outline-style|filter|-webkit-filter):/
+
+/**
  * Intern repeated inline style attributes as attribute-selector rules in the serialized
  * markup. Author inline styles are copied verbatim onto every clone node, so a repetitive
  * tree (tables, lists, grids) serializes the same declaration block thousands of times:
@@ -231,17 +250,69 @@ export async function composeAndSerialize(state, ex) {
   // clone-in-document measurement round-trip entirely.
   const isRoot = !clipWindow && (state.element === elDoc.body || state.element === elDoc.documentElement) &&
     !state.__pinned
+  // What a captured body's descendants paint into the room around it inside <html>, per
+  // side. Null for every other capture.
+  let bodyInk = null
   if (isRoot) {
-    const docH = Math.max(
+    let docH = Math.max(
       state.element.scrollHeight || 0,
       elDoc.documentElement?.scrollHeight || 0,
       elDoc.body?.scrollHeight || 0
     )
-    const docW = Math.max(
+    let docW = Math.max(
       state.element.scrollWidth || 0,
       elDoc.documentElement?.scrollWidth || 0,
       elDoc.body?.scrollWidth || 0
     )
+    // The measurement mount lays the clone out at the document's width, whatever box the
+    // capture ends up with.
+    const layoutW = Math.max(w0, limitDecimals(docW))
+    // A body capture starts at the body's border box, but the document extents also count
+    // what sits around it: the body's own margins and child margins that collapse through
+    // it. Taken as the height, those came back as an empty band at the bottom (8px under a
+    // last child's margin-bottom, 16px with the default body margin). bodyExtent keeps the
+    // document extent only where content really overflows the in-flow box.
+    const isBody = state.element === elDoc.body
+    if (isBody && elDoc.documentElement) {
+      const hr = elDoc.documentElement.getBoundingClientRect()
+      const room = {
+        top: Math.max(0, rect.top - hr.top),
+        right: Math.max(0, hr.right - rect.right),
+        bottom: Math.max(0, hr.bottom - rect.bottom),
+        left: Math.max(0, rect.left - hr.left)
+      }
+      if (outerShadows !== 'subtree' && (room.top || room.right || room.bottom || room.left)) {
+        // Only nodes whose style signature carries an outer effect can ink the room, and
+        // there are far fewer signatures than nodes. On a 600-card body (3001 nodes, 86 with
+        // a shadow, Chromium, 2026-10-23) walking every node cost 1.9 ms of a 57 ms capture,
+        // five computed-style reads each; filtered by signature it costs 0.5 ms. A node
+        // without a signature is measured as before.
+        const styleMap = state.__session?.styleMap
+        const inked = new Map()
+        const candidates = new Map()
+        for (const [clone, source] of state.nodeMap) {
+          const key = styleMap?.get(clone)
+          if (key) {
+            let has = inked.get(key)
+            if (has === undefined) inked.set(key, has = OUTER_INK_SIGNATURE.test(key))
+            if (!has) continue
+          }
+          candidates.set(clone, source)
+        }
+        const ink = measureSubtreeBleed(state.element, candidates, state.styleCache,
+          rect.width > 0 ? w0 / rect.width : 1, rect.height > 0 ? h0 / rect.height : 1)
+        bodyInk = {
+          top: Math.min(ink.top, room.top),
+          right: Math.min(ink.right, room.right),
+          bottom: Math.min(ink.bottom, room.bottom),
+          left: Math.min(ink.left, room.left)
+        }
+      }
+      docH = Math.max(state.element.scrollHeight || 0,
+        bodyExtent(docH, hr.height, rect.top - hr.top, rect.bottom - hr.top))
+      docW = Math.max(state.element.scrollWidth || 0,
+        bodyExtent(docW, hr.width, rect.left - hr.left, rect.right - hr.left))
+    }
     if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
     if (docW > 0) w0 = Math.max(w0, limitDecimals(docW))
     // Also measure clone in a temp container with injected styles (clone may layout differently).
@@ -258,23 +329,30 @@ export async function composeAndSerialize(state, ex) {
       const cssLen = (state.scrollbarCSS || '').length + (state.baseCSS || '').length +
                      (state.fontsCSS || '').length + (state.classCSS || '').length
       const hint = cache.measureHints.get(state.element)
-      if (hint && hint.cssLen === cssLen && hint.w0 === w0 && hint.docH === docH && hint.docW === docW) {
+      if (hint && hint.cssLen === cssLen && hint.w0 === layoutW && hint.docH === docH && hint.docW === docW) {
         if (hint.csh > 0) h0 = Math.max(h0, limitDecimals(hint.csh))
         if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
       } else {
         const wrap = elDoc.createElement('div')
         markInternalNode(wrap)
-        wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
+        wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' + layoutW + 'px!important;overflow:visible!important;visibility:hidden!important;'
         // Shadow DOM: keeps baseCSS's global tag rules from restyling the live page
         // while this mount is attached (#474) — same isolation as reconcileCloneLayout.
         const mShadow = wrap.attachShadow({ mode: 'open' })
         adoptShadowCSS(mShadow, (state.scrollbarCSS || '') + state.baseCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS)
-        mShadow.appendChild(inertMeasurementCopy(state.clone))
+        const copy = mShadow.appendChild(inertMeasurementCopy(state.clone))
         elDoc.body.appendChild(wrap)
-        const csh = wrap.scrollHeight
-        const csw = wrap.scrollWidth
+        let csh = wrap.scrollHeight
+        let csw = wrap.scrollWidth
+        if (isBody) {
+          // Same margins inside the mount: the wrapper plays <html>.
+          const wr = wrap.getBoundingClientRect()
+          const cr = copy.getBoundingClientRect()
+          csh = bodyExtent(csh, wr.height, cr.top - wr.top, cr.bottom - wr.top)
+          csw = bodyExtent(csw, wr.width, cr.left - wr.left, cr.right - wr.left)
+        }
         elDoc.body.removeChild(wrap)
-        cache.measureHints.set(state.element, { cssLen, w0, docH, docW, csh, csw })
+        cache.measureHints.set(state.element, { cssLen, w0: layoutW, docH, docW, csh, csw })
         if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
         if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
       }
@@ -440,9 +518,21 @@ export async function composeAndSerialize(state, ex) {
   // comes out as one. Imported from @frostin/snapdom (element-mirror).
   const perX = rect.width > 0 ? (maxX - minX) / rect.width : 1
   const perY = rect.height > 0 ? (maxY - minY) / rect.height : 1
-  const subtree = outerShadows === 'subtree' && !clipWindow
+  let subtree = outerShadows === 'subtree' && !clipWindow
     ? measureSubtreeBleed(state.element, state.nodeMap, state.styleCache, perX, perY)
     : { top: 0, right: 0, bottom: 0, left: 0 }
+  // A body capture keeps what its descendants paint into the margins around it (d40: a
+  // full-width child's 1px outline lies on the body's right margin), so sizing it from the
+  // body box loses no ink the page shows. Bounded by that room, and net of what the content
+  // measurement above already added, it can never outgrow the document extent it replaced.
+  if (bodyInk) {
+    subtree = {
+      top: bodyInk.top,
+      right: Math.max(0, bodyInk.right - (w0 - rect.width)),
+      bottom: Math.max(0, bodyInk.bottom - (h0 - rect.height)),
+      left: bodyInk.left
+    }
+  }
 
   // A region capture defines its own exact edges — never expand it for root bleed.
   // blur() is not an outer-shadow effect: the root keeps it, so its bleed is
@@ -456,7 +546,12 @@ export async function composeAndSerialize(state, ex) {
         bottom: limitDecimals(Math.max(bleedShadow.bottom, bleedText.bottom, subtree.bottom) + bleedBlur.bottom + bleedOutline.bottom + drop.bleed.bottom),
         left: limitDecimals(Math.max(bleedShadow.left, bleedText.left, subtree.left) + bleedBlur.left + bleedOutline.left + drop.bleed.left)
       }
-      : { top: bleedBlur.top, right: bleedBlur.right, bottom: bleedBlur.bottom, left: bleedBlur.left }
+      : {
+        top: limitDecimals(bleedBlur.top + subtree.top),
+        right: limitDecimals(bleedBlur.right + subtree.right),
+        bottom: limitDecimals(bleedBlur.bottom + subtree.bottom),
+        left: limitDecimals(bleedBlur.left + subtree.left)
+      }
 
   minX = limitDecimals(minX - bleed.left)
   minY = limitDecimals(minY - bleed.top)
