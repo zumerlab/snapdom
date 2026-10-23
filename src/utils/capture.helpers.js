@@ -77,15 +77,68 @@ function findCBAncestor(node, root) {
   for (let a = composedParent(node); a && a !== root; a = composedParent(a)) {
     if ((a?.nodeType !== 1)) break
     const acs = getStyle(a)
-    if (acs.position !== 'static' ||
-        (acs.transform && acs.transform !== 'none') ||
-        (acs.filter && acs.filter !== 'none') ||
-        (acs.backdropFilter && acs.backdropFilter !== 'none') ||
-        (acs.perspective && acs.perspective !== 'none') ||
-        /transform|perspective|filter/.test(acs.willChange || '') ||
-        /layout|paint|strict|content/.test(acs.contain || '')) return a
+    if (acs.position !== 'static' || containsFixed(acs)) return a
   }
   return null
+}
+
+/** Whether a box is the containing block even of fixed descendants. */
+function containsFixed(acs) {
+  return (acs.transform && acs.transform !== 'none') ||
+    (acs.filter && acs.filter !== 'none') ||
+    (acs.backdropFilter && acs.backdropFilter !== 'none') ||
+    (acs.perspective && acs.perspective !== 'none') ||
+    /transform|perspective|filter/.test(acs.willChange || '') ||
+    /layout|paint|strict|content/.test(acs.contain || '')
+}
+
+/** A style signature (getStyleKey, utils/css.js) of an absolute or fixed box. */
+const OUT_OF_FLOW_SIGNATURE = /(?:^|;)position:(absolute|fixed)(?:;|$)/
+
+/**
+ * Move a body capture's page-anchored boxes by the gap between where the foreignObject puts
+ * them and where the page does. An absolute box with no containing block below the body,
+ * and a fixed one, are placed from the page origin live, but from the foreignObject's origin
+ * in the clone, while the body's content starts `dx`,`dy` from there (the room between
+ * <html> and the body, net of bleed padding). They landed 8px low and right with the
+ * default body margin. Computed left/top are used values on all three engines, so the
+ * clone's classes carry them and they win over right/bottom. The new values derive from the
+ * source, so a burst recapture setting them again lands on the same place. Candidates come
+ * from the style signature, one test per signature. Pinned by
+ * __tests__/snapdom.bodyExtent.test.js.
+ * @param {Element} root - the live body
+ * @param {Map<Node, Node>} nodeMap - clone → source
+ * @param {Map<Element, string>} styleMap - clone → style signature
+ * @param {WeakMap<Element, CSSStyleDeclaration>} styleCache
+ * @param {number} dx
+ * @param {number} dy
+ */
+export function anchorPagePositioned(root, nodeMap, styleMap, styleCache, dx, dy) {
+  // A scrolled root has its out-of-flow boxes re-anchored by prepareClone already.
+  if (root.scrollTop || root.scrollLeft) return
+  const rootCs = styleCache.get(root) || getStyle(root)
+  if (containsFixed(rootCs)) return
+  const rootContainsAbsolute = rootCs.position !== 'static'
+  const kinds = new Map()
+  for (const [cloneEl, orig] of nodeMap) {
+    const key = styleMap.get(cloneEl)
+    if (!key) continue
+    let kind = kinds.get(key)
+    if (kind === undefined) kinds.set(key, kind = OUT_OF_FLOW_SIGNATURE.exec(key)?.[1] || '')
+    if (!kind || (kind === 'absolute' && rootContainsAbsolute)) continue
+    if (viewportFrozenClones.has(cloneEl)) continue
+    let anchored = false
+    for (let a = composedParent(orig); a && a !== root && a.nodeType === 1; a = composedParent(a)) {
+      const acs = styleCache.get(a) || getStyle(a)
+      if ((kind === 'absolute' && acs.position !== 'static') || containsFixed(acs)) { anchored = true; break }
+    }
+    if (anchored) continue
+    const cs = styleCache.get(orig) || getStyle(orig)
+    const left = parseFloat(cs.left)
+    const top = parseFloat(cs.top)
+    if (dx && Number.isFinite(left)) cloneEl.style.left = `${left + dx}px`
+    if (dy && Number.isFinite(top)) cloneEl.style.top = `${top + dy}px`
+  }
 }
 
 /**

@@ -29,6 +29,7 @@ import {
   reconcileCloneLayout,
   inertMeasurementCopy,
   adoptShadowCSS,
+  anchorPagePositioned,
   composeResidual2D
 } from '../utils/capture.helpers.js'
 import {
@@ -250,8 +251,9 @@ export async function composeAndSerialize(state, ex) {
   // clone-in-document measurement round-trip entirely.
   const isRoot = !clipWindow && (state.element === elDoc.body || state.element === elDoc.documentElement) &&
     !state.__pinned
-  // What a captured body's descendants paint into the room around it inside <html>, per
-  // side. Null for every other capture.
+  // The room between <html> and a captured body, and what the body's descendants paint
+  // into it, per side. Null for every other capture.
+  let bodyRoom = null
   let bodyInk = null
   if (isRoot) {
     let docH = Math.max(
@@ -281,6 +283,7 @@ export async function composeAndSerialize(state, ex) {
         bottom: Math.max(0, hr.bottom - rect.bottom),
         left: Math.max(0, rect.left - hr.left)
       }
+      bodyRoom = room
       if (outerShadows !== 'subtree' && (room.top || room.right || room.bottom || room.left)) {
         // Only nodes whose style signature carries an outer effect can ink the room, and
         // there are far fewer signatures than nodes. On a 600-card body (3001 nodes, 86 with
@@ -647,6 +650,11 @@ export async function composeAndSerialize(state, ex) {
     ((padL !== 0 || padT !== 0) ? `;padding:${padT}px 0 0 ${padL}px !important` : '') +
     // !important for the same `all:initial` serialization order as the padding.
     (layoutZoom !== 1 ? `;zoom:${layoutZoom} !important` : '')
+
+  if (bodyRoom && (padL !== bodyRoom.left || padT !== bodyRoom.top) && state.__session) {
+    anchorPagePositioned(state.element, state.nodeMap, state.__session.styleMap, state.styleCache,
+      padL - bodyRoom.left, padT - bodyRoom.top)
+  }
 
   //state.clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
   container.appendChild(state.clone)

@@ -56,4 +56,40 @@ describe('a body capture is sized from the body box, not the margins around it',
     const shadow = await captureBody('.c:last-child{box-shadow:0 0 0 30px rgb(0,0,255)}')
     expect([shadow.canvas.width, shadow.canvas.height]).toEqual([shadow.box.width + 16, shadow.box.height + 8])
   })
+
+  describe('page-anchored boxes land where the page puts them', () => {
+    // First opaque pixel of an exact colour, as [x, y] in capture pixels.
+    const find = (canvas, [r, g, b]) => {
+      const d = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const i = (y * canvas.width + x) * 4
+          if (d[i] === r && d[i + 1] === g && d[i + 2] === b && d[i + 3] === 255) return [x, y]
+        }
+      }
+      return null
+    }
+    const BOXES = '<div class="c" style="position:relative"><i style="position:absolute;left:50px;top:10px;width:20px;height:20px;background:rgb(0,255,0)"></i></div>' +
+      '<b class="abs"></b><u style="position:fixed;left:200px;top:40px;width:20px;height:20px;background:rgb(0,0,255)"></u>'
+    const ABS = '.abs{position:absolute;left:100px;top:150px;width:20px;height:20px;background:rgb(255,0,0)}'
+    const expectInPlace = async (css) => {
+      const { canvas, box } = await captureBody(ABS + css, BOXES)
+      const doc = frame.contentDocument
+      // Where the body box sits in the capture: offset by any ink painted left of / above it.
+      const gray = find(canvas, [204, 204, 204])
+      const at = (sel) => {
+        const r = doc.querySelector(sel).getBoundingClientRect()
+        return [Math.round(r.left - box.left) + gray[0], Math.round(r.top - box.top) + gray[1]]
+      }
+      expect(find(canvas, [255, 0, 0])).toEqual(at('b'))
+      expect(find(canvas, [0, 255, 0])).toEqual(at('i'))
+      expect(find(canvas, [0, 0, 255])).toEqual(at('u'))
+    }
+
+    it('with the default body margin', () => expectInPlace(''))
+    it('with uneven body margins', () => expectInPlace('body{margin:30px 0 0 40px}'))
+    it('under a margin-top that collapses through the body', () => expectInPlace('body{margin:0}.c:first-child{margin-top:20px}'))
+    it('when a child inks the margin left of the body', () => expectInPlace('.c:first-child{box-shadow:-6px 0 0 rgb(9,9,9)}'))
+    it('when the body itself is positioned', () => expectInPlace('body{position:relative}'))
+  })
 })
