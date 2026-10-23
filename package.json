@@ -37,6 +37,7 @@
     "test:firefox": "npm run check && REQUIRE_VISUAL=1 BROWSER=firefox node scripts/vitest.mjs run --browser.headless --reporter=verbose",
     "test:webkit": "npm run check && REQUIRE_VISUAL=1 BROWSER=webkit node scripts/vitest.mjs run --browser.headless --reporter=verbose",
     "test:full": "npm run check && REQUIRE_VISUAL=1 BROWSER=all node scripts/vitest.mjs run --browser.headless --reporter=dot",
+    "test:parity": "npm run compile && node scripts/live-parity.mjs",
     "test:visual": "REQUIRE_VISUAL=1 BROWSER=all node scripts/vitest.mjs run __tests__/visual.demos. --browser.headless --reporter=verbose",
     "test:pdf": "node packages/plugins/pdf/test/verify.mjs && node packages/plugins/pdf/test/megacheck.mjs && node packages/plugins/pdf/test/encryptcheck.mjs",
     "test:vector": "node packages/plugins/vector/test/verify-vector.mjs && node packages/plugins/vector/test/verify-h2d.mjs && node packages/plugins/vector/test/verify-plugin.mjs && node packages/plugins/vector/test/verify-mathml.mjs",
