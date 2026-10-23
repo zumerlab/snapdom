@@ -60,7 +60,7 @@ function clampSvgTextRasterSize(svg, options) {
     const nh = Math.max(1, Math.floor(h * f))
     sessionWarn(session, 'raster-clamp', `capture ${Math.round(w)}x${Math.round(h)}px exceeds decode limits; downscaled to ${nw}x${nh}px`)
     debugWarn(options,
-      `${Math.round(w)}×${Math.round(h)}px is too large for the browser to draw; scaled down to ${nw}×${nh}px. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
+      `${Math.round(w)}×${Math.round(h)}px is too large for the browser to draw; scaled down to ${nw}×${nh}px. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG or JPEG' : 'a JPEG'} blob, an SVG, or crop.`
     )
     return svg.replace(tag, tag
       .replace(/(\bwidth=")[\d.]+/i, `$1${nw}`)
@@ -84,7 +84,7 @@ function clampSvgTextRasterSize(svg, options) {
  * background. There the window is moved onto the viewport origin by shifting the root
  * foreignObject instead, with the viewBox at `0 0 w h`. Measured in Playwright WebKit
  * (3.3.5, 3.3.6-dev.1): windows 2-4 of a 4-slide strip went from window 1's pixels to their
- * own. A header-only svg (toLargePng's sizing) has no foreignObject to move and keeps the
+ * own. A header-only svg (toLargeImage's sizing) has no foreignObject to move and keeps the
  * viewBox rewrite.
  * @param {string} svg - decoded svg text
  * @param {{x:number,y:number,width:number,height:number}} crop - in viewBox units
@@ -871,7 +871,7 @@ export async function toCanvas(url, options) {
       sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds ${byWebp ? 'WebP' : 'canvas'} limits; downscaled`)
       debugWarn(options, byWebp
         ? `${Math.round(devW)}×${Math.round(devH)}px is larger than WebP can encode (${WEBP_MAX_SIDE}px per side); scaled down. For full size, export a PNG, an SVG, or crop.`
-        : `${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG blob, ' : ''}an SVG, or crop.`
+        : `${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG or JPEG' : 'a JPEG'} blob, an SVG, or crop.`
       )
       outW /= over
       outH /= over

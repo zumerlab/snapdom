@@ -5,7 +5,7 @@
  */
 import { toBlob } from './toBlob.js'
 import { toCanvas } from './toCanvas.js'
-import { toLargePng } from './toLargePng.js'
+import { toLargeImage } from './toLargeImage.js'
 import { isIOS } from '../utils/browser.js'
 
 /**
@@ -58,7 +58,7 @@ export async function download(url, options) {
   nextOptions.dpr = 1
   const foundIOS = isIOS()
 
-  const large = normalizedFormat === 'png' && toLargePng(url, nextOptions)
+  const large = (normalizedFormat === 'png' || normalizedFormat === 'jpeg') && toLargeImage(url, nextOptions, normalizedFormat)
   if (normalizedFormat === 'svg' || large) {
     const blob = large ? await large : await toBlob(url, { ...nextOptions, type: 'svg' })
     if (foundIOS && await shareFile(blob, filename)) return

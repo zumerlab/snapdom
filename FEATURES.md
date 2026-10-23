@@ -79,15 +79,15 @@ Static shortcuts include `snapdom.toPng(element)`, `snapdom.toCanvas(element)` a
 
 SVG captures contain HTML inside `<foreignObject>`; non-browser SVG viewers may not render them. `result.meta` exposes frozen capture geometry for overlays and image placement. `result.warnings` reports capture diagnostics. The console stays quiet by default; pass `debug: true` to log fallbacks and errors with a `[SnapDOM]` prefix.
 
-### Oversized PNG files
+### Oversized PNG and JPEG files
 
-With the default SVG engine, `toBlob({ format: 'png' })` and `download({ format: 'png' })` automatically preserve the requested resolution when the capture or output exceeds the browser's decode/canvas size guards. No new option is needed, and return types stay the same.
+With the default SVG engine, `toBlob()` and `download()` with `format: 'png'` or `'jpeg'` automatically preserve the requested resolution when the capture or output exceeds the browser's decode/canvas size guards. No new option is needed, and return types stay the same.
 
-SnapDOM renders the frozen SVG in bounded windows and encodes them into one PNG file, without allocating a full-image canvas or recapturing the live DOM. Output sizing preserves width/height overrides, scale, DPR, shadows and padding. Downloads still use DPR 1. Ordinary-sized exports use the native encoder.
+SnapDOM renders the frozen SVG in bounded windows and encodes them into one PNG or JPEG file, without allocating a full-image canvas or recapturing the live DOM. Output sizing preserves width/height overrides, scale, DPR, shadows and padding. Downloads still use DPR 1. Ordinary-sized exports use the native encoder.
 
-This requires `CompressionStream`; browsers without it retain the existing downscale and warning. Incremental PNG encoding can take longer than native encoding for the same pixel count. The compressed file remains in memory, and image viewers have their own size limits.
+PNG requires `CompressionStream`; browsers without it retain the existing downscale and warning. JPEG goes up to 65,535px per side, the format's limit, and honours `quality`; from 0.9 up it keeps full chroma resolution (4:4:4), below that it halves it (4:2:0). Incremental encoding can take longer than native encoding for the same pixel count. The compressed file remains in memory, and image viewers have their own size limits.
 
-`toCanvas()`, `toPng()`, JPEG/WebP exports and successful `html-in-canvas` captures retain their existing canvas-based paths and size limits. Use `toCanvas({ crop })` when separate canvases are needed. See [long-page exports](README.md#export-a-long-page) for examples.
+`toCanvas()`, `toPng()`, `toJpg()`, WebP exports and successful `html-in-canvas` captures retain their existing canvas-based paths and size limits. Use `toCanvas({ crop })` when separate canvases are needed. See [long-page exports](README.md#export-a-long-page) for examples.
 
 ## Options
 

@@ -47,24 +47,31 @@ flag enabled, a build compiled with `SNAPDOM_CANVAS_ENGINE=1`, and the capture o
 `engine: 'html-in-canvas'`. The default build includes SVG only. To test both engines against
 the local development version, run `SNAPDOM_CANVAS_ENGINE=1 npm run site`.
 
-## PNG files beyond canvas limits
+## PNG and JPEG files beyond canvas limits
 
-`toBlob({ format: 'png' })` and `download({ format: 'png' })` automatically use
-`src/exporters/toLargePng.js` when the SVG's intrinsic dimensions or requested output
+`toBlob()` and `download()` with `format: 'png'` or `'jpeg'` automatically use
+`src/exporters/toLargeImage.js` when the SVG's intrinsic dimensions or requested output
 exceed the decode/canvas guards. The ordinary path still uses the native canvas encoder.
 There is no new public option or size-dependent return type; downloads still force DPR 1.
 
 The exporter windows the frozen SVG viewport without changing its layout or percentage
 geometry, rasterizes bounded tiles, and passes complete RGBA row bands to
-`src/modules/png.js`. That encoder applies PNG row filters and feeds a single zlib stream
+`src/modules/png.js` or `src/modules/jpeg.js`. The PNG encoder applies PNG row filters and feeds a single zlib stream
 through `CompressionStream`, writing RGBA8/sRGB PNG chunks with CRCs. Its reader drains
 concurrently with writes to avoid backpressure deadlock. Export sizing applies once,
 including fractional draw dimensions, bleed, width/height overrides and DPR.
 
+The JPEG encoder is baseline with the Annex K quantization and Huffman tables and IJG
+quality scaling, buffering one MCU stripe (8 or 16 rows). It follows Firefox's native rule
+for chroma: 4:4:4 from quality 0.9 up, 4:2:0 below; at 4:2:0 the default quality decoded
+8x further from its source than Firefox's native file on coloured detail. Its side limit is
+65,535px; past that, and for WebP, the existing clamp stays. Measured on a 20000x20000
+gradient in Chromium: about 7 s, the same as PNG, because rasterizing the windows dominates.
+
 The full-width row band targets 16 MiB, with horizontal tiles for wide captures. Canvases
 are released after readback and their decode iframe is retired after any concurrent draws
-finish. This bounds working pixel buffers, not total memory: the frozen SVG and compressed
-PNG file remain resident, and browser allocation/reclamation is implementation-dependent.
+finish. This bounds working pixel buffers, not total memory: the frozen SVG and encoded
+file remain resident, and browser allocation/reclamation is implementation-dependent.
 WebKit shadow windows render at natural scale before canvas resampling, preserving the
 existing shadow workaround.
 
@@ -72,8 +79,8 @@ PNG encoding is lossless relative to the supplied RGBA pixels. Separate SVG rast
 can differ slightly from a single native draw in gradient quantization; the cross-engine
 tests check exact geometry, opaque seam markers and alpha, plus bounded RGB differences.
 `toPng()` still returns a canvas-sized image: loading and decoding a larger PNG is a separate
-browser limit. `toCanvas()`, JPEG/WebP, native-canvas captures and browsers without
-`CompressionStream` retain their existing paths and clamp diagnostics.
+browser limit, and so is `toJpg()`. `toCanvas()`, WebP, native-canvas captures and browsers
+without `CompressionStream` (PNG only) retain their existing paths and clamp diagnostics.
 
 ## The invalidation matrix (burst/diff correctness)
 

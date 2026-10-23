@@ -1,10 +1,10 @@
 /**
  * The Blob exporter. `svg` hands back the decoded svg text as a Blob with no raster step;
- * oversized PNG files use bounded raster windows; other raster exports use the native encoder.
+ * oversized PNG and JPEG files use bounded raster windows; other raster exports use the native encoder.
  * @module exporters/toBlob
  */
 import { toCanvas } from './toCanvas.js'
-import { toLargePng } from './toLargePng.js'
+import { toLargeImage } from './toLargeImage.js'
 
 /**
  * Converts the rendered output to a Blob.
@@ -29,9 +29,9 @@ export async function toBlob(url, options) {
     return new Blob([svgText], { type: 'image/svg+xml' })
   }
 
-  const large = format === 'png' && toLargePng(url, options)
-  if (large) return large
   const codec = format === 'jpg' ? 'jpeg' : format
+  const large = (codec === 'png' || codec === 'jpeg') && toLargeImage(url, options, codec)
+  if (large) return large
   const canvas = await toCanvas(url, { ...options, __encodeFormat: codec }) // backgroundColor inline
   return new Promise((resolve) =>
     canvas.toBlob((blob) => resolve(blob), `image/${codec}`, options.quality)

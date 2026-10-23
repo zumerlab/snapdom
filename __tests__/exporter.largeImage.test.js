@@ -3,7 +3,7 @@ import { snapdom } from '../src/api/snapdom.js'
 import { download } from '../src/exporters/download.js'
 import { toBlob } from '../src/exporters/toBlob.js'
 import { toCanvas } from '../src/exporters/toCanvas.js'
-import { toLargePng } from '../src/exporters/toLargePng.js'
+import { toLargeImage } from '../src/exporters/toLargeImage.js'
 import { isSafari } from '../src/utils/browser.js'
 
 const roots = []
@@ -26,15 +26,30 @@ async function inspectPng(blob, points = []) {
   const bytes = new Uint8Array(await blob.slice(0, 33).arrayBuffer())
   expect([...bytes.slice(0, 8)]).toEqual([137, 80, 78, 71, 13, 10, 26, 10])
   const header = new DataView(bytes.buffer)
-  const size = [header.getUint32(16), header.getUint32(20)]
-  if (!points.length) return { size, pixels: [] }
+  return readPixels(blob, [header.getUint32(16), header.getUint32(20)], points)
+}
 
+// Size from the SOF0 frame header, so a decoder limit cannot hide a wrong declared size.
+async function inspectJpeg(blob, points = []) {
+  expect(blob).toBeInstanceOf(Blob)
+  expect(blob.type).toBe('image/jpeg')
+  const bytes = new Uint8Array(await blob.arrayBuffer())
+  expect([...bytes.slice(0, 2)]).toEqual([0xff, 0xd8])
+  expect([...bytes.slice(-2)]).toEqual([0xff, 0xd9])
+  let at = 2
+  while (bytes[at + 1] !== 0xc0) at += 2 + (bytes[at + 2] << 8 | bytes[at + 3])
+  const size = [bytes[at + 7] << 8 | bytes[at + 8], bytes[at + 5] << 8 | bytes[at + 6]]
+  return readPixels(blob, size, points)
+}
+
+async function readPixels(blob, size, points) {
+  if (!points.length) return { size, pixels: [] }
   const url = URL.createObjectURL(blob)
   const image = new Image()
   try {
     await new Promise((resolve, reject) => {
       image.onload = resolve
-      image.onerror = () => reject(new Error('The exported PNG did not load'))
+      image.onerror = () => reject(new Error(`The exported ${blob.type} did not load`))
       image.src = url
     })
     expect([image.naturalWidth, image.naturalHeight]).toEqual(size)
@@ -67,9 +82,9 @@ const CLEAR = [0, 0, 0, 0]
 
 describe('oversized PNG file exports', () => {
   it('leaves an ordinary SVG on the native encoder path', () => {
-    expect(toLargePng(svg(20, 30, '<rect width="20" height="30" fill="red"/>'), {
+    expect(toLargeImage(svg(20, 30, '<rect width="20" height="30" fill="red"/>'), {
       scale: 2, dpr: 1,
-    })).toBeNull()
+    }, 'png')).toBeNull()
   })
 
   it.each(['tall', 'wide'])('preserves the full %s side and its last pixels', async direction => {
@@ -313,5 +328,64 @@ describe('oversized PNG file exports', () => {
     const result = await inspectPng(file, [[10, 59999]])
     expect(result.size).toEqual([24, 60000])
     expect(result.pixels).toEqual([RED])
+  })
+})
+
+// Lossy: a flat colour decodes within a few levels of its source, never as a neighbour's.
+function near(actual, expected, tolerance = 8) {
+  return actual.every((v, i) => Math.abs(v - expected[i]) <= tolerance)
+}
+
+describe('oversized JPEG file exports', () => {
+  it('leaves an ordinary SVG on the native encoder path, and a side past 65535px on the clamp', () => {
+    expect(toLargeImage(svg(20, 30, '<rect width="20" height="30" fill="red"/>'), { dpr: 1 }, 'jpeg')).toBeNull()
+    expect(toLargeImage(svg(20, 40000, '<rect width="20" height="40000" fill="red"/>'), { scale: 2, dpr: 1 }, 'jpeg')).toBeNull()
+  })
+
+  it.each(['tall', 'wide'])('preserves the full %s side and its last pixels', async direction => {
+    const tall = direction === 'tall'
+    const width = tall ? 24 : 40008
+    const height = tall ? 40008 : 24
+    const url = svg(width, height,
+      `<rect width="${width}" height="${height}" fill="red"/>` +
+      `<rect x="${tall ? 0 : 40000}" y="${tall ? 40000 : 0}" width="${tall ? 24 : 8}" height="${tall ? 8 : 24}" fill="blue"/>`
+    )
+    const points = tall ? [[12, 0], [12, 8191], [12, 32768], [12, 40004]]
+      : [[0, 12], [8191, 12], [32768, 12], [40004, 12]]
+    const result = await inspectJpeg(await toBlob(url, { format: 'jpg', backgroundColor: '#fff', dpr: 1 }), points)
+    expect(result.size).toEqual([width, height])
+    result.pixels.forEach((pixel, i) => expect(near(pixel, i < 3 ? RED : BLUE), `${pixel} at ${points[i]}`).toBe(true))
+  })
+
+  it('flattens a snapdom capture on its background and honours quality', async () => {
+    const root = mount('width:20px;height:20000px')
+    root.innerHTML = '<div style="height:10000px"></div><div style="height:10000px;background:blue"></div>'
+    const captured = await snapdom(root, { dpr: 1, embedFonts: false })
+    const fine = await inspectJpeg(await captured.toBlob({ format: 'jpeg', scale: 2, quality: 1 }), [[20, 100], [20, 39900]])
+    expect(fine.size).toEqual([40, 40000])
+    expect(near(fine.pixels[0], [255, 255, 255, 255]) && near(fine.pixels[1], BLUE), String(fine.pixels)).toBe(true)
+    const coarse = await captured.toBlob({ format: 'jpeg', scale: 2, quality: 0.1 })
+    expect(coarse.type).toBe('image/jpeg')
+    expect(coarse.size).toBeLessThan((await captured.toBlob({ format: 'jpeg', scale: 2, quality: 1 })).size)
+  })
+
+  it('downloads a full-resolution JPEG with the existing DPR-one contract', async () => {
+    let file
+    let clicked
+    const createObjectURL = URL.createObjectURL.bind(URL)
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(blob => {
+      if (blob.type === 'image/jpeg') file = blob
+      return createObjectURL(blob)
+    })
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+      clicked = { filename: this.download, href: this.href }
+    })
+    await download(svg(16, 40000, '<rect width="16" height="40000" fill="red"/>'), {
+      format: 'jpg', filename: 'long-page', scale: 1.5, dpr: 4, backgroundColor: '#fff',
+    })
+    expect(clicked).toEqual({ filename: 'long-page.jpeg', href: expect.stringMatching(/^blob:/) })
+    const result = await inspectJpeg(file, [[10, 59999]])
+    expect(result.size).toEqual([24, 60000])
+    expect(near(result.pixels[0], RED), String(result.pixels[0])).toBe(true)
   })
 })

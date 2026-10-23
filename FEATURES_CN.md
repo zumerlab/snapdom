@@ -79,15 +79,15 @@ SnapDOM 是一个高性能引擎，用于捕获、修改 DOM 元素并将其转�
 
 SVG 捕获通过 `<foreignObject>` 包含 HTML，非浏览器 SVG 查看器可能无法渲染。`result.meta` 提供冻结的捕获几何信息，用于覆盖层和图片定位。`result.warnings` 提供捕获诊断信息。默认情况下控制台不输出日志；传入 `debug: true` 可输出带 `[SnapDOM]` 前缀的降级和错误信息。
 
-### 超大尺寸 PNG 文件
+### 超大尺寸 PNG 和 JPEG 文件
 
-使用默认 SVG 引擎时，如果捕获或输出尺寸超出浏览器的图像解码或 Canvas 安全尺寸限制，`toBlob({ format: 'png' })` 和 `download({ format: 'png' })` 会自动保留请求的分辨率。无需新增选项，返回类型也保持不变。
+使用默认 SVG 引擎时，如果捕获或输出尺寸超出浏览器的图像解码或 Canvas 安全尺寸限制，`format` 为 `'png'` 或 `'jpeg'` 的 `toBlob()` 和 `download()` 会自动保留请求的分辨率。无需新增选项，返回类型也保持不变。
 
-SnapDOM 将冻结的 SVG 按尺寸受限的区域分块渲染，并编码为一个 PNG 文件，无需创建覆盖整张图片的 Canvas，也无需重新捕获实时 DOM。输出尺寸计算仍遵循显式 `width`/`height`、`scale` 和 DPR 设置，并保留阴影和内边距。下载仍使用 DPR 1。普通尺寸的导出使用原生编码器。
+SnapDOM 将冻结的 SVG 按尺寸受限的区域分块渲染，并编码为一个 PNG 或 JPEG 文件，无需创建覆盖整张图片的 Canvas，也无需重新捕获实时 DOM。输出尺寸计算仍遵循显式 `width`/`height`、`scale` 和 DPR 设置，并保留阴影和内边距。下载仍使用 DPR 1。普通尺寸的导出使用原生编码器。
 
-此功能需要 `CompressionStream`；不支持它的浏览器仍会按原有方式缩小输出并发出警告。在像素数量相同时，增量 PNG 编码可能比原生编码耗时更长。压缩后的文件仍会保留在内存中，图片查看器也有各自的尺寸限制。
+PNG 需要 `CompressionStream`；不支持它的浏览器仍会按原有方式缩小输出并发出警告。JPEG 每边最多 65,535px（该格式的上限），并遵循 `quality`：0.9 及以上保留完整色度分辨率（4:4:4），以下则减半（4:2:0）。在像素数量相同时，增量编码可能比原生编码耗时更长。压缩后的文件仍会保留在内存中，图片查看器也有各自的尺寸限制。
 
-`toCanvas()`、`toPng()`、JPEG/WebP 导出以及成功的 `html-in-canvas` 捕获仍使用原有的 Canvas 处理路径，并受其尺寸限制。如需分别生成多个 Canvas，请使用 `toCanvas({ crop })`。示例见[导出超长页面](README_CN.md#导出超长页面)。
+`toCanvas()`、`toPng()`、`toJpg()`、WebP 导出以及成功的 `html-in-canvas` 捕获仍使用原有的 Canvas 处理路径，并受其尺寸限制。如需分别生成多个 Canvas，请使用 `toCanvas({ crop })`。示例见[导出超长页面](README_CN.md#导出超长页面)。
 
 ## 选项
 

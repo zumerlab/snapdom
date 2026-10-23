@@ -180,22 +180,24 @@ const result = await snapdom(card, {
 
 ### 导出超长页面
 
-使用默认的 SVG 引擎时，PNG 文件导出会自动处理超出浏览器 Canvas 限制的捕获。捕获一次，即可下载一个完整分辨率的文件，或获取它的 Blob：
+使用默认的 SVG 引擎时，PNG 和 JPEG 文件导出会自动处理超出浏览器 Canvas 限制的捕获。捕获一次，即可下载一个完整分辨率的文件，或获取它的 Blob：
 
 ```js
 const capture = await snapdom(article);
 await capture.download({ format: 'png', scale: 2 });
 // 或自行上传、保存文件：
 const blob = await capture.toBlob({ format: 'png', scale: 2, dpr: 1 });
+// JPEG 用法相同，每边最多 65,535px：
+await capture.download({ format: 'jpg', scale: 2, quality: 0.9 });
 ```
 
-SnapDOM 将保存的捕获结果分块渲染，再编码为一个 PNG 文件。它保留请求的尺寸，包括阴影和留白，无需为整张图片分配一个 Canvas。`download()` 始终使用 DPR 1；`toBlob()` 使用捕获时的 DPR，除非导出时另行指定。未超出限制的导出仍使用浏览器原生编码器。
+SnapDOM 将保存的捕获结果分块渲染，再编码为一个 PNG 或 JPEG 文件。它保留请求的尺寸，包括阴影和留白，无需为整张图片分配一个 Canvas。`download()` 始终使用 DPR 1；`toBlob()` 使用捕获时的 DPR，除非导出时另行指定。未超出限制的导出仍使用浏览器原生编码器。
 
-此功能需要 `CompressionStream`；不支持它的旧浏览器仍会缩小输出并发出警告。超大文件的编码仍需要时间和内存，打开这些文件的应用也有自己的图片限制。
+PNG 需要 `CompressionStream`；不支持它的旧浏览器仍会缩小输出并发出警告。JPEG 超过每边 65,535px（该格式的上限）时同样如此。WebP 每边不能超过 16,383px。超大文件的编码仍需要时间和内存，打开这些文件的应用也有自己的图片限制。
 
 ### 分段导出超长页面
 
-`toCanvas()`、`toPng()` 和 JPEG/WebP 导出仍使用单个 Canvas，超出 SnapDOM 的尺寸保护阈值时会整体缩小（Safari 每边 16,384px，Chrome/Firefox 每边 32,767px，另有总像素面积限制）。需要分别获取多个 Canvas 时，可以使用 `crop`：
+`toCanvas()`、`toPng()`、`toJpg()` 和 WebP 导出仍使用单个 Canvas，超出 SnapDOM 的尺寸保护阈值时会整体缩小（Safari 每边 16,384px，Chrome/Firefox 每边 32,767px，另有总像素面积限制）。需要分别获取多个 Canvas 时，可以使用 `crop`：
 
 ```js
 const capture = await snapdom(article);

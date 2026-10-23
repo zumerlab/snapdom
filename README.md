@@ -179,22 +179,24 @@ const result = await snapdom(card, {
 
 ### Export a long page
 
-With the default SVG engine, PNG file exports automatically handle captures beyond the browser's canvas limits. Capture once, then download one full-resolution file or get its Blob:
+With the default SVG engine, PNG and JPEG file exports automatically handle captures beyond the browser's canvas limits. Capture once, then download one full-resolution file or get its Blob:
 
 ```js
 const capture = await snapdom(article);
 await capture.download({ format: 'png', scale: 2 });
 // Or upload/store the file yourself:
 const blob = await capture.toBlob({ format: 'png', scale: 2, dpr: 1 });
+// JPEG works the same way, up to 65,535px per side:
+await capture.download({ format: 'jpg', scale: 2, quality: 0.9 });
 ```
 
-SnapDOM renders the frozen capture in windows and encodes them into one PNG. It preserves the requested dimensions, including shadows and padding, without allocating a canvas for the whole image. `download()` always uses DPR 1; `toBlob()` uses the capture's DPR unless you override it. Ordinary-sized exports use the native encoder.
+SnapDOM renders the frozen capture in windows and encodes them into one PNG or JPEG. It preserves the requested dimensions, including shadows and padding, without allocating a canvas for the whole image. `download()` always uses DPR 1; `toBlob()` uses the capture's DPR unless you override it. Ordinary-sized exports use the native encoder.
 
-This requires `CompressionStream`; older browsers keep the existing downscale and warning. Very large files still take time and memory to encode, and the application opening them has its own image limits.
+PNG requires `CompressionStream`; older browsers keep the existing downscale and warning, as does a JPEG past 65,535px per side, the format's limit. WebP cannot go past 16,383px per side. Very large files still take time and memory to encode, and the application opening them has its own image limits.
 
 ### Export a long page in pieces
 
-`toCanvas()`, `toPng()` and JPEG/WebP exports still use a single canvas and scale down past SnapDOM's size guards (16,384px per side in Safari, 32,767px in Chrome/Firefox, plus an area limit). When you need separate canvases, use `crop`:
+`toCanvas()`, `toPng()`, `toJpg()` and WebP exports still use a single canvas and scale down past SnapDOM's size guards (16,384px per side in Safari, 32,767px in Chrome/Firefox, plus an area limit). When you need separate canvases, use `crop`:
 
 ```js
 const capture = await snapdom(article);

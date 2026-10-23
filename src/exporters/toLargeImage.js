@@ -1,15 +1,17 @@
-/** PNG file export beyond the canvas/decode limits. Ordinary exports keep the native path. */
+/** PNG and JPEG file export beyond the canvas/decode limits. Ordinary exports keep the native path. */
 import { toCanvas, peekSvgHeader, cropSvgText, decodeSvgFromDataURL, encodeSvgToDataURL, MAX_RASTER_SIDE, MAX_RASTER_AREA } from './toCanvas.js'
 import { isSafari } from '../utils/browser.js'
 
 /**
  * Return null for an ordinary export, otherwise encode windows of the frozen SVG into
- * one PNG. The synchronous gate avoids an extra promise/task on the native encode path.
+ * one PNG or JPEG. The synchronous gate avoids an extra promise/task on the native encode
+ * path. Pinned by __tests__/exporter.largeImage.test.js.
  * @param {string|HTMLCanvasElement} url
  * @param {object} options
+ * @param {'png'|'jpeg'} format
  * @returns {Promise<Blob>|null}
  */
-export function toLargePng(url, options) {
+export function toLargeImage(url, options, format) {
   if (typeof url !== 'string' || !url.startsWith('data:image/svg+xml')) return null
   const originalHeader = peekSvgHeader(url).match(/<svg\b[^>]*>/i)?.[0]
   if (!originalHeader) return null
@@ -32,13 +34,13 @@ export function toLargePng(url, options) {
   const dh = (hasW && hasH ? Math.max(1, options.height) : hasH ? options.height : hasW ? options.width * rh / Math.max(1, rw) : nh * scale) * dpr
   if (Math.max(sw, sh, dw, dh) <= MAX_RASTER_SIDE &&
       sw * sh <= MAX_RASTER_AREA && dw * dh <= MAX_RASTER_AREA) return null
-  // Older browsers retain the existing clamp and its diagnostic.
-  if (typeof CompressionStream !== 'function') return null
+  // Older browsers retain the existing clamp and its diagnostic, and so does a JPEG past
+  // the format's 65535px side.
+  if (format === 'png' ? typeof CompressionStream !== 'function' : Math.max(dw, dh) >= 65536) return null
 
   return encode()
 
   async function encode() {
-    const { encodePng } = await import('../modules/png.js')
     const width = Math.max(1, Math.floor(dw)), height = Math.max(1, Math.floor(dh))
     const svg = decodeSvgFromDataURL(url)
     const body = svg.slice(svg.indexOf(originalHeader) + originalHeader.length, svg.lastIndexOf('</svg>'))
@@ -61,7 +63,7 @@ export function toLargePng(url, options) {
     const naturalShadows = isSafari() && /(?:box-shadow|text-shadow)\s*:[^;"}]*px/i.test(svg)
     const ux = sw / dw, uy = sh / dh
     // Bound a full-width RGBA row block to ~16 MiB. A wide image uses horizontal tiles too;
-    // none of its canvases has the full (oversized) width. PNG output bytes remain in the Blob.
+    // none of its canvases has the full (oversized) width. Encoded bytes remain in the Blob.
     const rowsPerBand = Math.max(1, Math.min(8192, Math.floor(4 * 1024 * 1024 / width), naturalShadows ? Math.floor(2046 / uy) : 8192))
     const tileWidth = Math.max(1, Math.min(8192, width, naturalShadows ? Math.floor(2046 / ux) : 8192))
     async function* rows() {
@@ -109,6 +111,7 @@ export function toLargePng(url, options) {
         yield pixels
       }
     }
-    return encodePng(width, height, rows())
+    if (format === 'png') return (await import('../modules/png.js')).encodePng(width, height, rows())
+    return (await import('../modules/jpeg.js')).encodeJpeg(width, height, rows(), options.quality)
   }
 }
