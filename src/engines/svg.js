@@ -255,6 +255,8 @@ export async function composeAndSerialize(state, ex) {
   // into it, per side. Null for every other capture.
   let bodyRoom = null
   let bodyInk = null
+  // How far a right-to-left body's content overflows to the left of it.
+  let rtlSpill = 0
   if (isRoot) {
     let docH = Math.max(
       state.element.scrollHeight || 0,
@@ -275,6 +277,16 @@ export async function composeAndSerialize(state, ex) {
     // last child's margin-bottom, 16px with the default body margin). bodyExtent keeps the
     // document extent only where content really overflows the in-flow box.
     const isBody = state.element === elDoc.body
+    // A right-to-left page overflows to the left, so a body capture grows on that side: the
+    // width beyond the body box goes to rtlSpill, which the bleed below turns into room on
+    // the left. Grown on the right like a left-to-right page, the capture clipped what spilled
+    // left and left as much empty on the right (416px of each under a 1200px child).
+    const rtl = isBody && getStyle(elDoc.documentElement).direction === 'rtl'
+    const growW = (v) => {
+      if (!(v > 0)) return
+      if (rtl) rtlSpill = Math.max(rtlSpill, limitDecimals(v - rect.width))
+      else w0 = Math.max(w0, limitDecimals(v))
+    }
     if (isBody && elDoc.documentElement) {
       const hr = elDoc.documentElement.getBoundingClientRect()
       const room = {
@@ -313,11 +325,12 @@ export async function composeAndSerialize(state, ex) {
       }
       docH = Math.max(state.element.scrollHeight || 0,
         bodyExtent(docH, hr.height, rect.top - hr.top, rect.bottom - hr.top))
-      docW = Math.max(state.element.scrollWidth || 0,
-        bodyExtent(docW, hr.width, rect.left - hr.left, rect.right - hr.left))
+      docW = Math.max(state.element.scrollWidth || 0, rtl
+        ? bodyExtent(docW, hr.width, hr.right - rect.right, hr.right - rect.left)
+        : bodyExtent(docW, hr.width, rect.left - hr.left, rect.right - hr.left))
     }
     if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
-    if (docW > 0) w0 = Math.max(w0, limitDecimals(docW))
+    growW(docW)
     // Also measure clone in a temp container with injected styles (clone may layout differently).
     // PERF-3: cache result per element — this cloneNode(true) + layout round-trip is expensive
     // for large DOMs; reuse when the same element is captured with the same total CSS length.
@@ -334,7 +347,7 @@ export async function composeAndSerialize(state, ex) {
       const hint = cache.measureHints.get(state.element)
       if (hint && hint.cssLen === cssLen && hint.w0 === layoutW && hint.docH === docH && hint.docW === docW) {
         if (hint.csh > 0) h0 = Math.max(h0, limitDecimals(hint.csh))
-        if (hint.csw > 0) w0 = Math.max(w0, limitDecimals(hint.csw))
+        growW(hint.csw)
       } else {
         const wrap = elDoc.createElement('div')
         markInternalNode(wrap)
@@ -352,12 +365,14 @@ export async function composeAndSerialize(state, ex) {
           const wr = wrap.getBoundingClientRect()
           const cr = copy.getBoundingClientRect()
           csh = bodyExtent(csh, wr.height, cr.top - wr.top, cr.bottom - wr.top)
-          csw = bodyExtent(csw, wr.width, cr.left - wr.left, cr.right - wr.left)
+          csw = rtl
+            ? bodyExtent(csw, wr.width, wr.right - cr.right, wr.right - cr.left)
+            : bodyExtent(csw, wr.width, cr.left - wr.left, cr.right - wr.left)
         }
         elDoc.body.removeChild(wrap)
         cache.measureHints.set(state.element, { cssLen, w0: layoutW, docH, docW, csh, csw })
         if (csh > 0) h0 = Math.max(h0, limitDecimals(csh))
-        if (csw > 0) w0 = Math.max(w0, limitDecimals(csw))
+        growW(csw)
       }
     } catch { /* fallback: use doc dimensions above */ }
   }
@@ -536,6 +551,7 @@ export async function composeAndSerialize(state, ex) {
       left: bodyInk.left
     }
   }
+  if (rtlSpill > 0) subtree = { ...subtree, left: Math.max(subtree.left, rtlSpill) }
 
   // A region capture defines its own exact edges — never expand it for root bleed.
   // blur() is not an outer-shadow effect: the root keeps it, so its bleed is

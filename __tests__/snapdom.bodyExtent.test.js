@@ -6,10 +6,10 @@ afterEach(() => frame?.remove())
 
 const ROWS = '<div class="c">x</div>'.repeat(5)
 
-async function captureBody(css, extra = '') {
+async function captureBody(css, extra = '', dir = 'ltr') {
   frame = document.createElement('iframe')
   frame.style.cssText = 'width:800px;height:300px;border:0'
-  frame.srcdoc = `<!doctype html><html><head><style>.c{height:100px;background:rgb(204,204,204)}${css}</style></head><body>${ROWS}${extra}</body></html>`
+  frame.srcdoc = `<!doctype html><html dir="${dir}"><head><style>.c{height:100px;background:rgb(204,204,204)}${css}</style></head><body>${ROWS}${extra}</body></html>`
   await new Promise(resolve => { frame.onload = resolve; document.body.appendChild(frame) })
   const body = frame.contentDocument.body
   const box = body.getBoundingClientRect()
@@ -72,8 +72,8 @@ describe('a body capture is sized from the body box, not the margins around it',
     const BOXES = '<div class="c" style="position:relative"><i style="position:absolute;left:50px;top:10px;width:20px;height:20px;background:rgb(0,255,0)"></i></div>' +
       '<b class="abs"></b><u style="position:fixed;left:200px;top:40px;width:20px;height:20px;background:rgb(0,0,255)"></u>'
     const ABS = '.abs{position:absolute;left:100px;top:150px;width:20px;height:20px;background:rgb(255,0,0)}'
-    const expectInPlace = async (css) => {
-      const { canvas, box } = await captureBody(ABS + css, BOXES)
+    const expectInPlace = async (css, dir) => {
+      const { canvas, box } = await captureBody(ABS + css, BOXES, dir)
       const doc = frame.contentDocument
       // Where the body box sits in the capture: offset by any ink painted left of / above it.
       const gray = find(canvas, [204, 204, 204])
@@ -91,5 +91,18 @@ describe('a body capture is sized from the body box, not the margins around it',
     it('under a margin-top that collapses through the body', () => expectInPlace('body{margin:0}.c:first-child{margin-top:20px}'))
     it('when a child inks the margin left of the body', () => expectInPlace('.c:first-child{box-shadow:-6px 0 0 rgb(9,9,9)}'))
     it('when the body itself is positioned', () => expectInPlace('body{position:relative}'))
+    it('on a right-to-left page', () => expectInPlace('', 'rtl'))
+    it('on a right-to-left page with uneven margins', () => expectInPlace('body{margin:30px 40px 0 10px}', 'rtl'))
+  })
+
+  it('grows a right-to-left body capture on the left, where its content spills', async () => {
+    const edges = '.c:first-child{width:1200px;background:linear-gradient(90deg,rgb(255,0,0) 0 50px,rgb(204,204,204) 50px)}'
+    const { canvas, box } = await captureBody(edges, '', 'rtl')
+    const px = (x, y) => [...canvas.getContext('2d').getImageData(x, y, 1, 1).data]
+    expect(canvas.width).toBe(1200)
+    expect(px(0, 50)).toEqual([255, 0, 0, 255])
+    // The second row is as wide as the body and ends at the capture's right edge.
+    expect(px(1200 - box.width - 1, 150)[3]).toBe(0)
+    expect(px(1200 - box.width, 150)).toEqual([204, 204, 204, 255])
   })
 })
