@@ -1112,6 +1112,21 @@ function frameIsOpaque(ctx, width, height) {
   }
 }
 
+/**
+ * Whether a canvas that reads as drawn holds a WebGL buffer the browser clears after every
+ * composite. Only asked of a canvas with content, which therefore has a context: getContext
+ * then returns that context, or null for another kind, and creates nothing.
+ * Pinned by __tests__/core.clone.webglOpaque.test.js.
+ */
+function clearsEachFrame(node) {
+  try {
+    const gl = node.getContext('webgl2') || node.getContext('webgl')
+    return !!gl && !gl.getContextAttributes()?.preserveDrawingBuffer
+  } catch {
+    return false
+  }
+}
+
 async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
@@ -1137,6 +1152,11 @@ async function cloneCanvas(node, sessionCache, options) {
       // poke that would have locked it.
       await nextFrame()
       blank = isBlankCanvas(node)
+    } else if (clearsEachFrame(node)) {
+      // The same frame, for an opaque one: a WebGL canvas made with alpha:false clears to
+      // opaque black, not to transparent, so it read as drawn and the capture took the black
+      // (d-plugin-webgl-live-dom's WebGL panel, Chromium and Firefox).
+      await nextFrame()
     }
     // WebKit needs a frame for the 2D poke to materialize the backing store; on other engines
     // toDataURL is synchronous with issued commands, so an unconditional rAF cost a serialized
