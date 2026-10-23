@@ -43,6 +43,7 @@
 
 import { debugWarn } from '../utils/debug.js'
 import { isInternalNode, markInternalNode } from '../utils/ownership.js'
+import { adoptShadowCSS } from '../utils/capture.helpers.js'
 
 /**
  * Which canvas-place-element method this browser exposes, or null. The origin-trial name
@@ -62,7 +63,7 @@ export function detectDrawApi() {
 }
 
 /**
- * Mount the FINISHED CLONE for painting: canvas[layoutsubtree] > wrapper > (style + clone).
+ * Mount the FINISHED CLONE for painting: canvas[layoutsubtree] > wrapper > #shadow > clone.
  *
  * No ancestor shells and no live-DOM copying. The clone already carries every computed
  * style it needs as generated classes, so the page's cascade is irrelevant here — which is
@@ -90,10 +91,12 @@ function mountClone(clone, css, width, height) {
   wrapper.style.cssText =
     `all:initial;box-sizing:border-box;display:block;overflow:visible;width:${width}px;height:${height}px`
 
-  const styleNode = document.createElement('style')
-  styleNode.textContent = css
-  wrapper.appendChild(styleNode)
-  wrapper.appendChild(clone)
+  // Shadow root, as in the svg engine's measurement mounts: a page CSP of `style-src 'self'`
+  // refuses an inline <style> (the clone painted transparent in real Chrome 155, 2026-10-23),
+  // and in the light DOM page rules still reached the clone through its kept class names.
+  const shadow = wrapper.attachShadow({ mode: 'open' })
+  adoptShadowCSS(shadow, css)
+  shadow.appendChild(clone)
   canvas.appendChild(wrapper)
   return { canvas, wrapper }
 }

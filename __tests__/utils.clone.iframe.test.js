@@ -41,12 +41,18 @@ describe('pinIframeViewport — live iframe state (#393)', () => {
     expect(win.scrollY).toBeCloseTo(400, 0)
   })
 
-  it('removes the injected <style> on unpin', () => {
+  it('removes the adopted pin sheet on unpin and reuses it on the next pin', () => {
     const doc = makeScrollableIframe()
+    const own = doc.adoptedStyleSheets.length
     const unpin = pinIframeViewport(doc, 200, 150)
-    expect(doc.querySelector('style[data-sd-iframe-pin]')).not.toBeNull()
-    unpin()
+    expect(doc.adoptedStyleSheets.length).toBe(own + 1)
+    const sheet = doc.adoptedStyleSheets[own]
     expect(doc.querySelector('style[data-sd-iframe-pin]')).toBeNull()
+    unpin()
+    expect(doc.adoptedStyleSheets.length).toBe(own)
+    const again = pinIframeViewport(doc, 200, 150)
+    expect(doc.adoptedStyleSheets[own]).toBe(sheet)
+    again()
   })
 
   // #448: pinning must not hard-zero body margin/padding — the content inset was lost.

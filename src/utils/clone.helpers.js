@@ -429,9 +429,12 @@ export function getUnscaledDimensions(el) {
   return { width, height }
 }
 
+/** Pin sheet per frame document, reused so its identity in `adoptedStyleSheets` is stable. */
+const pinSheets = new WeakMap()
+
 /**
  * Temporarily pin the iframe's internal viewport to (w, h) CSS px.
- * Injects a <style> into the iframe doc and returns a cleanup function.
+ * Adopts a stylesheet into the iframe doc and returns a cleanup function.
  *
  * #393: `overflow: hidden` clamps the iframe's root scroll position to 0. Removing
  * the style later doesn't restore it, so the live iframe ends up scrolled to (0,0).
@@ -469,19 +472,35 @@ export function pinIframeViewport(doc, w, h) {
     }
   } catch { }
 
-  // Owned, so the frame document's invalidation observer (styles.js, wired per document)
-  // ignores the style's arrival and removal: as an unmarked <head> mutation it bumped the
-  // shared environment epoch twice per capture, which is an unconditional dirtyAll on the
-  // OUTER element's burst memo. The viewport flag itself travels as the nested capture's
-  // `__pinned` option (rasterizeIframe), not as an attribute on this <html>: a record on
-  // <html> is the all-stamp, and it invalidated every snapshot in every document.
-  // Pinned by __tests__/core.burst.nestedIframe.test.js.
-  const style = doc.createElement('style')
-  style.setAttribute('data-sd-iframe-pin', '')
-  markInternalNode(style)
-  style.textContent = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
-    `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`;
-  (doc.head || doc.documentElement).appendChild(style)
+  const css = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
+    `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`
+  // Adopted first, so a frame CSP of `style-src 'self'` cannot refuse it (an inline <style> is
+  // refused and the frame is captured unpinned). One sheet per document keeps the frame's
+  // adopted-sheet signature (burst.js renderStateOf) stable across captures; the <style> is
+  // the fallback where constructable sheets are missing.
+  // Pinned by __tests__/snapdom.csp.test.js.
+  let unmount
+  try {
+    let sheet = pinSheets.get(doc)
+    if (!sheet) pinSheets.set(doc, sheet = new win.CSSStyleSheet())
+    sheet.replaceSync(css)
+    doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, sheet]
+    unmount = () => { doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter(s => s !== sheet) }
+  } catch {
+    // Owned, so the frame document's invalidation observer (styles.js, wired per document)
+    // ignores the style's arrival and removal: as an unmarked <head> mutation it bumped the
+    // shared environment epoch twice per capture, which is an unconditional dirtyAll on the
+    // OUTER element's burst memo. The viewport flag itself travels as the nested capture's
+    // `__pinned` option (rasterizeIframe), not as an attribute on this <html>: a record on
+    // <html> is the all-stamp, and it invalidated every snapshot in every document.
+    // Pinned by __tests__/core.burst.nestedIframe.test.js.
+    const style = doc.createElement('style')
+    style.setAttribute('data-sd-iframe-pin', '')
+    markInternalNode(style)
+    style.textContent = css;
+    (doc.head || doc.documentElement).appendChild(style)
+    unmount = () => style.remove()
+  }
   // The pin is deliberately invisible to the global style epoch, but it still changes used
   // values inside this document (notably percentages). Clear only this frame's snapshots so
   // a fresh nested capture cannot reuse geometry from the previous iframe size.
@@ -502,7 +521,7 @@ export function pinIframeViewport(doc, w, h) {
   }
 
   return () => {
-    try { style.remove() } catch { }
+    try { unmount() } catch { }
     try {
       if (win && typeof win.scrollTo === 'function') win.scrollTo(sx, sy)
       if (doc.body) { doc.body.scrollLeft = bsl; doc.body.scrollTop = bst }

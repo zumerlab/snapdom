@@ -28,6 +28,7 @@ import {
   limitDecimals,
   reconcileCloneLayout,
   inertMeasurementCopy,
+  adoptShadowCSS,
   composeResidual2D
 } from '../utils/capture.helpers.js'
 import {
@@ -267,9 +268,7 @@ export async function composeAndSerialize(state, ex) {
         // Shadow DOM: keeps baseCSS's global tag rules from restyling the live page
         // while this mount is attached (#474) — same isolation as reconcileCloneLayout.
         const mShadow = wrap.attachShadow({ mode: 'open' })
-        const styleNode = elDoc.createElement('style')
-        styleNode.textContent = (state.scrollbarCSS || '') + state.baseCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
-        mShadow.appendChild(styleNode)
+        adoptShadowCSS(mShadow, (state.scrollbarCSS || '') + state.baseCSS + 'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS)
         mShadow.appendChild(inertMeasurementCopy(state.clone))
         elDoc.body.appendChild(wrap)
         const csh = wrap.scrollHeight

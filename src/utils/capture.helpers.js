@@ -727,6 +727,28 @@ export function inertMeasurementCopy(clone) {
   return copy
 }
 
+/**
+ * Give a shadow root snapdom mounts in the live page (the measurement mounts, the
+ * html-in-canvas paint mount) its CSS as a constructable sheet, so a page CSP of
+ * `style-src 'self'` cannot block it. An inline `<style>` there is refused, the mount lays
+ * out unstyled, and capturing `body` under that policy came out 800x1446 instead of
+ * 800x1252 (webgrip/unfold dropped snapdom over it). The `<style>` stays as the fallback for
+ * engines without constructable sheets. Pinned by __tests__/snapdom.csp.test.js.
+ * @param {ShadowRoot} shadow
+ * @param {string} css
+ */
+export function adoptShadowCSS(shadow, css) {
+  try {
+    const sheet = new shadow.ownerDocument.defaultView.CSSStyleSheet()
+    sheet.replaceSync(css)
+    shadow.adoptedStyleSheets = [sheet]
+  } catch {
+    const style = shadow.ownerDocument.createElement('style')
+    style.textContent = css
+    shadow.appendChild(style)
+  }
+}
+
 /** Divergence below this (px) is sub-pixel noise, not a layout difference. */
 const RECONCILE_EPS = 0.75
 
@@ -770,9 +792,7 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   // foreignObject. Embedded @font-face is skipped by the caller: every face came from this
   // document, so family names already resolve to loaded faces.
   const shadow = wrap.attachShadow({ mode: 'open' })
-  const styleNode = elDoc.createElement('style')
-  styleNode.textContent = cssText
-  shadow.appendChild(styleNode)
+  adoptShadowCSS(shadow, cssText)
   const measured = inertMeasurementCopy(clone)
   shadow.appendChild(measured)
   elDoc.body.appendChild(wrap)
