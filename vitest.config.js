@@ -92,6 +92,13 @@ export default defineConfig({
     alias: { '@zumer/snapdom': new URL('./src/index.js', import.meta.url).pathname },
   },
   test: {
+    // Three engines at the default parallelism ran eighteen pages on a 10-core machine, and
+    // WebKit, the slowest, ran out of room: about every second full run (2026-10-23) lost a
+    // test to a Playwright command that never came back (hover, screenshot, a 15 s PDF export
+    // that takes 255 ms alone), each green when run by itself. Four workers per engine: five
+    // full runs in a row green, 95 to 136 s instead of 67 to 88. A single engine keeps the
+    // default.
+    ...(browsers.length > 1 && { maxWorkers: 4 }),
     // Scratch benchmarks can import aliases from their own config. Loading them here
     // raises Vite's error overlay over every test, corrupting screenshots and input.
     include: ['__tests__/**/*.test.js'],

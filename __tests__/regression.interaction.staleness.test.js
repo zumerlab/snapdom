@@ -18,18 +18,12 @@ import { snapdom } from '../src/index.js'
 // sizing rule as visual.demos.shared.js: the engine count is the load.
 const ENGINES = inject('engines') ?? 1
 vi.setConfig({ testTimeout: 15000 * ENGINES })
-// The pointer commands skip Playwright's actionability checks. Those wait on animation frames,
-// which WebKit holds back in a page that is not in front, and in the full BROWSER=all run a
-// hover and the afterEach unhover each ran out the whole 30 to 45 s budget waiting there
-// (2026-10-23). Each file owns its page, so nothing else can sit under the pointer, and every
-// hover is followed by an assertion that it landed (`matches(':hover')` or the pixels).
-const POINTER = { force: true }
 
 let mounted
 let style
 afterEach(async () => {
   window.getSelection().removeAllRanges()
-  if (mounted) { try { await userEvent.unhover(mounted, POINTER) } catch { /* already gone */ } }
+  if (mounted) { try { await userEvent.unhover(mounted) } catch { /* already gone */ } }
   mounted?.remove()
   style?.remove()
   mounted = style = null
@@ -78,11 +72,11 @@ describe('a hover that left between two captures', () => {
   it('is not served again by the snapshot cache', async () => {
     mountCSS(HOVER_CSS)
     mountBox('zzh')
-    await userEvent.hover(mounted, POINTER)
+    await userEvent.hover(mounted)
     expect(mounted.matches(':hover')).toBe(true) // precondition: the real pointer is over it
     expect(hits(await snapdom.toCanvas(mounted, BASE), RED)).toBeGreaterThan(1000)
 
-    await userEvent.unhover(mounted, POINTER)
+    await userEvent.unhover(mounted)
     expect(mounted.matches(':hover')).toBe(false)
     expect(hits(await snapdom.toCanvas(mounted, BASE), RED)).toBe(0)
   })
@@ -91,12 +85,12 @@ describe('a hover that left between two captures', () => {
     mountCSS(HOVER_CSS)
     mountBox('zzh')
     const opts = { ...BASE, burst: true }
-    await userEvent.hover(mounted, POINTER)
+    await userEvent.hover(mounted)
     expect(mounted.matches(':hover')).toBe(true)
     const r1 = await snapdom(mounted, opts)
     expect(hits(await r1.toCanvas(), RED)).toBeGreaterThan(1000)
 
-    await userEvent.unhover(mounted, POINTER)
+    await userEvent.unhover(mounted)
     expect(mounted.matches(':hover')).toBe(false)
     const r2 = await snapdom(mounted, opts)
     expect(r2).not.toBe(r1)
@@ -112,7 +106,7 @@ describe('a hover that left between two captures', () => {
     const target = mounted.lastElementChild
     await snapdom(target, BASE)
 
-    await userEvent.hover(trigger, POINTER)
+    await userEvent.hover(trigger)
     expect(trigger.matches(':hover')).toBe(true)
     const automatic = await snapdom.toCanvas(target, BASE)
     const full = await snapdom.toCanvas(target, { ...BASE, burst: false })
@@ -128,7 +122,7 @@ describe('a hover that left between two captures', () => {
     const trigger = shadow.querySelector('.trigger')
     await snapdom(mounted, BASE)
 
-    await userEvent.hover(trigger, POINTER)
+    await userEvent.hover(trigger)
     expect(trigger.matches(':hover')).toBe(true)
     const automatic = await snapdom.toCanvas(mounted, BASE)
     const full = await snapdom.toCanvas(mounted, { ...BASE, burst: false })

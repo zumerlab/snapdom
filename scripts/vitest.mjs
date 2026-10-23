@@ -3,7 +3,7 @@
 //
 // The gate (vitest.network.mjs, __tests__/helpers/network-gate.js) skips a test that needs the
 // network when the link cannot serve it at that moment, and the run itself is what congests
-// the link: eighteen workers under BROWSER=all. Once the rest of the run is over, those tests
+// the link: twelve workers under BROWSER=all (vitest.config.js). Once the rest of the run is over, those tests
 // run again here one engine at a time and one file at a time, so each has the link and the
 // machine to itself. Nothing to configure: a link that served the first pass leaves nothing
 // to rerun, and one that cannot serve even this pass (offline) leaves the tests skipped.

@@ -358,7 +358,7 @@ export function defineDemoShard (shardIndex, shardCount) {
   for (const url of Object.keys(demos)) urlByName.set(baseName(url), url)
 
   // The gate runs per test, not once per file: it is the run itself that saturates the
-  // link (six shards times three engines is eighteen workers pulling from CDNs at once),
+  // link (six shards on each of three engines, twelve workers at once, all pulling from CDNs),
   // so the reading has to come from the moment the demo is about to load.
   beforeEach(guard)
 
