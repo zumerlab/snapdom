@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RTL body capture: margins, page-anchored boxes, left spill</title>
+  <style>
+    /* No #target: the suite captures the body. The default 8px body margin stays on purpose. */
+    body { background: #f4f1ea; color: #1d2430; font: 16px/1.5 Arial, sans-serif; }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    p { margin: 0 0 12px; max-width: 760px; }
+    .card { width: 360px; padding: 14px; background: #fff; border-radius: 8px; box-shadow: 6px 6px 0 rgb(30, 90, 200); margin-bottom: 24px; }
+    .edge { box-shadow: -10px 0 0 rgb(220, 60, 60), 10px 0 0 rgb(40, 160, 90); margin-bottom: 24px; padding: 10px; background: #fff; }
+    /* Wider than the 1280px viewport: on a right-to-left page it spills to the left. */
+    .spill { width: 1500px; height: 40px; margin-bottom: 24px;
+      background: linear-gradient(90deg, rgb(220, 60, 60) 0 60px, #d9d3c7 60px calc(100% - 60px), rgb(40, 160, 90) calc(100% - 60px)); }
+    .abs { position: absolute; width: 80px; height: 40px; color: #fff; font-size: 13px; display: grid; place-items: center; }
+    .abs-right { right: 40px; top: 300px; background: rgb(120, 60, 180); }
+    .abs-left { left: 40px; top: 300px; background: rgb(230, 140, 20); }
+    .abs-inline-end { inset-inline-end: 160px; top: 360px; background: rgb(0, 140, 150); }
+    .fixed { position: fixed; right: 200px; top: 16px; width: 120px; height: 32px; background: rgb(30, 30, 30); color: #fff; font-size: 13px; display: grid; place-items: center; }
+    .rel { position: relative; height: 70px; background: #e8e2d6; margin-bottom: 24px; }
+    .rel .pin { position: absolute; inset-inline-start: 12px; top: 12px; width: 46px; height: 46px; border-radius: 50%; background: rgb(200, 40, 120); }
+  </style>
+</head>
+<body>
+  <h1>لقطة الصفحة من اليمين إلى اليسار</h1>
+  <p>هذه الفقرة تختبر النص العربي داخل جسم الصفحة مع الهوامش الافتراضية. Mixed: version 3.3.7, 2026-10-23.</p>
+  <div class="card">בדיקת כרטיס עם צל שנוגע בשוליים של הגוף.</div>
+  <div class="edge">ظل على الجانبين يلامس هامش الجسم</div>
+  <div class="spill"></div>
+  <div class="rel"><span class="pin"></span></div>
+  <div class="abs abs-right">right</div>
+  <div class="abs abs-left">left</div>
+  <div class="abs abs-inline-end">inline-end</div>
+  <div class="fixed">fixed</div>
+</body>
+</html>

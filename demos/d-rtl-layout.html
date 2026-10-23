@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RTL layout: bidi text, logical properties, controls, scrolled containers</title>
+  <style>
+    body { margin: 0; background: #eef1f4; color: #172334; font: 15px/1.45 Arial, sans-serif; }
+    main { padding: 24px; }
+    #target { direction: rtl; width: 680px; background: #fff; padding: 20px; box-sizing: border-box; display: grid; gap: 14px; }
+    h2 { margin: 0; font-size: 13px; color: #5b6878; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    .bidi span { background: #fff4c2; }
+    .logical { margin-inline-start: 24px; padding-inline: 12px 4px; border-inline-start: 5px solid rgb(50, 110, 210); border-inline-end: 1px dashed #9aa6b4; }
+    .ends { display: flex; justify-content: space-between; text-align: start; }
+    .ends .end { text-align: end; }
+
+    .row { display: flex; gap: 8px; }
+    .row b { flex: 0 0 auto; padding: 4px 10px; border-radius: 12px; background: rgb(60, 170, 90); color: #fff; font-weight: normal; }
+    .row b:first-child { background: rgb(200, 40, 40); }
+    .grid { display: grid; grid-template-columns: 60px 1fr 90px; gap: 6px; }
+    .grid > div { background: #e4e9f0; padding: 4px; }
+
+    .box { position: relative; height: 64px; background: #f2f5f9; }
+    .box i { position: absolute; top: 8px; width: 40px; height: 40px; }
+    .box .start { inset-inline-start: 8px; background: rgb(250, 190, 40); }
+    .box .end { inset-inline-end: 8px; background: rgb(120, 60, 180); }
+    .box .phys { left: 120px; background: rgb(0, 140, 150); }
+
+    ol, ul { margin: 0; padding-inline-start: 28px; }
+    ol li::marker { color: rgb(200, 40, 40); font-weight: bold; }
+    ul { list-style: square; }
+
+    table { border-collapse: collapse; width: 100%; }
+    td, th { border: 1px solid #c8d0da; padding: 3px 6px; text-align: start; }
+    th { background: #e4e9f0; }
+
+    .ellipsis { width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #f2f5f9; padding: 4px; }
+    .quote::before { content: '\00AB '; color: rgb(50, 110, 210); }
+    .quote::after { content: ' \00BB'; color: rgb(50, 110, 210); }
+
+    input, textarea, select { font: inherit; border: 1px solid #9aa6b4; border-radius: 4px; padding: 3px 6px; background: #fff; color: inherit; }
+    textarea { width: 220px; height: 44px; resize: none; }
+
+    /* A right-to-left scroller starts at its right edge; this one is scrolled further left. */
+    .scroller { width: 300px; overflow-x: auto; white-space: nowrap; border: 1px solid #c8d0da; scrollbar-width: none; }
+    .scroller::-webkit-scrollbar { display: none; }
+    .scroller span { display: inline-block; width: 90px; height: 36px; line-height: 36px; text-align: center; color: #fff; }
+  </style>
+</head>
+<body>
+  <main>
+    <div id="target">
+      <h2>نص ثنائي الاتجاه</h2>
+      <p class="bidi">مرحبا بكم في <span>snapDOM 3.3</span>، الإصدار رقم 42 صدر في <span>2026-10-23</span>. שלום, זה טקסט בעברית עם <span>CSS</span>.</p>
+      <p class="logical">الخصائص المنطقية: الهامش والحشو والحدود تبدأ من اليمين.</p>
+      <div class="ends"><span>بداية</span><span class="end">نهاية</span></div>
+
+      <div class="cols">
+        <div>
+          <h2>مرن وشبكة</h2>
+          <div class="row"><b>١</b><b>٢</b><b>٣</b><b>٤</b></div>
+          <div class="grid" style="margin-top:8px"><div>أ</div><div>ب</div><div>ج</div></div>
+        </div>
+        <div>
+          <h2>تموضع منطقي</h2>
+          <div class="box"><i class="start"></i><i class="end"></i><i class="phys"></i></div>
+        </div>
+      </div>
+
+      <div class="cols">
+        <ol><li>العنصر الأول</li><li>العنصر الثاني</li><li>العنصر الثالث</li></ol>
+        <ul><li>פריט ראשון</li><li>פריט שני</li><li>פריט שלישי</li></ul>
+      </div>
+
+      <table>
+        <tr><th>الاسم</th><th>الكمية</th><th>السعر</th></tr>
+        <tr><td>تفاح</td><td>12</td><td>3.50</td></tr>
+        <tr><td>برتقال</td><td>7</td><td>4.25</td></tr>
+      </table>
+
+      <div class="cols">
+        <div class="ellipsis">نص طويل جدا يجب أن يقطع بثلاث نقاط في النهاية اليسرى</div>
+        <div class="quote">اقتباس بعلامات</div>
+      </div>
+
+      <div class="cols">
+        <div style="display:grid;gap:6px">
+          <input value="نص في حقل الإدخال">
+          <select><option>الخيار الأول</option></select>
+        </div>
+        <textarea>نص متعدد الأسطر في منطقة النص</textarea>
+      </div>
+
+      <div class="scroller" id="scroller"><span style="background:rgb(200,40,40)">١</span><span style="background:rgb(250,150,40)">٢</span><span style="background:rgb(60,170,90)">٣</span><span style="background:rgb(50,110,210)">٤</span><span style="background:rgb(120,60,180)">٥</span></div>
+    </div>
+  </main>
+  <script>
+    // Negative in right-to-left: scroll 100px towards the end (the left).
+    document.getElementById('scroller').scrollLeft = -100
+  </script>
+</body>
+</html>
