@@ -4,17 +4,15 @@
   <meta charset="UTF-8" />
   <title>Demo 5 — local()+url() + iconFonts ignore</title>
   <!-- Material Icons (icon font) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons&display=swap" rel="stylesheet">
+  <link href="assets/fonts/material-icons/material-icons.css" rel="stylesheet">
 
   <!-- Texto: Roboto -->
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="assets/fonts/roboto/roboto.css" rel="stylesheet">
 
   <style>
     @font-face {
       font-family: 'LocalThenUrl';
-      src: local('SomeMissingLocal'), url('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxP.woff2') format('woff2');
+      src: local('SomeMissingLocal'), url('assets/fonts/roboto/roboto-latin.woff2') format('woff2');
       font-weight: normal;
       font-style: normal;
     }
@@ -44,7 +42,7 @@
         compress: true,
         iconFonts: [
           'Material Icons',                 // por family
-          'https://fonts.googleapis.com/icon?family=Material+Icons' // por URL
+          'assets/fonts/material-icons/material-icons.css' // por URL
         ]
       });
       const out = document.getElementById('output');
