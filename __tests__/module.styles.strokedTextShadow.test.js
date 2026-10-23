@@ -22,6 +22,8 @@ const magentaIn = async (url) => {
 describe('stroked text keeps its text-shadow (#531)', () => {
   // A transparent background written as oklch() serializes that way in WebKit and read as opaque.
   for (const [shadow, bg] of [['3px 3px 0 #f0f', 'none'], ['2px 4px 4px #f0f', 'none'], ['3px 3px 0 #f0f', 'oklch(0.5 0.1 30 / 0)']]) {
+    // Timed out at the 15 s default in WebKit during a full parallel run (2026-10-23), on
+    // the page.viewport/page.screenshot round-trips this test needs.
     it(`paints ${shadow} like the live page (background ${bg})`, async () => {
       // A viewport the runner window holds at 1:1, or the screenshot comes back scaled.
       await page.viewport(800, 600)
@@ -36,6 +38,6 @@ describe('stroked text keeps its text-shadow (#531)', () => {
       expect(live).toBeGreaterThan(200)
       expect(got / live).toBeGreaterThan(0.6)
       expect(got / live).toBeLessThan(1.5)
-    })
+    }, 30_000)
   }
 })
