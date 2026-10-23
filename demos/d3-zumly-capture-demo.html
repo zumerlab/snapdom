@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@flaticon/flaticon-uicons@3.3.1/css/all/all.min.css">
   <style>
-    @import url('https://unpkg.com/@zumer/orbit@latest/dist/orbit.css');
+    @import url('assets/orbit-1.5.0/orbit.css');
     body {
       font-family: sans-serif;
       padding: 2rem;
@@ -435,7 +435,7 @@ const plugin = createPersistentClonePlugin();
     if (oldStamp) oldStamp.remove();
     const stamp = document.createElement("div");
     stamp.setAttribute("data-snapdom-timestamp", "true"); 
-    stamp.textContent = new Date().toLocaleString();
+    stamp.textContent = "afterClone stamp";
     stamp.style.cssText = `
       position: absolute;
       bottom: 10px;
@@ -860,7 +860,7 @@ const pluginAsciiImage = {
     };
   </script>
 
-  <script src="https://unpkg.com/@zumer/orbit@latest/dist/orbit.js"></script>
+  <script src="assets/orbit-1.5.0/orbit.js"></script>
 
 </body>
 </html>
