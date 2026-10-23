@@ -9,27 +9,23 @@ the code cannot: where the repos are, the goals, the commands, the testing traps
 and verification process, and a map from each mechanism to the file that explains it. When
 this file and a source comment disagree, the source wins; fix this file.
 
-## Where the code lives (2026-08-15)
+## Where the code lives (2026-10-23)
 
-Three SEPARATE repos, three separate clones. Getting this wrong pushes private work to a public remote, so check which directory you are in.
+v3 is public: it merged into `zumerlab/snapdom` `main` and shipped as 3.0.0 on 2026-09-14.
+Current line: 3.3.x on npm `latest`. **This clone is the repo.**
 
-| repo | visibility | clone | branch |
+| repo | visibility | clone | branches |
 |---|---|---|---|
-| `zumerlab/snapdom` | **public** | `~/GitHub/zumerlab/snapdom` | `main` (shipped, 2.24.x) and `dev` |
-| `zumerlab/snapdom-v3` | private | `~/GitHub/zumerlab/snapdom-v3` | `main` (default) — the v3 line, this file included |
-| `zumerlab/snapdom-agent` | private | its own repo | the agent oracle (was `packages/agent`) |
+| `zumerlab/snapdom` | **public** | `~/GitHub/zumerlab/snapdom` | `main` (3.x, shipped), `v2` (the 2.24.x line, last 2.24.18 on 2026-09-10) |
+| `zumerlab/snapdom-v3` | private | `~/GitHub/zumerlab/snapdom-v3` | last commit 2026-09-14 (3.0.0-beta.1); superseded by public `main`, history only |
+| `zumerlab/snapdom-agent` | private | no local clone; the `agent` remote here points at it | the agent oracle (was `packages/agent`) |
 
-In each clone `origin` is its OWN repo, so a bare `git push` is always correct. **This was not
-true until 2026-08-15**: `snapdom-v3` used to be a git WORKTREE of the public clone, which meant
-one shared object store (v3 commits physically lived inside the public `.git`, one stray
-`git push origin --all` from leaking), one shared set of refs (only one branch could be called
-`main`, and the public line owned the name), and a `node_modules` symlinked to the public clone
-so its dependency upgrades silently drove v3's tests. All three are gone: separate clones,
-separate objects, separate deps.
-
-- The v3 repo has exactly one branch, `main`. `experimental` was deleted on both sides.
-- A GitHub Action on the v3 repo commits `chore: update contributors list` after a push, so the
-  remote is one commit ahead right after pushing. Fast-forward, do not panic.
+- `origin` is the public repo, so a bare `git push` publishes. Never `git push --all`, and never push
+  to `agent`: that remote is the private agent repo.
+- New features go on `main` as a 3.x minor; a fix a v2 user needs goes on `v2` as a 2.24.x patch.
+  `dev` is stale (last touched 2026-07-18).
+- A GitHub Action (`update-contributors.yml`) commits `chore: update contributors list` after a
+  push, so the remote is one commit ahead right after pushing. Fast-forward, do not panic.
 - **`package-lock.json` is COMMITTED** (2026-08-15) and `playwright` is pinned to an exact
   version, no caret. Both exist for the same reason: the browser build is part of the visual
   fixture, not a floating dependency. While the lockfile was gitignored, a fresh `npm install`
@@ -37,10 +33,8 @@ separate objects, separate deps.
   CJK-text demos failed DETERMINISTICALLY until 1.55.1 went back. Upgrading Playwright is a
   deliberate act that re-records baselines, never a side effect of installing. If visual demos
   move after any dependency work, check the Playwright version before reading the code.
-- `packages/agent` and the `agent-lab` branch no longer exist here — that product lives in its
+- `packages/agent` and the `agent-lab` branch no longer exist here; that product lives in its
   own repo with its history. Do not recreate them.
-- v3 is a breaking release. Anything that must reach users NOW (a fix that also affects the
-  public `main`) belongs in a separate public-main release, not gated behind v3.
 
 ## Non-negotiable project goals
 
@@ -105,6 +99,7 @@ Each of these was a real regression or a real win, with the measurement and the 
 - A shrink-to-fit box whose text is on one line live gets `nowrap` in the clone instead of a wider width (a wider width wrapped rows, #491): `freezeOneLine`, `src/modules/styles.js` (#516).
 - Firefox for Android font inflation (getComputedStyle reports the authored font-size and line-height): `freezeInflatedFontSizes`, `src/utils/clone.helpers.js`. Fields are read through caret hit-testing; placeholders and `<select>` cannot be read and keep the authored size.
 - A Firefox export smaller than the `layoutZoom` grid (every `download()` on a high-DPR screen, and any `scale < 1` at DPR 1, where the grid is 1) is rasterized at the grid and resampled, or snapped borders lose edges: the `fine` draw in `src/exporters/toCanvas.js` (#516; at DPR 1 it costs 0.3 to 3 ms per export, measured on d-text-layout and d5).
+- PNG and JPEG files past the canvas limit are rendered in SVG windows and streamed into one file, never a full-size canvas: `toLargeImage`, `src/exporters/toLargeImage.js`, with the encoders in `src/modules/png.js` and `src/modules/jpeg.js` (#543; JPEG takes Firefox's chroma rule, 4:4:4 from quality 0.9 up, measured in the `jpeg.js` comment).
 - snapdom's own scaffolding is never cloned below the root (the decode iframe `toCanvas` keeps in `document.body` was captured through a nested `toPng` by every later `body` capture): the skip at the top of `deepClone`, `src/core/clone.js`.
 
 ### Experimental canvas engine
