@@ -6,8 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM Showcase: Live DOM Capture Demos</title>
 
-  <meta name="description" content="Run SnapDOM on live elements: benchmark it against html2canvas, export to any format, and try every official plugin and lab.">
-  <meta name="keywords" content="snapdom, html2canvas, DOM capture, screenshot library, SVG export, canvas image, frontend tools, JavaScript screenshot, DOM to any format, high fidelity, plugins">
+  <meta name="description" content="Run SnapDOM on live elements: benchmark it against html2canvas, export images, PDF, vector and video, and try every official plugin and lab.">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://snapdom.dev/showcase/">
@@ -55,7 +54,7 @@
     "@id": "https://snapdom.dev/#website",
     "name": "SnapDOM",
     "url": "https://snapdom.dev/",
-    "description": "Documentation and demos for SnapDOM, a high-performance engine for capturing, modifying, and converting DOM elements into any format.",
+    "description": "Live demos for SnapDOM, a high-performance DOM engine that exports a rendered element as PNG, SVG, canvas or, through plugins, PDF, vector, GIF and video.",
     "publisher": { "@id": "https://snapdom.dev/#organization" }
   }
   </script>
@@ -161,13 +160,13 @@
     .brand-mark { width: 12px; height: 12px; background: var(--sd-accent); flex: 0 0 auto; }
     .brand-name { font-family: var(--font-display); font-weight: 400; font-size: 25px; color: var(--sd-text); letter-spacing: 0.5px; line-height: 1; }
     .top-links { display: flex; align-items: center; gap: 26px; }
-    .top-links a { font-family: var(--font-mono); font-size: 11px; letter-spacing: 1.8px; text-transform: uppercase; color: var(--sd-text-muted); text-decoration: none; transition: color 0.15s; }
+    .top-links a { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--sd-text-muted); text-decoration: none; transition: color 0.15s; }
     .top-links a:hover { color: var(--sd-accent); }
     .hero-top .github-badge { margin: 0; }
 
     .hero-grid { display: grid; grid-template-columns: 1.02fr 0.98fr; gap: 56px; align-items: start; }
     .hero-copy { display: flex; flex-direction: column; gap: 26px; padding-top: 10px; }
-    .hero-eyebrow { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 2px; color: var(--sd-text-muted); text-transform: uppercase; }
+    .hero-eyebrow { display: flex; align-items: center; gap: 10px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-text-muted); text-transform: none; }
     .hero-block h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(56px, 6.4vw, 92px); line-height: 0.94; letter-spacing: 0.5px; color: var(--sd-text); margin: 0; text-align: left; }
     .hero-tagline { font-size: 18px; color: #3A4358; margin: 0; max-width: 500px; line-height: 1.6; }
     .hero-tagline em { font-style: normal; font-weight: 700; color: var(--sd-text); }
@@ -186,7 +185,7 @@
     .npm-line { display: flex; align-items: flex-start; gap: 14px; border: 1px solid var(--sd-border-soft); padding: 12px 16px; font-family: var(--font-code); font-size: 13px; color: var(--sd-text); background: var(--sd-surface); max-width: 100%; }
     .npm-prompt { color: var(--sd-text-muted); flex: 0 0 auto; }
     .npm-cmd { min-width: 0; overflow-wrap: anywhere; line-height: 1.5; }
-    .npm-copy { flex: 0 0 auto; margin-left: auto; align-self: flex-start; border: 0; background: none; cursor: pointer; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--sd-accent); padding: 4px 0 4px 14px; border-left: 1px solid var(--sd-border-soft); text-transform: uppercase; }
+    .npm-copy { flex: 0 0 auto; margin-left: auto; align-self: flex-start; border: 0; background: none; cursor: pointer; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-accent); padding: 4px 0 4px 14px; border-left: 1px solid var(--sd-border-soft); text-transform: none; }
     .hero-proof { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 11px; margin: 2px 0; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.2px; color: var(--sd-text-muted); }
     .hero-proof a { display: inline-flex; align-items: center; gap: 5px; color: var(--sd-text-muted); text-decoration: none; border-bottom: 1px solid transparent; transition: color 0.15s, border-color 0.15s; }
     .hero-proof a:hover { color: var(--sd-accent); border-color: rgba(45,91,255,0.35); }
@@ -196,7 +195,7 @@
     .sd-btn.hero-star { gap: 7px; }
     .sd-btn.hero-star svg { color: var(--sd-star); height: 1em; width: auto; }
     .trusted-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 20px; margin-top: 40px; padding-top: 24px; border-top: 1px solid var(--sd-hairline); }
-    .trusted-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--sd-annot); }
+    .trusted-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; text-transform: none; color: var(--sd-annot); }
     .trusted-item { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 12.5px; color: var(--sd-text-muted); text-decoration: none; transition: color 0.15s; }
     .trusted-logo { width: 20px; height: 20px; border-radius: 5px; object-fit: cover; filter: grayscale(1); opacity: 0.72; transition: filter 0.15s, opacity 0.15s; }
     .trusted-item:hover { color: var(--sd-text); }
@@ -218,7 +217,7 @@
     .stage-bracket.bl { bottom: 14px; left: 14px; border-bottom: 3px solid var(--sd-accent); border-left: 3px solid var(--sd-accent); }
     .stage-bracket.br { bottom: 14px; right: 14px; border-bottom: 3px solid var(--sd-accent); border-right: 3px solid var(--sd-accent); }
     .stage-mascot { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); height: 74%; width: auto; }
-    .stage-annot { position: absolute; font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px; color: var(--sd-annot); text-transform: uppercase; white-space: nowrap; }
+    .stage-annot { position: absolute; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-annot); text-transform: none; white-space: nowrap; }
     .stage-annot.vert { writing-mode: vertical-rl; }
     #hero-flash { position: absolute; inset: 0; background: #FFFFFF; opacity: 0; pointer-events: none; z-index: 5; }
     #hero-flash.flashing { animation: sd-flash 0.55s ease-out both; }
@@ -230,22 +229,22 @@
     .shutter:hover span { background: var(--sd-accent-hover); }
     .shutter:active { transform: scale(0.92); }
     .shutter:disabled { opacity: 0.55; cursor: wait; }
-    .shutter-label { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.2px; color: var(--sd-annot); }
+    .shutter-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-annot); }
     .hero-tray { position: relative; display: flex; gap: 14px; align-items: flex-start; flex: 1; min-width: 0; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
     .star-overlay { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; }
     .star-overlay::before { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--sd-body-bg) 62%, transparent); backdrop-filter: blur(2px); }
     .star-card { position: relative; background: #FFFFFF; border: 1px solid rgba(15,30,77,0.2); box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); transform: rotate(-2deg); animation: sd-print-in 0.5s cubic-bezier(0.2,0.9,0.3,1) both; }
-    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 44px 22px; font-family: var(--font-mono); font-size: 17px; font-weight: 700; letter-spacing: 2px; line-height: 1.5; color: var(--sd-primary); text-decoration: none; text-align: center; transition: color 0.15s; }
+    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 44px 22px; font-family: var(--font-mono); font-size: 17px; font-weight: 700; letter-spacing: 0; line-height: 1.5; color: var(--sd-primary); text-decoration: none; text-align: center; transition: color 0.15s; }
     .star-card a:hover { color: var(--sd-accent); }
     .star-card .star-big { font-size: 46px; line-height: 1; color: var(--sd-star); }
     .star-close { position: absolute; top: -13px; right: -13px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(15,30,77,0.2); background: #FFFFFF; color: var(--sd-text-muted); font-family: var(--font-mono); font-size: 16px; line-height: 1; padding: 0; cursor: pointer; display: grid; place-items: center; box-shadow: 0 4px 10px -6px rgba(15,30,77,0.45); touch-action: manipulation; }
     .star-close:hover { color: var(--sd-primary); }
     .hero-tray::-webkit-scrollbar { display: none; }
-    .hero-tray:empty::before { content: 'PRINTS LAND HERE — PRESS THE SHUTTER'; font-family: var(--font-mono); font-size: 9.5px; letter-spacing: 1.5px; color: var(--sd-annot); opacity: 0.7; padding-top: 24px; }
+    .hero-tray:empty::before { content: 'Press the shutter. Prints come out here.'; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-annot); opacity: 0.7; padding-top: 24px; }
     .print { background: #FFFFFF; border: 1px solid rgba(15,30,77,0.2); padding: 7px 7px 8px; display: flex; flex-direction: column; gap: 6px; animation: sd-print-in 0.5s cubic-bezier(0.2,0.9,0.3,1) both; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); flex: 0 0 auto; }
     .print img { display: block; width: 178px; height: auto; background: #fff; border: 0 !important; padding: 0 !important; box-shadow: none !important; }
-    .print-cap { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.8px; color: var(--sd-text-muted); }
-    .print-plug { width: 0; min-width: 100%; font-family: var(--font-code); font-size: 8.5px; letter-spacing: 0.3px; line-height: 1.35; color: var(--sd-accent); overflow-wrap: anywhere; margin-top: -3px; }
+    .print-cap { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-text-muted); }
+    .print-plug { width: 0; min-width: 100%; font-family: var(--font-code); font-size: 12px; letter-spacing: 0.3px; line-height: 1.35; color: var(--sd-accent); overflow-wrap: anywhere; margin-top: -3px; }
     .print.r1 { transform: rotate(1.8deg); }
     .print.r2 { transform: rotate(-2.2deg); }
     .print.r3 { transform: rotate(1.1deg); }
@@ -259,7 +258,7 @@
       .showcase-intro { grid-template-columns: minmax(0, 1fr) 110px; gap: 16px; }
       .showcase-intro .section-mascot { padding: 5px; }
     }
-    .menu-label { font-family: var(--font-mono); font-size: 10px; letter-spacing: 2px; color: var(--sd-annot); margin: 48px 0 14px; text-transform: uppercase; }
+    .menu-label { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-annot); margin: 48px 0 14px; text-transform: none; }
     nav.demo-menu { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: rgba(15,30,77,0.14); border: 1px solid rgba(15,30,77,0.14); padding: 0; margin: 0; }
     nav.demo-menu a { position: relative; display: flex; align-items: center; background: var(--sd-surface); color: var(--sd-text); text-decoration: none; font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; letter-spacing: 0.3px; padding: 13px; border: 0; border-radius: 0; transition: background 0.15s, color 0.15s; min-height: 54px; }
     nav.demo-menu a:hover { background: var(--sd-border); color: #FFFFFF; border-color: transparent; }
@@ -279,10 +278,10 @@
       margin: 0 0 8px;
       color: var(--sd-annot);
       font-family: var(--font-mono);
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 2px;
-      text-transform: uppercase;
+      letter-spacing: 0;
+      text-transform: none;
     }
     h3 { font-family: var(--font-body); font-weight: 700; }
 
@@ -296,8 +295,8 @@
       font-size: 0.72rem;
       font-weight: 700;
       font-family: var(--font-mono);
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
+      letter-spacing: 0;
+      text-transform: none;
       box-shadow: none;
       cursor: pointer;
       transition: background 0.15s, color 0.15s, border-color 0.15s;
@@ -390,13 +389,13 @@
     /* Benchmark */
     .comparison-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; margin-top: 1rem; flex-direction: row; }
     .comparison-row > div { flex: 1; min-width: 300px; text-align: center; }
-    .label { font-weight: 700; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+    .label { font-weight: 700; margin-bottom: 0.5rem; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; text-transform: none; }
     .winner-glow { animation: glow 1.2s infinite alternate ease-in-out; border-radius: 0; }
     .progress-message { margin: 1rem 0; font-size: 0.85rem; color: var(--sd-text-muted); font-weight: 600; font-family: var(--font-mono); }
     .result-message { margin-top: 0.5rem; font-weight: 700; background: var(--sd-accent-soft); padding: 0.3rem; border-radius: 0; font-family: var(--font-mono); font-size: 0.85rem; }
     .winner-message { font-size: 1.1rem; font-family: var(--font-mono); margin: 1rem 0; padding: 0.8rem 1.2rem; border-radius: 0; background: var(--sd-surface); border: 1px solid var(--sd-border); display: inline-block; }
     .winner-message .speed-badge { display: inline-block; background: var(--sd-accent); color: #FFFFFF; padding: 0.2rem 0.7rem; border-radius: 999px; font-weight: 700; margin-left: 0.5rem; }
-    .benchmark-cta { display: inline-block; margin: 0.9rem 0 0; padding: 0.6rem 1.2rem; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--sd-accent); background: transparent; border: 1.5px solid var(--sd-accent); border-radius: 999px; text-decoration: none; transition: background 0.15s, color 0.15s; }
+    .benchmark-cta { display: inline-block; margin: 0.9rem 0 0; padding: 0.6rem 1.2rem; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--sd-accent); background: transparent; border: 1.5px solid var(--sd-accent); border-radius: 999px; text-decoration: none; transition: background 0.15s, color 0.15s; }
     .benchmark-cta:hover { background: var(--sd-accent); color: #FFFFFF; transform: none; }
     .benchmark-cta span { margin-left: 0.3rem; transition: margin-left 0.15s; }
     .benchmark-cta:hover span { margin-left: 0.55rem; }
@@ -424,7 +423,7 @@
     .proxy-credit { margin-top: 0.6rem; font-size: 0.8rem; color: var(--sd-text-muted); text-align: right; font-family: var(--font-mono); }
 
     /* Site footer */
-    .site-footer { width: 100%; max-width: 1200px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 26px 32px 96px; border-top: 1px solid var(--sd-hairline); margin-top: 40px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 1.5px; color: var(--sd-annot); text-transform: uppercase; }
+    .site-footer { width: 100%; max-width: 1200px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 26px 32px 96px; border-top: 1px solid var(--sd-hairline); margin-top: 40px; font-family: var(--font-mono); font-size: 12px; letter-spacing: 0; color: var(--sd-annot); text-transform: none; }
     .site-footer a { color: var(--sd-annot); text-decoration: none; }
     .site-footer a:hover { color: var(--sd-accent); }
     .site-footer .f-links { display: flex; gap: 20px; }
@@ -436,7 +435,7 @@
       nav.demo-menu { grid-template-columns: repeat(4, 1fr); }
     }
     @media (max-width: 1150px) {
-      .stage-annot { font-size: 9px; letter-spacing: 1px; }
+      .stage-annot { font-size: 11px; letter-spacing: 0; }
     }
     @media (max-width: 900px) {
       .hero-top { flex-wrap: wrap; }
@@ -455,7 +454,7 @@
       .stage { height: 330px; }
       .stage-annot.vert { display: none; }
       .print img { width: 140px; }
-      .star-card a { font-size: 13px; padding: 16px 22px 14px; letter-spacing: 1.4px; }
+      .star-card a { font-size: 13px; padding: 16px 22px 14px; letter-spacing: 0; }
       .star-card .star-big { font-size: 34px; }
       .pane-content section { padding: 40px 0 34px; }
       .pane-content h2 { font-size: 23px; }
@@ -487,10 +486,10 @@
       align-items: center;
       padding: 2px 7px;
       font-family: var(--font-mono);
-      font-size: 0.55rem;
+      font-size: 12px;
       font-weight: 700;
-      letter-spacing: 1.2px;
-      text-transform: uppercase;
+      letter-spacing: 0;
+      text-transform: none;
       border-radius: 0;
       color: var(--sd-accent);
       background: transparent;
@@ -507,10 +506,10 @@
 
 <body>
   <script defer src="../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Showcase", "title": "Showcase: live capture and export demos", "lead": "Start with Basic capture to export an element as an image. The Plugins section adds optional outputs; Labs contains custom experiments built on captures.", "links": [], "toc": [["benchmark", "Benchmark", "Capture"], ["basic", "Basic", "Capture"], ["opts-demo", "Shadows", "Capture"], ["transition", "Transition", "Capture"], ["orbit", "Orbit", "Capture"], ["video", "Video frame", "Capture"], ["fonts-demo", "Fonts", "Capture"], ["shadow", "Shadow DOM", "Capture"], ["canvas", "Canvas", "Capture"], ["export", "Export", "Capture"], ["pseudo", "Pseudo", "Capture"], ["clip", "Clip-Path", "Capture"], ["blend", "Blend", "Capture"], ["iframe", "Iframe", "Capture"], ["forms", "Inputs", "Capture"], ["mask", "Masking", "Capture"], ["cors", "CORS", "Capture"], ["fullbody", "Full page", "Capture"], ["plugins", "Overview", "Plugins"], ["redact-demo", "Hide private fields", "Plugins"], ["timestamp-demo", "Timestamp", "Plugins"], ["replace-demo", "Replace text", "Plugins"], ["filter-demo", "Filters and tint", "Plugins"], ["pdf-demo", "PDF", "Plugins"], ["vector-demo", "Editable SVG", "Plugins"], ["html-export-demo", "HTML export", "Plugins"], ["ascii-demo", "ASCII art", "Plugins"], ["gif-export-demo", "GIF recording", "Plugins"], ["video-export-demo", "Video recording", "Plugins"], ["context-demo", "Text context", "Plugins"], ["agent-map-demo", "Element map", "Plugins"], ["labs", "Overview", "Labs"], ["lab-video-overlay", "Video overlay", "Labs"], ["lab-webrtc-overlay", "WebRTC overlay", "Labs"], ["lab-stop-motion", "Stop motion", "Labs"], ["lab-paint-canvas", "Paint on a capture", "Labs"], ["lab-target-range", "Target range", "Labs"], ["lab-capture-stages", "Capture stages", "Labs"], ["lab-webgl-live-mirror", "Live mirror", "Labs"], ["lab-webgl-seamless-dom", "Seamless DOM", "Labs"], ["lab-webgl-shatter", "Shattered capture", "Labs"], ["demo-session", "Repeat captures", "Labs"], ["demo-htmlcanvas", "html-in-canvas", "Labs"]]} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <!-- pane:start --><!-- hero {"badge": "Showcase", "title": "Showcase: live capture and export demos", "lead": "Start with Basic capture to export an element as an image. The Plugins section adds optional outputs; Labs contains custom experiments built on captures.", "links": [], "toc": [["benchmark", "Benchmark", "Capture"], ["basic", "Basic", "Capture"], ["opts-demo", "Shadows", "Capture"], ["transition", "Transition", "Capture"], ["orbit", "Orbit", "Capture"], ["video", "Video frame", "Capture"], ["fonts-demo", "Fonts", "Capture"], ["shadow", "Shadow DOM", "Capture"], ["canvas", "Canvas", "Capture"], ["export", "Export", "Capture"], ["pseudo", "Pseudo", "Capture"], ["clip", "Clip-Path", "Capture"], ["blend", "Blend", "Capture"], ["iframe", "Iframe", "Capture"], ["forms", "Inputs", "Capture"], ["mask", "Masking", "Capture"], ["cors", "CORS", "Capture"], ["fullbody", "Full page", "Capture"], ["plugins", "Overview", "Plugins"], ["redact-demo", "Hide private fields", "Plugins"], ["timestamp-demo", "Timestamp", "Plugins"], ["replace-demo", "Replace text", "Plugins"], ["filter-demo", "Filters and tint", "Plugins"], ["pdf-demo", "PDF", "Plugins"], ["vector-demo", "Editable SVG", "Plugins"], ["html-export-demo", "HTML export", "Plugins"], ["ascii-demo", "ASCII art", "Plugins"], ["gif-export-demo", "GIF recording", "Plugins"], ["video-export-demo", "Video recording", "Plugins"], ["stream-demo", "Live stream", "Plugins"], ["context-demo", "Text context", "Plugins"], ["agent-map-demo", "Element map", "Plugins"], ["labs", "Overview", "Labs"], ["lab-video-overlay", "Video overlay", "Labs"], ["lab-webrtc-overlay", "WebRTC overlay", "Labs"], ["lab-stop-motion", "Stop motion", "Labs"], ["lab-paint-canvas", "Paint on a capture", "Labs"], ["lab-target-range", "Target range", "Labs"], ["lab-capture-stages", "Capture stages", "Labs"], ["lab-webgl-live-mirror", "Live mirror", "Labs"], ["lab-webgl-seamless-dom", "Seamless DOM", "Labs"], ["lab-webgl-shatter", "Shattered capture", "Labs"], ["demo-session", "Repeat captures", "Labs"], ["demo-htmlcanvas", "html-in-canvas", "Labs"]]} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Capture</button><div class="pane-nav-items"><a href="#benchmark">Benchmark</a><a href="#basic">Basic</a><a href="#opts-demo">Shadows</a><a href="#transition">Transition</a><a href="#orbit">Orbit</a><a href="#video">Video frame</a><a href="#fonts-demo">Fonts</a><a href="#shadow">Shadow DOM</a><a href="#canvas">Canvas</a><a href="#export">Export</a><a href="#pseudo">Pseudo</a><a href="#clip">Clip-Path</a><a href="#blend">Blend</a><a href="#iframe">Iframe</a><a href="#forms">Inputs</a><a href="#mask">Masking</a><a href="#cors">CORS</a><a href="#fullbody">Full page</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="#plugins">Overview</a><a href="#redact-demo">Hide private fields</a><a href="#timestamp-demo">Timestamp</a><a href="#replace-demo">Replace text</a><a href="#filter-demo">Filters and tint</a><a href="#pdf-demo">PDF</a><a href="#vector-demo">Editable SVG</a><a href="#html-export-demo">HTML export</a><a href="#ascii-demo">ASCII art</a><a href="#gif-export-demo">GIF recording</a><a href="#video-export-demo">Video recording</a><a href="#context-demo">Text context</a><a href="#agent-map-demo">Element map</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="#labs">Overview</a><a href="#lab-video-overlay">Video overlay</a><a href="#lab-webrtc-overlay">WebRTC overlay</a><a href="#lab-stop-motion">Stop motion</a><a href="#lab-paint-canvas">Paint on a capture</a><a href="#lab-target-range">Target range</a><a href="#lab-capture-stages">Capture stages</a><a href="#lab-webgl-live-mirror">Live mirror</a><a href="#lab-webgl-seamless-dom">Seamless DOM</a><a href="#lab-webgl-shatter">Shattered capture</a><a href="#demo-session">Repeat captures</a><a href="#demo-htmlcanvas">html-in-canvas</a></div></div></nav></aside>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Capture</button><div class="pane-nav-items"><a href="#benchmark">Benchmark</a><a href="#basic">Basic</a><a href="#opts-demo">Shadows</a><a href="#transition">Transition</a><a href="#orbit">Orbit</a><a href="#video">Video frame</a><a href="#fonts-demo">Fonts</a><a href="#shadow">Shadow DOM</a><a href="#canvas">Canvas</a><a href="#export">Export</a><a href="#pseudo">Pseudo</a><a href="#clip">Clip-Path</a><a href="#blend">Blend</a><a href="#iframe">Iframe</a><a href="#forms">Inputs</a><a href="#mask">Masking</a><a href="#cors">CORS</a><a href="#fullbody">Full page</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="#plugins">Overview</a><a href="#redact-demo">Hide private fields</a><a href="#timestamp-demo">Timestamp</a><a href="#replace-demo">Replace text</a><a href="#filter-demo">Filters and tint</a><a href="#pdf-demo">PDF</a><a href="#vector-demo">Editable SVG</a><a href="#html-export-demo">HTML export</a><a href="#ascii-demo">ASCII art</a><a href="#gif-export-demo">GIF recording</a><a href="#video-export-demo">Video recording</a><a href="#stream-demo">Live stream</a><a href="#context-demo">Text context</a><a href="#agent-map-demo">Element map</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="#labs">Overview</a><a href="#lab-video-overlay">Video overlay</a><a href="#lab-webrtc-overlay">WebRTC overlay</a><a href="#lab-stop-motion">Stop motion</a><a href="#lab-paint-canvas">Paint on a capture</a><a href="#lab-target-range">Target range</a><a href="#lab-capture-stages">Capture stages</a><a href="#lab-webgl-live-mirror">Live mirror</a><a href="#lab-webgl-seamless-dom">Seamless DOM</a><a href="#lab-webgl-shatter">Shattered capture</a><a href="#demo-session">Repeat captures</a><a href="#demo-htmlcanvas">html-in-canvas</a></div></div></nav></aside>
 
 <article class="pane-read sec-labs" data-title="Live demos">
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>Live demos</span></nav><span class="doc-meta">Showcase</span></div><h1>Showcase: live capture and export demos</h1><p class="doc-lead">Start with Basic capture to export an element as an image. The Plugins section adds optional outputs; Labs contains custom experiments built on captures.</p></header>
@@ -912,7 +911,7 @@
       .pl-art { background: linear-gradient(135deg, #ff7a59, #ffd166 45%, #2D5BFF); color: #fff; }
       .pl-art .pl-big { font: 800 40px/1 Arial, sans-serif; }
       .pl-status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #fff3c4; color: #7a5600; font: 700 12px/1.6 Arial, sans-serif; }
-      .output pre.pl-text { text-align: left; font: 11px/1.15 ui-monospace, Menlo, monospace; white-space: pre; overflow: auto; max-height: 320px; background: #fff; padding: 10px; border-radius: 8px; }
+      .output pre.pl-text { text-align: left; font: 12px/1.15 ui-monospace, Menlo, monospace; white-space: pre; overflow: auto; max-height: 320px; background: #fff; padding: 10px; border-radius: 8px; }
       .pl-ascii-card { background: #fff; color: #0F1E4D; }
       .pl-ascii-logo { display: flex; align-items: center; gap: 14px; }
       .pl-ascii-logo i { flex: none; width: 84px; height: 84px; border-radius: 50%; background: #0F1E4D; }
@@ -920,9 +919,9 @@
       .pl-ascii-bars { display: flex; gap: 8px; align-items: flex-end; height: 70px; margin-top: 16px; }
       .pl-ascii-bars i { flex: 1; background: #0F1E4D; }
       /* Not a <pre>: the site styles every pre as a dark code block with tall lines, which stretches the drawing. */
-      .output .pl-ascii { white-space: pre; font: 8px/1 ui-monospace, Menlo, Consolas, monospace; color: #0F1E4D; background: #fff; border: 1px solid #c6d2e8; padding: 12px; overflow: auto; text-align: left; max-width: 100%; }
+      .output .pl-ascii { white-space: pre; font: 12px/1 ui-monospace, Menlo, Consolas, monospace; color: #0F1E4D; background: #fff; border: 1px solid #c6d2e8; padding: 12px; overflow: auto; text-align: left; max-width: 100%; }
       @media (max-width: 600px) { .output .pl-ascii { font-size: 5.5px; padding: 8px; } }
-      .pl-opts { display: flex; flex-wrap: wrap; gap: 10px 20px; max-width: 660px; margin: 0 0 12px; font: 700 10px var(--font-mono); letter-spacing: 1.5px; text-transform: uppercase; color: var(--sd-annot); }
+      .pl-opts { display: flex; flex-wrap: wrap; gap: 10px 20px; max-width: 660px; margin: 0 0 12px; font: 700 12px var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--sd-annot); }
       .pl-opts label { display: flex; align-items: center; gap: 6px; }
       .pl-opts label[hidden] { display: none; }
       .pl-opts select, .pl-opts input[type=text] { font: 13px var(--font-body, Arial); letter-spacing: 0; text-transform: none; padding: 4px 6px; border: 1px solid var(--sd-border-soft); background: var(--sd-surface); color: var(--sd-text); }
@@ -946,7 +945,7 @@
     <!-- Plugins: what they make, how to install, one live demo each, community and your own -->
     <section id="plugins">
       <h2 id="plugin-demos">Plugins</h2>
-      <p class="demo-explanation">Official plugins from <code>@zumer/snapdom-plugins</code> turn the same capture into a PDF, editable SVG, HTML, ASCII, a GIF or video, or context for an agent, or change it before it renders. Each demo runs one plugin.</p>
+      <p class="demo-explanation">Official plugins from <code>@zumer/snapdom-plugins</code> turn the same capture into a PDF, editable SVG, HTML, ASCII, a GIF, video or live canvas, or context for an agent, or change it before it renders. Each demo runs one plugin.</p>
     </section>
 
 
@@ -954,7 +953,7 @@
     <style>
       .xp-card { background: linear-gradient(135deg, #2b5876, #4e4376); color: #f3f1ea; max-width: 340px; }
       .xp-card h3 { margin: 0 0 6px; }
-      .xp-pill { display: inline-block; white-space: nowrap; padding: 5px 12px 5px 24px; position: relative; border-radius: 999px; background: rgba(255,255,255,.14); font: 700 11px/1.4 var(--font-mono, monospace); }
+      .xp-pill { display: inline-block; white-space: nowrap; padding: 5px 12px 5px 24px; position: relative; border-radius: 999px; background: rgba(255,255,255,.14); font: 700 12px/1.4 var(--font-mono, monospace); }
       .xp-pill::before { content: ''; position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 7px; height: 7px; border-radius: 50%; background: #2ee6a6; box-shadow: 0 0 8px #2ee6a6; }
       .xp-anim { max-width: 260px; height: 150px; display: grid; place-items: center; position: relative; background: #0F1E4D; border-color: rgba(255,255,255,0.14); }
       .xp-ring { width: 80px; height: 80px; border-radius: 50%; border: 6px solid #5c7cff; border-top-color: #ffd166; animation: xp-spin 1.1s linear infinite; }
@@ -1095,6 +1094,24 @@
       <div class="output" id="xp-vid-out"></div>
     </section>
 
+    <section id="stream-demo">
+      <h2 id="stream-plugin">Live stream <span class="new-badge">Plugin</span></h2>
+      <p class="demo-explanation">The <code>stream</code> plugin keeps a canvas in step with a live element and repaints only the boxes that changed. The first frame is a full capture; after that, a changed card costs a few milliseconds instead of a full frame. Type in the card and watch the canvas follow.</p>
+      <div class="card" id="xp-stream-src" style="max-width:340px;background:#0F1E4D;color:#f3f1ea;display:grid;gap:8px">
+        <h3 contenteditable="true" spellcheck="false" style="margin:0;padding:8px 10px;background:#1b2f73;border-radius:6px">Type here, the canvas follows</h3>
+        <p contenteditable="true" spellcheck="false" style="margin:0;padding:8px 10px;background:#1b2f73;border-radius:6px">Each box repaints on its own when it changes.</p>
+        <div style="display:flex;gap:8px;align-items:center"><span style="padding:5px 12px;border-radius:999px;background:#2ee6a6;color:#0F1E4D;font-weight:700">live</span><span id="xp-stream-count" style="display:inline-block;padding:5px 12px;border-radius:999px;background:#ffd166;color:#0F1E4D;font-weight:800">00</span></div>
+      </div>
+      <pre class="pl-code" id="pl-stream-code">import { stream } from '@zumer/snapdom-plugins/stream'
+
+const live = stream(el, { onFrame: f => console.log(f.full ? 'full' : 'patch', f.rects, f.ms) })
+await live.ready
+document.body.append(live.canvas)
+// later: live.stop()</pre>
+      <button data-umami-event="Plugin stream" onclick="runStreamDemo(this)">Start stream</button>
+      <div class="output" id="xp-stream-out"></div>
+    </section>
+
     <p class="section-kicker pl-stage">Context for agents</p>
 
     <section id="context-demo">
@@ -1135,11 +1152,11 @@
     .lab-demo .demo-target strong { font-size: 16px; }
     .lab-demo .demo-target p { color: rgba(255,255,255,0.85); margin: 8px 0 0; }
     .lab-demo .output-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 1.3rem; max-width: 720px; }
-    .lab-demo .output-col label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: 2px; color: var(--sd-annot); display: block; margin-bottom: 8px; font-weight: 700; }
+    .lab-demo .output-col label { font-family: var(--font-mono); font-size: 12px; text-transform: none; letter-spacing: 0; color: var(--sd-annot); display: block; margin-bottom: 8px; font-weight: 700; }
     .lab-demo .output-box { min-height: 100px; border: 1px dashed var(--sd-border-soft); padding: 12px; display: flex; align-items: flex-start; justify-content: center; color: var(--sd-text-muted); font-size: 13px; overflow: hidden; }
     .lab-demo .output-box img { max-width: 100%; height: auto; border: 1px solid rgba(15,30,77,0.2); background: #fff; padding: 6px; object-fit: contain; box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45); }
     .lab-demo .output-box .ph { margin: auto; }
-    .lab-demo .status-msg { font-family: var(--font-mono); font-size: 11px; color: var(--sd-text-muted); margin-top: 6px; }
+    .lab-demo .status-msg { font-family: var(--font-mono); font-size: 12px; color: var(--sd-text-muted); margin-top: 6px; }
     /* Mutation themes: "Changes 1-in-4 polls" cycles these so each change shows in the live card and the captures. */
     .lab-demo .poke-target { display: flex; align-items: center; gap: 16px; background: linear-gradient(135deg, #F5A623 0%, #FFD873 100%); }
     .lab-demo .poke-target.t1 { background: linear-gradient(135deg, #2D5BFF 0%, #7C97FF 100%); }
@@ -1153,7 +1170,7 @@
     .lab-demo .tick { width: 10px; height: 16px; border: 1.5px solid var(--sd-border-soft); background: #fff; border-radius: 1px; flex: none; transition: background .15s ease, border-color .15s ease; }
     .lab-demo .tick.cost { background: var(--sd-accent); border-color: var(--sd-accent); }
     .lab-demo .tick.fast { background: var(--green); border-color: var(--green); }
-    .lab-demo .col-readout { font-family: var(--font-code); font-size: 15px; font-weight: 700; margin-top: 8px; color: var(--sd-text); }
+    .lab-demo .col-readout { font-family: Arial, Helvetica, sans-serif; font-size: 15px; font-weight: 700; margin-top: 8px; color: var(--sd-text); }
     .lab-demo .col-readout.win { color: var(--green); }
     .lab-demo .legend-mini { display: flex; gap: 18px; margin-top: 16px; font-size: 12px; color: var(--sd-text-muted); }
     .lab-demo .legend-mini .dot { width: 8px; height: 8px; border-radius: 2px; display: inline-block; margin-right: 6px; }
@@ -1797,7 +1814,7 @@
     // Tick only while a counter is on screen: a running counter is a DOM mutation every 80 ms,
     // and it kept the repeat-capture demo from ever reusing a capture.
     let _xpCount = 0;
-    const xpCounters = [document.getElementById('xp-gif-count'), document.getElementById('xp-vid-count')];
+    const xpCounters = [document.getElementById('xp-gif-count'), document.getElementById('xp-vid-count'), document.getElementById('xp-stream-count')];
     const xpVisible = new Set();
     const xpObserver = new IntersectionObserver((entries) => {
       for (const e of entries) e.isIntersecting ? xpVisible.add(e.target) : xpVisible.delete(e.target);
@@ -2017,6 +2034,33 @@
       button.before(box, code);
       renderCode(key);
     }
+
+    let xpStream = null;
+    window.runStreamDemo = async function (btn) {
+      const src = document.getElementById('xp-stream-src');
+      const out = document.getElementById('xp-stream-out');
+      if (xpStream) { xpStream.stop(); xpStream = null; btn.textContent = 'Start stream'; return; }
+      btn.disabled = true; out.innerHTML = '<div class="progress-message">Loading stream…</div>';
+      try {
+        const { stream } = await import(`${PLUGIN_CDN}/stream?external=@zumer/snapdom`);
+        const stats = document.createElement('p');
+        stats.className = 'demo-explanation'; stats.style.margin = '10px 0 0';
+        let frames = 0, patched = 0, ms = [];
+        const live = stream(src, {
+          onFrame(f) {
+            frames++; if (!f.full) patched++; ms.push(f.ms); if (ms.length > 60) ms.shift();
+            const med = ms.slice().sort((a, b) => a - b)[ms.length >> 1];
+            stats.textContent = `${frames} frames · ${patched} patched · median ${med.toFixed(1)} ms per repaint`;
+          }
+        });
+        await live.ready;
+        live.canvas.style.cssText = `width:100%;max-width:${Math.round(src.getBoundingClientRect().width)}px;height:auto;border-radius:8px`;
+        out.innerHTML = ''; out.append(live.canvas, stats);
+        xpStream = live; btn.textContent = 'Stop stream';
+        sdExportStar(out, 'stream');
+      } catch (e) { xpError(out, e); }
+      finally { btn.disabled = false; }
+    };
 
     window.runPluginDemo = async function (key, btn) {
       const demo = PLUGIN_DEMOS[key], o = demoValues[key];

@@ -3,28 +3,36 @@
 <head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SnapDOM: Capture, modify and convert DOM elements</title>
-  <meta name="description" content="High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.">
-  <meta name="keywords" content="snapdom, DOM capture, html2canvas alternative, HTML to image, SVG export, JavaScript screenshot">
+  <title>SnapDOM: capture DOM elements as PNG, SVG, PDF or video</title>
+  <meta name="description" content="Capture a DOM element in the browser and export it as PNG, SVG or canvas. Plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://snapdom.dev/">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SnapDOM: capture, modify and convert DOM elements">
-  <meta property="og:description" content="High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.">
+  <meta property="og:title" content="SnapDOM: capture DOM elements as PNG, SVG, PDF or video">
+  <meta property="og:description" content="Capture a DOM element in the browser and export it as PNG, SVG or canvas. Plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
   <meta property="og:url" content="https://snapdom.dev/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="SnapDOM: capture, modify and convert DOM elements">
-  <meta name="twitter:description" content="High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.">
+  <meta name="twitter:title" content="SnapDOM: capture DOM elements as PNG, SVG, PDF or video">
+  <meta name="twitter:description" content="Capture a DOM element in the browser and export it as PNG, SVG or canvas. Plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
   <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
   <link rel="shortcut icon" href="./assets/favicon/favicon.ico">
   <link rel="apple-touch-icon" sizes="180x180" href="./assets/favicon/apple-touch-icon.png">
   <link rel="manifest" href="./assets/favicon/site.webmanifest">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "SnapDOM",
+    "url": "https://snapdom.dev/",
+    "publisher": { "@id": "https://zumerlab.com/#organization" }
+  }
+  </script>
   <meta name="theme-color" content="#f7f9fc">
   <script type="application/ld+json">
   {
@@ -34,7 +42,7 @@
     "alternateName": "@zumer/snapdom",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
-    "description": "High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.",
+    "description": "Capture a DOM element in the browser and export it as PNG, SVG or canvas. Plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.",
     "url": "https://snapdom.dev/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
     "codeRepository": "https://github.com/zumerlab/snapdom",
@@ -76,7 +84,7 @@
     .hero { padding: 96px 0 72px; border-bottom: 1px solid var(--line); }
     .hero-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(360px, .95fr); gap: 72px; align-items: center; }
     .hero-grid > * { min-width: 0; }
-    .eyebrow { margin: 0 0 20px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .eyebrow { margin: 0 0 20px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: 0; text-transform: none; }
     h1 { max-width: 760px; margin: 0; font-size: clamp(40px, 4.8vw, 64px); line-height: 1.04; letter-spacing: -.045em; text-wrap: balance; }
     .lead { max-width: 670px; margin: 28px 0 0; color: var(--muted); font-size: 20px; line-height: 1.65; }
     .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
@@ -91,7 +99,7 @@
     .proof strong { color: var(--ink); }
     .copy { border: 0; padding: 0; color: #9eb3ff; background: transparent; cursor: pointer; font: inherit; }
     @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
-    @keyframes print-in { from { opacity: 0; translate: 0 -20px; } to { opacity: 1; translate: 0 0; } }
+    @keyframes print-in { from { translate: 0 -105%; } 55% { translate: 0 -30%; } to { translate: 0 0; } }
     .stage { position: relative; height: 390px; overflow: hidden; border: 1px solid var(--line); background: linear-gradient(135deg, #f0f4ff, #fff 56%, #edf7ff); }
     .stage-third { position: absolute; background: rgba(45,91,255,.09); pointer-events: none; }
     .stage-third.v { top: 0; bottom: 0; width: 1px; }
@@ -103,36 +111,51 @@
     .stage-bracket.bl { bottom: 14px; left: 14px; border-bottom: 3px solid var(--blue); border-left: 3px solid var(--blue); }
     .stage-bracket.br { right: 14px; bottom: 14px; border-right: 3px solid var(--blue); border-bottom: 3px solid var(--blue); }
     .stage-mascot { position: absolute; left: 50%; bottom: 24px; width: min(76%, 300px); height: auto; transform: translateX(-50%); }
-    .stage-annot { position: absolute; color: var(--muted); font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; text-transform: uppercase; white-space: nowrap; }
+    .stage-annot { position: absolute; color: var(--muted); font: 12px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; white-space: nowrap; }
     .stage-annot.vert { writing-mode: vertical-rl; }
     #hero-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: #fff; opacity: 0; }
     #hero-flash.flashing { animation: flash .55s ease-out both; }
-    .stage-row { min-height: 128px; display: flex; align-items: flex-start; gap: 18px; padding-top: 16px; }
+    .stage-row { position: relative; min-height: 150px; display: flex; align-items: flex-start; gap: 18px; margin-top: 10px; padding: 14px 16px 12px; border-radius: 14px; background: linear-gradient(#2a3040, #171b26 70%); box-shadow: inset 0 1px 0 rgba(255,255,255,.12), inset 0 -2px 0 rgba(0,0,0,.4), 0 10px 24px -14px rgba(15,30,77,.7); }
+    .stage-row::before { content: ""; position: absolute; top: 6px; left: 50%; width: 46px; height: 3px; margin-left: -23px; border-radius: 2px; background: rgba(255,255,255,.14); }
     .shutter-wrap { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 7px; }
-    .shutter { width: 56px; height: 56px; display: grid; place-items: center; padding: 0; border: 2px solid var(--ink); border-radius: 50%; background: #fff; cursor: pointer; transition: transform .12s; }
-    .shutter span { width: 36px; height: 36px; display: block; border-radius: 50%; background: var(--blue); }
-    .shutter:hover span { background: var(--blue-dark); }
-    .shutter:active { transform: scale(.92); }
-    .shutter:disabled { cursor: wait; opacity: .55; }
-    .shutter-label { color: var(--muted); font: 9px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.2px; }
-    .hero-tray { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+    .shutter { position: relative; width: 60px; height: 60px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; cursor: pointer; background: radial-gradient(circle at 50% 38%, #3b4254, #171a22 70%); box-shadow: 0 0 0 3px #0e1119, 0 0 0 4px rgba(255,255,255,.16), inset 0 1px 0 rgba(255,255,255,.18), inset 0 -3px 6px rgba(0,0,0,.45), 0 8px 18px -8px rgba(15,30,77,.6); transition: transform .12s; }
+    .shutter::before { content: ""; position: absolute; inset: 7px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); pointer-events: none; }
+    .shutter::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--blue); opacity: 0; pointer-events: none; }
+    .shutter:not(.used)::after { animation: shutter-ping 2.8s ease-out 3s infinite; }
+    @keyframes shutter-ping { 0% { opacity: .7; scale: .92; } 60% { opacity: 0; scale: 1.35; } 100% { opacity: 0; scale: 1.35; } }
+    .shutter span { width: 30px; height: 30px; display: block; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ff8f7f, #e13a2e 55%, #8c1710); box-shadow: inset 0 -2px 4px rgba(0,0,0,.45), inset 0 1px 2px rgba(255,255,255,.35), 0 0 14px rgba(255,70,50,.35); transition: transform .1s, box-shadow .2s; }
+    .shutter:hover span { box-shadow: inset 0 -2px 4px rgba(0,0,0,.45), inset 0 1px 2px rgba(255,255,255,.35), 0 0 22px rgba(255,70,50,.55); }
+    .shutter:active { transform: scale(.94); }
+    .shutter:active span, .shutter:disabled span { transform: scale(.84); box-shadow: inset 0 2px 5px rgba(0,0,0,.5); }
+    .shutter:disabled { cursor: wait; }
+    .shutter:focus-visible { outline: 3px solid var(--blue); outline-offset: 5px; }
+    @media (prefers-reduced-motion: reduce) { .shutter:not(.used)::after { animation: none; } }
+    .shutter-label { color: #aeb8d2; font: 12px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+    .hero-tray { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; overflow-y: hidden; padding: 10px 2px 6px; scrollbar-width: none; }
+    .stage-row::after { content: ""; position: absolute; top: 14px; left: 96px; right: 18px; z-index: 2; height: 7px; border-radius: 4px; background: #05070c; box-shadow: inset 0 1px 2px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.1); pointer-events: none; }
     .hero-tray::-webkit-scrollbar { display: none; }
-    .print { width: 158px; min-width: 0; flex: 0 1 158px; display: flex; flex-direction: column; gap: 5px; padding: 6px 6px 7px; overflow: hidden; border: 1px solid var(--line); background: #fff; box-shadow: 0 12px 26px -16px rgba(15,30,77,.45); animation: print-in .5s cubic-bezier(.2,.9,.3,1) both; }
+    .print { width: 158px; min-width: 0; flex: 0 1 158px; display: flex; flex-direction: column; gap: 5px; padding: 7px 7px 12px; border-radius: 2px; overflow: hidden; border: 1px solid var(--line); background: #fff; box-shadow: 0 12px 26px -16px rgba(15,30,77,.45); animation: print-in 1.1s cubic-bezier(.3,.7,.3,1) both; }
+    .print-photo { position: relative; overflow: hidden; }
+    .print-photo::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(at 50% 45%, #fdfbf4, #e4ebfa); transition: opacity 2.8s cubic-bezier(.4,0,.6,1) .2s; }
+    .print img { filter: sepia(.7) saturate(.45) contrast(.92); transition: filter 3.8s ease-out; }
+    .print.dev .print-photo::after { opacity: 0; }
+    .print.dev img { filter: none; }
+    @media (prefers-reduced-motion: reduce) { .print { animation-duration: .2s; } .print-photo::after { transition-duration: .4s; } .print img { transition-duration: .4s; } }
     .print img { display: block; width: 100% !important; max-width: 100%; min-width: 0; height: auto !important; object-fit: contain; }
-    .print-cap { color: var(--muted); font: 8px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .5px; }
-    .print-plug { width: 0; min-width: 100%; margin-top: -2px; overflow-wrap: anywhere; color: var(--blue); font: 8px ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.3; }
+    .print-cap { color: var(--muted); font: 12px Arial, Helvetica, sans-serif; letter-spacing: .5px; }
+    .print-plug { width: 0; min-width: 100%; margin-top: -2px; overflow-wrap: anywhere; color: var(--blue); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.3; }
     .print.r1 { transform: rotate(1.8deg); }
     .print.r2 { transform: rotate(-2.2deg); }
     .star-overlay { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; }
     .star-overlay::before { content: ''; position: absolute; inset: 0; background: rgba(247,249,252,.68); backdrop-filter: blur(2px); }
     .star-card { position: relative; border: 1px solid var(--line); background: #fff; box-shadow: 0 14px 30px -14px rgba(15,30,77,.45); transform: rotate(-2deg); animation: print-in .5s cubic-bezier(.2,.9,.3,1) both; }
-    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 22px 34px 19px; color: var(--ink); text-decoration: none; text-align: center; font: 700 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 1.5px; }
+    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 22px 34px 19px; color: var(--ink); text-decoration: none; text-align: center; font: 700 14px/1.5 Arial, Helvetica, sans-serif; letter-spacing: 0; }
     .star-card a:hover { color: var(--blue); }
     .star-big { color: #f5a623; font-size: 40px; line-height: 1; }
     .star-close { position: absolute; top: -12px; right: -12px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: #fff; cursor: pointer; }
     .logos { padding: 30px 0; border-bottom: 1px solid var(--line); }
     .logo-row { display: flex; align-items: center; gap: 28px; overflow: hidden; color: var(--muted); }
-    .logo-row > span { flex: 0 0 auto; font-size: 12px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .logo-row > span { flex: 0 0 auto; font-size: 12px; font-weight: 800; letter-spacing: 0; text-transform: none; }
     .logo-list { display: flex; align-items: center; justify-content: space-between; flex: 1; gap: 24px; }
     .logo-list a { display: inline-flex; align-items: center; color: var(--muted); text-decoration: none; }
     .logo-list img { width: 28px; height: 28px; object-fit: contain; filter: grayscale(1); opacity: .75; transition: filter .15s, opacity .15s; }
@@ -150,13 +173,13 @@
     .install-tabs button[aria-selected="true"] { border-bottom-color: #9eb3ff; color: var(--white); }
     .install-line .install { margin: 0; }
     .demo-panel .stage-row { min-height: 128px; }
-    .tray-empty { padding-top: 22px; color: var(--muted); font: 9px var(--font-code); letter-spacing: 1.2px; text-transform: uppercase; }
+    .tray-empty { padding-top: 26px; color: #8a95b3; font: 12px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
     .output-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
     .output-card { display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--white); border: 1px solid var(--line); transition: border-color .15s; }
     .output-card:hover { border-color: var(--blue); }
     .output-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .output-card h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
-    .output-card-formats { color: var(--muted); font: 400 12.5px/1.5 var(--font-code); }
+    .output-card-formats { color: var(--muted); font: 400 13px/1.5 Arial, Helvetica, sans-serif; }
     .output-card p { flex: 1; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
     .output-card-links { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding-top: 4px; }
     .output-card-links a { color: var(--blue); font-size: 14px; font-weight: 700; text-underline-offset: 4px; }
@@ -211,15 +234,15 @@
   <script defer src="./site.js"></script>
 <link rel="stylesheet" href="code.css"><script defer data-manual src="assets/prism/prism.min.js"></script><script defer src="code-blocks.js"></script></head>
 <body>
-  <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 
   <main>
     <section class="hero">
       <div class="wrap hero-grid">
         <div>
           <p class="eyebrow">High-performance DOM engine · zero dependencies</p>
-          <h1>Capture, modify and convert DOM elements into any format.</h1>
-          <p class="lead">SnapDOM is an MIT JavaScript library that converts DOM elements to PNG, SVG or canvas, a faster html2canvas alternative. It runs in the browser. Images ship in the core; plugins turn the same capture into PDF, HTML, vector artwork, GIF, video or context for agents.</p>
+          <h1>Capture a DOM element once. Export it as PNG, SVG, PDF, vector or video.</h1>
+          <p class="lead">SnapDOM captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into PDF, HTML, editable vector, GIF, video or context for agents. MIT.</p>
           <div class="actions">
             <a class="btn btn-primary" href="./docs/">Get started</a>
             <a class="btn btn-secondary" href="#outputs">Choose your output</a>
@@ -249,18 +272,14 @@
             <span class="stage-cross" style="left:66.66%;top:66.66%">+</span>
             <div class="stage-bracket tl"></div><div class="stage-bracket tr"></div><div class="stage-bracket bl"></div><div class="stage-bracket br"></div>
             <img class="stage-mascot mascot-art" src="./assets/mascots/mr-snapdom-guides.webp" alt="Mr. SnapDOM guiding the way with a map" width="640" height="640" decoding="async">
-            <span class="stage-annot" style="top:20px;left:52px">Subject: Mr. SnapDOM</span>
-            <span class="stage-annot" style="bottom:20px;right:52px">AF · locked</span>
-            <span class="stage-annot vert" style="top:50%;right:20px;transform:translateY(-50%)">Live DOM: not a screenshot</span>
-            <span class="stage-annot" style="bottom:20px;left:52px">Fig. 01: moments before capture</span>
             <div id="hero-flash"></div>
           </div>
           <div class="stage-row">
-            <div class="shutter-wrap"><button class="shutter" id="hero-shutter" type="button" aria-label="Capture Mr. SnapDOM"><span></span></button><span class="shutter-label">CAPTURE</span></div>
-            <div class="hero-tray" id="hero-tray" aria-live="polite"><span class="tray-empty">Prints land here</span></div>
+            <div class="shutter-wrap"><button class="shutter" id="hero-shutter" type="button" aria-label="Capture Mr. SnapDOM"><span></span></button><span class="shutter-label">Capture</span></div>
+            <div class="hero-tray" id="hero-tray" aria-live="polite"><span class="tray-empty">Prints come out here.</span></div>
           </div>
           </div>
-          <div class="demo-panel-status" id="hero-status" role="status">Press the shutter. This stage is captured for real.</div>
+          <div class="demo-panel-status" id="hero-status" role="status">Press the shutter: the scene above is a live DOM, and the print is a real capture.</div>
         </section>
       </div>
     </section>
@@ -289,7 +308,7 @@
         <div class="output-grid why-grid">
           <article class="output-card sec-capture">
             <h3><span class="sec-dot"></span>Speed</h3>
-            <p>Repeat captures of an unchanged element reuse the last result, and small changes rebuild only the subtree that moved.</p>
+            <p>The live benchmark times first and repeat captures against html2canvas and the other libraries, sorted by measured time. Repeat captures of an unchanged element reuse the last result.</p>
             <div class="output-card-links"><a href="./compare/live/">Run the live benchmark</a></div>
           </article>
           <article class="output-card sec-export">
@@ -315,7 +334,7 @@
       <div class="wrap">
         <div class="section-heading">
           <h2>Pick your output.</h2>
-          <p>Images ship with the core. Everything else is a plugin on the same capture.</p>
+          <p>The core exports images. Each plugin below links to a live demo.</p>
         </div>
         <div class="output-grid">
           <article class="output-card sec-capture">
@@ -337,10 +356,10 @@
             <div class="output-card-links"><a href="./showcase/#html-export-demo">Try HTML</a></div>
           </article>
           <article class="output-card sec-record">
-            <div class="output-card-head"><h3><span class="sec-dot"></span>GIF &amp; video</h3><span class="tag tag-plugin">Plugins</span></div>
-            <span class="output-card-formats">GIF · MP4 or WebM</span>
-            <p>Record the live element over time for short animations, demos and review clips.</p>
-            <div class="output-card-links"><a href="./showcase/#gif-export-demo">Try GIF</a><a class="is-sub" href="./showcase/#video-export-demo">Or record video</a></div>
+            <div class="output-card-head"><h3><span class="sec-dot"></span>GIF, video &amp; live stream</h3><span class="tag tag-plugin">Plugins</span></div>
+            <span class="output-card-formats">GIF · MP4 or WebM · live canvas</span>
+            <p>Record the live element for short clips, or stream it into a canvas that repaints only what changed, for video overlays and WebGL.</p>
+            <div class="output-card-links"><a href="./showcase/#gif-export-demo">Try GIF</a><a class="is-sub" href="./showcase/#stream-demo">Or stream it live</a></div>
           </article>
           <article class="output-card sec-context">
             <div class="output-card-head"><h3><span class="sec-dot"></span>Context for agents</h3><span class="tag tag-plugin">Plugins</span></div>
@@ -452,9 +471,24 @@
       return pluginRolls[index]
     }
 
+    let shutterAudio
+    function shutterClick() {
+      try {
+        shutterAudio ??= new AudioContext()
+        const ctx = shutterAudio, n = Math.floor(ctx.sampleRate * .12)
+        const buffer = ctx.createBuffer(1, n, ctx.sampleRate), data = buffer.getChannelData(0)
+        for (let i = 0; i < n; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * (i < n * .4 ? .05 : .12)))
+        const src = ctx.createBufferSource(), filter = ctx.createBiquadFilter(), gain = ctx.createGain()
+        src.buffer = buffer; filter.type = 'bandpass'; filter.frequency.value = 2400; filter.Q.value = .8; gain.gain.value = .35
+        src.connect(filter).connect(gain).connect(ctx.destination); src.start()
+      } catch {}
+    }
+
     async function captureHero() {
       if (captureBusy || document.querySelector('.star-overlay')) return
       captureBusy = true
+      shutterClick()
+      document.getElementById('hero-shutter').classList.add('used')
       const button = document.getElementById('hero-shutter')
       const status = document.getElementById('hero-status')
       const stage = document.getElementById('hero-stage')
@@ -496,15 +530,19 @@
         pluginName.className = 'print-plug'
         pluginName.textContent = label
         pluginName.title = label
-        print.append(image, caption, pluginName)
+        const photo = document.createElement('div')
+        photo.className = 'print-photo'
+        photo.append(image)
+        print.append(photo, caption, pluginName)
         tray.prepend(print)
+        requestAnimationFrame(() => requestAnimationFrame(() => print.classList.add('dev')))
         while (tray.childElementCount > 2) tray.lastElementChild.remove()
 
         if (captureCount >= 7 && !starShown) {
           starShown = true
           const overlay = document.createElement('div')
           overlay.className = 'star-overlay'
-          overlay.innerHTML = '<div class="star-card"><a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span class="star-big">★</span>ENJOYING IT?<br>STAR THE REPO</a><button class="star-close" type="button" aria-label="Close">×</button></div>'
+          overlay.innerHTML = '<div class="star-card"><a href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span class="star-big">★</span>Like it?<br>Star the repo</a><button class="star-close" type="button" aria-label="Close">×</button></div>'
           const close = () => { overlay.remove(); button.disabled = false }
           overlay.querySelector('.star-close').addEventListener('click', close)
           overlay.querySelector('a').addEventListener('click', close)
