@@ -1,9 +1,16 @@
 const starNodes = document.querySelectorAll('[data-star-count]')
 
-// Analytics for every page, started after load and the next painted frame: on snapdom.dev load
-// can fire before first paint, and a request begun earlier (gtag is 180 KB) delays it in Lighthouse.
+// Runs a callback once the page has painted content. Lighthouse counts every request begun
+// before that paint against LCP, and in some runs Chrome holds the first frame until well after
+// load, so neither load nor the next animation frame is late enough (gtag alone is 180 KB).
+window.afterFirstPaint = callback => new PerformanceObserver((list, observer) => {
+  if (!list.getEntriesByName('first-contentful-paint').length) return
+  observer.disconnect()
+  setTimeout(callback)
+}).observe({ type: 'paint', buffered: true })
+
 if (location.hostname === 'snapdom.dev') {
-  addEventListener('load', () => requestAnimationFrame(() => setTimeout(() => {
+  window.afterFirstPaint(() => {
     const umami = document.createElement('script')
     umami.src = 'https://cloud.umami.is/script.js'
     umami.dataset.websiteId = '7ec718e8-f0c5-4abb-8f4f-144f57f61937'
@@ -15,7 +22,7 @@ if (location.hostname === 'snapdom.dev') {
     window.gtag = function () { window.dataLayer.push(arguments) }
     window.gtag('js', new Date())
     window.gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' })
-  })), { once: true })
+  })
 }
 
 const stableDocumentation = document.getElementById('stable-documentation')

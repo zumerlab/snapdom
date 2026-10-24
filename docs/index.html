@@ -400,10 +400,6 @@
       location.replace('./showcase/' + location.hash)
     }
 
-    // The core is fetched after load and the next painted frame, like the analytics in site.js:
-    // on snapdom.dev load can fire before first paint, and anything requested earlier delays the hero text.
-    const afterFirstPaint = callback => addEventListener('load', () => requestAnimationFrame(() => setTimeout(callback)), { once: true })
-
     // One install line, npm or CDN.
     const installCommand = document.getElementById('install-command')
     const installCopy = document.getElementById('install-copy')
@@ -429,8 +425,8 @@
     { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs" } }
   </script>
   <script type="module">
-    // Warmed after first paint (afterFirstPaint, above); a press imports it directly,
-    // since a hidden tab runs no animation frames.
+    // Warmed after the first contentful paint (afterFirstPaint, site.js) so the hero text never
+    // waits on the CDN; a press imports it directly, since a hidden tab never paints.
     const loadCore = () => import('https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs')
     afterFirstPaint(loadCore)
 
