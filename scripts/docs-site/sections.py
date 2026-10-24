@@ -65,7 +65,7 @@ SECTIONS = [
  {'name':'Showcase', 'menu':'Showcase', 'filter':'Filter demos', 'groups':[
    ('Showcase','labs',[('showcase/index.html','Live demos',D(badge='Showcase',
      lead='Start with Basic capture to export an element as an image. The Plugins section adds optional outputs; Labs contains custom experiments built on captures.'))]),
-   ('Labs','labs',[('labs/video-overlay/index.html','Video overlay',None),('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
+   ('Labs','labs',[('labs/video-overlay/index.html','Video overlay',None),('labs/webrtc-overlay/index.html','WebRTC overlay',None),('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
                    ('labs/capture-stages/index.html','Capture stages',None),('labs/target-range/index.html','Target range',None),
                    ('labs/webgl-live-mirror/index.html','Live mirror',None),('labs/webgl-seamless-dom/index.html','Seamless DOM',None),
                    ('labs/webgl-shatter/index.html','Shattered capture',None)])]},
