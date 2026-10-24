@@ -1,5 +1,14 @@
 # Plugin changes
 
+## 4.2.1
+
+- Fix the stream plugin: a box cut by an ancestor with overflow hidden was painted whole. Patches now stay inside every clipping ancestor.
+- Export asciiFromCanvas and asciiStream from the package entry point, as the type declarations already did.
+- Declare result.toStream() on the capture result type.
+- Set the SnapDOM peer dependency to ^3.4.0 (3.3.8 was never published) and document asciiFromCanvas and asciiStream in the README.
+
+Requires SnapDOM 3.4.0 or newer within 3.x.
+
 ## 4.2.0
 
 - Export asciiFromCanvas(source, options) from @zumer/snapdom-plugins/ascii-export: the ASCII conversion on its own, for a canvas, an image, a video frame or a stream frame. toAscii() keeps its output.
