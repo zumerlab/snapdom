@@ -5,3 +5,5 @@ Allow: /
 # each HTML page sets rel=canonical to the preferred URL so duplicates consolidate in Search.
 
 Sitemap: https://snapdom.dev/sitemap.xml
+
+# AI-readable summary: https://snapdom.dev/llms.txt (full: https://snapdom.dev/llms-full.txt)
