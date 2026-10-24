@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overlay Templates</title>
+<style>
+  :root { --bg: #08090c; --line: #232a36; --text: #e8edf5; --muted: #8b95a7; --accent: #facc15; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header p { margin: 0; color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: 960px 1fr; gap: 20px; padding: 20px; align-items: start; }
+  @media (max-width: 1300px) { .wrap { grid-template-columns: 1fr; } }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 6px; }
+  .checker { width: 960px; height: 540px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
+  #out { width: 960px; height: 540px; max-width: 100%; display: block; }
+  .side { display: grid; gap: 12px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; background: #0e1117; }
+  .box h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 400; display: flex; justify-content: space-between; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  .row:first-of-type { margin-top: 0; }
+  input[type=text] { flex: 1; min-width: 120px; background: #151a23; color: var(--text); border: 1px solid #2a3240; border-radius: 6px; padding: 6px 8px; font: inherit; }
+  input[type=color] { width: 36px; height: 28px; border: 1px solid #2a3240; border-radius: 6px; background: none; padding: 0; }
+  select { background: #151a23; color: var(--text); border: 1px solid #2a3240; border-radius: 6px; padding: 6px 8px; font: inherit; }
+  button { background: #1b2230; color: var(--text); border: 1px solid #2f3a4d; border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  button:hover { background: #253045; }
+  .swatches label { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 12px; }
+  pre { margin: 0; background: #0a0c10; border: 1px solid var(--line); border-radius: 6px; padding: 10px; font: 12px/1.6 ui-monospace, Menlo, monospace; color: #c9d4e3; white-space: pre-wrap; min-height: 66px; }
+  .stats { font: 12px/1.6 ui-monospace, Menlo, monospace; color: var(--muted); }
+  .stats b { color: var(--accent); font-weight: 400; }
+  .src { padding: 0 20px 30px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Overlay templates</h1>
+  <p>Broadcast graphics made of plain HTML and CSS, streamed to a canvas that repaints only what changed.</p>
+</header>
+<div class="wrap">
+  <div>
+    <p class="label">Streamed canvas, over a transparency checkerboard</p>
+    <div class="checker"><canvas id="out"></canvas></div>
+    <p class="label" style="margin-top:16px">The code for the last action</p>
+    <pre id="code">// click any control</pre>
+  </div>
+  <div class="side">
+    <div class="box">
+      <h2>scoreboard()</h2>
+      <div class="row"><button id="home">+1 home</button><button id="away">+1 away</button><button id="reset-score">0 - 0</button></div>
+      <div class="row"><button id="start">Start clock</button><button id="stop">Stop clock</button><button id="reset">Reset clock</button></div>
+    </div>
+    <div class="box">
+      <h2>lowerThird()</h2>
+      <div class="row"><input type="text" id="name" value="Alex Morgan"><input type="text" id="role" value="Match commentator"></div>
+      <div class="row"><button id="show">Show</button><button id="hide">Hide</button></div>
+    </div>
+    <div class="box">
+      <h2>ticker()</h2>
+      <div class="row"><input type="text" id="items" value="Kick-off delayed by rain · Home keeper with three saves · Next match: Saturday 18:00"></div>
+      <div class="row"><button id="set-items">Set headlines</button></div>
+    </div>
+    <div class="box">
+      <h2>liveBadge()</h2>
+      <div class="row"><input type="text" id="badge" value="LIVE"><button id="set-badge">Set</button></div>
+    </div>
+    <div class="box">
+      <h2>Theme <span>CSS variables on overlayStage()</span></h2>
+      <div class="row">
+        <select id="preset"><option value="night">Night</option><option value="sport">Sport</option><option value="news">Newsroom</option><option value="mono">Mono</option></select>
+        <select id="font"><option value="Arial,Helvetica,sans-serif">Arial</option><option value="Georgia,serif">Georgia</option><option value="ui-monospace,Menlo,monospace">Monospace</option><option value="Verdana,sans-serif">Verdana</option></select>
+      </div>
+      <div class="row swatches">
+        <label><input type="color" id="accent" value="#facc15"> accent</label>
+        <label><input type="color" id="panel" value="#0b0f17"> panel</label>
+        <label><input type="color" id="panel-2" value="#161d2b"> panel-2</label>
+        <label><input type="color" id="live" value="#ef4444"> live</label>
+      </div>
+    </div>
+    <div class="box"><div class="stats" id="stats">starting</div></div>
+  </div>
+</div>
+<div class="src">
+  <p class="label">The overlay DOM (source)</p>
+  <div class="checker" id="mount"></div>
+</div>
+
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
+<script type="module">
+import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/plugins/stream.js'
+const $ = (s) => document.querySelector(s)
+const code = (text) => { $('#code').textContent = text }
+
+const stage = overlayStage({ width: 960, height: 540 })
+const score = scoreboard({ home: 'HOME', away: 'AWAY' })
+const lower = lowerThird({ name: 'Alex Morgan', role: 'Match commentator' })
+const news = ticker({ items: $('#items').value.split('·').map((t) => t.trim()) })
+const badge = liveBadge()
+stage.append(score.el, badge.el, lower.el, news.el)
+$('#mount').append(stage)
+score.clock.start()
+
+// Each control calls the template's controller and shows the line it ran.
+const on = (id, fn) => $(id).addEventListener('click', fn)
+on('#home', () => { score.add('home'); code("score.add('home')") })
+on('#away', () => { score.add('away'); code("score.add('away')") })
+on('#reset-score', () => { score.score(0, 0); code('score.score(0, 0)') })
+on('#start', () => { score.clock.start(); code('score.clock.start()') })
+on('#stop', () => { score.clock.stop(); code('score.clock.stop()') })
+on('#reset', () => { score.clock.reset(); code('score.clock.reset()') })
+$('#name').addEventListener('input', (e) => { lower.set({ name: e.target.value }); code(`lower.set({ name: ${JSON.stringify(e.target.value)} })`) })
+$('#role').addEventListener('input', (e) => { lower.set({ role: e.target.value }); code(`lower.set({ role: ${JSON.stringify(e.target.value)} })`) })
+on('#show', () => { lower.show(); code('lower.show()') })
+on('#hide', () => { lower.hide(); code('lower.hide()') })
+on('#set-items', () => {
+  const items = $('#items').value.split('·').map((t) => t.trim()).filter(Boolean)
+  news.set(items)
+  code(`news.set(${JSON.stringify(items)})`)
+})
+on('#set-badge', () => { badge.set($('#badge').value); code(`badge.set(${JSON.stringify($('#badge').value)})`) })
+
+const presets = {
+  night: { accent: '#facc15', panel: '#0b0f17', 'panel-2': '#161d2b', live: '#ef4444' },
+  sport: { accent: '#22c55e', panel: '#052e16', 'panel-2': '#14532d', live: '#f97316' },
+  news: { accent: '#ffffff', panel: '#7f1d1d', 'panel-2': '#991b1b', live: '#fbbf24' },
+  mono: { accent: '#e5e7eb', panel: '#111111', 'panel-2': '#262626', live: '#e5e7eb' },
+}
+function theme(vars) {
+  for (const [k, v] of Object.entries(vars)) stage.style.setProperty(`--sdo-${k}`, v)
+  code(`stage.style.setProperty(...)  // or overlayStage({ theme: ${JSON.stringify(vars)} })`)
+}
+$('#preset').addEventListener('change', (e) => {
+  const vars = presets[e.target.value]
+  for (const [k, v] of Object.entries(vars)) $('#' + k).value = v
+  theme(vars)
+})
+for (const k of ['accent', 'panel', 'panel-2', 'live']) $('#' + k).addEventListener('input', (e) => theme({ [k]: e.target.value }))
+$('#font').addEventListener('change', (e) => theme({ font: e.target.value }))
+
+// The stream: the stage as a canvas that repaints only what changed.
+const out = $('#out'), octx = out.getContext('2d')
+const stats = { patch: 0, full: 0, ms: [], reasons: {} }
+stream(stage, {
+  dpr: 1, embedFonts: false,
+  onFrame(f) {
+    if (out.width !== f.canvas.width) { out.width = f.canvas.width; out.height = f.canvas.height }
+    for (const r of f.rects) {
+      octx.clearRect(r.x, r.y, r.width, r.height)
+      octx.drawImage(f.canvas, r.x, r.y, r.width, r.height, r.x, r.y, r.width, r.height)
+    }
+    f.full ? stats.full++ : stats.patch++
+    if (f.reason) stats.reasons[f.reason] = (stats.reasons[f.reason] || 0) + 1
+    stats.ms.push(f.ms); if (stats.ms.length > 60) stats.ms.shift()
+  },
+})
+setInterval(() => {
+  const ms = stats.ms.slice().sort((a, b) => a - b)
+  if (!ms.length) return
+  $('#stats').innerHTML = `frame cost <b>${ms[ms.length >> 1].toFixed(1)} ms</b> median · ` +
+    `<b>${stats.patch}</b> patch / <b>${stats.full}</b> full<br>full because: ${Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;')}`
+}, 300)
+</script>
+</body>
+</html>

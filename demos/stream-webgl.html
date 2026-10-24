@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live DOM to WebGL</title>
+<style>
+  :root { --bg: #07090d; --panel: #111722; --line: #243045; --text: #e6edf7; --muted: #8a97ab; --accent: #22d3ee; --hot: #f472b6; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  header p { margin: 0; color: var(--muted); }
+  .controls { margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .controls label { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  main { display: grid; grid-template-columns: 540px 1fr; min-height: calc(100vh - 58px); }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  .left { padding: 20px; border-right: 1px solid var(--line); overflow: auto; }
+  .hint { color: var(--muted); font-size: 12px; margin: 0 0 10px; }
+  .stage { position: sticky; top: 0; height: calc(100vh - 58px); min-height: 520px; }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: absolute; left: 16px; bottom: 16px; background: #000a; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font: 12px/1.5 ui-monospace, Menlo, monospace; min-width: 260px; }
+  #hud b { color: var(--accent); font-weight: 400; }
+  #hud .full b { color: var(--hot); }
+
+  /* The streamed panel: everything inside #panel is what the 3D screen shows. */
+  #panel { width: 500px; background: #0d1320; border: 1px solid #1f2b3f; border-radius: 14px; padding: 16px; color: #dbe6f5; font: 14px/20px Arial, Helvetica, sans-serif; }
+  #panel .top { display: flex; justify-content: space-between; align-items: center; background: #0d1320; }
+  #title { font-size: 22px; line-height: 28px; font-weight: 700; outline: none; background: #0d1320; padding: 2px 4px; border-radius: 4px; }
+  #title:focus { background: #16213a; }
+  #clock { font: 700 18px/24px ui-monospace, Menlo, monospace; color: #22d3ee; background: #0d1320; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+  .kpi { background: #152036; border: 1px solid #22324d; border-radius: 10px; padding: 10px; height: 104px; }
+  .kpi small { color: #8ea3c2; display: block; }
+  .kpi .num { font-size: 22px; line-height: 28px; font-weight: 700; color: #fff; background: #152036; }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 32px; margin-top: 6px; background: #152036; }
+  .bars i { flex: 1; background: linear-gradient(#22d3ee, #0e7490); border-radius: 2px 2px 0 0; }
+  .row { display: flex; gap: 10px; align-items: center; margin: 10px 0; background: #0d1320; }
+  .row input[type=text] { flex: 1; background: #fff; color: #0b1220; border: 0; border-radius: 6px; padding: 6px 8px; font: 14px/20px Arial, Helvetica, sans-serif; }
+  .track { flex: 1; height: 12px; background: #1d2a42; border-radius: 6px; }
+  .fill { height: 12px; background: linear-gradient(90deg, #22d3ee, #f472b6); border-radius: 6px; width: 40%; }
+  .msg { background: #101a2d; border: 1px dashed #2c3e5f; border-radius: 8px; padding: 8px 10px; min-height: 40px; color: #fde68a; }
+  ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  li { background: #152036; border-radius: 6px; padding: 6px 8px; display: flex; justify-content: space-between; }
+  li span { background: #152036; }
+  li em { font-style: normal; color: #34d399; background: #152036; }
+  button { background: #1f2b3f; color: var(--text); border: 1px solid #2c3e5f; border-radius: 6px; padding: 6px 10px; cursor: pointer; font: inherit; }
+  button:hover { background: #2a3a55; }
+  #cells { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; margin-top: 12px; background: #0d1320; }
+  #cells b { height: 14px; background: #1e3a2f; border-radius: 2px; }
+  #cells b.warn { background: #6b4f12; }
+  #cells b.bad { background: #6b1d2a; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Live DOM to WebGL</h1>
+  <p>Edit the panel. The 3D screen repaints only the boxes that changed.</p>
+  <div class="controls">
+    <label><input type="checkbox" id="patches" checked> Patches</label>
+    <label><input type="checkbox" id="ticking" checked> Live data</label>
+    <label><input type="checkbox" id="spin" checked> Spin</label>
+    <label><input type="checkbox" id="heavy"> Heavy panel (600 cells)</label>
+  </div>
+</header>
+<main>
+  <section class="left">
+    <p class="hint">Click the title to edit it, type a message, drag the slider. Untick Patches to compare with full-frame repaints.</p>
+    <div id="panel">
+      <div class="top"><div id="title" contenteditable="true" spellcheck="false">Mission control</div><div id="clock">00:00:00.0</div></div>
+      <div class="kpis">
+        <div class="kpi"><small>Requests / s</small><div class="num" data-k="0">0</div><div class="bars"></div></div>
+        <div class="kpi"><small>Latency ms</small><div class="num" data-k="1">0</div><div class="bars"></div></div>
+        <div class="kpi"><small>Errors</small><div class="num" data-k="2">0</div><div class="bars"></div></div>
+      </div>
+      <div class="row"><input type="text" id="input" placeholder="Type a message for the screen" value=""></div>
+      <div class="msg" id="msg">Your message appears here.</div>
+      <div class="row"><span>Load</span><div class="track"><div class="fill" id="fill"></div></div><span id="pct">40%</span></div>
+      <div class="row"><input type="range" id="slider" min="0" max="100" value="40" style="width:100%"></div>
+      <ul id="list"></ul>
+      <div id="cells"></div>
+    </div>
+  </section>
+  <section class="stage">
+    <canvas id="gl"></canvas>
+    <div id="hud">waiting for the first frame</div>
+  </section>
+</main>
+
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
+<script type="module">
+import { snapdom } from '@zumer/snapdom'
+import { stream, streamTexture } from '../packages/plugins/stream.js'
+
+const panel = document.querySelector('#panel')
+const $ = (s) => document.querySelector(s)
+
+// ---- Live data: the kind of churn a dashboard has. Every write is a small DOM change.
+for (const bars of document.querySelectorAll('.bars')) for (let i = 0; i < 18; i++) bars.append(document.createElement('i'))
+const services = ['auth', 'search', 'billing', 'media', 'mail', 'graph', 'queue', 'edge']
+for (const s of services) {
+  const li = document.createElement('li')
+  li.innerHTML = `<span>${s}</span><em>0 ms</em>`
+  $('#list').append(li)
+}
+const t0 = performance.now()
+setInterval(() => {
+  const s = (performance.now() - t0) / 1000
+  const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor(s / 60) % 60).padStart(2, '0')
+  $('#clock').textContent = `${h}:${m}:${(s % 60).toFixed(1).padStart(4, '0')}`
+}, 100)
+setInterval(() => {
+  if (!$('#ticking').checked) return
+  const k = Math.floor(Math.random() * 3)
+  const kpi = document.querySelectorAll('.kpi')[k]
+  kpi.querySelector('.num').textContent = [Math.round(800 + Math.random() * 400), Math.round(20 + Math.random() * 30), Math.round(Math.random() * 9)][k]
+  const bars = kpi.querySelectorAll('.bars i')
+  bars[Math.floor(Math.random() * bars.length)].style.height = `${10 + Math.random() * 90}%`
+  const li = $('#list').children[Math.floor(Math.random() * services.length)]
+  li.querySelector('em').textContent = `${Math.round(5 + Math.random() * 120)} ms`
+}, 120)
+for (const bars of document.querySelectorAll('.bars i')) bars.style.height = `${10 + Math.random() * 90}%`
+// Heavy mode: 600 status cells. A full frame now pays for all of them; a patch does not.
+$('#heavy').addEventListener('change', (e) => {
+  const cells = $('#cells')
+  cells.textContent = ''
+  if (e.target.checked) for (let i = 0; i < 600; i++) cells.append(document.createElement('b'))
+})
+setInterval(() => {
+  const cells = $('#cells').children
+  if (!cells.length || !$('#ticking').checked) return
+  cells[Math.floor(Math.random() * cells.length)].className = ['', 'warn', 'bad'][Math.floor(Math.random() * 3)]
+}, 90)
+$('#input').addEventListener('input', (e) => { $('#msg').textContent = e.target.value || 'Your message appears here.' })
+$('#slider').addEventListener('input', (e) => { $('#fill').style.width = e.target.value + '%'; $('#pct').textContent = e.target.value + '%' })
+
+// ---- WebGL: a curved screen with a floor reflection.
+const canvas = $('#gl')
+const gl = canvas.getContext('webgl2', { antialias: true, premultipliedAlpha: false })
+const vs = `#version 300 es
+in vec2 a; uniform float t; uniform float aspect; uniform float spin; uniform float mirror; uniform vec2 size;
+out vec2 uv; out float shade;
+void main(){
+  uv = vec2(a.x, 1.0 - a.y);
+  // A cylinder section: arc of 1.1 rad at radius r, height matched to the texture aspect.
+  float r = 1.6, arc = 1.1;
+  float ang = (a.x - 0.5) * arc;
+  float h = r * arc * size.y / size.x;
+  vec3 p = vec3(sin(ang) * r, (a.y - 0.5) * h, cos(ang) * r - r);
+  if (mirror > 0.5) p.y = -p.y - h - 0.06;
+  p.y += 0.1;
+  float yaw = spin * sin(t * 0.35) * 0.45;
+  p = vec3(p.x * cos(yaw) + p.z * sin(yaw), p.y, -p.x * sin(yaw) + p.z * cos(yaw));
+  p.z -= 2.0 + h * 0.9;
+  shade = 0.78 + 0.22 * cos(ang + yaw);
+  float f = 2.0, n = 0.1, fa = 20.0;
+  gl_Position = vec4(p.x * f / aspect, p.y * f, (fa + n) / (n - fa) * p.z + 2.0 * fa * n / (n - fa), -p.z);
+}`
+const fs = `#version 300 es
+precision highp float; in vec2 uv; in float shade; uniform sampler2D tex; uniform float mirror; out vec4 o;
+void main(){
+  vec4 c = texture(tex, uv);
+  if (mirror > 0.5) { float f = (1.0 - uv.y) * 0.35; o = vec4(c.rgb * f, 1.0); return; }
+  float scan = 0.96 + 0.04 * sin(uv.y * 900.0);
+  o = vec4(c.rgb * shade * scan + vec3(0.02, 0.03, 0.05), 1.0);
+}`
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s }
+const prog = gl.createProgram()
+gl.attachShader(prog, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog)
+const N = 48, verts = []
+for (let i = 0; i < N; i++) {
+  const x0 = i / N, x1 = (i + 1) / N
+  verts.push(x0, 0, x1, 0, x0, 1, x0, 1, x1, 0, x1, 1)
+}
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW)
+const loc = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
+const U = (n) => gl.getUniformLocation(prog, n)
+// The texture uploads only the rects each frame changed (WebGL2 sub-rectangle reads).
+const tex = streamTexture(gl)
+
+// ---- The stream.
+const stats = { frames: 0, full: 0, patch: 0, ms: [], uploaded: 0, total: 0, reasons: {} }
+let source = null
+function start() {
+  source?.stop()
+  source = stream(panel, {
+    scale: 2, dpr: 1, embedFonts: false, patches: $('#patches').checked,
+    onFrame(frame) {
+      const px = tex.update(frame)
+      stats.frames++; frame.full ? stats.full++ : stats.patch++
+      if (frame.reason) stats.reasons[frame.reason] = (stats.reasons[frame.reason] || 0) + 1
+      stats.ms.push(frame.ms); if (stats.ms.length > 60) stats.ms.shift()
+      stats.uploaded += px; stats.total += tex.width * tex.height
+      stats.last = frame
+    },
+  })
+}
+const reset = () => { Object.assign(stats, { frames: 0, full: 0, patch: 0, ms: [], uploaded: 0, total: 0, reasons: {} }) }
+$('#patches').addEventListener('change', () => { reset(); start() })
+$('#heavy').addEventListener('change', reset)
+start()
+
+function draw(time) {
+  const dpr = Math.min(devicePixelRatio || 1, 2)
+  const w = Math.round(canvas.clientWidth * dpr), h = Math.round(canvas.clientHeight * dpr)
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
+  gl.viewport(0, 0, w, h)
+  gl.clearColor(0.027, 0.035, 0.05, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+  if (tex.width) {
+    gl.uniform1f(U('t'), time / 1000); gl.uniform1f(U('aspect'), w / h); gl.uniform1f(U('spin'), $('#spin').checked ? 1 : 0)
+    gl.uniform2f(U('size'), tex.width, tex.height)
+    gl.uniform1f(U('mirror'), 1); gl.drawArrays(gl.TRIANGLES, 0, N * 6)
+    gl.uniform1f(U('mirror'), 0); gl.drawArrays(gl.TRIANGLES, 0, N * 6)
+  }
+  requestAnimationFrame(draw)
+}
+requestAnimationFrame(draw)
+
+setInterval(() => {
+  if (!stats.frames) return
+  const ms = stats.ms.slice().sort((a, b) => a - b)
+  const med = ms[ms.length >> 1] || 0
+  const share = stats.total ? (100 * stats.uploaded / stats.total) : 0
+  $('#hud').className = $('#patches').checked ? '' : 'full'
+  $('#hud').innerHTML = `mode <b>${$('#patches').checked ? 'patches' : 'full frames'}</b><br>` +
+    `frame cost <b>${med.toFixed(1)} ms</b> median<br>` +
+    `frames <b>${stats.patch}</b> patch / <b>${stats.full}</b> full<br>` +
+    `GPU upload <b>${share.toFixed(1)}%</b> of the texture per frame<br>` +
+    `texture <b>${tex.width}x${tex.height}</b><br>` +
+    `full frames: ${Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;')}`
+}, 250)
+</script>
+</body>
+</html>

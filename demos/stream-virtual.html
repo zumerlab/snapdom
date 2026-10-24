@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Virtual Set Graphics</title>
+<style>
+  :root { --bg: #08090c; --line: #232a36; --text: #e8edf5; --muted: #8b95a7; --accent: #34d399; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header p { margin: 0; color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: 960px 1fr; gap: 20px; padding: 20px; align-items: start; }
+  @media (max-width: 1300px) { .wrap { grid-template-columns: 1fr; } }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 6px; }
+  #out { width: 960px; max-width: 100%; height: auto; aspect-ratio: 16 / 9; display: block; background: #000; border: 1px solid var(--line); border-radius: 6px; }
+  .side { display: grid; gap: 14px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #0e1117; }
+  .box h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 400; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  input[type=text] { width: 100%; background: #151a23; color: var(--text); border: 1px solid #2a3240; border-radius: 6px; padding: 7px 9px; font: inherit; }
+  input[type=range] { width: 100%; }
+  button { background: #1b2230; color: var(--text); border: 1px solid #2f3a4d; border-radius: 6px; padding: 7px 10px; cursor: pointer; font: inherit; }
+  button:hover { background: #253045; }
+  button.on { background: #ef4444; border-color: #ef4444; }
+  label.chk { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  #hud { font: 12px/1.6 ui-monospace, Menlo, monospace; }
+  #hud b { color: var(--accent); font-weight: 400; }
+  .src { padding: 0 20px 30px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+  .checker { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
+
+  /* Painted on the grass: no background, so the turf shows through. Each block is absolutely
+     positioned over that clear backdrop, which is what lets the stream repaint it alone. */
+  #floor { position: relative; width: 640px; height: 360px; color: #fff; font: 700 36px/42px Arial, Helvetica, sans-serif; letter-spacing: .04em; }
+  #floor .title { position: absolute; left: 0; right: 0; top: 40px; text-align: center; font-size: 26px; line-height: 30px; letter-spacing: .3em; }
+  #floor .row { position: absolute; left: 40px; width: 560px; display: grid; grid-template-columns: 90px 1fr 90px; align-items: center; gap: 16px; text-align: center; }
+  #floor .bar { height: 22px; display: flex; border-radius: 11px; overflow: hidden; box-shadow: inset 0 0 0 3px #fff; }
+  #floor .bar i { display: block; background: #fff; transition: none; }
+  #floor .name { grid-column: 1 / -1; font-size: 18px; line-height: 20px; letter-spacing: .25em; opacity: .85; }
+  /* The LED board behind the far touchline: opaque, so each change is a small patch. */
+  #board { width: 800px; height: 120px; background: #05070b; display: flex; align-items: center; gap: 26px; padding: 0 30px; color: #fff; font: 700 44px/50px Arial, Helvetica, sans-serif; }
+  #board .team { display: flex; gap: 14px; align-items: center; background: #05070b; }
+  #board i { width: 18px; height: 52px; border-radius: 3px; display: block; }
+  #board .pts { min-width: 54px; text-align: center; background: #111827; border-radius: 8px; padding: 0 8px; }
+  #board .clock { margin-left: auto; color: #facc15; font-family: ui-monospace, Menlo, monospace; background: #05070b; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Virtual set graphics</h1>
+  <p>Two live HTML elements placed in a 3D scene: one painted on the pitch, one on an LED board. Both repaint only what changed.</p>
+</header>
+<div class="wrap">
+  <div>
+    <p class="label">Program output (WebGL scene)</p>
+    <canvas id="out"></canvas>
+  </div>
+  <div class="side">
+    <div class="box">
+      <h2>Camera</h2>
+      <label class="chk" style="margin-bottom:8px"><input type="checkbox" id="orbit" checked> Pan</label>
+      <div style="color:var(--muted);font-size:12px">Height</div><input type="range" id="height" min="15" max="120" value="38">
+      <div style="color:var(--muted);font-size:12px">Distance</div><input type="range" id="dist" min="40" max="160" value="78">
+    </div>
+    <div class="box">
+      <h2>Graphics</h2>
+      <div class="grid2" style="margin-bottom:8px"><button data-team="0">+1 Home</button><button data-team="1">+1 Away</button></div>
+      <input type="text" id="label" value="LIVE MATCH STATS">
+    </div>
+    <div class="box">
+      <h2>Output</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="rec">Record 10 s</button>
+        <label class="chk"><input type="checkbox" id="patches" checked> Patches</label>
+      </div>
+      <div id="hud" style="margin-top:10px">waiting for the first frame</div>
+    </div>
+  </div>
+</div>
+<div class="src">
+  <div><p class="label">On the pitch (source)</p>
+    <div class="checker"><div id="floor">
+      <div class="title" id="ftitle">LIVE MATCH STATS</div>
+      <div class="row" style="top:110px"><span id="s0">7</span><div class="bar"><i id="sb" style="width:70%"></i></div><span id="s1">3</span><span class="name">SHOTS ON TARGET</span></div>
+      <div class="row" style="top:220px"><span id="p0">58%</span><div class="bar"><i id="pb" style="width:58%"></i></div><span id="p1">42%</span><span class="name">POSSESSION</span></div>
+    </div></div></div>
+  <div><p class="label">LED board (source)</p>
+    <div class="checker"><div id="board">
+      <div class="team"><i style="background:#22c55e"></i>HOME</div><span class="pts" id="g0">0</span><span class="pts" id="g1">0</span>
+      <div class="team">AWAY<i style="background:#3b82f6"></i></div><span class="clock" id="clock">00:00</span>
+    </div></div></div>
+</div>
+
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
+<script type="module">
+import { stream, streamTexture, recordCanvas } from '../packages/plugins/stream.js'
+const $ = (s) => document.querySelector(s)
+
+// ---- Live data.
+const goals = [0, 0]
+for (const b of document.querySelectorAll('[data-team]')) b.addEventListener('click', () => { const i = +b.dataset.team; $('#g' + i).textContent = ++goals[i] })
+$('#label').addEventListener('input', (e) => { $('#ftitle').textContent = e.target.value })
+const t0 = performance.now()
+setInterval(() => { const s = (performance.now() - t0) / 1000; $('#clock').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}` }, 250)
+const shots = [7, 3]
+setInterval(() => {
+  if (Math.random() < .5) { const i = Math.random() < .6 ? 0 : 1; shots[i]++; $('#s' + i).textContent = shots[i]; $('#sb').style.width = `${Math.round(100 * shots[0] / (shots[0] + shots[1]))}%` }
+  const p = 50 + Math.round(Math.sin(performance.now() / 4000) * 12)
+  $('#p0').textContent = p + '%'; $('#p1').textContent = (100 - p) + '%'; $('#pb').style.width = p + '%'
+}, 1200)
+
+// ---- The pitch texture: a top-down field with moving players, 10 px per metre.
+const PW = 1050, PH = 680
+const pitch = document.createElement('canvas'); pitch.width = PW; pitch.height = PH
+const pc = pitch.getContext('2d')
+const players = Array.from({ length: 22 }, (_, i) => ({ x: 80 + Math.random() * 890, y: 60 + Math.random() * 560, vx: (Math.random() - .5) * 1.6, vy: (Math.random() - .5) * 1.2, c: i < 11 ? '#22c55e' : '#3b82f6' }))
+function drawPitch() {
+  for (let i = 0; i < 14; i++) { pc.fillStyle = i % 2 ? '#2f7a3a' : '#2a6e34'; pc.fillRect(i * 75, 0, 75, PH) }
+  pc.strokeStyle = '#ffffffc0'; pc.lineWidth = 4
+  pc.strokeRect(20, 20, PW - 40, PH - 40)
+  pc.beginPath(); pc.moveTo(PW / 2, 20); pc.lineTo(PW / 2, PH - 20); pc.stroke()
+  pc.beginPath(); pc.arc(PW / 2, PH / 2, 91, 0, Math.PI * 2); pc.stroke()
+  pc.strokeRect(20, PH / 2 - 201, 165, 402); pc.strokeRect(PW - 185, PH / 2 - 201, 165, 402)
+  for (const p of players) {
+    p.x += p.vx; p.y += p.vy
+    if (p.x < 40 || p.x > PW - 40) p.vx *= -1
+    if (p.y < 40 || p.y > PH - 40) p.vy *= -1
+    pc.fillStyle = '#0005'; pc.beginPath(); pc.arc(p.x + 4, p.y + 4, 9, 0, Math.PI * 2); pc.fill()
+    pc.fillStyle = p.c; pc.beginPath(); pc.arc(p.x, p.y, 9, 0, Math.PI * 2); pc.fill()
+  }
+}
+
+// ---- WebGL: three quads (ground, painted graphic, LED board), one program.
+const out = $('#out'); out.width = 1920; out.height = 1080
+const gl = out.getContext('webgl2', { antialias: true, premultipliedAlpha: false })
+const vs = `#version 300 es
+in vec3 pos; in vec2 uv; uniform mat4 mvp; out vec2 v; out vec3 w;
+void main() { v = uv; w = pos; gl_Position = mvp * vec4(pos, 1); }`
+const fs = `#version 300 es
+precision highp float;
+in vec2 v; in vec3 w; uniform sampler2D tex, ground; uniform int kind; uniform float t; out vec4 o;
+vec3 turf(vec3 p) { return texture(ground, vec2(p.x / 105. + .5, p.z / 68. + .5)).rgb; }
+void main() {
+  if (kind == 0) {
+    // Turf, fading into a dark stadium outside the pitch.
+    bool inside = abs(w.x) < 52.5 && abs(w.z) < 34.;
+    vec3 c = inside ? turf(w) : vec3(.10, .26, .13);
+    float far = smoothstep(60., 140., length(w.xz));
+    o = vec4(mix(c, vec3(.03, .04, .06), far), 1);
+  } else if (kind == 1) {
+    // Painted on the grass: the turf's light and stripes run through the graphic.
+    vec4 g = texture(tex, v);
+    vec3 grass = turf(w);
+    float shade = dot(grass, vec3(.3, .59, .11)) * 2.4;
+    o = vec4(g.rgb * clamp(shade, .7, 1.15), g.a * .9);
+  } else {
+    // LED board: emissive, with a pixel grid and a little bloom of its own.
+    vec4 g = texture(tex, v);
+    vec2 cell = fract(v * vec2(400., 60.));
+    float led = .72 + .28 * smoothstep(.5, .2, length(cell - .5));
+    o = vec4(g.rgb * led * 1.15, 1);
+  }
+}`
+function shader(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s }
+const prog = gl.createProgram()
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog)
+const U = (n) => gl.getUniformLocation(prog, n)
+
+// A quad from four corners (top-left, top-right, bottom-left, bottom-right) with the texture upright.
+function quad(tl, tr, bl, br) {
+  const d = [...tl, 0, 0, ...tr, 1, 0, ...bl, 0, 1, ...bl, 0, 1, ...tr, 1, 0, ...br, 1, 1]
+  const vao = gl.createVertexArray(); gl.bindVertexArray(vao)
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer()); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(d), gl.STATIC_DRAW)
+  const p = gl.getAttribLocation(prog, 'pos'), u = gl.getAttribLocation(prog, 'uv')
+  gl.enableVertexAttribArray(p); gl.vertexAttribPointer(p, 3, gl.FLOAT, false, 20, 0)
+  gl.enableVertexAttribArray(u); gl.vertexAttribPointer(u, 2, gl.FLOAT, false, 20, 12)
+  return vao
+}
+// Metres. The pitch is 105 x 68, centred; the camera side is +z.
+const G = 400
+const groundQ = quad([-G, 0, -G], [G, 0, -G], [-G, 0, G], [G, 0, G])
+const fw = 48, fh = 27, fz = 12
+const floorQ = quad([-fw / 2, .02, fz - fh / 2], [fw / 2, .02, fz - fh / 2], [-fw / 2, .02, fz + fh / 2], [fw / 2, .02, fz + fh / 2])
+const bw = 40, bh = 6, bz = -38
+const boardQ = quad([-bw / 2, bh + .4, bz], [bw / 2, bh + .4, bz], [-bw / 2, .4, bz], [bw / 2, .4, bz])
+
+gl.activeTexture(gl.TEXTURE0)
+const groundTex = gl.createTexture()
+gl.bindTexture(gl.TEXTURE_2D, groundTex)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+gl.uniform1i(U('ground'), 0); gl.uniform1i(U('tex'), 1)
+gl.activeTexture(gl.TEXTURE1)
+const floorTex = streamTexture(gl)
+const boardTex = streamTexture(gl)
+
+// ---- Two streams, one per element, each into its own texture.
+const stats = {}
+let streams = []
+function start() {
+  for (const s of streams) s.stop()
+  streams = [['floor', floorTex], ['board', boardTex]].map(([id, tex]) => {
+    const st = stats[id] = { patch: 0, full: 0, ms: [], uploaded: 0, total: 0, reasons: {} }
+    return stream($('#' + id), {
+      scale: 2, dpr: 1, embedFonts: false, patches: $('#patches').checked,
+      onFrame(f) {
+        gl.activeTexture(gl.TEXTURE1)
+        st.uploaded += tex.update(f); st.total += tex.width * tex.height
+        f.full ? st.full++ : st.patch++
+        if (f.reason) st.reasons[f.reason] = (st.reasons[f.reason] || 0) + 1
+        st.ms.push(f.ms); if (st.ms.length > 60) st.ms.shift()
+      },
+    })
+  })
+}
+$('#patches').addEventListener('change', start)
+start()
+
+// ---- Camera maths.
+function perspective(fov, aspect, n, f) { const k = 1 / Math.tan(fov / 2); return [k / aspect, 0, 0, 0, 0, k, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0] }
+function lookAt(e, c) {
+  const sub = (a, b) => a.map((x, i) => x - b[i]), norm = (a) => { const l = Math.hypot(...a); return a.map((x) => x / l) }
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]], dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+  const z = norm(sub(e, c)), x = norm(cross([0, 1, 0], z)), y = cross(z, x)
+  return [x[0], y[0], z[0], 0, x[1], y[1], z[1], 0, x[2], y[2], z[2], 0, -dot(x, e), -dot(y, e), -dot(z, e), 1]
+}
+function mul(a, b) { const r = new Array(16).fill(0); for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) for (let k = 0; k < 4; k++) r[j * 4 + i] += a[k * 4 + i] * b[j * 4 + k]; return r }
+
+let pan = 0, last = 0
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t
+  if ($('#orbit').checked) pan += dt * .22
+  drawPitch()
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, groundTex)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, pitch)
+
+  const yaw = Math.sin(pan) * .75, dist = +$('#dist').value, h = +$('#height').value
+  const eye = [Math.sin(yaw) * dist, h, Math.cos(yaw) * dist + 4]
+  const mvp = mul(perspective(.62, out.width / out.height, 1, 900), lookAt(eye, [0, 0, -4]))
+  gl.uniformMatrix4fv(U('mvp'), false, mvp); gl.uniform1f(U('t'), t / 1000)
+
+  gl.viewport(0, 0, out.width, out.height)
+  gl.clearColor(.03, .04, .06, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+  gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL)
+  gl.disable(gl.BLEND)
+  gl.uniform1i(U('kind'), 0); gl.bindVertexArray(groundQ); gl.drawArrays(gl.TRIANGLES, 0, 6)
+  gl.activeTexture(gl.TEXTURE1)
+  if (boardTex.width) { gl.bindTexture(gl.TEXTURE_2D, boardTex.texture); gl.uniform1i(U('kind'), 2); gl.bindVertexArray(boardQ); gl.drawArrays(gl.TRIANGLES, 0, 6) }
+  if (floorTex.width) {
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    gl.bindTexture(gl.TEXTURE_2D, floorTex.texture); gl.uniform1i(U('kind'), 1); gl.bindVertexArray(floorQ); gl.drawArrays(gl.TRIANGLES, 0, 6)
+  }
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+
+$('#rec').addEventListener('click', async () => {
+  let rec
+  try { rec = recordCanvas(out, { fps: 30, duration: 10000 }) } catch (e) { $('#hud').textContent = e.message; return }
+  $('#rec').classList.add('on'); $('#rec').textContent = 'Recording...'
+  const blob = await rec.done
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'virtual-set.' + (rec.type.includes('mp4') ? 'mp4' : 'webm')
+  a.click()
+  $('#rec').classList.remove('on'); $('#rec').textContent = 'Record 10 s'
+})
+
+setInterval(() => {
+  $('#hud').innerHTML = Object.entries(stats).map(([id, s]) => {
+    const ms = s.ms.slice().sort((a, b) => a - b)
+    return `${id}: <b>${(ms[ms.length >> 1] || 0).toFixed(1)} ms</b> median, <b>${s.patch}</b> patch / <b>${s.full}</b> full, ` +
+      `upload <b>${(100 * s.uploaded / (s.total || 1)).toFixed(1)}%</b><br>` +
+      `&nbsp; full because: ${Object.entries(s.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;') || 'none'}`
+  }).join('<br>')
+}, 300)
+</script>
+</body>
+</html>

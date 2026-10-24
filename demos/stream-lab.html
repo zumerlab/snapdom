@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stream Lab</title>
+<style>
+  :root { --bg: #090b10; --line: #222937; --text: #e6ebf3; --muted: #8893a6; --patch: #e879f9; --full: #f87171; --ok: #4ade80; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 18px; padding: 12px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  .ctl { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; color: var(--muted); }
+  .ctl label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  select, button { background: #161b26; color: var(--text); border: 1px solid #2c3546; border-radius: 6px; padding: 6px 10px; font: inherit; cursor: pointer; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 56px); }
+  @media (max-width: 1100px) { main { grid-template-columns: 1fr; height: auto; } }
+  .pane { overflow: auto; padding: 16px; border-right: 1px solid var(--line); position: relative; }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 8px; }
+  .view { position: relative; display: inline-block; }
+  #view, #marks { display: block; }
+  #marks { position: absolute; left: 0; top: 0; pointer-events: none; }
+  .stats { position: sticky; top: 0; z-index: 2; background: #0d1017ee; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: grid; grid-template-columns: 1fr 220px; gap: 12px; }
+  .stats pre { margin: 0; font: 12px/1.6 ui-monospace, Menlo, monospace; white-space: pre-wrap; }
+  .stats b { font-weight: 400; color: var(--patch); }
+  .stats .full b { color: var(--full); }
+  #chart { width: 220px; height: 70px; background: #0a0c11; border-radius: 4px; }
+  #verdict { color: var(--muted); }
+  #verdict.ok { color: var(--ok); }
+  #verdict.bad { color: var(--full); }
+
+  /* The streamed element. */
+  #board { width: 620px; background: #0e131c; padding: 10px; display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; font: 12px/16px Arial, Helvetica, sans-serif; color: #cfd8e6; }
+  .card { background: #17202e; border-radius: 6px; padding: 6px 8px; height: 52px; }
+  .card b { display: block; color: #7dd3fc; font-weight: 700; }
+  .card .v { font: 700 16px/20px ui-monospace, Menlo, monospace; color: #fff; }
+  .card.up .v { color: #4ade80; }
+  .card.down .v { color: #f87171; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Stream lab</h1>
+  <div class="ctl">
+    <label>Cards <select id="count"><option>200</option><option selected>1000</option><option>3000</option></select></label>
+    <label>Changes per frame <input type="range" id="rate" min="0" max="40" value="3"> <span id="rateV">3</span></label>
+    <label><input type="checkbox" id="patches" checked> Patches</label>
+    <label><input type="checkbox" id="marksOn" checked> Show dirty rects</label>
+    <button id="verify">Verify against a full capture</button>
+  </div>
+</header>
+<main>
+  <section class="pane">
+    <p class="label">Live DOM (source)</p>
+    <div id="board"></div>
+  </section>
+  <section class="pane">
+    <div class="stats">
+      <pre id="hud">starting</pre>
+      <div><canvas id="chart" width="440" height="140"></canvas><div id="verdict">not verified yet</div></div>
+    </div>
+    <p class="label">Streamed canvas <span style="color:var(--patch)">patch</span> / <span style="color:var(--full)">full frame</span></p>
+    <div class="view"><canvas id="view"></canvas><canvas id="marks"></canvas></div>
+  </section>
+</main>
+
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
+<script type="module">
+import { snapdom } from '@zumer/snapdom'
+import { stream } from '../packages/plugins/stream.js'
+const $ = (s) => document.querySelector(s)
+const board = $('#board')
+
+function build(n) {
+  board.textContent = ''
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement('div')
+    c.className = 'card'
+    c.innerHTML = `<b>TCK${String(i).padStart(4, '0')}</b><span class="v">${(100 + Math.random() * 900).toFixed(2)}</span>`
+    board.append(c)
+  }
+}
+
+// Churn: N random cards change value and trend every animation frame.
+function churn() {
+  const n = +$('#rate').value
+  const cards = board.children
+  for (let i = 0; i < n; i++) {
+    const c = cards[Math.floor(Math.random() * cards.length)]
+    const up = Math.random() > .5
+    c.className = 'card ' + (up ? 'up' : 'down')
+    c.querySelector('.v').textContent = (100 + Math.random() * 900).toFixed(2)
+  }
+  requestAnimationFrame(churn)
+}
+
+const view = $('#view'), vctx = view.getContext('2d')
+const marks = $('#marks'), mctx = marks.getContext('2d')
+let live = null
+let flashes = []
+const stats = { patch: 0, full: 0, ms: [], history: [], reasons: {}, delivered: [], rects: [] }
+
+function start() {
+  live?.stop()
+  Object.assign(stats, { patch: 0, full: 0, ms: [], history: [], reasons: {}, delivered: [], rects: [] })
+  flashes = []
+  live = stream(board, {
+    dpr: 1, embedFonts: false, patches: $('#patches').checked,
+    onFrame(f) {
+      const c = f.canvas
+      if (view.width !== c.width || view.height !== c.height) {
+        view.width = marks.width = c.width; view.height = marks.height = c.height
+      }
+      // Copy only what changed: the consumer side of a patch stream.
+      for (const r of f.rects) vctx.drawImage(c, r.x, r.y, r.width, r.height, r.x, r.y, r.width, r.height)
+      const now = performance.now()
+      for (const r of f.rects) flashes.push({ ...r, full: f.full, t: now })
+      f.full ? stats.full++ : stats.patch++
+      if (f.reason) stats.reasons[f.reason] = (stats.reasons[f.reason] || 0) + 1
+      stats.ms.push(f.ms); if (stats.ms.length > 120) stats.ms.shift()
+      stats.history.push({ ms: f.ms, full: f.full }); if (stats.history.length > 110) stats.history.shift()
+      stats.delivered.push(now)
+      if (!f.full) { stats.rects.push(f.rects.length); if (stats.rects.length > 120) stats.rects.shift() }
+    },
+  })
+}
+
+// Clear only what the last pass drew: at 3000 cards this canvas is 620x29000 px, and
+// clearing all of it every frame cost more than the stream itself.
+let drawn = []
+function drawMarks() {
+  for (const r of drawn) mctx.clearRect(r.x - 4, r.y - 4, r.width + 8, r.height + 8)
+  drawn = []
+  if ($('#marksOn').checked) {
+    const now = performance.now()
+    flashes = flashes.filter((f) => now - f.t < 600)
+    for (const f of flashes) {
+      const a = 1 - (now - f.t) / 600
+      mctx.strokeStyle = f.full ? `rgba(248,113,113,${a})` : `rgba(232,121,249,${a})`
+      mctx.lineWidth = f.full ? 6 : 2
+      mctx.strokeRect(f.x + 1, f.y + 1, f.width - 2, f.height - 2)
+      if (!f.full) { mctx.fillStyle = `rgba(232,121,249,${a * .18})`; mctx.fillRect(f.x, f.y, f.width, f.height) }
+      drawn.push(f)
+    }
+  }
+  requestAnimationFrame(drawMarks)
+}
+
+const chart = $('#chart'), cctx = chart.getContext('2d')
+function drawChart() {
+  cctx.clearRect(0, 0, chart.width, chart.height)
+  const max = Math.max(20, ...stats.history.map((h) => h.ms))
+  cctx.strokeStyle = '#2a3242'; cctx.beginPath(); cctx.moveTo(0, chart.height - 16.7 / max * chart.height); cctx.lineTo(chart.width, chart.height - 16.7 / max * chart.height); cctx.stroke()
+  stats.history.forEach((h, i) => {
+    const bh = Math.max(2, h.ms / max * chart.height)
+    cctx.fillStyle = h.full ? '#f87171' : '#e879f9'
+    cctx.fillRect(i * 4, chart.height - bh, 3, bh)
+  })
+  cctx.fillStyle = '#8893a6'; cctx.font = '20px Arial'; cctx.fillText(`${max.toFixed(0)} ms`, 6, 22); cctx.fillText('60 fps', chart.width - 70, chart.height - 16.7 / max * chart.height - 6)
+}
+
+setInterval(() => {
+  const ms = stats.ms.slice().sort((a, b) => a - b)
+  if (!ms.length) return
+  const now = performance.now()
+  stats.delivered = stats.delivered.filter((t) => now - t < 1000)
+  $('#hud').className = $('#patches').checked ? '' : 'full'
+  $('#hud').innerHTML = `mode        <b>${$('#patches').checked ? 'patches' : 'full frames'}</b>  (${board.children.length} cards, ${$('#rate').value} changes per frame)\n` +
+    `frame cost  <b>${ms[ms.length >> 1].toFixed(1)} ms</b> median, <b>${ms[Math.floor(ms.length * .9)].toFixed(1)} ms</b> p90\n` +
+    `delivered   <b>${stats.delivered.length}</b> frames in the last second\n` +
+    `frames      ${stats.patch} patch / ${stats.full} full, ${(stats.rects.reduce((a, b) => a + b, 0) / Math.max(1, stats.rects.length)).toFixed(1)} boxes per patch frame\n` +
+    `full because ${Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;')}`
+  drawChart()
+}, 250)
+
+// Fidelity, live: pause the churn for one frame, let the stream settle, compare with a full capture.
+$('#verify').addEventListener('click', async () => {
+  const rate = $('#rate').value
+  $('#rate').value = 0
+  $('#verdict').className = ''; $('#verdict').textContent = 'verifying...'
+  await new Promise((r) => setTimeout(r, 300))
+  const res = await snapdom(board, { dpr: 1, embedFonts: false, outerShadows: false })
+  const img = new Image(); img.src = res.url; await img.decode()
+  const ref = document.createElement('canvas'); ref.width = view.width; ref.height = view.height
+  ref.getContext('2d').drawImage(img, 0, 0, ref.width, ref.height)
+  const a = live.canvas.getContext('2d').getImageData(0, 0, ref.width, ref.height).data
+  const b = ref.getContext('2d').getImageData(0, 0, ref.width, ref.height).data
+  let bad = 0
+  for (let i = 0; i < a.length; i += 4) {
+    if (Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])) > 32) bad++
+  }
+  $('#verdict').className = bad ? 'bad' : 'ok'
+  $('#verdict').textContent = `${bad} of ${(a.length / 4).toLocaleString()} pixels differ`
+  $('#rate').value = rate
+})
+
+$('#rate').addEventListener('input', (e) => { $('#rateV').textContent = e.target.value })
+$('#count').addEventListener('change', (e) => { build(+e.target.value); start() })
+$('#patches').addEventListener('change', start)
+build(1000)
+start()
+requestAnimationFrame(churn)
+requestAnimationFrame(drawMarks)
+</script>
+</body>
+</html>

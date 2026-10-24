@@ -36,6 +36,31 @@ export function exportOption(ctx, opts, key, fallback) {
 }
 
 /**
+ * Rebuild the options a live recapture needs from an export context: capture inputs, not
+ * released stage artifacts or export-session internals. createContext splits exclusion
+ * predicates out of `exclude`; they are put back. Pinned by
+ * __tests__/plugin.recording.contract.test.js and __tests__/plugin.stream.test.js.
+ * @param {object} ctx - Export context
+ * @param {object} opts - Normalized per-export options
+ * @returns {object} options for snapdom(ctx.element, ...)
+ */
+export function captureInputs(ctx, opts) {
+  const capture = {};
+  for (const key of ['debug', 'width', 'height', 'dpr', 'backgroundColor', 'quality', 'format',
+    'exclude', 'excludeMode', 'filter', 'filterMode', 'placeholders', 'captureSelection', 'canvas', 'embedFonts',
+    'iconFonts', 'localFonts', 'excludeFonts', 'fontStylesheetDomains', 'fallbackURL', 'cache',
+    'useProxy', 'outerTransforms', 'outerShadows', 'reconcile', 'burst', 'engine', 'invalidate',
+    'clip', 'compress', 'excludeStyleProps', 'resolvePicturePlaceholders', 'plugins']) {
+    if (opts[key] !== undefined) capture[key] = opts[key];
+    else if (ctx[key] !== undefined) capture[key] = ctx[key];
+  }
+  if (capture.exclude === ctx.exclude && ctx.excludePredicates?.length) {
+    capture.exclude = [...(ctx.exclude || []), ...ctx.excludePredicates];
+  }
+  return capture;
+}
+
+/**
  * Build a live frame reader that preserves capture options and validates finite pacing.
  * Recombine v3's separated exclusion predicates before recapturing. Pinned by
  * __tests__/plugin.recording.contract.test.js and __tests__/plugin.recording.memo.test.js.
@@ -57,20 +82,7 @@ export function frameOptions(ctx, opts, defaults, name) {
   const count = frames ?? Math.max(1, Math.round(duration / 1000 * fps));
   if (!Number.isFinite(count)) throw new RangeError(`[SnapDOM] ${name}: frame count must be finite`);
 
-  // Copy capture inputs, not released stage artifacts or export-session internals. In
-  // particular createContext splits exclusion predicates out of exclude: put them back.
-  const capture = {};
-  for (const key of ['debug', 'width', 'height', 'dpr', 'backgroundColor', 'quality', 'format',
-    'exclude', 'excludeMode', 'filter', 'filterMode', 'placeholders', 'captureSelection', 'canvas', 'embedFonts',
-    'iconFonts', 'localFonts', 'excludeFonts', 'fontStylesheetDomains', 'fallbackURL', 'cache',
-    'useProxy', 'outerTransforms', 'outerShadows', 'reconcile', 'burst', 'engine', 'invalidate',
-    'clip', 'compress', 'excludeStyleProps', 'resolvePicturePlaceholders', 'plugins']) {
-    if (opts[key] !== undefined) capture[key] = opts[key];
-    else if (ctx[key] !== undefined) capture[key] = ctx[key];
-  }
-  if (capture.exclude === ctx.exclude && ctx.excludePredicates?.length) {
-    capture.exclude = [...(ctx.exclude || []), ...ctx.excludePredicates];
-  }
+  const capture = captureInputs(ctx, opts);
   capture.scale = scale;
   return {
     fps, count,

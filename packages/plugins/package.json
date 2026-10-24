@@ -21,7 +21,8 @@
     "./gif-export": "./gif-export.js",
     "./video-export": "./video-export.js",
     "./pdf": "./pdf.js",
-    "./vector": "./vector.js"
+    "./vector": "./vector.js",
+    "./stream": "./stream.js"
   },
   "files": [
     "*.js",
@@ -37,7 +38,10 @@
     "vector/svd/",
     "vector/CONTRACT.md",
     "vector/LICENSE",
-    "vector/README.md"
+    "vector/README.md",
+    "stream/src/",
+    "stream/README.md",
+    "stream/LICENSE"
   ],
   "types": "./index.d.ts",
   "keywords": [
