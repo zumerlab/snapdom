@@ -65,6 +65,12 @@ function formatCounter(value, style) {
     case 'upper-alpha': case 'upper-latin': return alpha(value, true)
     case 'lower-roman': return roman(value, false)
     case 'upper-roman': return roman(value, true)
+    // `none` prints nothing, and the bullet styles print the same symbol for every value
+    // instead of the number (css-lists-3 counter(), css-counter-styles-3 predefined styles).
+    case 'none': return ''
+    case 'disc': return '\u2022'
+    case 'circle': return '\u25E6'
+    case 'square': return '\u25AA'
     default: return String(value)
   }
 }

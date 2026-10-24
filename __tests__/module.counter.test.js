@@ -222,6 +222,16 @@ describe('multi-counter declarations (whitespace grammar)', () => {
     expect(resolveCountersInContent('counter(n, upper-latin)', span, ctx)).toBe('N')
   })
 
+  it('prints nothing for none and a bullet for disc, circle and square', () => {
+    const node = document.createElement('span')
+    document.body.appendChild(node)
+    const fakeCtx = { get: () => 3, getStack: () => [1, 2] }
+    expect(resolveCountersInContent('counter(x, none)', node, fakeCtx)).toBe('')
+    expect(resolveCountersInContent('counter(x, disc)', node, fakeCtx)).toBe('\u2022')
+    expect(resolveCountersInContent('counter(x, circle)', node, fakeCtx)).toBe('\u25E6')
+    expect(resolveCountersInContent('counters(x, ".", square)', node, fakeCtx)).toBe('\u25AA.\u25AA')
+  })
+
   it('clamps roman numerals to 1..3999, the range the notation can write', () => {
     const root = document.createElement('div')
     const low = document.createElement('span')
