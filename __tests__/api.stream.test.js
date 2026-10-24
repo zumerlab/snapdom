@@ -144,6 +144,55 @@ describe('snapdom.stream', () => {
     }
   })
 
+  function overlay() {
+    const root = document.createElement('div')
+    root.style.cssText = 'position:relative;width:480px;height:270px;font:16px/20px monospace;color:#fff'
+    root.innerHTML = '<div class="score" style="position:absolute;left:12px;top:12px;background:#0b0f17;padding:6px 10px;border-radius:4px">1 - 0</div>' +
+      '<div class="lower" style="position:absolute;left:12px;bottom:40px;display:flex;flex-direction:column">' +
+      '<div class="name" style="background:#f8fafc;color:#000;padding:4px 10px;border-radius:4px 4px 0 0">Alex Morgan</div>' +
+      '<div style="background:#1d4ed8;padding:4px 10px">Commentator</div></div>' +
+      '<div class="badge" style="position:absolute;left:300px;top:12px;width:60px;height:24px;background:#ef4444;border-radius:12px"></div>'
+    document.body.append(root)
+    roots.push(root)
+    return root
+  }
+
+  it('repaints an out-of-flow box that resizes over a transparent root, where it was and where it is', async () => {
+    const root = overlay()
+    const s = open(root)
+    await s.ready
+    for (const name of ['Alexandra Morgan-Whitfield', 'Al', 'Jamie Rivera']) {
+      const next = s.next()
+      root.querySelector('.name').textContent = name
+      const frame = await next
+      expect(frame.full, `${name}: ${frame.reason}`).toBe(false)
+      expect(differs(s.canvas, await reference(root, s.canvas)), name).toBe(0)
+    }
+  })
+
+  it('repaints an out-of-flow box that moves', async () => {
+    const root = overlay()
+    const s = open(root)
+    await s.ready
+    for (const left of ['330px', '250px']) {
+      const next = s.next()
+      root.querySelector('.badge').style.left = left
+      const frame = await next
+      expect(frame.full, `${left}: ${frame.reason}`).toBe(false)
+      expect(differs(s.canvas, await reference(root, s.canvas)), left).toBe(0)
+    }
+  })
+
+  it('falls back when an out-of-flow box moves onto another box', async () => {
+    const root = overlay()
+    const s = open(root)
+    await s.ready
+    const next = s.next()
+    root.querySelector('.badge').style.left = '30px'
+    expect((await next).full).toBe(true)
+    expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
+  })
+
   it('patches typing into a field, which leaves no mutation record', async () => {
     const root = grid()
     const input = document.createElement('input')

@@ -7,9 +7,11 @@
  * the nearest ancestor that can be painted standalone over the previous pixels: an opaque
  * box, with no ancestor effect (opacity, filter, transform, blend, mask) between it and the
  * root, inside every clipping ancestor and under no positioned element. A box that moved or
- * was restyled hands the change to the enclosing box that did not. Only that subtree is
- * captured, laid out at its subpixel phase, and drawn where it is fully opaque. Anything
- * this cannot prove is a full frame, with the reason on the frame.
+ * was restyled hands the change to the enclosing box that did not; an absolutely positioned
+ * box over a solid or clear backdrop may move and resize itself, since it pushes nothing.
+ * Only that subtree is captured, laid out at its subpixel phase, and drawn over its backdrop
+ * or where it is fully opaque. Anything this cannot prove is a full frame, with the reason
+ * on the frame.
  *
  * Measured 2026-10-23, 1000px grid, one card's text changed per frame, median ms per frame
  * (full / patch): 400 cards Chromium 11.7 / 4.2, Firefox 28 / 4, WebKit 20 / 4; 2000 cards
@@ -132,6 +134,7 @@ export function stream(element, options = {}) {
   const restyled = new Set() // elements whose own attributes changed: their box may have too
   const rects = new WeakMap() // element -> rect at the last paint that covered it
   const backdrops = new Map() // this frame's hosts that draw over a solid colour
+  const movedFrom = new Map() // this frame's out-of-flow hosts that moved -> their old rect
   const stats = { full: 0, patch: 0, skipped: 0, lastMs: 0 }
   let floaters = []
   let forceFull = true
@@ -158,6 +161,26 @@ export function stream(element, options = {}) {
   function rectOf(el) {
     const r = el.getBoundingClientRect()
     return { left: r.left - rootRect.left, top: r.top - rootRect.top, right: r.right - rootRect.left, bottom: r.bottom - rootRect.top, width: r.width, height: r.height }
+  }
+
+  /** `r` grown to whole canvas pixels, in the same root-relative CSS px. */
+  function pixelRect(r) {
+    return { left: (Math.floor(ox + r.left * k) - ox) / k, top: (Math.floor(oy + r.top * k) - oy) / k, right: (Math.ceil(ox + r.right * k) - ox) / k, bottom: (Math.ceil(oy + r.bottom * k) - oy) / k }
+  }
+
+  /** The nearest absolutely or fixed positioned ancestor: it leaves the flow, so its own
+   *  changes of size or place move nothing else. Drawn only over a backdrop. */
+  function positionedHost(node) {
+    for (let el = node?.nodeType === 1 ? node : node?.parentElement; el && el !== element; el = el.parentElement) {
+      const cs = getComputedStyle(el)
+      if (cs.position !== 'absolute' && cs.position !== 'fixed') continue
+      for (let a = el; a !== element; a = a.parentElement) {
+        const as = getComputedStyle(a)
+        if (hasEffect(as) || (a !== el && clips(as))) return null
+      }
+      return el
+    }
+    return null
   }
 
   /** Remember every box's rect and the positioned elements that can paint over others. */
@@ -222,12 +245,13 @@ export function stream(element, options = {}) {
     return [{ x: 0, y: 0, width: w, height: h }]
   }
 
-  /** The solid colour behind `host` when the patch can be drawn over it and come out exact,
-   *  edges and corners included; null otherwise. Needs no shadow or outline of its own
-   *  (they paint outside the box, where the fill would erase them), only opaque or clear
-   *  ancestor backgrounds up to the first opaque one, and no other box on the pixels the
-   *  patch's whole-pixel rect adds around the host. */
-  function backdropOf(host) {
+  /** The solid colour behind `host` ('transparent' over a clear root) when the patch can be
+   *  drawn over it and come out exact, edges and corners included; null otherwise. Needs no
+   *  shadow or outline of its own (they paint outside the box, where the fill would erase
+   *  them), only opaque or clear ancestor backgrounds up to the first opaque one, and no
+   *  other box on the whole-pixel rect around the host, or around `old`, where a moved host
+   *  was. */
+  function backdropOf(host, old) {
     const cs = getComputedStyle(host)
     if (cs.boxShadow !== 'none' || (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0)) return null
     let color = null
@@ -237,20 +261,27 @@ export function stream(element, options = {}) {
       if (opaqueColor(s.backgroundColor)) color = s.backgroundColor
       else if (s.backgroundColor !== 'rgba(0, 0, 0, 0)' && s.backgroundColor !== 'transparent') return null
     }
-    if (!color) return null
-    const r = rectOf(host)
-    const pad = { left: Math.floor(ox + r.left * k) / k - ox / k, top: Math.floor(oy + r.top * k) / k - oy / k, right: Math.ceil(ox + r.right * k) / k - ox / k, bottom: Math.ceil(oy + r.bottom * k) / k - oy / k }
-    for (const sib of host.parentElement.children) {
-      if (sib === host) continue
-      const sr = rects.get(sib)
-      if (sr && intersects(sr, pad)) return null
+    const areas = [pixelRect(rectOf(host)), ...(old ? [pixelRect(old)] : [])]
+    const others = [...host.parentElement.children, ...floaters]
+    for (const other of others) {
+      if (other === host || host.contains(other) || other.contains(host)) continue
+      const or = rects.get(other)
+      if (or && areas.some((a) => intersects(or, a))) return null
     }
-    return color
+    return color || 'transparent'
+  }
+
+  function paintBackdrop(backdrop, x, y, w, h) {
+    ctx.clearRect(x, y, w, h)
+    if (backdrop !== 'transparent') {
+      ctx.fillStyle = backdrop
+      ctx.fillRect(x, y, w, h)
+    }
   }
 
   /** Capture one host at its subpixel phase and return its pixels, placed. */
   async function renderPatch(host) {
-    const r = rects.get(host)
+    const r = rectOf(host)
     // Lay the patch out at the page's subpixel phase (svg engine, options.__subpixel), so
     // its glyphs and snapped box edges land on the same pixels as in the full frame:
     // white cards on black at 1fr offsets differed on 596 pixels at phase zero.
@@ -269,10 +300,12 @@ export function stream(element, options = {}) {
     if (backdrop) {
       // Over its solid backdrop the patch is the full frame's pixels, edges included.
       const lctx = layer.getContext('2d')
-      lctx.fillStyle = backdrop
-      lctx.fillRect(0, 0, w, h)
+      if (backdrop !== 'transparent') {
+        lctx.fillStyle = backdrop
+        lctx.fillRect(0, 0, w, h)
+      }
       lctx.drawImage(src, 0, 0, w, h)
-      return { layer, x, y, w, h }
+      return { layer, x, y, w, h, backdrop }
     }
     // Otherwise keep only the pixels the box covers fully. Inside an opaque box that is
     // everything; what is left are its antialiased edges and rounded corners, which did not
@@ -293,10 +326,20 @@ export function stream(element, options = {}) {
     // demos/stream-webgl.html: 11.9 ms one after another.
     const layers = await Promise.all(hosts.map(renderPatch))
     const out = []
-    for (const { layer, x, y, w, h } of layers) {
+    for (const [host, old] of movedFrom) {
+      const r = pixelRect(old)
+      const x = Math.round(ox + r.left * k), y = Math.round(oy + r.top * k)
+      const w = Math.round(ox + r.right * k) - x, h = Math.round(oy + r.bottom * k) - y
+      paintBackdrop(backdrops.get(host), x, y, w, h)
+      out.push({ x, y, width: w, height: h })
+    }
+    for (const { layer, x, y, w, h, backdrop } of layers) {
+      // A backdrop layer is the full frame's pixels for its whole rect: replace, not blend.
+      if (backdrop) ctx.clearRect(x, y, w, h)
       ctx.drawImage(layer, x, y)
       out.push({ x, y, width: w, height: h })
     }
+    movedFrom.clear()
     for (const host of hosts) {
       rects.set(host, rectOf(host))
       for (const el of host.querySelectorAll('*')) rects.set(el, rectOf(el))
@@ -321,6 +364,16 @@ export function stream(element, options = {}) {
       // changed its own edges, which only a solid backdrop lets the patch redraw. If an
       // enclosing host kept its rect, the change stayed inside it: repaint that box instead.
       while (host && (!sameRect(rects.get(host) || {}, rectOf(host)) || (restyled.has(host) && !backdropOf(host)))) host = hostFor(host.parentElement)
+      if (!host) {
+        // Out of the flow, a box can move or resize freely: clear where it was, draw it
+        // where it is. A lower third whose name got longer.
+        const p = positionedHost(node)
+        const old = p && rects.get(p)
+        if (old && backdropOf(p, old)) {
+          host = p
+          if (!sameRect(old, rectOf(p))) movedFrom.set(p, old)
+        }
+      }
       if (!host) return `no host for ${describe(node)}`
       hosts.add(host)
     }
@@ -330,6 +383,7 @@ export function stream(element, options = {}) {
     }
     let area = 0
     backdrops.clear()
+    for (const h of movedFrom.keys()) if (!hosts.has(h)) movedFrom.delete(h)
     for (const h of hosts) {
       const backdrop = backdropOf(h)
       if (backdrop) backdrops.set(h, backdrop)
