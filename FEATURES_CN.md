@@ -1,6 +1,6 @@
 # SnapDOM 功能特性
 
-SnapDOM 是一个高性能引擎，用于捕获、修改 DOM 元素并将其转换为任意格式。核心引擎提供可复用的图片和 Canvas 导出；插件提供 HTML、结构化上下文、元素映射、PDF、可编辑矢量图和录制功能。
+SnapDOM 是一个高性能 DOM 引擎：在浏览器中捕获已渲染的元素，并将其导出为 PNG、SVG 或 Canvas。核心引擎提供可复用的图片和 Canvas 导出；插件提供 HTML、结构化上下文、元素映射、PDF、可编辑矢量图和录制功能。
 
 本文是 v3 的技术功能参考。安装与示例见 [README](README_CN.md) 和 [API 文档](https://snapdom.dev/docs/)。[English](FEATURES.md)。
 
