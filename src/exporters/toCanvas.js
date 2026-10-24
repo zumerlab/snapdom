@@ -797,7 +797,13 @@ export async function toCanvas(url, options) {
     // font-loading task a turn before drawing; a microtask still paints missing glyphs.
     // A message avoids nested/background timer clamps. Font-free and canvas exports stay
     // on the immediate path, and WebKit keeps its own verified-paint ladder below.
-    if (!srcCanvas && !isSafari() && !isFirefox() && isSvgDataURL(src) && /(?:%40|@)font-face/i.test(src)) {
+    // Firefox resolves it before a nested svg image (an inlined svg background) has parsed,
+    // when that svg is not already in its image cache: the first export of a fresh one drew
+    // the layer blank, the second filled it. One task paints it, measured up to 40 nested
+    // svgs in a 2.8 MB payload. `.` skips the outer data:image/svg+xml at index 0.
+    // Pinned by __tests__/exporter.toCanvas.nestedSvg.test.js.
+    if (!srcCanvas && !isSafari() && isSvgDataURL(src) &&
+      (isFirefox() ? /.data(?:%3A|:)image(?:%2F|\/)svg/i : /(?:%40|@)font-face/i).test(src)) {
       await new Promise(resolve => {
         const channel = new MessageChannel()
         channel.port1.onmessage = () => {
