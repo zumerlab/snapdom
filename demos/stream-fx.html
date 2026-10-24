@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shader FX Overlay</title>
+<style>
+  :root { --bg: #08090c; --line: #232a36; --text: #e8edf5; --muted: #8b95a7; --accent: #facc15; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header p { margin: 0; color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: 960px 1fr; gap: 20px; padding: 20px; align-items: start; }
+  @media (max-width: 1300px) { .wrap { grid-template-columns: 1fr; } }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 6px; }
+  #out { width: 960px; max-width: 100%; height: auto; aspect-ratio: 16 / 9; display: block; background: #000; border: 1px solid var(--line); border-radius: 6px; }
+  .side { display: grid; gap: 14px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #0e1117; }
+  .box h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 400; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  input[type=text] { width: 100%; background: #151a23; color: var(--text); border: 1px solid #2a3240; border-radius: 6px; padding: 7px 9px; font: inherit; }
+  button { background: #1b2230; color: var(--text); border: 1px solid #2f3a4d; border-radius: 6px; padding: 7px 10px; cursor: pointer; font: inherit; }
+  button:hover { background: #253045; }
+  button.sel { border-color: var(--accent); color: var(--accent); }
+  button.on { background: #ef4444; border-color: #ef4444; }
+  label.chk { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  #hud { font: 12px/1.6 ui-monospace, Menlo, monospace; }
+  #hud b { color: var(--accent); font-weight: 400; }
+  .src { padding: 0 20px 30px; }
+  .checker { width: 960px; height: 540px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Shader FX overlay</h1>
+  <p>The graphics are plain HTML templates; the look (CRT, hologram, glitch, heat) and the transitions are a shader.</p>
+</header>
+<div class="wrap">
+  <div>
+    <p class="label">Program output (WebGL: footage + streamed overlay through a shader)</p>
+    <canvas id="out"></canvas>
+  </div>
+  <div class="side">
+    <div class="box">
+      <h2>Look</h2>
+      <div class="grid3" id="looks">
+        <button data-look="0" class="sel">Clean</button><button data-look="1">CRT</button><button data-look="2">Hologram</button>
+        <button data-look="3">Glitch</button><button data-look="4">Heat</button>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Overlay</h2>
+      <div class="grid2" style="margin-bottom:8px"><button data-team="home">+1 Home</button><button data-team="away">+1 Away</button></div>
+      <p style="margin:0 0 8px;color:var(--muted);font-size:12px">A goal fires a glitch burst on top of any look.</p>
+      <div style="display:grid;gap:8px">
+        <input type="text" id="name" value="Alex Morgan">
+        <input type="text" id="role" value="Match commentator">
+      </div>
+    </div>
+    <div class="box">
+      <h2>Transition</h2>
+      <div class="grid2"><button id="out-btn">Dissolve out</button><button id="in-btn">Dissolve in</button></div>
+    </div>
+    <div class="box">
+      <h2>Output</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="rec">Record 10 s</button>
+        <label class="chk"><input type="checkbox" id="patches" checked> Patches</label>
+      </div>
+      <div id="hud" style="margin-top:10px">waiting for the first frame</div>
+    </div>
+  </div>
+</div>
+<div class="src">
+  <p class="label">The overlay DOM (source, over a transparency checkerboard)</p>
+  <div class="checker"><div id="mount"></div></div>
+</div>
+
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
+<script type="module">
+import { stream, streamTexture, recordCanvas, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/plugins/stream.js'
+const $ = (s) => document.querySelector(s)
+const W = 960, H = 540
+
+// ---- The overlay: the stock templates, untouched. The shader does the styling.
+const stage = overlayStage({ width: W, height: H })
+const score = scoreboard({ home: 'HOME', away: 'AWAY' })
+const lower = lowerThird({ name: $('#name').value, role: $('#role').value })
+const news = ticker({ items: ['Kick-off delayed by rain, now under way', 'Home keeper with three saves in the first half',
+  'Attendance tonight: 41,200', 'Next match: Saturday 18:00'] })
+stage.append(score.el, liveBadge().el, lower.el, news.el)
+$('#mount').append(stage)
+score.clock.start()
+let burst = 0
+for (const b of document.querySelectorAll('[data-team]')) b.addEventListener('click', () => { score.add(b.dataset.team); burst = 1 })
+$('#name').addEventListener('input', (e) => lower.set({ name: e.target.value }))
+$('#role').addEventListener('input', (e) => lower.set({ role: e.target.value }))
+let look = 0
+for (const b of document.querySelectorAll('[data-look]')) b.addEventListener('click', () => {
+  look = +b.dataset.look
+  for (const o of document.querySelectorAll('[data-look]')) o.classList.toggle('sel', o === b)
+})
+// Reveal runs 0 (gone) to 1 (shown); the dissolve is the shader's, the DOM never changes.
+let reveal = 1, revealTo = 1
+$('#out-btn').addEventListener('click', () => { revealTo = 0 })
+$('#in-btn').addEventListener('click', () => { revealTo = 1 })
+
+// ---- Footage: a generated pitch.
+const scene = document.createElement('canvas'); scene.width = W; scene.height = H
+const sctx = scene.getContext('2d')
+const players = Array.from({ length: 14 }, (_, i) => ({ x: Math.random() * W, y: 120 + Math.random() * 330, vx: (Math.random() - .5) * 2, vy: (Math.random() - .5) * 1.2, c: i < 7 ? '#22c55e' : '#3b82f6' }))
+const ball = { x: 480, y: 280, vx: 3.1, vy: 1.7 }
+function pitch(t) {
+  for (let i = 0; i < 12; i++) { sctx.fillStyle = i % 2 ? '#2f7a3a' : '#2a6e34'; sctx.fillRect(i * 80, 0, 80, H) }
+  sctx.strokeStyle = '#ffffffb0'; sctx.lineWidth = 3
+  sctx.strokeRect(40, 70, 880, 420); sctx.beginPath(); sctx.moveTo(480, 70); sctx.lineTo(480, 490); sctx.stroke()
+  sctx.beginPath(); sctx.arc(480, 280, 60, 0, Math.PI * 2); sctx.stroke()
+  for (const p of players) {
+    p.x += p.vx + Math.sin(t / 900 + p.y) * .4; p.y += p.vy
+    if (p.x < 50 || p.x > 910) p.vx *= -1
+    if (p.y < 90 || p.y > 470) p.vy *= -1
+    sctx.fillStyle = '#0006'; sctx.beginPath(); sctx.ellipse(p.x, p.y + 9, 9, 4, 0, 0, Math.PI * 2); sctx.fill()
+    sctx.fillStyle = p.c; sctx.beginPath(); sctx.arc(p.x, p.y, 8, 0, Math.PI * 2); sctx.fill()
+  }
+  ball.x += ball.vx; ball.y += ball.vy
+  if (ball.x < 50 || ball.x > 910) ball.vx *= -1
+  if (ball.y < 80 || ball.y > 480) ball.vy *= -1
+  sctx.fillStyle = '#fff'; sctx.beginPath(); sctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2); sctx.fill()
+}
+
+// ---- WebGL: the footage passes through; only the overlay is read through the effect.
+const out = $('#out'); out.width = W * 2; out.height = H * 2
+const gl = out.getContext('webgl2', { premultipliedAlpha: false })
+const fs = `#version 300 es
+precision highp float;
+uniform sampler2D footage, overlay; uniform vec2 res; uniform float t, burst, reveal; uniform int look;
+out vec4 o;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+vec4 ov(vec2 uv) { return (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) ? vec4(0) : texture(overlay, uv); }
+// Straight alpha in, so a split channel keeps its own coverage.
+vec4 split(vec2 uv, vec2 d) { vec4 r = ov(uv + d), g = ov(uv), b = ov(uv - d);
+  float a = max(r.a, max(g.a, b.a)); return vec4(r.r * r.a, g.g * g.a, b.b * b.a, a); }
+vec3 glow(vec2 uv, float px) { vec3 s = vec3(0);
+  for (int i = 0; i < 16; i++) { float a = float(i) * 2.39996, r = px * sqrt(float(i + 1) / 16.);
+    vec4 c = ov(uv + vec2(cos(a), sin(a)) * r / vec2(${W}., ${H}.)); s += c.rgb * c.a; }
+  return s / 16.; }
+void main() {
+  vec2 uv = vec2(gl_FragCoord.x, res.y - gl_FragCoord.y) / res;
+  vec3 col = texture(footage, uv).rgb;
+  vec2 q = uv; vec4 c; vec3 add = vec3(0);
+  float g = burst;
+  if (look == 3) g = max(g, .35 + .65 * step(.93, hash(vec2(floor(t * 8.), 1.))));
+  if (look == 1) {
+    vec2 cc = q - .5; q = .5 + cc * (1. + .12 * dot(cc, cc));
+  } else if (look == 2) {
+    q.x += (hash(vec2(floor(q.y * 90.), floor(t * 20.))) - .5) * .004;
+  } else if (look == 4) {
+    q += vec2(sin(q.y * 40. + t * 5.), cos(q.x * 30. + t * 4.)) * .0035;
+  }
+  if (g > 0.) {
+    float row = floor(q.y * 24.), slice = step(1. - .45 * g, hash(vec2(row, floor(t * 14.))));
+    q.x += (hash(vec2(row, floor(t * 30.))) - .5) * .12 * g * slice;
+  }
+  c = split(q, vec2(.004 * g + (look == 1 ? .0012 : 0.), 0));
+  if (look == 1) {
+    c.rgb *= .78 + .22 * sin(gl_FragCoord.y * 1.6);
+    add = glow(q, 10.) * .9;
+  } else if (look == 2) {
+    float l = dot(c.rgb, vec3(.3, .59, .11));
+    c.rgb = vec3(.25, .85, 1.) * (pow(l, 1.6) * 1.05 + .04);
+    c.a *= (.7 + .2 * sin(q.y * 500. - t * 9.)) * (.85 + .15 * hash(vec2(floor(t * 24.), 3.)));
+    add = glow(q, 14.) * vec3(.2, .8, 1.) * .45;
+  }
+  // Dissolve: blocks drop out on a noise threshold, the cut edge burns in the accent colour.
+  float n = noise(uv * vec2(48., 27.));
+  float keep = smoothstep(reveal - .02, reveal + .02, 1. - n) ;
+  keep = reveal >= 1. ? 1. : reveal <= 0. ? 0. : keep;
+  float burn = (reveal > 0. && reveal < 1.) ? (1. - smoothstep(0., .06, abs(1. - n - reveal))) : 0.;
+  c.a *= keep;
+  col = mix(col, c.rgb, clamp(c.a, 0., 1.)) + add * keep + vec3(1., .75, .1) * burn * c.a * 3.;
+  if (look == 1) { vec2 v = uv - .5; col *= 1. - .35 * dot(v, v) * 2.; }
+  o = vec4(col, 1);
+}`
+const vs = `#version 300 es
+in vec2 a; void main() { gl_Position = vec4(a, 0, 1); }`
+function shader(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s }
+const prog = gl.createProgram()
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog)
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+const U = (n) => gl.getUniformLocation(prog, n)
+gl.activeTexture(gl.TEXTURE0)
+const footage = gl.createTexture()
+gl.bindTexture(gl.TEXTURE_2D, footage)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+gl.activeTexture(gl.TEXTURE1)
+const tex = streamTexture(gl)
+gl.uniform1i(U('footage'), 0); gl.uniform1i(U('overlay'), 1)
+
+// ---- The stream: the templates repaint as usual; a look change costs the DOM nothing.
+const stats = { patch: 0, full: 0, ms: [], uploaded: 0, total: 0, reasons: {} }
+let overlay = null
+function start() {
+  overlay?.stop()
+  Object.assign(stats, { patch: 0, full: 0, ms: [], uploaded: 0, total: 0, reasons: {} })
+  overlay = stream(stage, {
+    dpr: 1, embedFonts: false, patches: $('#patches').checked,
+    onFrame(f) {
+      gl.activeTexture(gl.TEXTURE1)
+      stats.uploaded += tex.update(f); stats.total += tex.width * tex.height
+      f.full ? stats.full++ : stats.patch++
+      if (f.reason) stats.reasons[f.reason] = (stats.reasons[f.reason] || 0) + 1
+      stats.ms.push(f.ms); if (stats.ms.length > 60) stats.ms.shift()
+    },
+  })
+}
+$('#patches').addEventListener('change', start)
+start()
+
+let last = 0
+function frame(t) {
+  const dt = Math.min(.05, (t - last) / 1000); last = t
+  burst = Math.max(0, burst - dt * 1.6)
+  reveal += Math.sign(revealTo - reveal) * Math.min(Math.abs(revealTo - reveal), dt * 1.4)
+  pitch(t)
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, footage)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, scene)
+  gl.uniform2f(U('res'), out.width, out.height)
+  gl.uniform1f(U('t'), t / 1000); gl.uniform1f(U('burst'), burst); gl.uniform1f(U('reveal'), reveal); gl.uniform1i(U('look'), look)
+  gl.viewport(0, 0, out.width, out.height)
+  if (tex.width) gl.drawArrays(gl.TRIANGLES, 0, 6)
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+
+$('#rec').addEventListener('click', async () => {
+  let rec
+  try { rec = recordCanvas(out, { fps: 30, duration: 10000 }) } catch (e) { $('#hud').textContent = e.message; return }
+  $('#rec').classList.add('on'); $('#rec').textContent = 'Recording...'
+  const blob = await rec.done
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'fx-overlay.' + (rec.type.includes('mp4') ? 'mp4' : 'webm')
+  a.click()
+  $('#rec').classList.remove('on'); $('#rec').textContent = 'Record 10 s'
+})
+
+setInterval(() => {
+  const ms = stats.ms.slice().sort((a, b) => a - b)
+  if (!ms.length) return
+  $('#hud').innerHTML = `overlay frame <b>${ms[ms.length >> 1].toFixed(1)} ms</b> median<br>` +
+    `frames <b>${stats.patch}</b> patch / <b>${stats.full}</b> full<br>` +
+    `GPU upload <b>${(100 * stats.uploaded / (stats.total || 1)).toFixed(1)}%</b> of the overlay per frame<br>` +
+    `full because: ${Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;') || 'none'}`
+}, 300)
+</script>
+</body>
+</html>
