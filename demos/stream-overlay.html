@@ -108,8 +108,10 @@
   </div>
 </div>
 
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
 <script type="module">
-import { snapdom } from '../dist/snapdom.mjs'
+import { snapdom } from '@zumer/snapdom'
+import { stream, recordCanvas } from '../packages/plugins/stream.js'
 const $ = (s) => document.querySelector(s)
 
 // ---- Overlay state, driven from the control panel like a real graphics operator.
@@ -168,7 +170,7 @@ let overlay = null
 function start() {
   overlay?.stop()
   Object.assign(stats, { patch: 0, full: 0, ms: [], reasons: {} })
-  overlay = snapdom.stream($('#overlay'), {
+  overlay = stream($('#overlay'), {
     dpr: 1, embedFonts: false, patches: $('#patches').checked,
     onFrame(f) {
       f.full ? stats.full++ : stats.patch++
@@ -191,22 +193,16 @@ function frame(t) {
 requestAnimationFrame(frame)
 
 // ---- Recording: the composited canvas is a MediaStream like any other.
-$('#rec').addEventListener('click', () => {
-  if (!window.MediaRecorder) { $('#hud').textContent = 'MediaRecorder is not available here'; return }
-  const type = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t))
-  const rec = new MediaRecorder(out.captureStream(30), { mimeType: type })
-  const chunks = []
-  rec.ondataavailable = (e) => chunks.push(e.data)
-  rec.onstop = () => {
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob(chunks, { type }))
-    a.download = 'overlay.' + (type.includes('mp4') ? 'mp4' : 'webm')
-    a.click()
-    $('#rec').classList.remove('on'); $('#rec').textContent = 'Record 10 s'
-  }
-  rec.start()
+$('#rec').addEventListener('click', async () => {
+  let rec
+  try { rec = recordCanvas(out, { fps: 30, duration: 10000 }) } catch (e) { $('#hud').textContent = e.message; return }
   $('#rec').classList.add('on'); $('#rec').textContent = 'Recording...'
-  setTimeout(() => rec.stop(), 10000)
+  const blob = await rec.done
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'overlay.' + (rec.type.includes('mp4') ? 'mp4' : 'webm')
+  a.click()
+  $('#rec').classList.remove('on'); $('#rec').textContent = 'Record 10 s'
 })
 
 setInterval(() => {

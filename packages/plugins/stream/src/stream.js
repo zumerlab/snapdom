@@ -19,15 +19,19 @@
  *
  * Output: `stream.canvas` is updated in place; `onFrame` receives the dirty rects in canvas
  * pixels, so a WebGL consumer can `texSubImage2D` just those and a video consumer can use
- * `canvas.captureStream()`. Pinned by __tests__/api.stream.test.js, which compares every
+ * `canvas.captureStream()`. Pinned by __tests__/plugin.stream.test.js, which compares every
  * patched frame against a full capture of the same DOM state.
- * @module api/stream
+ *
+ * Built on the public capture API plus one engine contract, the internal `__subpixel` option
+ * (src/engines/svg.js), which lays a patch out at the page's subpixel offset.
+ * @module plugins/stream
  */
-import { isSafari } from '../utils/browser.js'
+import { snapdom as capture } from '@zumer/snapdom'
 
-/** The public capture entry, bound by api/snapdom.js at load (that module imports this one). */
-let capture = null
-export function bindStreamCapture(fn) { capture = fn }
+// WebKit keeps toCanvas, whose draw workarounds a raw decode would skip. Every iOS browser is
+// WebKit; elsewhere WebKit is AppleWebKit without a Chromium token.
+const WEBKIT = typeof navigator !== 'undefined' && (/ipad|iphone|ipod/i.test(navigator.userAgent) ||
+  (/applewebkit/i.test(navigator.userAgent) && !/chrome|chromium|crios|edg|opr|android/i.test(navigator.userAgent)))
 
 const EVENTS = ['input', 'change', 'focusin', 'focusout', 'pointerover', 'pointerout', 'scroll', 'toggle']
 /** A patch larger than this share of the frame costs about what a full frame does. */
@@ -225,8 +229,7 @@ export function stream(element, options = {}) {
     // every frame a big tree tears and redoes in one task, which only the interval helps.
     const res = await capture(element, { fast: 'auto', ...opts })
     const { vbW, vbH, contentX = 0, contentY = 0 } = res.meta
-    // Safari keeps toCanvas, whose WebKit draw workarounds a raw decode would skip.
-    const src = isSafari() ? await res.toCanvas() : await decode(res.url)
+    const src = WEBKIT ? await res.toCanvas() : await decode(res.url)
     const w = Math.round(vbW * k), h = Math.round(vbH * k)
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
     ctx.clearRect(0, 0, w, h)
@@ -288,7 +291,7 @@ export function stream(element, options = {}) {
     const { vbW, vbH, contentX = 0, contentY = 0 } = res.meta
     const x = Math.round(x0 - contentX * k), y = Math.round(y0 - contentY * k)
     const w = Math.round(vbW * k), h = Math.round(vbH * k)
-    const src = isSafari() ? await res.toCanvas() : await decode(res.url)
+    const src = WEBKIT ? await res.toCanvas() : await decode(res.url)
     const layer = document.createElement('canvas')
     layer.width = w
     layer.height = h
@@ -432,11 +435,12 @@ export function stream(element, options = {}) {
   const ready = (async () => {
     busy = true
     try {
-      await full()
       forceFull = false
-      dirty.clear()
-      restyled.clear()
-      observer.takeRecords()
+      // Edits from before the capture are in it. Edits landing while it runs may come after
+      // it read the DOM: they stay dirty for the first tick. Dropping them here lost them
+      // until a keyframe (a 1000-card lab under edits kept stale cards for seconds).
+      await full()
+      netTargets(observer.takeRecords(), dirty, restyled)
       onFrame?.({ full: true, reason: 'start', rects: [{ x: 0, y: 0, width: canvas.width, height: canvas.height }], ms: 0, canvas })
     } finally { busy = false }
     requestAnimationFrame(tick)

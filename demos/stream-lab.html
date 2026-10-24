@@ -64,8 +64,10 @@
   </section>
 </main>
 
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
 <script type="module">
-import { snapdom } from '../dist/snapdom.mjs'
+import { snapdom } from '@zumer/snapdom'
+import { stream } from '../packages/plugins/stream.js'
 const $ = (s) => document.querySelector(s)
 const board = $('#board')
 
@@ -94,15 +96,15 @@ function churn() {
 
 const view = $('#view'), vctx = view.getContext('2d')
 const marks = $('#marks'), mctx = marks.getContext('2d')
-let stream = null
+let live = null
 let flashes = []
 const stats = { patch: 0, full: 0, ms: [], history: [], reasons: {}, delivered: [], rects: [] }
 
 function start() {
-  stream?.stop()
+  live?.stop()
   Object.assign(stats, { patch: 0, full: 0, ms: [], history: [], reasons: {}, delivered: [], rects: [] })
   flashes = []
-  stream = snapdom.stream(board, {
+  live = stream(board, {
     dpr: 1, embedFonts: false, patches: $('#patches').checked,
     onFrame(f) {
       const c = f.canvas
@@ -181,7 +183,7 @@ $('#verify').addEventListener('click', async () => {
   const img = new Image(); img.src = res.url; await img.decode()
   const ref = document.createElement('canvas'); ref.width = view.width; ref.height = view.height
   ref.getContext('2d').drawImage(img, 0, 0, ref.width, ref.height)
-  const a = stream.canvas.getContext('2d').getImageData(0, 0, ref.width, ref.height).data
+  const a = live.canvas.getContext('2d').getImageData(0, 0, ref.width, ref.height).data
   const b = ref.getContext('2d').getImageData(0, 0, ref.width, ref.height).data
   let bad = 0
   for (let i = 0; i < a.length; i += 4) {

@@ -87,8 +87,10 @@
   </section>
 </main>
 
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
 <script type="module">
-import { snapdom } from '../dist/snapdom.mjs'
+import { snapdom } from '@zumer/snapdom'
+import { stream, streamTexture } from '../packages/plugins/stream.js'
 
 const panel = document.querySelector('#panel')
 const $ = (s) => document.querySelector(s)
@@ -173,46 +175,22 @@ for (let i = 0; i < N; i++) {
 const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW)
 const loc = gl.getAttribLocation(prog, 'a'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
 const U = (n) => gl.getUniformLocation(prog, n)
-const tex = gl.createTexture()
-gl.bindTexture(gl.TEXTURE_2D, tex)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
-gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-let texW = 0, texH = 0
+// The texture uploads only the rects each frame changed (WebGL2 sub-rectangle reads).
+const tex = streamTexture(gl)
 
-// ---- The stream. Each frame hands over only the rects that changed.
+// ---- The stream.
 const stats = { frames: 0, full: 0, patch: 0, ms: [], uploaded: 0, total: 0, reasons: {} }
 let source = null
-function upload(frame) {
-  const c = frame.canvas
-  gl.bindTexture(gl.TEXTURE_2D, tex)
-  gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false)
-  if (c.width !== texW || c.height !== texH || frame.full) {
-    texW = c.width; texH = c.height
-    gl.pixelStorei(gl.UNPACK_ROW_LENGTH, 0); gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0); gl.pixelStorei(gl.UNPACK_SKIP_ROWS, 0)
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c)
-    return texW * texH
-  }
-  // WebGL2 reads a sub-rectangle of a canvas source through the unpack parameters.
-  gl.pixelStorei(gl.UNPACK_ROW_LENGTH, c.width)
-  let px = 0
-  for (const r of frame.rects) {
-    gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, r.x); gl.pixelStorei(gl.UNPACK_SKIP_ROWS, r.y)
-    gl.texSubImage2D(gl.TEXTURE_2D, 0, r.x, r.y, r.width, r.height, gl.RGBA, gl.UNSIGNED_BYTE, c)
-    px += r.width * r.height
-  }
-  return px
-}
 function start() {
   source?.stop()
-  source = snapdom.stream(panel, {
+  source = stream(panel, {
     scale: 2, dpr: 1, embedFonts: false, patches: $('#patches').checked,
     onFrame(frame) {
-      const px = upload(frame)
+      const px = tex.update(frame)
       stats.frames++; frame.full ? stats.full++ : stats.patch++
       if (frame.reason) stats.reasons[frame.reason] = (stats.reasons[frame.reason] || 0) + 1
       stats.ms.push(frame.ms); if (stats.ms.length > 60) stats.ms.shift()
-      stats.uploaded += px; stats.total += texW * texH
+      stats.uploaded += px; stats.total += tex.width * tex.height
       stats.last = frame
     },
   })
@@ -228,9 +206,9 @@ function draw(time) {
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
   gl.viewport(0, 0, w, h)
   gl.clearColor(0.027, 0.035, 0.05, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
-  if (texW) {
+  if (tex.width) {
     gl.uniform1f(U('t'), time / 1000); gl.uniform1f(U('aspect'), w / h); gl.uniform1f(U('spin'), $('#spin').checked ? 1 : 0)
-    gl.uniform2f(U('size'), texW, texH)
+    gl.uniform2f(U('size'), tex.width, tex.height)
     gl.uniform1f(U('mirror'), 1); gl.drawArrays(gl.TRIANGLES, 0, N * 6)
     gl.uniform1f(U('mirror'), 0); gl.drawArrays(gl.TRIANGLES, 0, N * 6)
   }
@@ -248,7 +226,7 @@ setInterval(() => {
     `frame cost <b>${med.toFixed(1)} ms</b> median<br>` +
     `frames <b>${stats.patch}</b> patch / <b>${stats.full}</b> full<br>` +
     `GPU upload <b>${share.toFixed(1)}%</b> of the texture per frame<br>` +
-    `texture <b>${texW}x${texH}</b><br>` +
+    `texture <b>${tex.width}x${tex.height}</b><br>` +
     `full frames: ${Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;')}`
 }, 250)
 </script>

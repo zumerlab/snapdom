@@ -640,37 +640,6 @@ export declare namespace snapdom {
    */
   function preCapture(): void;
 
-  /** One repaint of a stream: the rects of `canvas` that changed, in canvas pixels. */
-  interface StreamFrame {
-    /** True when the whole canvas was repainted; `reason` says why. */
-    full: boolean;
-    reason: string | null;
-    rects: { x: number; y: number; width: number; height: number }[];
-    ms: number;
-    canvas: HTMLCanvasElement;
-  }
-
-  interface StreamOptions extends SnapdomOptions {
-    onFrame?: (frame: StreamFrame) => void;
-    /** Cap on frames per second; default every animation frame. */
-    fps?: number;
-    /** false repaints full frames only. Default true. */
-    patches?: boolean;
-  }
-
-  /**
-   * Stream a live element into a canvas that repaints only the boxes that changed: the
-   * first frame is a full capture, later frames capture and redraw just the changed
-   * subtrees, and anything that cannot be patched exactly is a full frame. For WebGL
-   * textures (upload `frame.rects` with texSubImage2D) and video (`canvas.captureStream()`).
-   */
-  function stream(element: Element, options?: StreamOptions): {
-    canvas: HTMLCanvasElement;
-    ready: Promise<void>;
-    stats: { full: number; patch: number; skipped: number; lastMs: number };
-    stop(): void;
-  };
-
   /** Shortcut helpers that run a one-off capture+export. */
 
   /** Returns the capture data URL (SVG by default; PNG after a successful native

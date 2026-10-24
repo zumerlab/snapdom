@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { snapdom } from '../src/index.js'
+import { stream, streamExport, streamTexture, recordCanvas } from '../packages/plugins/stream.js'
 
 const roots = []
 const streams = []
@@ -25,7 +26,7 @@ function grid(cardCss = 'background:#1e293b') {
 function open(root, options = {}) {
   let resolveNext
   const frames = []
-  const s = snapdom.stream(root, {
+  const s = stream(root, {
     dpr: 1, embedFonts: false, ...options,
     onFrame: (f) => { frames.push(f); resolveNext?.(f) },
   })
@@ -60,7 +61,7 @@ function differs(a, b) {
   return bad
 }
 
-describe('snapdom.stream', () => {
+describe('stream plugin', () => {
   it('repaints a changed card as a patch that matches a full capture, frame after frame', async () => {
     const root = grid()
     const s = open(root)
@@ -283,6 +284,25 @@ describe('snapdom.stream', () => {
     expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
   })
 
+  it('repaints an edit that lands while the first frame is being captured', async () => {
+    const root = grid()
+    // afterRender runs once the capture has read the DOM: an edit there is after the read
+    // and before the frame is done, the window the first frame used to lose.
+    let edited = false
+    const editOnce = { name: 'edit-once', afterRender() {
+      if (edited) return
+      edited = true
+      root.children[7].querySelector('.v').textContent = 'during the first frame'
+    } }
+    const s = open(root, { plugins: [editOnce] })
+    await s.ready
+    expect(edited).toBe(true)
+    // A patch, not the keyframe that would heal it 2 s later.
+    const frame = await s.next()
+    expect(frame.full, frame.reason).toBe(false)
+    expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
+  })
+
   it('emits nothing while the element is unchanged', async () => {
     const root = grid()
     const s = open(root)
@@ -294,5 +314,59 @@ describe('snapdom.stream', () => {
     const extra = s.frames.slice(before).filter(f => f.reason !== 'resize')
     expect(extra.length, extra.map(f => f.reason).join(', ')).toBe(0)
     expect(s.stats.skipped).toBeGreaterThan(0)
+  })
+
+  it('streams a capture result through toStream(), with the capture\'s options', async () => {
+    const root = grid()
+    const res = await snapdom(root, { dpr: 1, embedFonts: false, plugins: [streamExport()] })
+    let resolveNext
+    const s = await res.toStream({ onFrame: (f) => resolveNext?.(f) })
+    streams.push(s)
+    await s.ready
+    const next = new Promise(r => { resolveNext = r })
+    root.children[4].querySelector('.v').textContent = 'via toStream'
+    const frame = await next
+    expect(frame.full).toBe(false)
+    expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
+  })
+
+  it('keeps a WebGL texture equal to the stream canvas while uploading only the dirty rects', async () => {
+    const root = grid()
+    const gl = document.createElement('canvas').getContext('webgl2')
+    const tex = streamTexture(gl)
+    const s = open(root)
+    await s.ready
+    expect(tex.update(s.frames[0])).toBe(s.canvas.width * s.canvas.height)
+    const next = s.next()
+    root.children[9].querySelector('.v').textContent = 'on the GPU'
+    const frame = await next
+    const uploaded = tex.update(frame)
+    expect(frame.full).toBe(false)
+    expect(uploaded).toBe(frame.rects.reduce((a, r) => a + r.width * r.height, 0))
+    expect(uploaded).toBeLessThan(s.canvas.width * s.canvas.height / 10)
+    // Read the texture back through a framebuffer and compare it with the canvas.
+    const fb = gl.createFramebuffer()
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb)
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex.texture, 0)
+    const w = s.canvas.width, h = s.canvas.height
+    const gpu = new Uint8Array(w * h * 4)
+    gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, gpu)
+    const cpu = s.canvas.getContext('2d').getImageData(0, 0, w, h).data
+    let bad = 0
+    for (let i = 0; i < gpu.length; i += 4) if (Math.abs(gpu[i] - cpu[i]) > 2 || Math.abs(gpu[i + 1] - cpu[i + 1]) > 2) bad++
+    expect(bad).toBe(0)
+  })
+
+  it('records the stream canvas to a video blob', async () => {
+    if (typeof MediaRecorder === 'undefined' || !['video/mp4', 'video/webm'].some(t => MediaRecorder.isTypeSupported(t))) return
+    const root = grid()
+    const s = open(root)
+    await s.ready
+    const rec = recordCanvas(s.canvas, { duration: 400 })
+    const tick = setInterval(() => { root.children[0].querySelector('.v').textContent = String(Math.random()) }, 50)
+    const blob = await rec.done
+    clearInterval(tick)
+    expect(blob.type).toMatch(/^video\//)
+    expect(blob.size).toBeGreaterThan(0)
   })
 })

@@ -3,7 +3,7 @@
 Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a high-performance engine
 for capturing, modifying, and converting DOM elements into any format. Core exports images and
 canvases; this package adds HTML, structured context, element maps, PDF, editable vectors, ASCII,
-visual transforms and live GIF/video recording.
+visual transforms, live GIF/video recording and live DOM streaming.
 
 Image, HTML and structured exports use captured state; GIF and video start a sequence of
 live captures when their export method is called.
@@ -489,6 +489,23 @@ Requires `MediaRecorder` and `canvas.captureStream()`, which may be unavailable 
 environments. Per-call `opts` override constructor options and accept `download`
 (`boolean \| string`). Recording starts at the call and preserves capture options as GIF
 recording does. MediaRecorder uses a real-time clock, so slow captures can stretch duration.
+
+### `stream`
+
+Streams a live element into a canvas that repaints only the boxes that changed, for WebGL
+textures and video overlays. `stream(el, options)` is the entry; `streamExport()` adds the same
+as `toStream()`. Includes `streamTexture(gl)`, which uploads only the changed rects, and
+`recordCanvas(canvas)`.
+
+```js
+import { stream, streamTexture } from '@zumer/snapdom-plugins/stream';
+
+const tex = streamTexture(gl);
+const live = stream(panel, { scale: 2, onFrame: (frame) => tex.update(frame) });
+```
+
+Each patched frame matches a full capture of the same DOM state. Full documentation, options
+and limits: [stream/README.md](stream/README.md).
 
 ---
 

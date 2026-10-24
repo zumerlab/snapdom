@@ -18,3 +18,4 @@ export * from './video-export.js';
 export * from './agent-map.js';
 export * from './context-export.js';
 export * from './vector.js';
+export * from './stream.js';
