@@ -386,7 +386,7 @@ editable.addEventListener('input', updateMirror)</pre>
     }))
     document.querySelector('#lwmEffect').addEventListener('change', event => { renderer.effect = Number(event.target.value) })
     await updateMirror()
-    editable.focus()
+    editable.focus({ preventScroll: true })
   </script>
 </body>
 </html>

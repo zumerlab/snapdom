@@ -470,7 +470,7 @@ async function refresh () {
     document.querySelector('#shader').addEventListener('change', event => { renderer.effect = Number(event.target.value) })
 
     await refresh()
-    document.querySelector('#proxy-title').focus()
+    document.querySelector('#proxy-title').focus({ preventScroll: true })
   </script>
 </body>
 </html>
