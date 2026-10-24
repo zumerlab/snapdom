@@ -1,7 +1,7 @@
 /**
  * Live DOM streaming for SnapDOM: an element as a canvas that repaints only what changed,
  * plus the pieces that put it to work (a WebGL texture that uploads only dirty rects, a
- * recorder). `stream(el)` is the entry; `streamExport()` adds the same thing to a capture
+ * recorder, broadcast overlay templates). `stream(el)` is the entry; `streamExport()` adds the same thing to a capture
  * result as `toStream()`, next to toMp4 and toGif.
  * @module plugins/stream
  */
@@ -11,6 +11,7 @@ import { captureInputs, exportOption } from '../../capture-frames.js'
 export { stream } from './stream.js'
 export { streamTexture } from './webgl.js'
 export { recordCanvas } from './recorder.js'
+export { overlayStage, scoreboard, lowerThird, ticker, liveBadge } from './overlays.js'
 
 /**
  * Plugin form: `result.toStream(options)` streams the captured element with the capture's

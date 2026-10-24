@@ -31,24 +31,6 @@
   .checker { width: 960px; height: 540px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
     background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
 
-  /* ---- The overlay. A transparent 960x540 root; every box that changes is opaque. ---- */
-  #overlay { position: relative; width: 960px; height: 540px; font: 16px/20px Arial, Helvetica, sans-serif; color: #fff; }
-  .score { position: absolute; left: 24px; top: 24px; display: flex; background: #0b0f17; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 14px #0009; }
-  .team { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #0b0f17; }
-  .team i { width: 10px; height: 28px; border-radius: 2px; display: block; }
-  .team span { font-weight: 700; letter-spacing: .04em; }
-  .pts { min-width: 44px; text-align: center; font: 700 26px/32px Arial, Helvetica, sans-serif; padding: 4px 8px; background: #161d2b; }
-  .clock { padding: 0 14px; display: flex; align-items: center; background: #facc15; color: #111; font: 700 20px/40px ui-monospace, Menlo, monospace; }
-  .live { position: absolute; right: 24px; top: 24px; background: #0b0f17; border-radius: 6px; padding: 6px 12px 6px 28px; font-weight: 700; letter-spacing: .1em; }
-  .live::before { content: ''; position: absolute; left: 11px; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; animation: pulse 1s ease-in-out infinite; }
-  @keyframes pulse { 50% { opacity: .25; } }
-  .lower { position: absolute; left: 24px; bottom: 76px; display: flex; flex-direction: column; }
-  .lower .name { background: #f8fafc; color: #0b0f17; font: 700 24px/30px Arial, Helvetica, sans-serif; padding: 6px 16px; border-radius: 4px 4px 0 0; }
-  .lower .role { background: #1d4ed8; color: #fff; padding: 6px 16px; border-radius: 0 0 4px 4px; }
-  .ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #0b0f17; overflow: hidden; display: flex; align-items: center; }
-  .ticker .tag { background: #ef4444; height: 40px; padding: 0 14px; display: flex; align-items: center; font-weight: 700; position: relative; z-index: 1; }
-  .ticker .run { white-space: nowrap; animation: run 18s linear infinite; padding-left: 20px; }
-  @keyframes run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 </style>
 </head>
 <body>
@@ -72,7 +54,7 @@
       <h2>Lower third</h2>
       <div style="display:grid;gap:8px">
         <input type="text" id="name" value="Alex Morgan">
-        <input type="text" id="role" value="Match commentator">
+        <input type="text" id="role" value="Match commentator"><button id="toggle">Hide lower third</button>
       </div>
     </div>
     <div class="box">
@@ -95,40 +77,29 @@
 <div class="src">
   <p class="label">The overlay DOM (source, over a transparency checkerboard)</p>
   <div class="checker">
-    <div id="overlay">
-      <div class="score">
-        <div class="team"><i style="background:#22c55e"></i><span>HOME</span></div><div class="pts" id="p0">0</div>
-        <div class="pts" id="p1">0</div><div class="team"><span>AWAY</span><i style="background:#3b82f6"></i></div>
-        <div class="clock" id="clock">00:00.0</div>
-      </div>
-      <div class="live">LIVE</div>
-      <div class="lower"><div class="name" id="lname">Alex Morgan</div><div class="role" id="lrole">Match commentator</div></div>
-      <div class="ticker"><div class="tag">NEWS</div><div class="run" id="run"></div></div>
-    </div>
+    <div id="mount"></div>
   </div>
 </div>
 
 <script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
 <script type="module">
 import { snapdom } from '@zumer/snapdom'
-import { stream, recordCanvas } from '../packages/plugins/stream.js'
+import { stream, recordCanvas, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/plugins/stream.js'
 const $ = (s) => document.querySelector(s)
 
-// ---- Overlay state, driven from the control panel like a real graphics operator.
-const headlines = ['Kick-off delayed by rain, now under way', 'Home keeper with three saves in the first half',
-  'Attendance tonight: 41,200', 'Next match: Saturday 18:00', 'Weather: clearing later, 14 degrees']
-$('#run').textContent = (headlines.join('   ·   ') + '   ·   ').repeat(2)
-const score = [0, 0]
-for (const b of document.querySelectorAll('[data-team]')) {
-  b.addEventListener('click', () => { const t = +b.dataset.team; score[t]++; $('#p' + t).textContent = score[t] })
-}
-$('#name').addEventListener('input', (e) => { $('#lname').textContent = e.target.value })
-$('#role').addEventListener('input', (e) => { $('#lrole').textContent = e.target.value })
-const t0 = performance.now()
-setInterval(() => {
-  const s = (performance.now() - t0) / 1000
-  $('#clock').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${(s % 60).toFixed(1).padStart(4, '0')}`
-}, 100)
+// ---- The overlay, built from the templates and driven from the controls.
+const stage = overlayStage({ width: 960, height: 540 })
+const score = scoreboard({ home: 'HOME', away: 'AWAY' })
+const lower = lowerThird({ name: $('#name').value, role: $('#role').value })
+const news = ticker({ items: ['Kick-off delayed by rain, now under way', 'Home keeper with three saves in the first half',
+  'Attendance tonight: 41,200', 'Next match: Saturday 18:00', 'Weather: clearing later, 14 degrees'] })
+stage.append(score.el, liveBadge().el, lower.el, news.el)
+$('#mount').append(stage)
+score.clock.start()
+for (const b of document.querySelectorAll('[data-team]')) b.addEventListener('click', () => score.add(b.dataset.team === '1' ? 'away' : 'home'))
+$('#name').addEventListener('input', (e) => lower.set({ name: e.target.value }))
+$('#role').addEventListener('input', (e) => lower.set({ role: e.target.value }))
+$('#toggle').addEventListener('click', (e) => { const hide = e.target.textContent.startsWith('Hide'); hide ? lower.hide() : lower.show(); e.target.textContent = (hide ? 'Show' : 'Hide') + ' lower third' })
 
 // ---- Footage: a generated pitch, or the camera, or a file.
 const out = $('#out'), octx = out.getContext('2d')
@@ -170,7 +141,7 @@ let overlay = null
 function start() {
   overlay?.stop()
   Object.assign(stats, { patch: 0, full: 0, ms: [], reasons: {} })
-  overlay = stream($('#overlay'), {
+  overlay = stream(stage, {
     dpr: 1, embedFonts: false, patches: $('#patches').checked,
     onFrame(f) {
       f.full ? stats.full++ : stats.patch++

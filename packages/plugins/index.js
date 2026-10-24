@@ -19,4 +19,4 @@ export { htmlExport } from './html-export.js';
 export { gifExport } from './gif-export.js';
 export { videoExport } from './video-export.js';
 export { vector } from './vector.js';
-export { stream, streamExport, streamTexture, recordCanvas } from './stream.js';
+export { stream, streamExport, streamTexture, recordCanvas, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from './stream.js';

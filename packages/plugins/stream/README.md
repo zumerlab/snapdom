@@ -86,6 +86,32 @@ peerConnection.addTrack(track, new MediaStream([track]));
 
 `demos/stream-webrtc.html` sends one tab's program to viewer tabs this way.
 
+## Overlay templates
+
+A stage and four broadcast graphics, as plain DOM with a small controller each. Every box that
+changes is opaque and the lower third slides with `left`, so a score, a clock tick or a slide
+costs a patch, not a full frame.
+
+```js
+import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '@zumer/snapdom-plugins/stream';
+
+const stage = overlayStage({ width: 1920, height: 1080, theme: { accent: '#facc15' } });
+const score = scoreboard({ home: 'HOME', away: 'AWAY' });
+const lower = lowerThird({ name: 'Alex Morgan', role: 'Commentator' });
+stage.append(score.el, liveBadge().el, lower.el, ticker({ items: ['Kick-off at 18:00'] }).el);
+document.body.append(stage);
+
+score.clock.start();
+score.add('home');
+lower.set({ name: 'Jamie Rivera' });
+lower.hide();
+
+const live = stream(stage, { onFrame });
+```
+
+Theme through CSS variables on the stage: `accent`, `panel`, `panel-2`, `text`, `ink`, `live`,
+`font`.
+
 ## As an export
 
 `streamExport()` adds `toStream()` to a capture result, next to `toMp4()` and `toGif()`:

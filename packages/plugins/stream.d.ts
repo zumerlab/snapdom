@@ -46,3 +46,30 @@ export function recordCanvas(
   canvas: HTMLCanvasElement,
   options?: { fps?: number; duration?: number; bitrate?: number }
 ): { done: Promise<Blob>; stop(): Promise<Blob>; type: string }
+
+/** The transparent stage every overlay template sits on; stream this element. */
+export function overlayStage(options?: { width?: number; height?: number; theme?: Record<string, string> }): HTMLDivElement
+
+export interface ScoreboardClock { start(): void; stop(): void; reset(seconds?: number): void; set(text: string): void }
+
+/** Two teams, their points and a running clock. */
+export function scoreboard(options?: { home?: string; away?: string; homeColor?: string; awayColor?: string }): {
+  el: HTMLElement
+  score(home: number, away: number): void
+  add(side: 'home' | 'away', n?: number): void
+  clock: ScoreboardClock
+}
+
+/** A name and a role that slide in and out. */
+export function lowerThird(options?: { name?: string; role?: string; visible?: boolean }): {
+  el: HTMLElement
+  set(fields: { name?: string; role?: string }): void
+  show(): void
+  hide(): void
+}
+
+/** A scrolling news line; speed is seconds per loop. */
+export function ticker(options?: { label?: string; items?: string[]; speed?: number }): { el: HTMLElement; set(items: string[]): void }
+
+/** A pulsing LIVE bug. */
+export function liveBadge(options?: { text?: string }): { el: HTMLElement; set(text: string): void }

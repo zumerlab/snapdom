@@ -65,6 +65,18 @@ function inside(a, b) {
   return a.left >= b.left - 0.5 && a.top >= b.top - 0.5 && a.right <= b.right + 0.5 && a.bottom <= b.bottom + 0.5
 }
 
+/** Whether a clipping ancestor cuts into `r`: past its edges, or into a rounded corner. A
+ *  clock flush with the end of a rounded scoreboard drew square corners where the page
+ *  clipped them round. */
+function escapesClip(r, clip, cs) {
+  if (!inside(r, clip)) return true
+  const radius = Math.max(...['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomRightRadius', 'borderBottomLeftRadius']
+    .map((p) => parseFloat(cs[p]) || 0))
+  if (!radius) return false
+  return [[clip.left, clip.top], [clip.right - radius, clip.top], [clip.left, clip.bottom - radius], [clip.right - radius, clip.bottom - radius]]
+    .some(([x, y]) => intersects(r, { left: x, top: y, right: x + radius, bottom: y + radius }))
+}
+
 function intersects(a, b) {
   return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
 }
@@ -149,6 +161,7 @@ export function stream(element, options = {}) {
   let busy = false
   let lastTick = 0
   let rootRect = null
+  let animating = new Set() // targets of the animations running at the last tick
   let ox = 0, oy = 0 // canvas pixels from the canvas origin to the root's border box
 
   const observer = new MutationObserver(records => netTargets(records, dirty, restyled))
@@ -209,7 +222,7 @@ export function stream(element, options = {}) {
     for (let i = 0; i < chain.length; i++) {
       const cs = getComputedStyle(chain[i])
       if (hasEffect(cs)) start = i + 1
-      else if (i > 0 && clips(cs) && !inside(rectOf(chain[0]), rectOf(chain[i]))) start = i
+      else if (i > 0 && clips(cs) && escapesClip(rectOf(chain[0]), rectOf(chain[i]), cs)) start = i
     }
     for (let i = start; i < chain.length; i++) {
       const cs = getComputedStyle(chain[i])
@@ -287,7 +300,8 @@ export function stream(element, options = {}) {
     const left = ox + r.left * k, top = oy + r.top * k
     const x0 = Math.floor(left + 0.001), y0 = Math.floor(top + 0.001)
     const phase = { x: (left - x0) / k, y: (top - y0) / k }
-    const res = await capture(host, phase.x || phase.y ? { ...opts, __subpixel: phase } : opts)
+    // Always passed, even at phase zero: it also lays the root out at its exact width.
+    const res = await capture(host, { ...opts, __subpixel: phase })
     const { vbW, vbH, contentX = 0, contentY = 0 } = res.meta
     const x = Math.round(x0 - contentX * k), y = Math.round(y0 - contentY * k)
     const w = Math.round(vbW * k), h = Math.round(vbH * k)
@@ -304,7 +318,7 @@ export function stream(element, options = {}) {
         lctx.fillRect(0, 0, w, h)
       }
       lctx.drawImage(src, 0, 0, w, h)
-      return { layer, x, y, w, h, backdrop }
+      return { layer, x, y, w, h, backdrop, host, drawnAt: r }
     }
     // Otherwise keep only the pixels the box covers fully. Inside an opaque box that is
     // everything; what is left are its antialiased edges and rounded corners, which did not
@@ -316,7 +330,7 @@ export function stream(element, options = {}) {
     const px = img.data
     for (let i = 3; i < px.length; i += 4) if (px[i] < 255) px[i] = 0
     lctx.putImageData(img, 0, 0)
-    return { layer, x, y, w, h }
+    return { layer, x, y, w, h, host, drawnAt: r }
   }
 
   async function patch(hosts) {
@@ -339,8 +353,10 @@ export function stream(element, options = {}) {
       out.push({ x, y, width: w, height: h })
     }
     movedFrom.clear()
-    for (const host of hosts) {
-      rects.set(host, rectOf(host))
+    // Remember where each host was drawn, not where it is now: a sliding box kept moving
+    // while it was captured, and clearing its current rect next frame left a trail behind.
+    for (const { host, drawnAt } of layers) {
+      rects.set(host, drawnAt)
       for (const el of host.querySelectorAll('*')) rects.set(el, rectOf(el))
     }
     stats.patch++
@@ -370,7 +386,9 @@ export function stream(element, options = {}) {
         const old = p && rects.get(p)
         if (old && backdropOf(p, old)) {
           host = p
-          if (!sameRect(old, rectOf(p))) movedFrom.set(p, old)
+          // Always clear where it was last drawn: a slide's last step can be under the
+          // half-pixel sameRect allows, and the column it left kept the old edge.
+          movedFrom.set(p, old)
         }
       }
       if (!host) return `no host for ${describe(node)}`
@@ -402,9 +420,15 @@ export function stream(element, options = {}) {
     requestAnimationFrame(tick)
     const now = performance.now()
     if (busy || (fps && now - lastTick < 1000 / fps)) return
+    // A running animation repaints its target every frame, and once more when it stops: the
+    // frame before a pause or the end of a transition is not where it came to rest.
+    const running = new Set()
     for (const a of element.getAnimations?.({ subtree: true }) || []) {
-      if (a.playState === 'running') dirty.add(a.effect?.target || element)
+      if (a.playState === 'running') running.add(a.effect?.target || element)
     }
+    for (const target of running) dirty.add(target)
+    for (const target of animating) if (!running.has(target)) dirty.add(target)
+    animating = running
     netTargets(observer.takeRecords(), dirty, restyled)
     // The keyframe waits for idle time, so it never lands on top of a burst of edits.
     if (!keyframeDue && !idleAsked && now - lastKeyframe > Math.max(KEYFRAME_MS, fullMs * KEYFRAME_COST)) {
