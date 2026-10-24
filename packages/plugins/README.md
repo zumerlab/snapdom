@@ -1,7 +1,7 @@
 # @zumer/snapdom-plugins
 
-Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a high-performance engine
-for capturing, modifying, and converting DOM elements into any format. Core exports images and
+Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a high-performance DOM engine
+that exports a rendered element as PNG, SVG or canvas in the browser. Core exports images and
 canvases; this package adds HTML, structured context, element maps, PDF, editable vectors, ASCII,
 visual transforms, live GIF/video recording and live DOM streaming.
 

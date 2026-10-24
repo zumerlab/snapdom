@@ -35,15 +35,13 @@
 
 # SnapDOM
 
-SnapDOM is a high-performance engine for capturing, modifying, and converting DOM elements into any format.
-
-Images and canvas ship in the core. Plugins turn the same capture into self-contained HTML, PDF, editable vectors, GIF, video or context for agents. Everything runs in the page, with no core dependencies.
+SnapDOM is a high-performance DOM engine that captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into self-contained HTML, PDF, editable vectors, GIF, video or context for agents. Everything runs in the page, with no core dependencies.
 
 [Documentation and demos](https://snapdom.dev/) · [Technical features](FEATURES.md) · [Official plugins](packages/plugins/README.md) · [简体中文](README_CN.md)
 
 ## Why SnapDOM
 
-- **Speed.** Unchanged elements reuse their last capture, and small changes rebuild only the affected subtree. [Run the live benchmark](https://snapdom.dev/compare/live/) in your browser.
+- **Speed.** [Run the live benchmark](https://snapdom.dev/compare/live/) in your browser: first and repeat captures against html2canvas and the other libraries, sorted by measured time. Unchanged elements reuse their last capture.
 - **Fidelity.** The output matches what the browser painted. Every release runs a pixel suite of real demo pages before it ships.
 - **Flexibility.** Capture once, export many formats. Official plugins add outputs, and the same [plugin hooks](PLUGIN_SPEC.md) let you write your own.
 - **Maintenance.** About one release a week over the past year, MIT licensed, with a public [changelog](CHANGELOG.md).
