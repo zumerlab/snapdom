@@ -1,5 +1,14 @@
 # Plugin changes
 
+## 4.1.0
+
+- Add the stream plugin at @zumer/snapdom-plugins/stream: a live canvas that mirrors an element and repaints only the boxes that changed, for WebGL textures, video overlays and WebRTC tracks.
+- Add streamTexture(gl), which uploads only the changed rectangles to a WebGL2 texture, and recordCanvas(canvas) to record a stream.
+- Add streamExport(), which gives a capture result a toStream() method next to toMp4() and toGif().
+- Add broadcast overlay templates (overlayStage, scoreboard, lowerThird, ticker and liveBadge), themed through CSS variables and built so that a score, a clock tick or a slide repaints as a patch.
+
+Requires SnapDOM 3.4.0 or newer within 3.x.
+
 ## 4.0.1
 
 - Add GitHub Sponsors funding metadata.
