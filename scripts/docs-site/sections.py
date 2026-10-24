@@ -174,7 +174,7 @@ def convert(section, gi, path, title, demo, flat):
     # sidebar; a section group with the same label lends it its colour.
     grouped = toc and len(toc[0]) > 2 and any(p == path for _, _, items in section['groups'] for p, _, _ in items)
     # Fresh demos get a red "New" pill in the sidebar; drop entries here once they are old news.
-    NEW = {'stream-demo', 'lab-ascii-mirror', 'labs/ascii-mirror/index.html'}
+    NEW = {'stream-demo', 'lab-ascii-mirror', 'labs/ascii-mirror/index.html', 'lab-video-overlay', 'labs/video-overlay/index.html', 'lab-webrtc-overlay', 'labs/webrtc-overlay/index.html'}
     new = lambda key: ' <span class="nav-new">New</span>' if key in NEW else ''
     pages = {glabel: (gsec, items) for glabel, gsec, items in section['groups']}
     if grouped:
