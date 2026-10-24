@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Live HTML-to-Image Benchmark — Run It In Your Own Browser</title>
   <meta name="description" content="Run the SnapDOM comparison yourself: real scenes, eight HTML-to-image libraries, cold and steady timings, and a pixel-verified capability matrix." />
-  <meta name="keywords" content="html to image benchmark, html2canvas benchmark, snapdom vs html2canvas, html-to-image speed, dom to image comparison" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/live/" />
 
@@ -55,26 +54,72 @@
   </style>
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Live HTML-to-Image Benchmark",
+  "description": "Run the SnapDOM comparison yourself: real scenes, eight HTML-to-image libraries, cold and steady timings, and a pixel-verified capability matrix, measured in your own browser.",
+  "url": "https://snapdom.dev/compare/live/",
+  "image": "https://snapdom.dev/assets/og-card.jpg",
+  "author": {
+    "@type": "Organization",
+    "name": "Zumerlab"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Zumerlab",
+    "url": "https://snapdom.dev"
+  },
+  "mainEntityOfPage": "https://snapdom.dev/compare/live/"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "SnapDOM",
+      "item": "https://snapdom.dev/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "Compare",
+      "item": "https://snapdom.dev/compare/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "Live benchmark",
+      "item": "https://snapdom.dev/compare/live/"
+    }
+  ]
+}
+</script>
+<script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Live benchmark", "title": "Run the comparison <span class=\"accent\">on your own machine</span>", "lead": "Nothing on this page is pre-recorded. Pick a scene, pick the libraries, and every number below is measured in your browser, right now \u2014 using the same adapters, the same scenes and the same pixel oracle the SnapDOM repository uses for its own benchmarks.", "links": []} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <!-- pane:start --><!-- hero {"badge": "Live benchmark", "title": "Run the comparison <span class=\"accent\">on your own machine</span>", "lead": "Nothing here is pre-recorded. Pick a scene and the libraries; every number is measured in your browser, now, with the adapters, scenes and pixel oracle the SnapDOM repository uses for its own benchmarks.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter comparisons" aria-label="Filter comparisons"></label><nav class="pane-nav" aria-label="Compare"><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">HTML-to-image libraries</a><a href="./" aria-current="page">Live benchmark</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Head to head</button><div class="pane-nav-items"><a href="../html2canvas/">vs html2canvas</a><a href="../html-to-image/">vs html-to-image</a><a href="../dom-to-image/">vs dom-to-image</a><a href="../modern-screenshot/">vs modern-screenshot</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Architecture</button><div class="pane-nav-items"><a href="../puppeteer/">vs Puppeteer</a><a href="../playwright/">vs Playwright</a></div></div></nav></aside>
 
 <article class="pane-read sec-ecosystem" data-title="Live benchmark">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Live benchmark</span></nav><span class="doc-meta">Live benchmark</span></div><h1>Run the comparison <span class="accent">on your own machine</span></h1><p class="doc-lead">Nothing on this page is pre-recorded. Pick a scene, pick the libraries, and every number below is measured in your browser, right now — using the same adapters, the same scenes and the same pixel oracle the SnapDOM repository uses for its own benchmarks.</p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Live benchmark</span></nav><span class="doc-meta">Live benchmark</span></div><h1>Run the comparison <span class="accent">on your own machine</span></h1><p class="doc-lead">Nothing here is pre-recorded. Pick a scene and the libraries; every number is measured in your browser, now, with the adapters, scenes and pixel oracle the SnapDOM repository uses for its own benchmarks.</p></header>
 <div class="pane-content"><!-- content -->
     <section class="prose">
       <h2 id="how-to-read-it">How to read it</h2>
       <ul>
-        <li><strong>One output stage for everyone.</strong> Every library is timed through to a PNG data URL. Comparing an SVG URL with a PNG would omit rasterization and encoding from one side.</li>
-        <li><strong>Cold and repeat are different numbers.</strong> <em>First capture</em> builds a new element for every run. <em>Repeat</em> captures the same element again. Compare both columns because reuse can change the timing and ranking.</li>
-        <li><strong>Defaults, scale 1.</strong> This lab loads SnapDOM from <code>@latest</code> and uses fixed competitor versions. No library is configured for advantage. SnapDOM's automatic repeat memoization is turned off in every scene except <em>Polling</em>, so it is not compared against everyone else's full pipeline.</li>
-        <li><strong>The table does not know who should win.</strong> Rows are sorted by measured time and the fastest is highlighted, whoever it is. On some scenes that is not SnapDOM.</li>
+        <li><strong>One output stage for everyone.</strong> Every library is timed through to a PNG data URL, so no side skips rasterization and encoding.</li>
+        <li><strong>Cold and repeat are different numbers.</strong> <em>First capture</em> builds a new element per run; <em>Repeat</em> captures the same one again. Reuse can change timing and ranking, so read both columns.</li>
+        <li><strong>Defaults, scale 1.</strong> SnapDOM loads from <code>@latest</code>; competitors use fixed versions. No library is configured for advantage. SnapDOM's automatic repeat memoization is off in every scene except <em>Polling</em>, so a cached result never races everyone else's full pipeline.</li>
+        <li><strong>The table does not know who should win.</strong> Rows sort by measured time and the fastest is highlighted, whoever it is. On some scenes that is not SnapDOM.</li>
       </ul>
-      <p class="muted">Absolute milliseconds depend on your CPU, your browser and how busy the machine is. The ratios are the part worth quoting.</p>
+      <p class="muted">Absolute milliseconds depend on your CPU, browser and how busy the machine is. Quote the ratios.</p>
     </section>
 
     <section>
@@ -90,7 +135,7 @@
         <p class="lab-note" id="lab-scene-note"></p>
         <div class="lab-libs" id="lab-libs"></div>
         <p class="lab-status" id="lab-status"></p>
-        <p class="lab-note">The page is held still while a run is in progress. A library that clones the whole document crops at viewport-relative coordinates, so scrolling mid-capture can change the region it captures.</p>
+        <p class="lab-note">The page is held still during a run: a library that clones the whole document crops at viewport-relative coordinates, and scrolling mid-capture would move the region.</p>
         <p class="lab-stamp" id="lab-stamp"></p>
         <div class="lab-stage" id="lab-stage"></div>
       </div>
@@ -102,18 +147,18 @@
         <tbody id="lab-tbody"></tbody>
       </table>
 
-      <p class="lab-note">The last column is <strong>the share of pixels that differ from SnapDOM's capture</strong> beyond a per-channel tolerance — not a correctness verdict, since SnapDOM is only the reference because it is the library this page ships. Small differences may come from antialiasing or font rasterization, but can also reveal a real defect. A large number means the two libraries did not render the same thing, and the gallery below shows which: milliseconds cannot tell a fast capture from a fast capture of the <em>wrong thing</em>.</p>
+      <p class="lab-note">The last column is <strong>the share of pixels that differ from SnapDOM's capture</strong> beyond a per-channel tolerance. It is not a correctness verdict: SnapDOM is the reference only because this page ships it. Small differences may be antialiasing, font rasterization or a real defect. A large number means the two did not render the same thing; the gallery below shows which. Milliseconds cannot tell a fast capture from a fast capture of the <em>wrong thing</em>.</p>
 
-      <p class="lab-note">Every row must also produce the <strong>same output size</strong>, and must actually paint something. A row tagged <em>not comparable</em> rendered at a different resolution, and one tagged <em>blank output</em> returned a correctly-sized image with nothing in it — in both cases the milliseconds are measuring the wrong thing. Treat those rows as bug reports, not results.</p>
+      <p class="lab-note">Every row must also produce the <strong>same output size</strong> and paint something. <em>Not comparable</em> means a different resolution; <em>blank output</em> means a correctly sized image with nothing in it. Either way the milliseconds measure the wrong thing. Treat those rows as bug reports, not results.</p>
 
-      <p class="lab-note" id="lab-gallery-note" hidden>What each library actually produced. Click one to open it full size — speed is only half the comparison, and this is the other half.</p>
+      <p class="lab-note" id="lab-gallery-note" hidden>What each library produced. Click one to open it full size. Speed is half the comparison; this is the other half.</p>
       <div class="lab-gallery" id="lab-gallery"></div>
     </section>
 
     <section class="prose">
       <h2 id="capability-matrix-verified-by-pixels">Capability matrix, verified by pixels</h2>
-      <p>Feature tables are usually copied from READMEs. This one is not: it captures a fixture where each capability paints its own marker colour, then counts those pixels in the output. A library "supports" something here only if the colour survived the round trip.</p>
-      <p>It starts by proving the oracle can say <em>no</em> — the same fixture is built with every capability removed, and all six must read absent. A checker that cannot fail is a checker that means nothing.</p>
+      <p>Feature tables are usually copied from READMEs. This one captures a fixture where each capability paints its own marker colour, then counts those pixels in the output. "Supported" here means the colour survived the round trip.</p>
+      <p>It starts by proving the oracle can say <em>no</em>: the same fixture is built with every capability removed, and all six must read absent. A checker that cannot fail means nothing.</p>
     </section>
 
     <section>
@@ -125,24 +170,24 @@
         <thead><tr id="cap-head"></tr></thead>
         <tbody id="cap-tbody"></tbody>
       </table>
-      <p class="lab-note">Cells report behaviour <strong>with defaults</strong>. Some libraries pass more of these once configured — html2canvas, for instance, handles conic gradients with <code>foreignObjectRendering: true</code>. Results also vary by engine: run this page in Safari and Firefox and compare.</p>
+      <p class="lab-note">Cells report behaviour <strong>with defaults</strong>. Some libraries pass more once configured; html2canvas handles conic gradients with <code>foreignObjectRendering: true</code>. Results vary by engine too: try Safari and Firefox.</p>
     </section>
 
     <section class="prose">
       <h2 id="what-this-page-cannot-tell-you">What this page cannot tell you</h2>
       <ul>
-        <li><strong>It is one machine — yours.</strong> A run on a busy laptop, in a background tab, or with an extension injecting stylesheets will move every row. Run it twice.</li>
-        <li><strong>Competitors load from a CDN.</strong> Anything jsDelivr cannot serve you shows up as a row that could not load, not as a win.</li>
-        <li><strong>Speed is not fidelity.</strong> A library that skips shadow DOM has less work to do. Read the output gallery and the capability matrix alongside the milliseconds, never instead of them.</li>
-        <li><strong>These are synthetic scenes.</strong> They were chosen because they isolate a cost — per-node work, author-stylesheet scanning, shadow traversal, large-output raster — not because they are your page.</li>
+        <li><strong>It is one machine: yours.</strong> A busy laptop, a background tab or an extension injecting stylesheets will move every row. Run it twice.</li>
+        <li><strong>Competitors load from a CDN.</strong> Anything jsDelivr cannot serve shows up as a row that could not load, not as a win.</li>
+        <li><strong>Speed is not fidelity.</strong> A library that skips shadow DOM has less work to do. Read the output gallery and the capability matrix alongside the milliseconds.</li>
+        <li><strong>These are synthetic scenes.</strong> Each isolates a cost (per-node work, author-stylesheet scanning, shadow traversal, large-output raster). None of them is your page.</li>
       </ul>
-      <p>The same scenes run in the repository as <code>__tests__/category.*.benchmark.js</code>. Compare library versions, browser, scene and capture mode when investigating a difference. You can <a href="https://github.com/zumerlab/snapdom/issues" target="_blank" rel="noopener">open an issue</a> with the copied results and output.</p>
+      <p>The same scenes run in the repository as <code>__tests__/category.*.benchmark.js</code>. To report a difference, note library versions, browser, scene and capture mode, and <a href="https://github.com/zumerlab/snapdom/issues" target="_blank" rel="noopener">open an issue</a> with the copied results and output.</p>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
         <h2 id="read-the-full-comparison">Read the full comparison</h2>
-        <p>Approach trade-offs, the decision guide, and where each library actually fits.</p>
+        <p>Approach trade-offs, the decision guide, and where each library fits.</p>
         <a href="../" class="btn btn-primary" data-umami-event="Lab cta compare">Back to the comparison</a>
         <a href="https://github.com/zumerlab/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Lab cta github">View on GitHub</a>
       </div>

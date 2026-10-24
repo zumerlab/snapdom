@@ -3,7 +3,7 @@
 <head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tiled Rasterization for Large DOM Captures | SnapDOM</title>
+  <title>Tiled Rasterization for Large DOM Captures — SnapDOM</title>
   <meta name="description" content="SnapDOM windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/blog/huge-page-mosaic/" />
@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-10-23","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"image":"https://snapdom.dev/assets/og-card.jpg"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-10-24","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"image":"https://snapdom.dev/assets/og-card.jpg"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"Tiled Rasterization","item":"https://snapdom.dev/blog/huge-page-mosaic/"}]}</script>
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
@@ -88,7 +88,7 @@
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "SnapDOM Blog", "title": "<span class=\"accent\">Tiled rasterization</span> for large DOM captures", "lead": "Since v2.24, SnapDOM can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.", "links": []} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter posts" aria-label="Filter posts"></label><nav class="pane-nav" aria-label="Blog"><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">All posts</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Posts</button><div class="pane-nav-items"><a href="../snapdom-pdf-vs-html2canvas-jspdf/">PDF vs html2canvas + jsPDF</a><a href="../claude-code-capture-skill/">Claude Code capture skill</a><a href="../html-to-editable-svg-figma/">Editable SVG and Figma</a><a href="../snapdom-v3/">SnapDOM v3 is out</a><a href="../dom-capture-boundaries/">DOM capture boundaries</a><a href="./" aria-current="page">Tiled rasterization</a><a href="../painting-without-canvas/">Painting without a canvas</a></div></div></nav></aside>
 
@@ -97,19 +97,19 @@
 <div class="pane-content"><!-- content -->
     <p class="byline">Juan Martin Muda · August 11, 2026</p>
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A very tall DOM capture can serialize to SVG just fine and still fail when the browser tries to decode that SVG into one enormous bitmap. SnapDOM's new <code>toCanvas({ crop })</code> windows the SVG <em>before</em> image decode. Capture once, move that window across <code>result.meta</code>, and you can preserve the requested resolution while each tile fits the browser's raster limits—without ever allocating the full-page canvas. It solves the raster ceiling; it does not make cloning an enormous DOM free.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A very tall DOM capture can serialize to SVG and still fail when the browser decodes that SVG into one enormous bitmap. <code>toCanvas({ crop })</code> windows the SVG <em>before</em> image decode. Capture once, move the window across <code>result.meta</code>, and each tile keeps the requested resolution while fitting the browser's raster limits, with no full-page canvas ever allocated. It solves the raster ceiling; it does not make cloning an enormous DOM free.</p></div>
 
     <section class="prose">
       <h2 id="the-screenshot-was-fine-the-bitmap-wasn-t">The screenshot was fine. The bitmap wasn't.</h2>
-      <p>There are two very different sizes hiding inside a “full-page screenshot.” The first is the serialized capture: an SVG containing a styled DOM clone inside <code>&lt;foreignObject&gt;</code>. The second is the bitmap a browser creates when that SVG is decoded for PNG, Canvas, JPEG or WebP.</p>
-      <p>The SVG can describe a page tens of thousands of pixels tall. The bitmap is where browsers push back. Safari and every WebKit browser stop at 16,384 pixels on one side; Chrome and Firefox go to 32,767. Both share an area limit of about 268 million pixels (16,384 × 16,384), and the exact failure point still varies by machine. <code>dpr</code> counts toward the limit, and it defaults to <code>devicePixelRatio</code>, so on a Retina screen a <code>scale: 2</code> capture is really 4× wide and tall. Go past it and <code>img.decode()</code> may reject with the remarkably unhelpful <code>EncodingError: The source image cannot be decoded</code>, or the canvas allocation may fail later.</p>
-      <p>SnapDOM already protects ordinary exports from that crash by downscaling oversized raster output. That is the right fallback when the caller asked for one image. It is the wrong trade when the pixels are the product: a deep-zoom viewer, a page renderer, a tiled upload or a print pipeline should not have to throw resolution away simply because one bitmap is the wrong container.</p>
+      <p>A “full-page screenshot” has two sizes. One is the serialized capture: an SVG with a styled DOM clone inside <code>&lt;foreignObject&gt;</code>. The other is the bitmap the browser creates when that SVG is decoded for PNG, Canvas, JPEG or WebP.</p>
+      <p>The SVG can describe a page tens of thousands of pixels tall. The bitmap is where browsers push back. Safari and every WebKit browser stop at 16,384 pixels on one side; Chrome and Firefox at 32,767. Both share an area limit of about 268 million pixels (16,384 × 16,384), and the exact failure point varies by machine. <code>dpr</code> counts toward the limit and defaults to <code>devicePixelRatio</code>, so on a Retina screen a <code>scale: 2</code> capture is 4× wide and tall. Past the limit, <code>img.decode()</code> may reject with <code>EncodingError: The source image cannot be decoded</code>, or the canvas allocation fails later.</p>
+      <p>SnapDOM already protects ordinary exports from that crash by downscaling oversized raster output. Right fallback for one image, wrong trade when the pixels are the product: a deep-zoom viewer, a page renderer, a tiled upload or a print pipeline should not lose resolution because one bitmap is the wrong container.</p>
     </section>
 
     <section class="prose">
       <h2 id="cut-the-svg-not-the-canvas">Cut the SVG, not the canvas</h2>
-      <p>The obvious mosaic algorithm is also the broken one: render one giant canvas, then use <code>drawImage()</code> to cut it into smaller canvases. By the time the slicing loop starts, the browser has already had to decode and allocate the giant bitmap. The failure happens before the workaround gets a turn.</p>
-      <p><code>toCanvas({ crop })</code> moves the cut earlier. SnapDOM rewrites the serialized SVG's root <code>width</code>, <code>height</code> and <code>viewBox</code> to describe only the requested window, and <em>then</em> gives it to <code>Image.decode()</code>. The browser never sees a full-height raster source.</p>
+      <p>The obvious mosaic algorithm is the broken one: render one giant canvas, then cut it into smaller canvases with <code>drawImage()</code>. By the time the slicing loop starts, the browser has already decoded and allocated the giant bitmap.</p>
+      <p><code>toCanvas({ crop })</code> moves the cut earlier. SnapDOM rewrites the serialized SVG's root <code>width</code>, <code>height</code> and <code>viewBox</code> to describe only the requested window, <em>then</em> hands it to <code>Image.decode()</code>. The browser never sees a full-height raster source.</p>
       <div class="tile-pipeline" aria-label="Tiled rasterization pipeline">
         <div class="tile-pipeline-step"><b>Capture once</b><span>Clone, style and serialize one canonical SVG.</span></div>
         <div class="tile-pipeline-arrow" aria-hidden="true"> </div>
@@ -117,12 +117,12 @@
         <div class="tile-pipeline-arrow" aria-hidden="true"> </div>
         <div class="tile-pipeline-step"><b>Decode small</b><span>Rasterize only that tile, consume it, repeat.</span></div>
       </div>
-      <p>This work lives entirely in the exporter. The hot capture path still walks and clones the DOM once; asking for ten tiles does not repeat style collection, font embedding or image inlining ten times.</p>
+      <p>All of this lives in the exporter. The capture path still walks and clones the DOM once; ten tiles do not repeat style collection, font embedding or image inlining ten times.</p>
     </section>
 
     <section class="prose">
       <h2 id="try-the-mosaic">Try the mosaic</h2>
-      <p>The report below is 640 × 2,400 CSS pixels. That is deliberately smaller than a browser limit so the demo stays polite, but it uses the same path as a 40,000-pixel document: one SVG capture, ten 320 × 480 crop windows, ten independent canvases. Scroll the source, then build the mosaic.</p>
+      <p>The report below is 640 × 2,400 CSS pixels, well under any browser limit so the demo stays polite, but it takes the same path as a 40,000-pixel document: one SVG capture, ten 320 × 480 crop windows, ten independent canvases. Scroll the source, then build the mosaic.</p>
       <div class="mosaic-demo">
         <div class="mosaic-scroll">
           <article class="mosaic-source" id="mosaic-source">
@@ -187,7 +187,7 @@
 
     <section class="prose">
       <h2 id="the-whole-implementation-is-a-loop">The whole implementation is a loop</h2>
-      <p><code>crop</code> uses SVG viewBox coordinates, so the reliable bounds come from the capture rather than from rereading the live element. This version hands each canvas to a callback immediately; a production exporter can encode, upload or write the tile before requesting the next one.</p>
+      <p><code>crop</code> uses SVG viewBox coordinates, so the reliable bounds come from the capture, not from rereading the live element. Each canvas goes to a callback right away, so a production exporter can encode, upload or write the tile before requesting the next one.</p>
       <pre class="code-block">async function tileCapture(capture, options, consume) {
   const {
     tileWidth = 2048,
@@ -227,12 +227,12 @@ await tileCapture(capture, {}, async ({ canvas, row, col }) => {
     canvas.width = canvas.height = 0
   }
 })</pre>
-      <p>The exports on one capture are queued, so tiles are rasterized in order instead of all competing for decode and canvas memory. For a visual mosaic like the demo it is fine to retain every canvas. For a genuinely huge page, process a tile and release it before moving on.</p>
+      <p>Exports on one capture are queued, so tiles rasterize in order instead of competing for decode and canvas memory. A visual mosaic like the demo can keep every canvas. For a huge page, process a tile and release it before moving on.</p>
     </section>
 
     <section class="prose">
       <h2 id="the-geometry-is-half-the-feature">The geometry is half the feature</h2>
-      <p>A naïve tiler starts at <code>0, 0</code>. That only works while the serialized content also starts there. Root transforms, asymmetric shadows, outlines and clip windows can move the logical page inside the SVG viewBox. SnapDOM exposes the final, immutable geometry as <code>result.meta</code>, after those effects have been resolved.</p>
+      <p>A naïve tiler starts at <code>0, 0</code>, which only works while the serialized content starts there too. Root transforms, asymmetric shadows, outlines and clip windows can move the logical page inside the SVG viewBox. SnapDOM exposes the final, immutable geometry as <code>result.meta</code>, after those effects are resolved.</p>
       <table class="cmp-table">
         <thead><tr><th>Geometry</th><th>What it measures</th><th>Use it for</th></tr></thead>
         <tbody>
@@ -241,27 +241,27 @@ await tileCapture(capture, {}, async ({ canvas, row, col }) => {
           <tr><td class="feature"><code>vbW</code> / <code>vbH</code></td><td>The complete serialized artifact</td><td>Include bleed and outer effects</td></tr>
         </tbody>
       </table>
-      <p>The loop above tiles the logical page from <code>contentX, contentY</code> over <code>w0 × h0</code>. If the mosaic must preserve every pixel of shadow or transformed bleed, tile from <code>0, 0</code> over <code>vbW × vbH</code> instead. Partly outside crop windows are clipped to the viewBox; empty, non-finite or fully outside windows reject rather than quietly returning the whole image.</p>
+      <p>The loop above tiles the logical page from <code>contentX, contentY</code> over <code>w0 × h0</code>. To keep every pixel of shadow or transformed bleed, tile from <code>0, 0</code> over <code>vbW × vbH</code> instead. Crop windows partly outside are clipped to the viewBox; empty, non-finite or fully outside windows reject rather than quietly returning the whole image.</p>
     </section>
 
     <section class="prose">
       <h2 id="what-tiling-does-not-solve">What tiling does not solve</h2>
-      <p>Tiling removes the full-bitmap allocation from the equation. It does not turn capture into a streaming DOM renderer. SnapDOM still has to clone the complete subtree, read its styles, inline assets and hold the serialized SVG. A 100,000-node document is still a 100,000-node capture.</p>
+      <p>Tiling removes the full-bitmap allocation. It does not make capture a streaming DOM renderer: SnapDOM still clones the complete subtree, reads its styles, inlines assets and holds the serialized SVG. A 100,000-node document is still a 100,000-node capture.</p>
       <ul>
         <li>Virtualized or lazy sections must exist in the DOM before capture; no image library can serialize nodes the application has not rendered.</li>
         <li><code>tileWidth × scale × dpr</code> and <code>tileHeight × scale × dpr</code> still need to fit the browser's raster limits.</li>
-        <li>Keeping every tile alive eventually holds the same number of pixels in aggregate. Encode or send each tile as you go when memory matters.</li>
+        <li>Keeping every tile alive holds the same pixels in aggregate. Encode or send each tile as you go when memory matters.</li>
         <li>Stitching the tiles back into one giant canvas recreates the original problem. The consumer has to understand pages, tiles or levels.</li>
       </ul>
-      <p>If the initial DOM walk is the bottleneck, <code>clip</code> is the other tool: it prunes off-window subtrees before styling and inlining, but requires a separate capture for each region. <code>crop</code> trades that pruning for one frozen artifact, so fonts, images, animation state and live data cannot change between tiles.</p>
-      <p>Each crop also decodes and re-encodes the complete SVG data URL, and the browser still parses the full <code>&lt;foreignObject&gt;</code> payload. Tiling bounds bitmap allocation; it does not make SVG string or parse work proportional to the visible tile.</p>
-      <p>That is a narrower claim than “unlimited screenshots,” and a much more useful one. The DOM is captured once, at one consistent moment. Raster output becomes a sequence of bounded jobs. When each tile fits, no document-wide downscale is required.</p>
+      <p>If the initial DOM walk is the bottleneck, <code>clip</code> is the other tool: it prunes off-window subtrees before styling and inlining, but needs a separate capture per region. <code>crop</code> trades that pruning for one frozen artifact, so fonts, images, animation state and live data cannot change between tiles.</p>
+      <p>Each crop also decodes and re-encodes the complete SVG data URL, and the browser still parses the full <code>&lt;foreignObject&gt;</code> payload. Tiling bounds bitmap allocation only.</p>
+      <p>That is a narrower claim than “unlimited screenshots,” and a more useful one: the DOM captured once, at one consistent moment, and raster output as a sequence of bounded jobs with no document-wide downscale.</p>
     </section>
 
     <section class="prose">
       <h2 id="where-tile-windows-are-useful">Where tile windows are useful</h2>
-      <p>We added crop and immutable geometry for document exporters, where a tall capture naturally becomes PDF pages. The same mechanism also fits map-style viewers, poster printing, zoomable archives and multipart uploads. They all need one stable source and a way to ask for one rectangle at a time.</p>
-      <p>In <code>defineExports(ctx)</code>, plugin authors can retain <code>ctx.exports</code> and call its <code>canvas({ crop })</code> method from their custom exporter. This core-export facade reuses the canonical capture without recursively firing export hooks. That makes “mosaic” a small custom export instead of a second rendering engine—and keeps the extra work out of SnapDOM's capture hot path.</p>
+      <p>We added crop and immutable geometry for document exporters, where a tall capture becomes PDF pages. The same mechanism fits map-style viewers, poster printing, zoomable archives and multipart uploads: one stable source, one rectangle at a time.</p>
+      <p>In <code>defineExports(ctx)</code>, plugin authors can retain <code>ctx.exports</code> and call its <code>canvas({ crop })</code> method from their custom exporter. This core-export facade reuses the canonical capture without recursively firing export hooks, so “mosaic” is a small custom export rather than a second rendering engine, and the extra work stays out of SnapDOM's capture hot path.</p>
     </section>
 
     <section class="related">

@@ -44,25 +44,25 @@
 <link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "The PNG <span class=\"accent\">is</span> the canvas", "lead": "The drawing surface is an <code>&lt;img&gt;</code> backed by an SVG stroke layer. A SnapDOM plugin saves the clone from the last capture and adds each stroke to it, then exports the next PNG. SnapDOM uses Canvas internally for that raster export.", "links": []} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "The PNG <span class=\"accent\">is</span> the canvas", "lead": "A paint app with no <code>&lt;canvas&gt;</code> element. The board is an <code>&lt;img&gt;</code> that SnapDOM re-exports as a PNG after every stroke.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="../../showcase/">Live demos</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="../video-overlay/">Video overlay</a><a href="../webrtc-overlay/">WebRTC overlay</a><a href="../stop-motion/">Stop motion</a><a href="./" aria-current="page">Paint on a capture</a><a href="../capture-stages/">Capture stages</a><a href="../target-range/">Target range</a><a href="../webgl-live-mirror/">Live mirror</a><a href="../webgl-seamless-dom/">Seamless DOM</a><a href="../webgl-shatter/">Shattered capture</a></div></div></nav></aside>
 
 <article class="pane-read sec-labs" data-title="Paint on a capture">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>Paint on a capture</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>The PNG <span class="accent">is</span> the canvas</h1><p class="doc-lead">The drawing surface is an <code>&lt;img&gt;</code> backed by an SVG stroke layer. A SnapDOM plugin saves the clone from the last capture and adds each stroke to it, then exports the next PNG. SnapDOM uses Canvas internally for that raster export.</p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>Paint on a capture</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>The PNG <span class="accent">is</span> the canvas</h1><p class="doc-lead">A paint app with no <code>&lt;canvas&gt;</code> element. The board is an <code>&lt;img&gt;</code> that SnapDOM re-exports as a PNG after every stroke.</p></header>
 <div class="pane-content"><!-- content -->
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>The plugin's <code>afterRender</code> hook saves the clone; <code>afterClone</code> swaps it back in on the next call and appends the newest stroke. Successive PNG exports preserve the accumulated drawing.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>A plugin's <code>afterRender</code> hook saves the rendered clone; <code>afterClone</code> swaps it back in on the next capture and appends the newest stroke. SnapDOM uses Canvas only for the raster export.</p></div>
 
     <section class="prose">
       <h2 id="what-you-re-looking-at">What you're looking at</h2>
-      <p>Pick a color and brush size, then drag across the board. What looks like a normal <code>&lt;canvas&gt;</code> painting widget is actually a single hidden <code>&lt;div&gt;</code> holding an empty SVG layer, plus an <code>&lt;img&gt;</code> that gets replaced every time SnapDOM re-renders it. There is no persistent bitmap buffer anywhere in the page's own code — the persistence lives entirely inside the plugin.</p>
+      <p>Pick a color and brush size, then drag across the board. The page keeps no bitmap buffer; the drawing state lives in the plugin.</p>
     </section>
 
     <section class="prose">
       <h2 id="live-demo">Try it</h2>
-      <p>Draw on the board below. The line under your cursor is a local SVG path with zero SnapDOM involvement — it never waits on a capture. Underneath, roughly every 120ms, that same stroke gets folded into the plugin's saved clone and re-exported as a real PNG.</p>
+      <p>Draw on the board below. The line under the cursor is a local SVG path; the PNG underneath catches up about every 120ms.</p>
       <div class="lab-paint">
         <div class="toolbar">
           <div class="swatches" id="swatches"></div>
@@ -85,24 +85,23 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4 aria-level="3">A hidden source element, never the visible board</h4><p>A 420×420 <code>&lt;div&gt;</code> off-screen holds one empty <code>&lt;svg class="strokes"&gt;</code>. This — not the board you see — is what SnapDOM actually captures.</p></li>
-        <li><h4 aria-level="3">The visible line is free</h4><p>While you drag, a local SVG <code>&lt;path&gt;</code> on the visible board follows the pointer using <code>getCoalescedEvents()</code> for smooth sampling. This never touches SnapDOM, so the line itself has zero capture latency.</p></li>
-        <li><h4 aria-level="3">The stroke is handed to the plugin periodically</h4><p>Roughly every 120ms, the in-progress stroke's path data is passed to <code>plugin.recordStroke()</code> and <code>snapdom.toPng()</code> runs again on the hidden source.</p></li>
-        <li><h4 aria-level="3"><code>afterClone</code> restores state, then applies the stroke</h4><p>Instead of cloning the pristine (empty) source, the plugin swaps in the clone it saved from the <em>previous</em> render. It then finds the in-progress stroke's <code>&lt;path&gt;</code> by a <code>data-stroke-id</code> and updates it — or appends a new one if this is a new stroke. One continuous drag stays one <code>&lt;path&gt;</code> element, never hundreds.</p></li>
-        <li><h4 aria-level="3"><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next capture.</p></li>
-        <li><h4 aria-level="3">The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download button just points at that same <code>&lt;img&gt;.src</code> — no second capture needed.</p></li>
+        <li><h4 aria-level="3">A hidden source element</h4><p>A 420×420 <code>&lt;div&gt;</code> off-screen holds one empty <code>&lt;svg class="strokes"&gt;</code>. SnapDOM captures this element, not the visible board.</p></li>
+        <li><h4 aria-level="3">The visible line is free</h4><p>A local SVG <code>&lt;path&gt;</code> on the visible board follows the pointer, sampled with <code>getCoalescedEvents()</code>, with no capture latency.</p></li>
+        <li><h4 aria-level="3">The stroke goes to the plugin</h4><p>About every 120ms the stroke's path data goes to <code>plugin.recordStroke()</code> and <code>snapdom.toPng()</code> runs on the hidden source.</p></li>
+        <li><h4 aria-level="3"><code>afterClone</code> restores and applies the stroke</h4><p>The plugin swaps in the clone saved from the <em>previous</em> render. It finds the stroke's <code>&lt;path&gt;</code> by <code>data-stroke-id</code> and updates it, or appends one for a new stroke. One drag stays one <code>&lt;path&gt;</code>.</p></li>
+        <li><h4 aria-level="3"><code>afterRender</code> checkpoints the result</h4><p>The plugin clones the rendered result as the baseline for the next capture.</p></li>
+        <li><h4 aria-level="3">The output <code>&lt;img&gt;</code> replaces the board</h4><p>The PNG goes into the board. The download button points at the same <code>&lt;img&gt;.src</code>.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2 id="why-this-needed-a-plugin">Why this needed a plugin</h2>
-      <p>SnapDOM 3 can reuse eligible captures, but the accumulated drawing here belongs to the plugin. On each stroke, the plugin replaces the new clone with its saved clone and adds the latest mark. Its stateful hooks run on fresh captures.</p>
-      <p>The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks share the plugin closure. <code>afterClone</code> adds the new mark to <code>savedClone</code>; <code>afterRender</code> saves the resulting tree for the next call. The plugin owns this drawing state independently of capture reuse.</p>
+      <p>SnapDOM 3 can reuse eligible captures, but stateful hooks run on fresh captures and the accumulated drawing belongs to the plugin. <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> share one closure: <code>afterClone</code> adds the new mark to <code>savedClone</code>, <code>afterRender</code> saves the result for the next call, independent of capture reuse.</p>
     </section>
 
     <section class="prose">
       <h2 id="copy-paste-example">Copy-paste example</h2>
-      <p>The plugin factory — swap in your own persistence logic and this pattern works for any "keep building on the last capture" use case, not just painting:</p>
+      <p>The plugin factory. Swap in your own persistence logic for any "keep building on the last capture" case:</p>
       <pre class="code-block">function createPaintPlugin (sourceEl) {
   let savedClone = null
   let skipNext = false
@@ -139,7 +138,7 @@
     clear () { skipNext = true }
   }
 }</pre>
-      <p>And the usage — capture again on every stroke update, plugin included:</p>
+      <p>The usage: capture again on every stroke update, plugin included:</p>
       <pre class="code-block">const plugin = createPaintPlugin(canvasSource)
 
 async function render (stroke) {
@@ -156,20 +155,20 @@ async function render (stroke) {
 
     <section class="prose">
       <h2 id="limits-and-things-to-watch">Limits and things to watch</h2>
-      <p>Every stroke update is a full SnapDOM capture, so the render loop is throttled (120ms here) rather than firing on every <code>pointermove</code> — captures aren't free, and a paint app that tries to snapshot on every mouse event will fall behind. The visible "live" path is what keeps the drawing feeling instant while the real PNG catches up underneath. The <code>skipNext</code> flag matters more than it looks: without it, <code>clear()</code> would need to hand-build an empty clone instead of letting SnapDOM's own cloning pipeline produce one, and any pipeline behavior added later (pseudo-elements, SVG defs inlining, etc.) would silently stop applying to the very first render after a clear.</p>
+      <p>Every stroke update is a full capture, so the render loop is throttled (120ms here) rather than running on every <code>pointermove</code>. The live path keeps the drawing instant while the PNG catches up. The <code>skipNext</code> flag lets <code>clear()</code> hand the first render after a clear to SnapDOM's own cloning pipeline; a hand-built empty clone would miss pipeline behavior added later (pseudo-elements, SVG defs inlining).</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../target-range/">Target Range — same persistent-clone trick</a>
-        <a class="related-card" href="../stop-motion/">Stop Motion — capturing discrete poses</a>
+        <a class="related-card" href="../target-range/">Target Range: same persistent-clone trick</a>
+        <a class="related-card" href="../stop-motion/">Stop Motion: capturing discrete poses</a>
         <a class="related-card" href="../../showcase/#plugins">Browse the plugin directory</a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener">Read the plugin spec</a>
       </div>
     </section>
 
-    <section class="cta-section"><div class="cta-card"><h2 id="build-your-own-plugin">Build your own plugin</h2><p>Every hook this demo uses — <code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for adding new export formats — is documented in the plugin spec.</p><a href="../../showcase/#plugins" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2 id="build-your-own-plugin">Build your own plugin</h2><p>Every hook this demo uses (<code>afterClone</code>, <code>afterRender</code>, plus <code>defineExports</code> for new export formats) is documented in the plugin spec.</p><a href="../../showcase/#plugins" class="btn btn-primary">Explore plugins</a><a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" class="btn btn-ghost" target="_blank" rel="noopener">Read PLUGIN_SPEC.md</a></div></section>
 
   <!-- /content --></div>
 <nav class="pager" aria-label="Pages"><a href="../stop-motion/"><span>Previous</span><strong>Stop motion</strong></a><a class="is-next" href="../capture-stages/"><span>Next</span><strong>Capture stages</strong></a></nav>

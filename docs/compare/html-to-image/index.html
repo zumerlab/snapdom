@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM vs html-to-image — Side-by-Side Comparison</title>
   <meta name="description" content="SnapDOM vs html-to-image: feature matrix, fonts, Shadow DOM, plugins and migration notes." />
-  <meta name="keywords" content="snapdom vs html-to-image, html-to-image alternative, html-to-image fonts, html-to-image shadow dom" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/html-to-image/" />
 
@@ -30,7 +29,7 @@
     "@type": "Article",
     "headline": "SnapDOM vs html-to-image — Side-by-Side Comparison",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-10-23",
+    "dateModified": "2026-10-24",
     "description": "Compare SnapDOM and html-to-image including a migration snippet.",
     "url": "https://snapdom.dev/compare/html-to-image/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -40,37 +39,45 @@
   }
   </script>
   <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "What is the difference between html-to-image and SnapDOM?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Both libraries clone the DOM and render it via SVG foreignObject. SnapDOM adds a plugin system, native Shadow DOM walking, CSS counter() resolution, and ships first-party plugins for filters, watermarks, ASCII export and PDF export."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "How do I migrate from html-to-image to SnapDOM?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Replace the import with @zumer/snapdom and call snapdom.toPng(element). Most options (filter, backgroundColor, width, height, quality) have direct SnapDOM equivalents."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does SnapDOM render web fonts better than html-to-image?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Both libraries can embed @font-face declarations. SnapDOM 3 defaults to embedFonts: 'auto' for used web fonts and also supports localFonts and excludeFonts. Check the exported text with your actual font files and browser."
-        }
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What is the difference between html-to-image and SnapDOM?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Both clone the DOM and render via foreignObject. SnapDOM adds capture lifecycle hooks, automatic reuse of eligible repeat captures, and official plugins for PDF, HTML, vector, GIF, video and agent context. Return types and options are in the migration table."
       }
-    ]
-  }
-  </script>
+    },
+    {
+      "@type": "Question",
+      "name": "Does SnapDOM render web fonts better than html-to-image?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Both can embed @font-face declarations. SnapDOM 3 defaults to embedFonts: 'auto' for used web fonts and also has localFonts and excludeFonts. Check the exported text with your own font files and browser."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Can I add a watermark or filter without forking the library?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes. Use the colorTint, filter or timestampOverlay plugins, or write your own with two callbacks (afterClone / beforeExport). The plugins page has the full list."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I export to PDF?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Use the MIT pdf plugin. toPdf() returns a PDF Blob with selectable text, pagination and links. It ships on npm in @zumer/snapdom-plugins 4.x; the PDF reference covers installation and examples."
+      }
+    }
+  ]
+}
+</script>
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">
@@ -92,8 +99,8 @@
 <link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Library Comparison", "title": "SnapDOM vs <span class=\"accent\">html-to-image</span>", "lead": "Two libraries built around the same SVG <code>foreignObject</code> approach \u2014 compared on fidelity, fonts, Shadow DOM, plugins and developer experience.", "links": [["#matrix", "Feature matrix"], ["#migrate", "Migration snippet"]]} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <!-- pane:start --><!-- hero {"badge": "Library Comparison", "title": "SnapDOM vs <span class=\"accent\">html-to-image</span>", "lead": "Two libraries built on the same SVG <code>foreignObject</code> approach, compared on fidelity, fonts, Shadow DOM, plugins and developer experience.", "links": [["#matrix", "Feature matrix"], ["#migrate", "Migration snippet"]]} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter comparisons" aria-label="Filter comparisons"></label><nav class="pane-nav" aria-label="Compare"><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">HTML-to-image libraries</a><a href="../live/">Live benchmark</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Head to head</button><div class="pane-nav-items"><a href="../html2canvas/">vs html2canvas</a><a href="./" aria-current="page">vs html-to-image</a><a href="../dom-to-image/">vs dom-to-image</a><a href="../modern-screenshot/">vs modern-screenshot</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Architecture</button><div class="pane-nav-items"><a href="../puppeteer/">vs Puppeteer</a><a href="../playwright/">vs Playwright</a></div></div></nav></aside>
 <div class="pane-demo"><section class="demo-panel sec-capture" aria-label="Live demo">
@@ -102,7 +109,7 @@
 <div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#2D5BFF}.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #0F1E4D}</style><h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div><sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div><p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
 <div class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</div></section></div>
 <article class="pane-read sec-ecosystem" data-title="vs html-to-image" data-demo="compare" data-lib="html-to-image" data-note="Judge the pixels yourself; one run is not a benchmark." data-demo-label="SnapDOM · html-to-image">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs html-to-image</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">html-to-image</span></h1><p class="doc-lead">Two libraries built around the same SVG <code>foreignObject</code> approach — compared on fidelity, fonts, Shadow DOM, plugins and developer experience.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs html-to-image</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">html-to-image</span></h1><p class="doc-lead">Two libraries built on the same SVG <code>foreignObject</code> approach, compared on fidelity, fonts, Shadow DOM, plugins and developer experience.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
@@ -110,9 +117,9 @@
     </div>
 
     <section class="bench-section" id="benchmark">
-      <div class="section-label">Live benchmark — runs in your browser</div>
+      <div class="section-label">Live benchmark: runs in your browser</div>
       <h2 id="snapdom-vs-html-to-image-head-to-head">SnapDOM vs html-to-image, head to head</h2>
-      <p class="bench-lead">Both libraries export the same DOM element to PNG five times. Times are averaged, the faster one is highlighted. Run it on your machine — the gap is hardware- and content-dependent.</p>
+      <p class="bench-lead">Each library exports the same element to PNG five times. Averages are shown, the faster one highlighted. The gap depends on your hardware and content.</p>
       <div class="bench-target-row">
         <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
       </div>
@@ -140,8 +147,8 @@
 
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
-      <p><a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> is a fork of <a href="../dom-to-image/">dom-to-image</a> with TypeScript support. Its image helpers return data URLs; it also provides Canvas and Blob exports.</p>
-      <p><strong>SnapDOM</strong> exposes capture and export lifecycle hooks. Official plugins add portable HTML, structured context and maps, searchable PDF, editable vector, GIF and video alongside filters, timestamps and text transformations. These plugins are separate from the core image and canvas exporters.</p>
+      <p><a href="https://github.com/bubkoo/html-to-image" target="_blank" rel="noopener">html-to-image</a> is a <a href="../dom-to-image/">dom-to-image</a> fork with TypeScript support. Its image helpers return data URLs, plus Canvas and Blob exports.</p>
+      <p><strong>SnapDOM</strong> exposes capture and export lifecycle hooks. Official plugins, separate from the core exporters, add portable HTML, structured context and maps, searchable PDF, editable vector, GIF and video, plus filters, timestamps and text transformations.</p>
     </section>
 
     <section class="prose">
@@ -165,7 +172,7 @@
           <tr><td class="feature">License</td><td class="num">MIT</td><td class="num">MIT</td></tr>
         </tbody>
       </table>
-      <p>Support varies by fixture and rendering mode; test your own UI. See the <a href="../live/">live benchmark</a> for its pixel fixtures and loaded versions.</p>
+      <p>Support varies by fixture and rendering mode; test your own UI. Fixtures and loaded versions are in the <a href="../live/">live benchmark</a>.</p>
     </section>
 
     <section class="prose">
@@ -174,18 +181,18 @@
         <div class="verdict-card snapdom">
           <h4 aria-level="3">Choose SnapDOM when…</h4>
           <ul>
-            <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
-            <li>The output must match what the browser rendered, verified against pixels.</li>
-            <li>You need more than images: PDF, editable vector, HTML or agent context through <a href="../../showcase/#plugins">plugins</a>, or your own.</li>
+            <li>You need fast captures, including repeats of the same element (<a href="../live/">live benchmark</a>).</li>
+            <li>Output must match the browser's rendering, pixel for pixel.</li>
+            <li>You need PDF, editable vector, HTML or agent context, through <a href="../../showcase/#plugins">plugins</a> or your own.</li>
             <li>You want a library with a release about every week.</li>
           </ul>
         </div>
         <div class="verdict-card other">
           <h4 aria-level="3">Check before migrating…</h4>
           <ul>
-            <li>SnapDOM plugins extend the capture lifecycle; existing html-to-image post-processing needs adapting.</li>
-            <li>Compare open Shadow DOM, CSS counters and line-clamp on the components you ship.</li>
-            <li>html-to-image has font embedding controls and canvas-based encoding; compare option semantics before mapping them.</li>
+            <li>Existing html-to-image post-processing needs adapting to SnapDOM's plugin lifecycle.</li>
+            <li>Test open Shadow DOM, CSS counters and line-clamp on the components you ship.</li>
+            <li>html-to-image has its own font embedding controls and canvas-based encoding; option semantics differ.</li>
           </ul>
         </div>
       </div>
@@ -193,7 +200,7 @@
 
     <section class="prose">
       <h2 id="code">Same task, side by side</h2>
-      <p>Capturing <code>#card</code> as a PNG and inserting the resulting image into the page:</p>
+      <p>Capture <code>#card</code> as a PNG and add the image to the page:</p>
 
       <h4 aria-level="3">html-to-image</h4>
       <pre class="code-block"><span class="kw">import</span> { toPng } <span class="kw">from</span> <span class="str">'html-to-image'</span>;
@@ -243,23 +250,23 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
       <h2 id="faq">Frequently asked questions</h2>
 
       <details>
-        <summary>What's actually different between html-to-image and SnapDOM?</summary>
-        <p>Both clone the DOM and render via <code>foreignObject</code>. SnapDOM adds capture lifecycle hooks, automatic reuse for eligible repeat captures, and official plugins for HTML, structured context and maps, searchable PDF, editable vector, GIF and video. Compare the return types and options in the migration table.</p>
+        <summary>What is the difference between html-to-image and SnapDOM?</summary>
+        <p>Both clone the DOM and render via <code>foreignObject</code>. SnapDOM adds capture lifecycle hooks, automatic reuse of eligible repeat captures, and official plugins for PDF, HTML, vector, GIF, video and agent context. Return types and options are in the migration table.</p>
       </details>
 
       <details>
         <summary>Does SnapDOM render web fonts better than html-to-image?</summary>
-        <p>Both libraries can embed <code>@font-face</code> declarations. SnapDOM 3 defaults to <code>embedFonts: 'auto'</code> for used web fonts and also supports <code>localFonts</code> and <code>excludeFonts</code>. Check the exported text with your actual font files and browser.</p>
+        <p>Both can embed <code>@font-face</code> declarations. SnapDOM 3 defaults to <code>embedFonts: 'auto'</code> for used web fonts and also has <code>localFonts</code> and <code>excludeFonts</code>. Check the exported text with your own font files and browser.</p>
       </details>
 
       <details>
         <summary>Can I add a watermark or filter without forking the library?</summary>
-        <p>Yes — that's exactly what the SnapDOM plugin system is for. Use the <code>colorTint</code>, <code>filter</code> or <code>timestampOverlay</code> plugins, or write your own with two callbacks (<code>afterClone</code> / <code>beforeExport</code>). Browse the <a href="../../showcase/#plugins">plugins page</a> for the full list.</p>
+        <p>Yes. Use the <code>colorTint</code>, <code>filter</code> or <code>timestampOverlay</code> plugins, or write your own with two callbacks (<code>afterClone</code> / <code>beforeExport</code>). The <a href="../../showcase/#plugins">plugins page</a> has the full list.</p>
       </details>
 
       <details>
         <summary>How do I export to PDF?</summary>
-        <p>Use the MIT <code>pdf</code> plugin. Its <code>toPdf()</code> method returns a PDF Blob with selectable text, pagination and links. The plugin is available on npm in <code>@zumer/snapdom-plugins</code> 4.x; see the <a href="../../plugins/pdf/docs.html">PDF reference</a> for installation and examples.</p>
+        <p>Use the MIT <code>pdf</code> plugin. <code>toPdf()</code> returns a PDF Blob with selectable text, pagination and links. It ships on npm in <code>@zumer/snapdom-plugins</code> 4.x; the <a href="../../plugins/pdf/docs.html">PDF reference</a> covers installation and examples.</p>
       </details>
     </section>
 
@@ -275,8 +282,8 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2 id="ready-to-try-snapdom">Ready to try SnapDOM?</h2>
-        <p>Try the capture and export methods on an element from your project.</p>
+        <h2 id="ready-to-try-snapdom">Try SnapDOM</h2>
+        <p>Run the capture and export methods on an element from your project.</p>
         <a href="../../showcase/" class="btn btn-primary" data-umami-event="Cmp h2i cta home">Open the demo</a>
         <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp h2i cta npm">Installation</a>
       </div>

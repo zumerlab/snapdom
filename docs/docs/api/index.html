@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM API Reference — Methods, Exporters &amp; Options</title>
   <meta name="description" content="SnapDOM API reference: the snapdom() reusable object, shortcut methods (toPng, toSvg, toCanvas, toBlob, toJpg, toWebp, download), and exporter-specific options." />
-  <meta name="keywords" content="snapdom api, snapdom topng, snapdom tocanvas, snapdom toblob, snapdom tosvg, dom to image api" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/docs/api/" />
 
@@ -62,7 +61,7 @@
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM <span class=\"accent\">API</span> Reference", "lead": "Create a reusable capture with <code>snapdom(el)</code>, export it in several formats, or use a shortcut for one output. This page documents the v3 API.", "links": [["#methods", "Shortcut methods"], ["../options/", "Capture options"]]} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter docs" aria-label="Filter docs"></label><nav class="pane-nav" aria-label="Docs"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Getting started</button><div class="pane-nav-items"><a href="../">Overview</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Capture API</button><div class="pane-nav-items"><a href="./" aria-current="page">API reference</a><a href="../cache/">Cache and preCapture</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Options</button><div class="pane-nav-items"><a href="../options/">Options</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="../plugins/">Plugin API</a></div></div></nav></aside>
 
@@ -104,8 +103,8 @@ document.body.appendChild(png);</pre>
 
     <section class="prose">
       <h2 id="reusable">snapdom(el, options?)</h2>
-      <p>Returns a reusable object with export methods. The capture (deep clone + asset inlining) runs once; each method on the returned object reuses it, so exporting several formats from the same element does not re-clone the DOM.</p>
-      <p>Pass content-selection options when capturing. <a href="../options/#filtering"><code>filter</code> and <code>exclude</code> can be used together</a>, with independent <code>filterMode</code> and <code>excludeMode</code> settings. A new call with function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> or <code>fallbackURL</code> evaluates current callback state instead of serving an unchanged memo. A closure change needs no <code>invalidate</code>; an existing result remains frozen and its exporters do not reapply a changed policy.</p>
+      <p>Returns a reusable object with export methods. The capture (deep clone + asset inlining) runs once; every export method reuses it, so several formats from the same element never re-clone the DOM.</p>
+      <p>Pass content-selection options when capturing. <a href="../options/#filtering"><code>filter</code> and <code>exclude</code> can be used together</a>, with independent <code>filterMode</code> and <code>excludeMode</code> settings. A new call with a function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> or <code>fallbackURL</code> re-evaluates the callback instead of reusing the memo, so a closure change needs no <code>invalidate</code>. An existing result stays frozen; its exporters do not reapply a changed policy.</p>
       <pre class="code-block">{
   url: string;                    // SVG by default; PNG after native capture
   needs: 'clone' | 'render';
@@ -128,7 +127,7 @@ document.body.appendChild(png);</pre>
 
     <section class="prose">
       <h2 id="methods">Shortcut methods</h2>
-      <p>Each shortcut captures and exports in a single call. They accept the same element and the full set of <a href="../options/">capture options</a>. The table describes the default SVG engine.</p>
+      <p>Each shortcut captures and exports in one call, with the same element and the full set of <a href="../options/">capture options</a>. The table describes the default SVG engine.</p>
       <table class="cmp-table">
         <thead>
           <tr><th>Method</th><th>Description</th></tr>
@@ -172,14 +171,13 @@ document.body.appendChild(png);</pre>
 );
 const png = await result.toPng();</pre>
       <p class="muted"><strong>Trusted HTML only.</strong> The mount uses <code>innerHTML</code>
-      in your page. Event handlers in the markup can run in your origin. Sanitize untrusted
-      input before calling this method; <code>fromString()</code> is not a sanitizer or a
-      server-side renderer.</p>
+      in your page, so event handlers in the markup can run in your origin. Sanitize untrusted
+      input first; <code>fromString()</code> is not a sanitizer or a server-side renderer.</p>
     </section>
 
     <section class="prose">
       <h2 id="exporter-options">Exporter-specific options</h2>
-      <p>Export options override the values captured with the result. <code>width</code> or <code>height</code> takes precedence over <code>scale</code>; <code>dpr</code> multiplies raster pixels. <code>toCanvas({ crop: { x, y, width, height } })</code> rasterizes one rectangle of the capture, in <code>result.meta</code> coordinates, so a page past the canvas limit can be exported in pieces at full resolution (<a href="../../how-to/capture-full-page/#long-pages">example</a>). To exclude content before capture work runs, use the <a href="../options/#all-options">capture <code>clip</code> option</a>.</p>
+      <p>Export options override the values captured with the result. <code>width</code> or <code>height</code> wins over <code>scale</code>; <code>dpr</code> multiplies raster pixels. <code>toCanvas({ crop: { x, y, width, height } })</code> rasterizes one rectangle of the capture, in <code>result.meta</code> coordinates, so a page past the canvas limit can be exported in pieces at full resolution (<a href="../../how-to/capture-full-page/#long-pages">example</a>). To exclude content before capture work runs, use the <a href="../options/#all-options">capture <code>clip</code> option</a>.</p>
 
       <h3 id="download">download()</h3>
       <table class="cmp-table">
@@ -208,26 +206,26 @@ const png = await result.toPng();</pre>
           <tr><td class="num">format</td><td class="num">"svg" | "png" | "jpeg" | "jpg" | "webp"</td><td class="num">"svg"</td><td>Blob format. The deprecated <code>type</code> alias remains accepted.</td></tr>
         </tbody>
       </table>
-      <p class="muted">Without an explicit format at capture or export time, <code>toBlob()</code> defaults to SVG on the SVG engine and PNG after successful native capture. For example, a result created with <code>snapdom(el, { format: 'png' })</code> also uses PNG for <code>result.toBlob()</code>.</p>
+      <p class="muted">Without a format set at capture or export time, <code>toBlob()</code> defaults to SVG on the SVG engine and PNG after successful native capture. A result created with <code>snapdom(el, { format: 'png' })</code> uses PNG for <code>result.toBlob()</code> too.</p>
       <p><strong>Example:</strong></p>
       <pre class="code-block">const blob = await result.toBlob({ format: 'jpeg', quality: 0.92 });</pre>
     </section>
 
-<section class="prose"><h2 id="capture-boundaries">Capture boundaries and working recipes</h2><p>For embedded documents, follow the <a href="../../how-to/capture-iframe/">same-origin iframe recipe</a>; cross-origin frames cannot be read by browser JavaScript. For custom elements, follow the <a href="../../how-to/capture-shadow-dom/">open Shadow DOM recipe</a> or the <a href="../../guides/lit/">Lit component guide</a>. For a PNG Blob rather than an image element, use the <a href="../../how-to/html-to-png/#upload">upload recipe</a> and request <code>format: 'png'</code> explicitly.</p></section>
+<section class="prose"><h2 id="capture-boundaries">Capture boundaries and working recipes</h2><p>For embedded documents, see the <a href="../../how-to/capture-iframe/">same-origin iframe recipe</a>; browser JavaScript cannot read cross-origin frames. For custom elements, see the <a href="../../how-to/capture-shadow-dom/">open Shadow DOM recipe</a> or the <a href="../../guides/lit/">Lit component guide</a>. For a PNG Blob instead of an image element, use the <a href="../../how-to/html-to-png/#upload">upload recipe</a> and request <code>format: 'png'</code>.</p></section>
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../options/" data-umami-event="Docs api card options">Options — every capture option</a>
-        <a class="related-card" href="../plugins/" data-umami-event="Docs api card plugins">Plugins — extend the pipeline</a>
-        <a class="related-card" href="../cache/" data-umami-event="Docs api card cache">Cache &amp; preCapture — performance</a>
+        <a class="related-card" href="../options/" data-umami-event="Docs api card options">Options: every capture option</a>
+        <a class="related-card" href="../plugins/" data-umami-event="Docs api card plugins">Plugins: extend the pipeline</a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs api card cache">Cache &amp; preCapture: performance</a>
         <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs api card compare">SnapDOM vs html2canvas</a>
       </div>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2 id="ready-to-capture">Ready to capture?</h2>
-        <p>Try the browser demo, then use the API reference to choose your output.</p>
+        <h2 id="ready-to-capture">Start capturing</h2>
+        <p>Try the browser demo, then pick your output from the methods above.</p>
         <a href="../../showcase/" class="btn btn-primary" data-umami-event="Docs api cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs api cta npm">Install from npm</a>
       </div>

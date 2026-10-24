@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM Options — Every Capture Option Explained</title>
   <meta name="description" content="Reference for every SnapDOM capture option: scale, dpr, width, height, embedFonts, useProxy, exclude, clip, outerTransforms, cache and more." />
-  <meta name="keywords" content="snapdom options, snapdom embedfonts, snapdom useproxy, snapdom scale, snapdom exclude, snapdom clip, snapdom outertransforms" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/docs/options/" />
 
@@ -62,7 +61,7 @@
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM <span class=\"accent\">Options</span>", "lead": "Set output size, load capture assets, exclude private content and control clipping. These options describe SnapDOM 3.", "links": [["#all-options", "All options"], ["../api/", "API reference"]]} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter docs" aria-label="Filter docs"></label><nav class="pane-nav" aria-label="Docs"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Getting started</button><div class="pane-nav-items"><a href="../">Overview</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Capture API</button><div class="pane-nav-items"><a href="../api/">API reference</a><a href="../cache/">Cache and preCapture</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Options</button><div class="pane-nav-items"><a href="./" aria-current="page">Options</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="../plugins/">Plugin API</a></div></div></nav></aside>
 
@@ -112,13 +111,13 @@
           <tr><td class="num">engine</td><td class="num">"svg" | "html-in-canvas"</td><td class="num">"svg"</td><td>Select one of SnapDOM's two integrated render engines. <code>svg</code> serializes the finished clone; experimental <code>html-in-canvas</code> paints that same clone through the browser's native API, with SVG fallback.</td></tr>
         </tbody>
       </table>
-      <p><code>html-in-canvas</code> still requires the browser's experimental feature flag or applicable origin trial; supported Chrome builds expose it through <code>chrome://flags/#canvas-draw-element</code>. It also needs a build compiled with <code>SNAPDOM_CANVAS_ENGINE=1 npm run compile</code>; the default build currently omits it. Unsupported captures fall back to SVG, including geometry and render hooks the native engine cannot handle.</p>
-      <p>A successful native capture is a bitmap: <code>url</code>/<code>toRaw()</code> lazily encode PNG, <code>toSvg()</code> returns a PNG-backed image, and <code>toBlob()</code> defaults to PNG unless a format was explicitly selected. Requesting an SVG Blob from that bitmap rejects. Select <code>engine: 'svg'</code> when serialized SVG is required.</p>
+      <p><code>html-in-canvas</code> requires the browser's experimental feature flag or an applicable origin trial; supported Chrome builds expose it through <code>chrome://flags/#canvas-draw-element</code>. It also needs a build compiled with <code>SNAPDOM_CANVAS_ENGINE=1 npm run compile</code>; the default build currently omits it. Unsupported captures fall back to SVG, including geometry and render hooks the native engine cannot handle.</p>
+      <p>A successful native capture is a bitmap: <code>url</code>/<code>toRaw()</code> lazily encode PNG, <code>toSvg()</code> returns a PNG-backed image, and <code>toBlob()</code> defaults to PNG unless a format was set. Requesting an SVG Blob from it rejects. Use <code>engine: 'svg'</code> when you need serialized SVG.</p>
     </section>
 
     <section class="prose">
       <h2 id="debug">debug</h2>
-      <p>SnapDOM logs nothing to the console by default. Set <code>debug: true</code> to log fallbacks and errors with the <code>[SnapDOM]</code> prefix: failed fetches, cross-origin iframes, downscaled exports, invalid <code>exclude</code> selectors and similar. Without it, read <code>result.warnings</code> for recorded capture fallbacks and limits.</p>
+      <p>SnapDOM logs nothing to the console by default. Set <code>debug: true</code> to log fallbacks and errors with the <code>[SnapDOM]</code> prefix: failed fetches, cross-origin iframes, downscaled exports, invalid <code>exclude</code> selectors. Without it, <code>result.warnings</code> records capture fallbacks and limits.</p>
       <pre class="code-block">await snapdom.toPng(el, { debug: true });</pre>
     </section>
 
@@ -127,15 +126,15 @@
       <p>SnapDOM reduces oversized raster assets to the resolution the requested output needs, accounting for output size, transforms and DPR. It preserves aspect ratio and never upscales the source. This covers <code>&lt;img&gt;</code>, captured canvas/video frames, non-repeating backgrounds and SVG <code>&lt;image&gt;</code>.</p>
       <p>The benefit depends on the export:</p>
       <ul>
-        <li><strong>Raster exports</strong> decode smaller embedded images, reducing work when the source images greatly exceed their display size.</li>
+        <li><strong>Raster exports</strong> decode smaller embedded images, which saves work when sources are much larger than their display size.</li>
         <li><strong>SVG exports</strong> carry smaller image data. <code>url</code> and <code>toRaw()</code> return that serialized capture without rasterizing it.</li>
       </ul>
-      <p>The SVG engine keeps the original asset data for later exports at a larger resolution. Images that already fit the requested resolution are left unchanged. A successful native-engine capture is already a bitmap, so enlarging it scales those captured pixels.</p>
+      <p>The SVG engine keeps the original asset data, so later exports at a larger resolution still have it. Images that already fit are left alone. A native-engine capture is a bitmap, so enlarging it scales the captured pixels.</p>
     </section>
 
     <section class="prose">
       <h2 id="fallback">Fallback image on &lt;img&gt; load failure</h2>
-      <p>Provide a default image for failed <code>&lt;img&gt;</code> loads. You can pass a fixed URL or a callback that receives measured dimensions and returns a URL (handy to generate dynamic placeholders).</p>
+      <p>Provide a default image for failed <code>&lt;img&gt;</code> loads: a fixed URL, or a callback that receives measured dimensions and returns a URL (handy for dynamic placeholders).</p>
       <pre class="code-block">// 1) Fixed URL fallback
 await snapdom.toSvg(element, {
   fallbackURL: '/images/fallback.png'
@@ -155,23 +154,23 @@ await snapdom.toSvg(element, {
 });</pre>
       <p>Notes:</p>
       <ul>
-        <li>If the fallback image also fails to load, SnapDOM replaces the <code>&lt;img&gt;</code> with a placeholder block preserving width/height.</li>
-        <li>Width/height used by the callback are gathered from the original element (dataset, style/attrs, etc.) when available.</li>
+        <li>If the fallback also fails, SnapDOM replaces the <code>&lt;img&gt;</code> with a placeholder block that keeps its width/height.</li>
+        <li>The callback's width/height come from the original element (dataset, style/attrs, etc.) when available.</li>
       </ul>
     </section>
 
     <section class="prose">
       <h2 id="dimensions">Dimensions (scale, width, height)</h2>
       <ul>
-        <li>If <code>width</code> or <code>height</code> is provided, it <strong>takes precedence</strong> over <code>scale</code>. <code>dpr</code> still multiplies raster pixels.</li>
-        <li>If only <code>width</code> is provided, height scales proportionally (and vice versa).</li>
-        <li>Providing both <code>width</code> and <code>height</code> forces an exact size (may distort).</li>
+        <li><code>width</code> or <code>height</code> <strong>takes precedence</strong> over <code>scale</code>. <code>dpr</code> still multiplies raster pixels.</li>
+        <li>Only <code>width</code>: height scales proportionally (and vice versa).</li>
+        <li>Both <code>width</code> and <code>height</code>: exact size, may distort.</li>
       </ul>
     </section>
 
     <section class="prose">
       <h2 id="useproxy">Cross-Origin Images &amp; Fonts (useProxy)</h2>
-      <p>SnapDOM fetches assets directly when their origin and CORS policy allow it. Set <code>useProxy</code> to a proxy you trust for assets the browser cannot read directly:</p>
+      <p>Set <code>useProxy</code> to a proxy you trust for assets the browser cannot read directly:</p>
       <pre class="code-block">await snapdom.toPng(el, {
   useProxy: 'https://your-proxy.example/?url='
 });</pre>
@@ -187,7 +186,7 @@ await snapdom.toSvg(element, {
       <p>The default, <code>'auto'</code>, embeds webfonts used by the capture and skips font discovery for system-font-only content. Use <code>true</code> to force discovery or <code>false</code> to skip text-font embedding. Icon-font glyphs use a separate rendering path.</p>
 
       <h3 id="localfonts">localFonts</h3>
-      <p>Declare font files or data URLs explicitly when stylesheet discovery cannot supply them:</p>
+      <p>Declare font files or data URLs when stylesheet discovery cannot supply them:</p>
       <pre class="code-block">await snapdom.toPng(el, {
   embedFonts: true,
   localFonts: [
@@ -203,7 +202,7 @@ await snapdom.toSvg(element, {
 });</pre>
 
       <h3 id="excludefonts">excludeFonts</h3>
-      <p>Skip specific non-icon fonts to speed up capture or avoid unnecessary downloads.</p>
+      <p>Skip specific non-icon fonts to speed up capture or avoid downloads.</p>
       <pre class="code-block">await snapdom.toPng(el, {
   embedFonts: true,
   excludeFonts: {
@@ -220,9 +219,9 @@ await snapdom.toSvg(element, {
 
     <section class="prose">
       <h2 id="filtering">Selecting content: <code>filter</code> and <code>exclude</code></h2>
-      <p><code>filter</code> and <code>exclude</code> remain independent, as in v2.x.x. Use them together in one capture, with separate layout modes. V3 adds optional predicates to <code>exclude</code>; this does not replace <code>filter</code>. The separate CSS-effect plugin named <code>filter</code> is also available.</p>
+      <p><code>filter</code> and <code>exclude</code> remain independent, as in v2.x.x, and can be combined in one capture with separate layout modes. V3 adds optional predicates to <code>exclude</code>; <code>filter</code> stays. There is also a separate CSS-effect plugin named <code>filter</code>.</p>
       <ul>
-        <li><code>filter</code>: a synchronous boolean predicate. True keeps a node; false filters it out. As in v2, any falsy return filters it out.</li>
+        <li><code>filter</code>: a synchronous predicate. True keeps a node; any falsy return filters it out, as in v2.</li>
         <li><code>filterMode</code>: <code>hide</code> keeps an invisible spacer for filtered nodes; <code>remove</code> drops them and allows reflow. Defaults to <code>hide</code>.</li>
         <li><code>exclude</code>: a selector, a synchronous boolean predicate, or any mix of both in an array. A node is excluded if <em>any</em> rule matches.</li>
         <li><code>excludeMode</code>: the separate hide/remove mode for exclusions; defaults to <code>hide</code>. Both modes omit the affected node's content.</li>
@@ -234,7 +233,7 @@ await snapdom(el, {
   exclude: ['.toolbar'],
   excludeMode: 'remove'
 });</pre>
-      <p>Per node, <code>data-capture="exclude"</code> is checked first, then <code>exclude</code>, then <code>filter</code>. The first omission determines its mode and stops evaluation for that node. The attribute uses <code>excludeMode</code>; a matching <code>exclude</code> also wins if <code>filter</code> would reject the same node with a different mode. A true <code>filter</code> result does not override an exclusion.</p>
+      <p>Per node, <code>data-capture="exclude"</code> is checked first, then <code>exclude</code>, then <code>filter</code>. The first match sets the mode and stops evaluation. The attribute uses <code>excludeMode</code>; a matching <code>exclude</code> wins even if <code>filter</code> would reject the same node with a different mode. A true <code>filter</code> result never overrides an exclusion.</p>
       <p><strong>Example: leave out elements with <code>display:none</code>:</strong></p>
       <pre class="code-block">/**
  * @param {Element} el
@@ -254,17 +253,17 @@ await snapdom.toPng(document.body, { exclude: isHidden });</pre>
       <pre class="code-block">await snapdom.toPng(el, {
   exclude: ['.cookie-banner', '.tooltip', '[data-test="debug"]']
 });</pre>
-      <p>Function-valued rules are evaluated when applicable on every new capture, including when the same function reads changing application state. They suspend unchanged-capture memoization; no <code>invalidate</code> is needed just because their closure changed. An already returned result keeps its original content until you capture again.</p>
+      <p>Function-valued rules run on every new capture, even when the same function reads changing application state. They suspend unchanged-capture memoization, so a changed closure needs no <code>invalidate</code>. A result you already hold keeps its content until you capture again.</p>
     </section>
 
     <section class="prose">
       <h2 id="v2-options">Other v2 option changes</h2>
-      <p>Compared with v2.x.x, the following settings no longer belong to the public v3 options. The underlying capture capabilities remain:</p>
+      <p>These v2.x.x settings are gone from the public v3 options. The capabilities behind them remain:</p>
       <ul>
         <li><code>burst</code>: remove this switch. Eligible repeat memoization is automatic. Use <code>invalidate: true</code> for one fresh capture after an otherwise unobservable change.</li>
         <li><code>fast: false</code> still keeps the page responsive, now by pausing about every frame instead of through idle callbacks. See <a href="#fast">fast</a>.</li>
-        <li><code>compress</code>: remove the switch. Embedded bitmap optimization is automatic, with no public opt-out for embedding the original resources verbatim.</li>
-        <li><code>resolvePicturePlaceholders</code> and <code>pictureResolver</code>: remove these settings. The clone resolves responsive images and common lazy-loading attributes. There is no replacement core tuning object; handle custom loading, concurrency or timeout requirements in the application before capture.</li>
+        <li><code>compress</code>: remove the switch. Bitmap optimization is automatic; there is no public opt-out to embed the original resources verbatim.</li>
+        <li><code>resolvePicturePlaceholders</code> and <code>pictureResolver</code>: remove these settings. The clone resolves responsive images and common lazy-loading attributes. There is no replacement tuning object; handle custom loading, concurrency or timeouts in the application before capture.</li>
       </ul>
       <p>See the <a href="https://github.com/zumerlab/snapdom#migrating-from-v2">migration guide</a> for removed APIs, TypeScript names and plugin-hook changes.</p>
     </section>
@@ -280,11 +279,11 @@ await snapdom.toPng(document.body, { exclude: isHidden });</pre>
     <section class="prose">
       <h2 id="outershadows">outerShadows</h2>
       <ul>
-        <li><strong><code>outerShadows: false (default)</code></strong> — Strips root <code>box-shadow</code>, <code>text-shadow</code>, <code>outline</code>, and <code>drop-shadow()</code>. It preserves <code>filter: blur()</code>, whose bleed is included when the capture is not explicitly clipped.</li>
-        <li><strong><code>outerShadows: true</code></strong> — Keeps root shadow/outline/filter effects and expands the bounds for their ink.</li>
-        <li><strong><code>outerShadows: "subtree"</code></strong> — Also widens the capture for descendant shadow ink outside the root box, bounded by clipping ancestors.</li>
+        <li><strong><code>outerShadows: false (default)</code></strong>: strips root <code>box-shadow</code>, <code>text-shadow</code>, <code>outline</code>, and <code>drop-shadow()</code>. It preserves <code>filter: blur()</code>, whose bleed is included when the capture is not explicitly clipped.</li>
+        <li><strong><code>outerShadows: true</code></strong>: keeps root shadow/outline/filter effects and expands the bounds for their ink.</li>
+        <li><strong><code>outerShadows: "subtree"</code></strong>: also widens the capture for descendant shadow ink outside the root box, bounded by clipping ancestors.</li>
       </ul>
-      <p class="muted"><strong>Note:</strong> <code>outerShadows: false</code> does not promise a bleed-free box: authored <code>blur()</code> remains visible and its extent is still included. An explicit <code>clip</code> is the exception: its edges are exact and never expand for bleed.</p>
+      <p class="muted"><strong>Note:</strong> <code>outerShadows: false</code> does not promise a bleed-free box. An explicit <code>clip</code> is the exception: its edges are exact and never expand for bleed.</p>
       <p><strong>Example</strong></p>
       <pre class="code-block">// Keep root transforms and include root shadow bleed
 await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
@@ -308,38 +307,38 @@ await snapdom.toSvg(el, { outerTransforms: true, outerShadows: true });</pre>
 
     <section class="prose">
       <h2 id="memoization">Automatic repeat-capture memoization</h2>
-      <p>Capturing the same unchanged element repeatedly would otherwise re-walk the tree and re-read every node's computed style on every call. SnapDOM memoizes eligible static elements from their first capture. Observable DOM, style, media and interaction changes invalidate that result; frame-driven content that cannot be observed reliably is captured fresh. A mutation may trigger a conservative full capture or a differential rebuild when that rebuild is provably equivalent. At most 64 elements stay memoized; the least recently captured one is released.</p>
+      <p>Capturing the same unchanged element repeatedly would re-walk the tree and re-read every computed style on each call. SnapDOM memoizes eligible static elements from their first capture. Observable DOM, style, media and interaction changes invalidate the result; frame-driven content that cannot be observed reliably is captured fresh. A mutation triggers a conservative full capture, or a differential rebuild when that rebuild is provably equivalent. At most 64 elements stay memoized; the least recently captured one is released.</p>
       <pre class="code-block">// Stable captures can reuse the result; the text mutation invalidates it.
 for (let i = 0; i < 10; i++) {
   if (i === 3) counter.textContent = 'new value';
   const result = await snapdom(el);
   img.src = (await result.toPng()).src;
 }</pre>
-      <p>Frame-driven canvas/video/iframe trees already bypass the memo and capture fresh. Programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) expose no browser signal, so pass <code>invalidate: true</code> on the next call. That call is not served from the existing memo and clears style snapshots; if its fresh result is stable, it may become the new memo:</p>
+      <p>Frame-driven canvas/video/iframe trees bypass the memo. Programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) expose no browser signal, so pass <code>invalidate: true</code> on the next call. That call skips the existing memo and clears style snapshots; a stable fresh result may become the new memo:</p>
       <pre class="code-block">sheet.insertRule('.card { color: rebeccapurple }');
 await snapdom(el, { invalidate: true });</pre>
-      <p>Function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> or <code>fallbackURL</code> already force a new capture and reevaluate applicable callback decisions. A changed closure needs no <code>invalidate</code>. Previous style/fallback decisions are not reused for those callbacks. Exporting an existing result still uses its original captured state.</p>
+      <p>Function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> or <code>fallbackURL</code> force a new capture and re-run their callbacks; earlier style/fallback decisions are not reused, and a changed closure needs no <code>invalidate</code>. Exporting an existing result still uses its original captured state.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
-        <a class="related-card" href="../api/" data-umami-event="Docs options card api">API reference — methods &amp; exporters</a>
-        <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCapture — performance</a>
-        <a class="related-card" href="../plugins/" data-umami-event="Docs options card plugins">Plugins — extend the pipeline</a>
+        <a class="related-card" href="../api/" data-umami-event="Docs options card api">API reference: methods &amp; exporters</a>
+        <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCapture: performance</a>
+        <a class="related-card" href="../plugins/" data-umami-event="Docs options card plugins">Plugins: extend the pipeline</a>
         <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs options card h2c">SnapDOM vs html2canvas</a>
       </div>
     </section>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2 id="ready-to-capture">Ready to capture?</h2>
-        <p>Try the browser demo, then use the API reference to choose your output.</p>
+        <h2 id="ready-to-capture">Start capturing</h2>
+        <p>Try the browser demo, then pick your output in the API reference.</p>
         <a href="../../showcase/" class="btn btn-primary" data-umami-event="Docs options cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs options cta npm">Install from npm</a>
       </div>
     </section>
-  <section><h2 id="export-beyond-images">Export beyond images</h2><p>Ready for document output? Compare <a href="../../blog/snapdom-pdf-vs-html2canvas-jspdf/">SnapDOM PDF with html2canvas and jsPDF</a>, or turn a component into <a href="../../blog/html-to-editable-svg-figma/">editable SVG and Figma artwork</a>.</p></section><!-- /content --></div>
+  <section><h2 id="export-beyond-images">Export beyond images</h2><p>For document output, compare <a href="../../blog/snapdom-pdf-vs-html2canvas-jspdf/">SnapDOM PDF with html2canvas and jsPDF</a>, or turn a component into <a href="../../blog/html-to-editable-svg-figma/">editable SVG and Figma artwork</a>.</p></section><!-- /content --></div>
 <nav class="pager" aria-label="Pages"><a href="../cache/"><span>Previous</span><strong>Cache and preCapture</strong></a><a class="is-next" href="../plugins/"><span>Next</span><strong>Plugin API</strong></a></nav>
 </article>
 </main>

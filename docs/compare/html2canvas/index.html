@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM vs html2canvas — A Modern html2canvas Alternative</title>
   <meta name="description" content="SnapDOM vs html2canvas compared head-to-head: pseudo-elements, web fonts, Shadow DOM, plugins and benchmarks. Includes migration notes." />
-  <meta name="keywords" content="snapdom vs html2canvas, html2canvas alternative, html2canvas pseudo elements, html2canvas web fonts, html2canvas shadow dom" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/html2canvas/" />
 
@@ -33,7 +32,7 @@
     "@type": "Article",
     "headline": "SnapDOM vs html2canvas — A Modern html2canvas Alternative",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-10-23",
+    "dateModified": "2026-10-24",
     "description": "Side-by-side comparison of SnapDOM and html2canvas: feature matrix, code examples, and migration guide.",
     "url": "https://snapdom.dev/compare/html2canvas/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -52,7 +51,7 @@
         "name": "Why does html2canvas not render my Shadow DOM?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Shadow DOM support depends on the capture implementation. SnapDOM walks accessible open Shadow roots, copies resolved styles and renders the clone through SVG <foreignObject>. Closed roots are not accessible through the standard DOM API."
+          "text": "It depends on the implementation. SnapDOM walks open Shadow roots, copies resolved styles and renders the clone through SVG <foreignObject>. Closed roots are not reachable through the standard DOM API."
         }
       },
       {
@@ -60,7 +59,7 @@
         "name": "html2canvas doesn't render web fonts correctly, what do I use?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "First check that your fonts load before capture. SnapDOM 3 uses embedFonts: 'auto' by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser."
+          "text": "First make sure fonts load before capture. SnapDOM 3 uses embedFonts: 'auto' by default to embed used web fonts in the SVG. Font files must be accessible to the page; test the image in your target browser."
         }
       },
       {
@@ -68,7 +67,7 @@
         "name": "html2canvas is slow on large DOMs, is there a faster alternative?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "SnapDOM uses a different rendering path and can reuse eligible captures in v3. The gain depends on the DOM, assets and capture pattern. Use the live benchmark above and compare your own elements before choosing."
+          "text": "SnapDOM uses a different rendering path and v3 can reuse eligible captures. The gain depends on the DOM, assets and capture pattern. Compare your own elements in the live benchmark above."
         }
       },
       {
@@ -76,7 +75,7 @@
         "name": "Is html2canvas still maintained in 2026?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "This page compares html2canvas 1.4.1. For current maintenance status, check its releases and issue tracker. A release date alone does not establish whether a library meets your capture requirements."
+          "text": "This page compares html2canvas 1.4.1. For current status, check its releases and issue tracker. A release date alone does not say whether a library meets your needs."
         }
       }
     ]
@@ -147,8 +146,8 @@
 <link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Library Comparison", "title": "SnapDOM vs <span class=\"accent\">html2canvas</span>", "lead": "Compare DOM-to-canvas and SVG-based capture, then review output types, font handling and the options needed to migrate.", "links": [["#matrix", "Feature matrix"], ["#migrate", "Migration snippet"]]} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <!-- pane:start --><!-- hero {"badge": "Library Comparison", "title": "SnapDOM vs <span class=\"accent\">html2canvas</span>", "lead": "DOM-to-canvas vs SVG-based capture: output types, font handling and the options you need to migrate.", "links": [["#matrix", "Feature matrix"], ["#migrate", "Migration snippet"]]} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter comparisons" aria-label="Filter comparisons"></label><nav class="pane-nav" aria-label="Compare"><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">HTML-to-image libraries</a><a href="../live/">Live benchmark</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Head to head</button><div class="pane-nav-items"><a href="./" aria-current="page">vs html2canvas</a><a href="../html-to-image/">vs html-to-image</a><a href="../dom-to-image/">vs dom-to-image</a><a href="../modern-screenshot/">vs modern-screenshot</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Architecture</button><div class="pane-nav-items"><a href="../puppeteer/">vs Puppeteer</a><a href="../playwright/">vs Playwright</a></div></div></nav></aside>
 <div class="pane-demo"><section class="demo-panel sec-capture" aria-label="Live demo">
@@ -157,22 +156,22 @@
 <div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#2D5BFF}.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #0F1E4D}</style><h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div><sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div><p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
 <div class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</div></section></div>
 <article class="pane-read sec-ecosystem" data-title="vs html2canvas" data-demo="compare" data-lib="html2canvas" data-note="Judge the pixels yourself; one run is not a benchmark." data-demo-label="SnapDOM · html2canvas">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs html2canvas</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">html2canvas</span></h1><p class="doc-lead">Compare DOM-to-canvas and SVG-based capture, then review output types, font handling and the options needed to migrate.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs html2canvas</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">html2canvas</span></h1><p class="doc-lead">DOM-to-canvas vs SVG-based capture: output types, font handling and the options you need to migrate.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
 <div class="pane-content"><!-- content -->
     <aside class="maint-callout" aria-label="html2canvas maintenance status">
-      <div class="maint-label">html2canvas — version under comparison</div>
-      <p>This demo loads <strong>html2canvas 1.4.1</strong>. Check the repository's <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c issues link">issue tracker</a> and releases for the status of bugs relevant to your app. Benchmark results apply to the version loaded here.</p>
+      <div class="maint-label">html2canvas: version under comparison</div>
+      <p>This demo loads <strong>html2canvas 1.4.1</strong>. Check its <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c issues link">issue tracker</a> and releases for bugs relevant to your app. Benchmark results apply to this version.</p>
     </aside>
 
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p><strong>html2canvas</strong> normally paints the captured DOM onto Canvas with its JavaScript renderer. <strong>SnapDOM</strong> renders a styled clone through SVG, then exports images or Canvas as needed. SnapDOM also exposes a plugin lifecycle. Both are MIT-licensed and run in the browser.</p>
+      <p><strong>html2canvas</strong> paints the DOM onto Canvas with its own JavaScript renderer. <strong>SnapDOM</strong> renders a styled clone through SVG, exports images or Canvas, and has a plugin lifecycle. Both are MIT-licensed and run in the browser.</p>
     </div>
 
     <section class="bench-section" id="benchmark">
-      <div class="section-label">Live benchmark — runs in your browser</div>
+      <div class="section-label">Live benchmark: runs in your browser</div>
       <h2 id="snapdom-vs-html2canvas-head-to-head">SnapDOM vs html2canvas, head to head</h2>
-      <p class="bench-lead">Both libraries capture the same DOM element five times. Times are averaged, the faster one is highlighted. Run it on your machine; the gap is hardware- and content-dependent.</p>
+      <p class="bench-lead">Each library captures the same element five times. Averages are shown, the faster one highlighted. The gap depends on your hardware and content.</p>
 
       <div class="bench-target-row">
         <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
@@ -204,8 +203,8 @@
 
     <section class="prose">
       <h2 id="overview">A quick overview</h2>
-      <p><a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> reads the DOM and paints elements onto a <code>&lt;canvas&gt;</code>. Its default renderer implements CSS support itself, so its supported properties and output can differ from the browser's page rendering.</p>
-      <p><strong>SnapDOM</strong> clones the DOM, inlines styles and accessible fonts and images, and wraps the clone in an SVG <code>&lt;foreignObject&gt;</code>. The browser paints that clone, so the output follows its own rendering, subject to resource-access limits.</p>
+      <p><a href="https://html2canvas.hertzen.com/" target="_blank" rel="noopener">html2canvas</a> paints the DOM onto a <code>&lt;canvas&gt;</code> with a renderer that implements CSS itself, so supported properties and output can differ from the browser's.</p>
+      <p><strong>SnapDOM</strong> clones the DOM, inlines styles, accessible fonts and images, and wraps the clone in an SVG <code>&lt;foreignObject&gt;</code>. The browser paints it, within resource-access limits.</p>
     </section>
 
     <section class="prose">
@@ -229,8 +228,8 @@
           <tr><td class="feature">License</td><td class="num">MIT</td><td class="num">MIT</td></tr>
         </tbody>
       </table>
-      <p>Support varies by fixture and rendering mode; test your own UI. See the <a href="../live/">live benchmark</a> for its pixel fixtures and loaded versions.</p>
-      <p class="muted">Run the live benchmark suite locally with <code>npm run test:benchmark</code> to reproduce the numbers on your hardware — performance varies a lot depending on element complexity, fonts and image content.</p>
+      <p>Support varies by fixture and rendering mode; test your own UI. Fixtures and loaded versions are in the <a href="../live/">live benchmark</a>.</p>
+      <p class="muted">Reproduce the numbers on your hardware with <code>npm run test:benchmark</code>. Element complexity, fonts and images change them a lot.</p>
     </section>
 
     <section class="prose">
@@ -239,25 +238,25 @@
         <div class="verdict-card snapdom">
           <h4 aria-level="3">Choose SnapDOM when…</h4>
           <ul>
-            <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
-            <li>The output must match what the browser rendered, verified against pixels.</li>
-            <li>You need more than images: PDF, editable vector, HTML or agent context through <a href="../../showcase/#plugins">plugins</a>, or your own.</li>
+            <li>You need fast captures, including repeats of the same element (<a href="../live/">live benchmark</a>).</li>
+            <li>Output must match the browser's rendering, pixel for pixel.</li>
+            <li>You need PDF, editable vector, HTML or agent context, through <a href="../../showcase/#plugins">plugins</a> or your own.</li>
             <li>You want a library with a release about every week.</li>
           </ul>
         </div>
         <div class="verdict-card other">
           <h4 aria-level="3">Keep html2canvas when…</h4>
           <ul>
-            <li>Your existing captures meet your requirements and migration would add work without a measured benefit.</li>
+            <li>Your captures already meet your requirements and migration has no measured benefit.</li>
           </ul>
-          <p style="font-size:13px; color:var(--text-muted); margin: 12px 0 0; line-height:1.55;">Compare representative output before changing libraries. Check the <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c verdict issues">issue tracker</a> for known problems affecting your content, then measure both implementations.</p>
+          <p style="font-size:13px; color:var(--text-muted); margin: 12px 0 0; line-height:1.55;">Check the <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c verdict issues">issue tracker</a> for known problems with your content, then compare output from both.</p>
         </div>
       </div>
     </section>
 
     <section class="prose">
       <h2 id="code">Same task, side by side</h2>
-      <p>Capturing <code>#card</code> as a PNG and inserting the resulting image into the page:</p>
+      <p>Capture <code>#card</code> as a PNG and add the image to the page:</p>
 
       <h4 aria-level="3">html2canvas</h4>
       <pre class="code-block"><span class="kw">import</span> html2canvas <span class="kw">from</span> <span class="str">'html2canvas'</span>;
@@ -273,12 +272,12 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 <span class="kw">const</span> <span class="op">img</span> = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 document.body.<span class="fn">appendChild</span>(img);</pre>
 
-      <p>SnapDOM returns the <code>HTMLImageElement</code> ready to be appended — no manual <code>toDataURL</code> call. If you do need a canvas, call <code>snapdom.toCanvas(el)</code> instead.</p>
+      <p>SnapDOM returns the <code>HTMLImageElement</code> ready to append, with no <code>toDataURL</code> call. For a canvas, use <code>snapdom.toCanvas(el)</code>.</p>
     </section>
 
     <section class="prose">
       <h2 id="migrate">Migration notes</h2>
-      <p>Common operations have equivalents, but image return types and option meanings differ. These examples preserve the requested output format:</p>
+      <p>Return types and option meanings differ. These equivalents keep the same output format:</p>
       <table class="cmp-table">
         <thead>
           <tr><th>html2canvas</th><th>SnapDOM</th></tr>
@@ -295,7 +294,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
         </tbody>
       </table>
 
-      <p>For a Canvas consumer, start with this change and compare the output:</p>
+      <p>For a Canvas consumer, start here and compare the output:</p>
       <pre class="code-block"><span class="cm">// Before</span>
 <span class="kw">import</span> html2canvas <span class="kw">from</span> <span class="str">'html2canvas'</span>;
 <span class="kw">const</span> canvas = <span class="kw">await</span> <span class="fn">html2canvas</span>(el, { scale: <span class="num">2</span> });
@@ -310,22 +309,22 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>Why does html2canvas not render my Shadow DOM?</summary>
-        <p>Shadow DOM support depends on the capture implementation. SnapDOM walks accessible open Shadow roots, copies resolved styles and renders the clone through SVG <code>&lt;foreignObject&gt;</code>. Closed roots are not accessible through the standard DOM API.</p>
+        <p>It depends on the implementation. SnapDOM walks open Shadow roots, copies resolved styles and renders the clone through SVG <code>&lt;foreignObject&gt;</code>. Closed roots are not reachable through the standard DOM API.</p>
       </details>
 
       <details>
         <summary>html2canvas doesn't render web fonts correctly, what do I use?</summary>
-        <p>First check that your fonts load before capture. SnapDOM 3 uses <code>embedFonts: 'auto'</code> by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser.</p>
+        <p>First make sure fonts load before capture. SnapDOM 3 uses <code>embedFonts: 'auto'</code> by default to embed used web fonts in the SVG. Font files must be accessible to the page; test the image in your target browser.</p>
       </details>
 
       <details>
         <summary>html2canvas is slow on large DOMs, is there a faster alternative?</summary>
-        <p>SnapDOM uses a different rendering path and can reuse eligible captures in v3. The gain depends on the DOM, assets and capture pattern. Use the <a href="#benchmark">live benchmark above</a> and compare your own elements before choosing.</p>
+        <p>SnapDOM uses a different rendering path and v3 can reuse eligible captures. The gain depends on the DOM, assets and capture pattern. Compare your own elements in the <a href="#benchmark">live benchmark above</a>.</p>
       </details>
 
       <details>
         <summary>Is html2canvas still maintained in 2026?</summary>
-        <p>This page compares <a href="https://github.com/niklasvh/html2canvas/releases/tag/v1.4.1" target="_blank" rel="noopener" data-umami-event="Cmp h2c faq release">html2canvas 1.4.1</a>. For current maintenance status, check its releases and <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c faq issues">issue tracker</a>. A release date alone does not establish whether a library meets your capture requirements.</p>
+        <p>This page compares <a href="https://github.com/niklasvh/html2canvas/releases/tag/v1.4.1" target="_blank" rel="noopener" data-umami-event="Cmp h2c faq release">html2canvas 1.4.1</a>. For current status, check its releases and <a href="https://github.com/niklasvh/html2canvas/issues" target="_blank" rel="noopener" data-umami-event="Cmp h2c faq issues">issue tracker</a>. A release date alone does not say whether a library meets your needs.</p>
       </details>
     </section>
 
@@ -341,8 +340,8 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
     <section class="cta-section">
       <div class="cta-card">
-        <h2 id="ready-to-switch">Ready to switch?</h2>
-        <p>Drop SnapDOM into your project, capture your first element, and decide for yourself.</p>
+        <h2 id="ready-to-switch">Make the switch</h2>
+        <p>Drop SnapDOM into your project and capture your first element.</p>
         <a href="../../showcase/" class="btn btn-primary" data-umami-event="Cmp h2c cta home">Open the demo</a>
         <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp h2c cta npm">Installation</a>
       </div>
