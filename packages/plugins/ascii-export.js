@@ -12,6 +12,8 @@
  * @param {number} [options.contrast=0] - Non-negative luminance contrast boost
  * @returns {Object} SnapDOM plugin
  */
+import { stream } from './stream.js';
+
 export function asciiExport(options = {}) {
   const {
     width: charWidth = 80,
@@ -99,4 +101,23 @@ export function asciiFromCanvas(source, options = {}) {
     ascii += '\n';
   }
   return colored ? ascii + '</pre>' : ascii;
+}
+
+/**
+ * Stream a live element as ASCII: `stream()` keeps a canvas in step with the element and every
+ * frame is converted with `asciiFromCanvas()`. Returns the stream handle (`ready`, `stats`, `stop()`).
+ * @param {Element} element
+ * @param {Object} [options] - ascii options (width, charset, invert, format, contrast) plus stream
+ *   options (fps, scale, plugins, ...) and `onText(text, frame)`, called after each repaint.
+ */
+export function asciiStream(element, options = {}) {
+  const { width, charset, invert, format, contrast, onText, onFrame, ...streamOptions } = options;
+  const ascii = { width, charset, invert, format, contrast };
+  return stream(element, {
+    ...streamOptions,
+    onFrame(frame) {
+      onFrame?.(frame);
+      onText?.(asciiFromCanvas(frame.canvas, ascii), frame);
+    },
+  });
 }

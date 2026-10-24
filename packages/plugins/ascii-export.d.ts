@@ -6,6 +6,7 @@
  * at capture time.
  */
 import type { SnapdomPlugin } from '@zumer/snapdom';
+import type { Stream, StreamOptions, StreamFrame } from './stream.js';
 
 export interface AsciiExportOptions {
   /** Character width of the output. */
@@ -31,3 +32,9 @@ declare module '@zumer/snapdom' {
     toAscii(options?: AsciiExportOptions): Promise<string>;
   }
 }
+
+/** `stream()` plus `asciiFromCanvas()` on every frame; `onText` receives the text (or HTML when `format: 'html'`). */
+export declare function asciiStream(
+  element: Element,
+  options?: AsciiExportOptions & { charset?: string | string[] } & StreamOptions & { onText?: (text: string, frame: StreamFrame) => void }
+): Stream;
