@@ -43,6 +43,8 @@ if (keepArtifacts) {
   }
 }
 const work = mkdtempSync(join(tmpdir(), 'snapdom-pack-'))
+// Exports of @zumer/snapdom-plugins that are not plugin factories (see the runtime probe).
+const PLUGIN_HELPERS = ['stream', 'streamTexture', 'recordCanvas', 'overlayStage', 'scoreboard', 'lowerThird', 'ticker', 'liveBadge', 'asciiFromCanvas', 'asciiStream']
 let failures = 0
 
 const log = (...a) => console.log(...a)
@@ -106,6 +108,8 @@ try {
     ...readdirSync(join(ROOT, 'packages/plugins/pdf/src'), { recursive: true }).filter(p => p.endsWith('.js')).map(p => 'package/pdf/src/' + p),
     'package/vector/CONTRACT.md', 'package/vector/LICENSE', 'package/vector/README.md',
     ...['src', 'svd'].flatMap(dir => readdirSync(join(ROOT, 'packages/plugins/vector', dir), { recursive: true }).filter(p => p.endsWith('.js')).map(p => `package/vector/${dir}/${p}`)),
+    'package/stream/LICENSE', 'package/stream/README.md',
+    ...readdirSync(join(ROOT, 'packages/plugins/stream/src')).filter(p => p.endsWith('.js')).map(p => 'package/stream/src/' + p),
   ]
   const pluginListed = run('tar', ['-tzf', pluginTgz]).split('\n').map((s) => s.trim()).filter(Boolean)
   for (const f of PLUGIN_REQUIRED) {
@@ -187,19 +191,26 @@ export async function use(el: HTMLElement) {
   const checks = [
     ['import root', `import('@zumer/snapdom').then(m => { if (typeof m.snapdom !== 'function') throw new Error('snapdom missing') })`],
     ['import /plugins', `import('@zumer/snapdom/plugins').then(m => { if (typeof m.registerPlugins !== 'function') throw new Error('registerPlugins missing') })`],
+    // Every subpath export must be the barrel's own object, and every plugin factory must
+    // register. The helpers (a stream, its WebGL texture and recorder, the overlay templates,
+    // the ASCII converters) are not factories: they take an element or a canvas and need a
+    // DOM, so they are listed here and only checked for identity.
     ['official plugins', `(async () => {
+      const HELPERS = new Set(${JSON.stringify(PLUGIN_HELPERS)})
       const all = await import('@zumer/snapdom-plugins')
       const { registerPlugins, clearPlugins, getGlobalPlugins } = await import('@zumer/snapdom')
       for (const subpath of ${JSON.stringify(pluginEntries.map(([key]) => key.slice(1)))}) {
         const mod = await import('@zumer/snapdom-plugins' + subpath)
         for (const [name, factory] of Object.entries(mod)) {
           if (!Object.values(all).includes(factory)) throw new Error('different factory for ' + name)
+          if (HELPERS.has(name)) continue
           const plugin = factory()
           if (!plugin.name) throw new Error('unnamed official plugin ' + name)
           registerPlugins(plugin)
         }
       }
-      if (getGlobalPlugins().length !== Object.keys(all).length) throw new Error('plugin registration mismatch')
+      const factories = Object.keys(all).filter(name => !HELPERS.has(name))
+      if (getGlobalPlugins().length !== factories.length) throw new Error('plugin registration mismatch')
       clearPlugins()
     })()`],
     ['root omits removed APIs', `import('@zumer/snapdom').then(m => {
