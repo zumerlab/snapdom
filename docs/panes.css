@@ -285,4 +285,6 @@
 .pane-content .prose h2 { font-weight: 700; font-size: 26px; letter-spacing: -.025em; }
 .pane-content .cta-section { margin-top: 48px; }
 .pane-read pre code { padding: 0; background: none; color: inherit; font: inherit; }
-.pane-content pre:not([class]):not(.code-block pre):not(.pane-code pre) { margin: 0 0 16px; padding: 16px 20px; overflow-x: auto; background: #0F1E4D; color: #D9E2F7; font: 13.5px/1.7 var(--font-code); }
+/* Same box as pre.site-code-block (code.css), so code-blocks.js adding that class does not shift the page. */
+.pane-content pre:not([class]):not(.code-block pre):not(.pane-code pre) { margin: 18px 0; padding: 48px 20px 20px; overflow-x: auto; background: #0F1E4D; color: #D9E2F7; border: 1px solid #0F1E4D; white-space: pre; font: 13px/1.7 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+@media (max-width: 600px) { .pane-content pre:not([class]):not(.code-block pre):not(.pane-code pre) { padding: 48px 14px 16px; font-size: 12px; } }
