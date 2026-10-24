@@ -1,5 +1,12 @@
 # Plugin changes
 
+## 4.2.0
+
+- Export asciiFromCanvas(source, options) from @zumer/snapdom-plugins/ascii-export: the ASCII conversion on its own, for a canvas, an image, a video frame or a stream frame. toAscii() keeps its output.
+- Add asciiStream(element, options): stream() plus asciiFromCanvas() on every frame, with onText(text, frame).
+
+Requires SnapDOM 3.4.0 or newer within 3.x.
+
 ## 4.1.0
 
 - Add the stream plugin at @zumer/snapdom-plugins/stream: a live canvas that mirrors an element and repaints only the boxes that changed, for WebGL textures, video overlays and WebRTC tracks.
