@@ -212,6 +212,12 @@ export function createContext(options = {}) {
     // expanding a root capture to scrollHeight; never public.
     __pinned: options.__pinned === true,
 
+    // Internal: the page's subpixel offset of the root, {x, y} in CSS px, which the stream
+    // plugin renders a patch at so its box edges snap and its glyphs land as in the full
+    // frame (packages/plugins/stream). Not for users; a stable contract with that plugin.
+    // Pinned by __tests__/engine.svg.subpixel.test.js.
+    __subpixel: options.__subpixel ?? null,
+
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 
