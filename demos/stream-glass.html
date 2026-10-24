@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Liquid Glass Overlay</title>
+<style>
+  :root { --bg: #08090c; --line: #232a36; --text: #e8edf5; --muted: #8b95a7; --accent: #7dd3fc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header p { margin: 0; color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: 960px 1fr; gap: 20px; padding: 20px; align-items: start; }
+  @media (max-width: 1300px) { .wrap { grid-template-columns: 1fr; } }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 6px; }
+  #out { width: 960px; max-width: 100%; height: auto; aspect-ratio: 16 / 9; display: block; background: #000; border: 1px solid var(--line); border-radius: 6px; cursor: grab; touch-action: none; }
+  .side { display: grid; gap: 14px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #0e1117; }
+  .box h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 400; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  input[type=text] { width: 100%; background: #151a23; color: var(--text); border: 1px solid #2a3240; border-radius: 6px; padding: 7px 9px; font: inherit; }
+  input[type=range] { width: 100%; }
+  button { background: #1b2230; color: var(--text); border: 1px solid #2f3a4d; border-radius: 6px; padding: 7px 10px; cursor: pointer; font: inherit; }
+  button:hover { background: #253045; }
+  button.on { background: #ef4444; border-color: #ef4444; }
+  .knob { display: grid; grid-template-columns: 90px 1fr 36px; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; margin: 4px 0; }
+  label.chk { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  #hud { font: 12px/1.6 ui-monospace, Menlo, monospace; }
+  #hud b { color: var(--accent); font-weight: 400; }
+  .src { padding: 0 20px 30px; }
+  .checker { width: 960px; height: 540px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
+
+  /* The streamed overlay. A .glass box carries no background: its shape is read from the DOM
+     and the glass is drawn by the shader over the footage. The HTML gives the content. */
+  #stage { position: relative; width: 960px; height: 540px; overflow: hidden; color: #fff; font: 16px/20px Arial, Helvetica, sans-serif; }
+  .glass { position: absolute; display: flex; align-items: center; text-shadow: 0 1px 2px #0006; }
+  #score { left: 24px; top: 24px; height: 52px; border-radius: 26px; padding: 0 22px; gap: 14px; font-weight: 700; letter-spacing: .04em; }
+  #score .pts { font-size: 28px; line-height: 32px; min-width: 22px; text-align: center; }
+  #score i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+  #clock { left: 330px; top: 24px; height: 52px; border-radius: 26px; padding: 0 20px; font: 700 22px/52px ui-monospace, Menlo, monospace; }
+  #live { right: 24px; top: 24px; height: 52px; border-radius: 26px; padding: 0 20px 0 40px; font-weight: 700; letter-spacing: .12em; }
+  #live::before { content: ''; position: absolute; left: 20px; top: 21px; width: 10px; height: 10px; border-radius: 50%; background: #ff453a; }
+  #lower { left: 24px; bottom: 28px; height: 92px; border-radius: 30px; padding: 0 30px; flex-direction: column; align-items: flex-start; justify-content: center; transition: left .5s cubic-bezier(.2, .8, .2, 1); }
+  #lower.hidden { left: -760px; }
+  #lower b { font-size: 28px; line-height: 34px; }
+  #lower span { opacity: .85; font-size: 17px; }
+  #bubble { left: 640px; top: 300px; width: 150px; height: 150px; border-radius: 75px; justify-content: center; flex-direction: column; font-weight: 700; }
+  #bubble small { font-weight: 400; opacity: .8; font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Liquid glass overlay</h1>
+  <p>HTML gives the content, a shader bends the live video underneath it. Drag the bubble.</p>
+</header>
+<div class="wrap">
+  <div>
+    <p class="label">Program output (WebGL: footage + glass + streamed overlay)</p>
+    <canvas id="out"></canvas>
+  </div>
+  <div class="side">
+    <div class="box">
+      <h2>Overlay</h2>
+      <div class="grid2" style="margin-bottom:8px"><button data-team="0">+1 Home</button><button data-team="1">+1 Away</button></div>
+      <div style="display:grid;gap:8px">
+        <input type="text" id="name" value="Alex Morgan">
+        <input type="text" id="role" value="Match commentator">
+        <button id="toggle">Hide lower third</button>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Glass</h2>
+      <div class="knob">Refraction<input type="range" id="refract" min="0" max="60" value="28"><span></span></div>
+      <div class="knob">Bevel<input type="range" id="bevel" min="4" max="60" value="22"><span></span></div>
+      <div class="knob">Frost<input type="range" id="blur" min="0" max="12" value="3"><span></span></div>
+      <div class="knob">Dispersion<input type="range" id="chroma" min="0" max="30" value="10"><span></span></div>
+      <div class="knob">Tint<input type="range" id="tint" min="0" max="40" value="10"><span></span></div>
+    </div>
+    <div class="box">
+      <h2>Footage</h2>
+      <div class="grid2">
+        <button id="cam">Use camera</button>
+        <button id="pick" type="button">Load a video</button><input type="file" id="file" accept="video/*" style="display:none">
+      </div>
+    </div>
+    <div class="box">
+      <h2>Output</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="rec">Record 10 s</button>
+        <label class="chk"><input type="checkbox" id="patches" checked> Patches</label>
+      </div>
+      <div id="hud" style="margin-top:10px">waiting for the first frame</div>
+    </div>
+  </div>
+</div>
+<div class="src">
+  <p class="label">The overlay DOM (source, over a transparency checkerboard)</p>
+  <div class="checker">
+    <div id="stage">
+      <div class="glass" id="score"><i style="background:#30d158"></i>HOME<span class="pts" id="p0">0</span><span class="pts" id="p1">0</span>AWAY<i style="background:#0a84ff"></i></div>
+      <div class="glass" id="clock">00:00.0</div>
+      <div class="glass" id="live">LIVE</div>
+      <div class="glass" id="lower"><b id="lname">Alex Morgan</b><span id="lrole">Match commentator</span></div>
+      <div class="glass" id="bubble">DRAG ME<small>live refraction</small></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
+<script type="module">
+import { stream, streamTexture, recordCanvas } from '../packages/plugins/stream.js'
+const $ = (s) => document.querySelector(s)
+const W = 960, H = 540
+
+// ---- Overlay controls: every one of them is a small DOM change the stream patches.
+const pts = [0, 0]
+for (const b of document.querySelectorAll('[data-team]')) b.addEventListener('click', () => { const i = +b.dataset.team; $('#p' + i).textContent = ++pts[i] })
+$('#name').addEventListener('input', (e) => { $('#lname').textContent = e.target.value })
+$('#role').addEventListener('input', (e) => { $('#lrole').textContent = e.target.value })
+$('#toggle').addEventListener('click', (e) => { const hidden = $('#lower').classList.toggle('hidden'); e.target.textContent = (hidden ? 'Show' : 'Hide') + ' lower third' })
+const t0 = performance.now()
+setInterval(() => { const s = (performance.now() - t0) / 1000; $('#clock').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${(s % 60).toFixed(1).padStart(4, '0')}` }, 100)
+for (const k of document.querySelectorAll('.knob')) { const r = k.querySelector('input'), v = k.querySelector('span'); const show = () => { v.textContent = r.value }; r.addEventListener('input', show); show() }
+
+// ---- Footage: a generated scene with hard edges (refraction shows best on lines), a camera or a file.
+const scene = document.createElement('canvas'); scene.width = W; scene.height = H
+const sctx = scene.getContext('2d')
+const lights = Array.from({ length: 26 }, (_, i) => ({ x: Math.random() * W, y: Math.random() * H, r: 20 + Math.random() * 70, h: (i * 47) % 360, v: .3 + Math.random() * .9 }))
+function generated(t) {
+  const g = sctx.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#0b1d3a'); g.addColorStop(1, '#2a0b3a')
+  sctx.fillStyle = g; sctx.fillRect(0, 0, W, H)
+  sctx.globalCompositeOperation = 'lighter'
+  for (const l of lights) {
+    l.x = (l.x + l.v) % (W + 140)
+    const rg = sctx.createRadialGradient(l.x - 70, l.y, 0, l.x - 70, l.y, l.r)
+    rg.addColorStop(0, `hsla(${l.h},90%,60%,.7)`); rg.addColorStop(1, `hsla(${l.h},90%,50%,0)`)
+    sctx.fillStyle = rg; sctx.fillRect(l.x - 70 - l.r, l.y - l.r, l.r * 2, l.r * 2)
+  }
+  sctx.globalCompositeOperation = 'source-over'
+  sctx.save(); sctx.translate(W / 2, H / 2); sctx.rotate(-0.35)
+  for (let i = -16; i < 16; i++) { sctx.fillStyle = i % 2 ? '#ffffff14' : '#ffffff00'; sctx.fillRect(i * 46 + (t / 30) % 92, -700, 23, 1400) }
+  sctx.restore()
+  sctx.fillStyle = '#ffffffd0'; sctx.font = '700 120px Arial, Helvetica, sans-serif'; sctx.textAlign = 'center'
+  sctx.fillText('SNAPDOM', W / 2 + Math.sin(t / 1400) * 120, H / 2 + 40)
+}
+let video = null
+function useVideo(src) {
+  video = document.createElement('video')
+  video.muted = true; video.loop = true; video.playsInline = true
+  if (src instanceof MediaStream) video.srcObject = src; else video.src = src
+  video.play()
+}
+$('#cam').addEventListener('click', async () => { try { useVideo(await navigator.mediaDevices.getUserMedia({ video: { width: W, height: H } })) } catch (e) { $('#hud').textContent = 'camera unavailable: ' + e.message } })
+$('#pick').addEventListener('click', () => $('#file').click())
+$('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) useVideo(URL.createObjectURL(f)) })
+
+// ---- WebGL: one full-screen pass. The glass is a rounded-rect distance field per .glass box.
+const out = $('#out'); out.width = W * 2; out.height = H * 2
+const gl = out.getContext('webgl2', { premultipliedAlpha: false })
+const MAX = 8
+const fs = `#version 300 es
+precision highp float;
+uniform sampler2D footage, overlay; uniform vec2 res;
+uniform vec4 rects[${MAX}]; uniform float radii[${MAX}]; uniform int count;
+uniform float refract, bevel, frost, chroma, tint, coverW, coverH;
+out vec4 o;
+float box(vec2 p, vec4 r, float rad) {
+  vec2 c = r.xy + r.zw * .5, q = abs(p - c) - r.zw * .5 + rad;
+  return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - rad;
+}
+float field(vec2 p) { float d = 1e5; for (int i = 0; i < ${MAX}; i++) { if (i >= count) break; d = min(d, box(p, rects[i], radii[i])); } return d; }
+vec3 cam(vec2 p) { vec2 uv = (p / vec2(${W}., ${H}.) - .5) * vec2(coverW, coverH) + .5; return texture(footage, uv).rgb; }
+void main() {
+  vec2 p = vec2(gl_FragCoord.x, res.y - gl_FragCoord.y) / res * vec2(${W}., ${H}.);
+  float d = field(p);
+  vec3 col = cam(p);
+  // A soft contact shadow outside the glass.
+  float sh = field(p - vec2(0, 6));
+  col *= 1. - .28 * smoothstep(18., 0., sh) * step(0., d);
+  if (d < 0.) {
+    vec2 e = vec2(.75, 0);
+    vec2 n = normalize(vec2(field(p + e.xy) - field(p - e.xy), field(p + e.yx) - field(p - e.yx)) + 1e-6);
+    // Depth into the bevel: 1 at the rim, 0 on the flat top. The lens pulls the image inward at the rim.
+    float rim = 1. - smoothstep(0., bevel, -d);
+    float bend = rim * rim * refract;
+    vec2 q = p + n * bend;
+    vec3 acc = vec3(0); float wsum = 0.;
+    for (int i = 0; i < 12; i++) {
+      float a = float(i) * 2.39996, r = frost * sqrt(float(i) / 12.);
+      vec2 off = vec2(cos(a), sin(a)) * r;
+      float k = chroma * rim;
+      acc += vec3(cam(q + off + n * k).r, cam(q + off).g, cam(q + off - n * k).b);
+      wsum += 1.;
+    }
+    vec3 g = acc / wsum;
+    // Adaptive tint, as iOS does: over a bright backdrop the glass darkens so white text stays legible.
+    float lum = dot(g, vec3(.299, .587, .114));
+    g = mix(g, g * .55, smoothstep(.5, .9, lum) * .8);
+    g = mix(g, vec3(1), tint);
+    // Specular: light from the top left catches the rim, a thin line traces the edge.
+    float spec = pow(max(dot(n, normalize(vec2(-1, -1.4))), 0.), 3.) * rim;
+    float edge = smoothstep(1.6, 0., -d);
+    g += .55 * spec + .35 * edge;
+    col = mix(col, g, smoothstep(0., 1., -d));
+  }
+  vec4 ov = texture(overlay, p / vec2(${W}., ${H}.));
+  o = vec4(mix(col, ov.rgb, ov.a), 1.);
+}`
+const vs = `#version 300 es
+in vec2 a; void main() { gl_Position = vec4(a, 0, 1); }`
+function shader(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s }
+const prog = gl.createProgram()
+gl.attachShader(prog, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog)
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+const U = (n) => gl.getUniformLocation(prog, n)
+
+gl.activeTexture(gl.TEXTURE0)
+const footage = gl.createTexture()
+gl.bindTexture(gl.TEXTURE_2D, footage)
+for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT], [gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT]]) gl.texParameteri(gl.TEXTURE_2D, k, v)
+gl.activeTexture(gl.TEXTURE1)
+const tex = streamTexture(gl)
+gl.uniform1i(U('footage'), 0); gl.uniform1i(U('overlay'), 1)
+
+// ---- The stream: only the content (text, dots) is captured; the glass costs the DOM nothing.
+const stage = $('#stage')
+const stats = { patch: 0, full: 0, ms: [], uploaded: 0, total: 0, reasons: {} }
+let overlay = null
+function start() {
+  overlay?.stop()
+  Object.assign(stats, { patch: 0, full: 0, ms: [], uploaded: 0, total: 0, reasons: {} })
+  overlay = stream(stage, {
+    dpr: 1, embedFonts: false, patches: $('#patches').checked,
+    onFrame(f) {
+      gl.activeTexture(gl.TEXTURE1)
+      stats.uploaded += tex.update(f); stats.total += tex.width * tex.height
+      f.full ? stats.full++ : stats.patch++
+      if (f.reason) stats.reasons[f.reason] = (stats.reasons[f.reason] || 0) + 1
+      stats.ms.push(f.ms); if (stats.ms.length > 60) stats.ms.shift()
+    },
+  })
+}
+$('#patches').addEventListener('change', start)
+start()
+
+// ---- Drag the bubble on the output: it moves with `left`/`top`, a patch over a clear backdrop.
+const bubble = $('#bubble')
+let drag = null
+const toStage = (e) => { const r = out.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H] }
+out.addEventListener('pointerdown', (e) => {
+  const [x, y] = toStage(e)
+  const bx = bubble.offsetLeft, by = bubble.offsetTop
+  if (Math.hypot(x - bx - 75, y - by - 75) > 75) return
+  drag = [x - bx, y - by]; out.setPointerCapture(e.pointerId); out.style.cursor = 'grabbing'
+})
+out.addEventListener('pointermove', (e) => {
+  if (!drag) return
+  const [x, y] = toStage(e)
+  bubble.style.left = `${Math.round(Math.min(W - 150, Math.max(0, x - drag[0])))}px`
+  bubble.style.top = `${Math.round(Math.min(H - 150, Math.max(0, y - drag[1])))}px`
+})
+out.addEventListener('pointerup', () => { drag = null; out.style.cursor = '' })
+
+// ---- Each frame: upload the footage, read the glass boxes from the live layout, draw.
+const glass = [...document.querySelectorAll('.glass')]
+const rects = new Float32Array(MAX * 4), radii = new Float32Array(MAX)
+function frame(t) {
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, footage)
+  let src = scene, sw = W, sh = H
+  if (video && video.readyState >= 2) { src = video; sw = video.videoWidth; sh = video.videoHeight } else generated(t)
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src)
+  const s = Math.max(W / sw, H / sh)
+  gl.uniform1f(U('coverW'), W / (sw * s)); gl.uniform1f(U('coverH'), H / (sh * s))
+
+  const base = stage.getBoundingClientRect()
+  glass.forEach((g, i) => {
+    const r = g.getBoundingClientRect()
+    rects.set([r.left - base.left, r.top - base.top, r.width, r.height], i * 4)
+    radii[i] = Math.min(parseFloat(getComputedStyle(g).borderTopLeftRadius) || 0, r.width / 2, r.height / 2)
+  })
+  gl.uniform4fv(U('rects'), rects); gl.uniform1fv(U('radii'), radii); gl.uniform1i(U('count'), glass.length)
+  gl.uniform2f(U('res'), out.width, out.height)
+  gl.uniform1f(U('refract'), +$('#refract').value); gl.uniform1f(U('bevel'), +$('#bevel').value)
+  gl.uniform1f(U('frost'), +$('#blur').value); gl.uniform1f(U('chroma'), $('#chroma').value / 10)
+  gl.uniform1f(U('tint'), $('#tint').value / 100)
+  gl.viewport(0, 0, out.width, out.height)
+  if (tex.width) gl.drawArrays(gl.TRIANGLES, 0, 6)
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+
+// ---- Recording: the WebGL canvas is a MediaStream like any other.
+$('#rec').addEventListener('click', async () => {
+  let rec
+  try { rec = recordCanvas(out, { fps: 30, duration: 10000 }) } catch (e) { $('#hud').textContent = e.message; return }
+  $('#rec').classList.add('on'); $('#rec').textContent = 'Recording...'
+  const blob = await rec.done
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = 'glass-overlay.' + (rec.type.includes('mp4') ? 'mp4' : 'webm')
+  a.click()
+  $('#rec').classList.remove('on'); $('#rec').textContent = 'Record 10 s'
+})
+
+setInterval(() => {
+  const ms = stats.ms.slice().sort((a, b) => a - b)
+  if (!ms.length) return
+  $('#hud').innerHTML = `overlay frame <b>${ms[ms.length >> 1].toFixed(1)} ms</b> median<br>` +
+    `frames <b>${stats.patch}</b> patch / <b>${stats.full}</b> full<br>` +
+    `GPU upload <b>${(100 * stats.uploaded / (stats.total || 1)).toFixed(1)}%</b> of the overlay per frame<br>` +
+    `full because: ${Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;') || 'none'}`
+}, 300)
+</script>
+</body>
+</html>
