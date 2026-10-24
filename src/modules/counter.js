@@ -250,6 +250,11 @@ export function buildCounterContext(root) {
   }
 }
 
+// The separator of counters() is a string, and `", "` or `") "` are common ones: a `)` inside
+// it must not end the call, and a `,` inside it must not split the arguments.
+const COUNTER_CALL = /\b(counter|counters)\s*\(((?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^)"'])+)\)/g
+const COUNTER_ARG = /(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^,"'])+/g
+
 /**
  * Resolves counter()/counters() calls inside a content string for a specific node,
  * returning the content with counter() expanded but quoted-string tokens preserved.
@@ -265,9 +270,8 @@ export function buildCounterContext(root) {
 export function resolveCountersInContent(raw, node, ctx) {
   if (!raw || raw === 'none') return raw
   try {
-    const RX = /\b(counter|counters)\s*\(([^)]+)\)/g
-    return raw.replace(RX, (_, fn, args) => {
-      const parts = String(args).split(',').map(s => s.trim())
+    return raw.replace(COUNTER_CALL, (_, fn, args) => {
+      const parts = (String(args).match(COUNTER_ARG) || []).map(s => s.trim())
       if (fn === 'counter') {
         const name = parts[0]?.replace(/^["']|["']$/g, '')
         const style = (parts[1] || 'decimal').toLowerCase()

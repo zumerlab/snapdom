@@ -170,6 +170,15 @@ describe('formatCounter – negative values (NEW-6)', () => {
     const fakeCtx = { get: () => 0, getStack: () => [0] }
     expect(resolveCountersInContent('counter(x)', node, fakeCtx)).toBe('0')
   })
+
+  it('keeps commas and parentheses inside the counters() separator', () => {
+    const node = document.createElement('span')
+    document.body.appendChild(node)
+    const fakeCtx = { get: () => 3, getStack: () => [1, 2, 3] }
+    expect(resolveCountersInContent('counters(x, ", ")', node, fakeCtx)).toBe('1, 2, 3')
+    expect(resolveCountersInContent('counters(x, ") ")', node, fakeCtx)).toBe('1) 2) 3')
+    expect(resolveCountersInContent('counters(x, ", ", upper-roman) "."', node, fakeCtx)).toBe('I, II, III "."')
+  })
 })
 
 describe('multi-counter declarations (whitespace grammar)', () => {
