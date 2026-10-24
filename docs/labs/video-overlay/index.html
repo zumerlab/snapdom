@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Video Overlays from Plain HTML · SnapDOM Labs</title>
+  <meta name="description" content="Write a scoreboard, a lower third or a stream chat in HTML and CSS and put it over live video in the browser, with WebGL looks from clean broadcast to liquid glass, in Chrome, Firefox and Safari. No OBS, no server: the HTML streams into a texture that repaints only what changed." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/video-overlay/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Live video overlays from plain HTML" />
+  <meta property="og:description" content="Sports TV and stream overlays written in HTML and CSS, composited over live video in the browser with WebGL looks. Built on the SnapDOM stream plugin." />
+  <meta property="og:url" content="https://snapdom.dev/labs/video-overlay/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Live video overlays from plain HTML","description":"Write a scoreboard, a lower third or a stream chat in HTML and CSS and put it over live video in the browser, with WebGL looks from clean broadcast to liquid glass, in Chrome, Firefox and Safari. No OBS, no server: the HTML streams into a texture that repaints only what changed.","url":"https://snapdom.dev/labs/video-overlay/","datePublished":"2026-10-24","dateModified":"2026-10-24","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom), @zumer/snapdom-plugins/stream"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Video overlay","item":"https://snapdom.dev/labs/video-overlay/"}]}</script>
+  <style>
+    /* ── Scoped to this lab's live demo only ── */
+    .lab-video-overlay { border: 1px solid var(--border); background: var(--surface); padding: 16px; margin: 18px 0 8px; display: grid; gap: 10px; }
+    .lab-video-overlay .lgp-out { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #05070f; }
+    .lab-video-overlay #lgpGl { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    .lab-video-overlay .lgp-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .lab-video-overlay .lgp-gap { flex: 1; }
+    .lab-video-overlay button, .lab-video-overlay select { font: 700 11px/1 var(--font-mono); text-transform: uppercase; letter-spacing: 1px; color: var(--text); background: var(--bg); border: 1px solid var(--border-soft); border-radius: 0; padding: 8px 10px; cursor: pointer; }
+    .lab-video-overlay button:hover, .lab-video-overlay select:hover { border-color: var(--accent); }
+    .lab-video-overlay button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .lab-video-overlay button[hidden] { display: none; }
+    .lab-video-overlay .lgp-stats { color: var(--text-muted); font: 700 10px/1.4 var(--font-mono); letter-spacing: .04em; min-height: 14px; }
+    .lab-video-overlay .lgp-edit { display: grid; gap: 12px; padding-top: 6px; border-top: 1px solid var(--border-soft); }
+    .lab-video-overlay .lgp-edit[hidden] { display: none; }
+    .lab-video-overlay .lgp-knobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px 14px; }
+    .lab-video-overlay .lgp-knobs label, .lab-video-overlay .lgp-editors label { display: grid; gap: 3px; font: 700 10px/1.2 var(--font-mono); text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); }
+    .lab-video-overlay .lgp-knobs input { width: 100%; accent-color: var(--accent); }
+    .lab-video-overlay .lgp-editors { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .lab-video-overlay textarea { width: 100%; min-height: 240px; resize: vertical; box-sizing: border-box; padding: 10px; font: 12px/1.5 var(--font-mono); color: var(--text); background: var(--bg); border: 1px solid var(--border-soft); border-radius: 0; tab-size: 2; }
+    .lab-video-overlay textarea:focus { outline: none; border-color: var(--accent); }
+    .lab-video-overlay .lgp-hint { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+    /* The stage is always laid out, so the stream can capture it; closed, its frame is zero high. */
+    .lab-video-overlay .lgp-src { overflow: auto; height: 0; background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
+    .lab-video-overlay .lgp-src.is-open { height: auto; border: 1px solid var(--border-soft); }
+    /* The streamed DOM. Its size is the texture's; the visitor's CSS is nested under it.
+       Panels paint var(--panel): solid in every look but glass, where the shader is the panel. */
+    #lgpStage { position: relative; width: 960px; height: 540px; overflow: hidden; color: #fff; font: 16px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --panel: #0b1220; --cell: #1c2638; }
+    #lgpStage[data-fx="glass"] { --panel: transparent; --cell: transparent; }
+    /* The page's prose styles stop at the stage; the visitor's CSS, nested under the same id and declared later, still wins. */
+    #lgpStage :is(p, ul, ol, li, a, strong, code) { color: inherit; font-size: inherit; line-height: inherit; margin: 0; padding: 0; background: none; border: 0; text-decoration: none; }
+    @media (max-width: 760px) {
+      .lab-video-overlay { padding: 10px; }
+      .lab-video-overlay .lgp-editors { grid-template-columns: 1fr; }
+    }
+  </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body>
+  <script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "Live video overlays from <span class=\"accent\">plain HTML</span>", "lead": "A scoreboard, a lower third, a stream chat: write them in HTML and CSS and they go over live video right in the browser, in a WebGL look from clean broadcast to liquid glass, in Chrome, Firefox and Safari. No OBS, no server.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Notes from the team</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="../../showcase/">Live demos</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="./" aria-current="page">Video overlay</a><a href="../stop-motion/">Stop motion</a><a href="../paint-canvas/">Paint on a capture</a><a href="../capture-stages/">Capture stages</a><a href="../target-range/">Target range</a><a href="../webgl-live-mirror/">Live mirror</a><a href="../webgl-seamless-dom/">Seamless DOM</a><a href="../webgl-shatter/">Shattered capture</a></div></div></nav></aside>
+
+<article class="pane-read sec-labs" data-title="Video overlay">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>Video overlay</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>Live video overlays from <span class="accent">plain HTML</span></h1><p class="doc-lead">A scoreboard, a lower third, a stream chat: write them in HTML and CSS and they go over live video right in the browser, in a WebGL look from clean broadcast to liquid glass, in Chrome, Firefox and Safari. No OBS, no server.</p></header>
+<div class="pane-content"><!-- content -->
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>The overlay is ordinary HTML. The <code>stream</code> plugin keeps it as a canvas that repaints only the boxes that changed, and <code>streamTexture</code> uploads just those rectangles to WebGL, where a shader composites it over the video. The look (clean, shine, CRT, hologram, glitch, or liquid glass that refracts the footage under each panel) is that shader. The result is a canvas: record it, or send it out as a video track. No OBS, no server, no browser flag.</p></div>
+
+    <section class="prose">
+      <h2 id="try-it">Try it</h2>
+      <p>Sports TV puts a broadcast package over a simulated match, filmed from the stands; press Goal or wait for one. Streamer asks for your camera, and Share screen puts your game behind the overlay with you in a circle. Change the look, drag the pieces around, record a clip. Edit opens the HTML and CSS: the text, the layout and every style come from the DOM, the look is a shader.</p>
+      <div class="lab-video-overlay">
+        <div class="lgp-out">
+          <canvas id="lgpGl" aria-label="Program output: live video with the HTML overlay composited on top"></canvas>
+        </div>
+        <div class="lgp-bar">
+          <button type="button" data-scene="sports" aria-pressed="true">Sports TV</button>
+          <button type="button" data-scene="streamer" aria-pressed="false">Streamer</button>
+          <select id="lgpFx" aria-label="Look">
+            <option value="clean">Clean</option>
+            <option value="glass">Liquid glass</option>
+            <option value="shine" selected>Shine</option>
+            <option value="crt">CRT</option>
+            <option value="holo">Hologram</option>
+            <option value="glitch">Glitch</option>
+          </select>
+          <button type="button" id="lgpGoal">Goal!</button>
+          <button type="button" id="lgpCam" hidden>Camera</button>
+          <button type="button" id="lgpScreen" hidden>Share screen</button>
+          <span class="lgp-gap"></span>
+          <button type="button" id="lgpRec">Record</button>
+          <button type="button" id="lgpEditBtn" aria-pressed="false" aria-controls="lgpEdit">Edit</button>
+        </div>
+        <div class="lgp-stats" id="lgpStats">starting</div>
+        <div class="lgp-edit" id="lgpEdit" hidden>
+          <div class="lgp-knobs">
+            <label>Liquid<input type="range" id="lgpMerge" min="0" max="90" value="44"></label>
+            <label>Refraction<input type="range" id="lgpRefract" min="0" max="60" value="30"></label>
+            <label>Bevel<input type="range" id="lgpBevel" min="4" max="60" value="26"></label>
+            <label>Frost<input type="range" id="lgpFrost" min="0" max="12" value="4"></label>
+            <label>Dispersion<input type="range" id="lgpChroma" min="0" max="30" value="12"></label>
+          </div>
+          <div class="lgp-editors">
+            <label>HTML<textarea id="lgpHtml" spellcheck="false"></textarea></label>
+            <label>CSS<textarea id="lgpCss" spellcheck="false"></textarea></label>
+          </div>
+          <p class="lgp-hint">The overlay is this HTML and CSS. Panels with class <code>glass</code> paint <code>var(--panel)</code>, which the Liquid glass look turns into refracting glass shaped by the box and its <code>border-radius</code>; give them <code>position: absolute</code> to drag them. <code>data-clock</code> shows a clock, <code>data-rotate="one|two"</code> cycles its text. The stage below is 960 by 540 pixels.</p>
+        </div>
+        <div class="lgp-src" id="lgpSrc"><div id="lgpStage" data-fx="shine"></div></div>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2 id="how-it-works">How it works</h2>
+      <ol class="steps">
+        <li><h4 aria-level="3">The HTML is a real DOM element</h4><p>Your markup goes into a 960 by 540 stage on this page, your CSS is nested under it. Nothing is parsed or reimplemented: the browser lays it out like any other element.</p></li>
+        <li><h4 aria-level="3"><code>stream()</code> turns it into a canvas that repaints only what changed</h4><p>The first frame is a full SnapDOM capture. After that, a changed clock or a dragged box is traced to the nearest box that can be repainted on its own, and only that subtree is captured. A patched frame matches a full capture pixel for pixel.</p></li>
+        <li><h4 aria-level="3"><code>streamTexture()</code> uploads the dirty rectangles</h4><p>On WebGL2 only the changed rectangles go to the GPU, usually a few percent of the texture per frame.</p></li>
+        <li><h4 aria-level="3">The shader composites the video and the overlay</h4><p>Most looks read only the overlay texture: a light sweep, scanlines and glow, a hologram tint, glitch slices on a goal. Liquid glass also reads the layout: each frame takes the box and <code>border-radius</code> of every <code>.glass</code> panel. Each becomes a rounded-rectangle distance field, and a smooth minimum joins them with the drop under the pointer, so shapes that come close melt together. A spring makes each shape trail its box slightly, which stretches and wobbles whatever moves. Inside the shape the footage is sampled through a lens: pulled inward at the rim, frosted, split slightly by colour, darkened over bright backgrounds so white text stays legible. The streamed HTML goes on top.</p></li>
+        <li><h4 aria-level="3">The program output is a canvas</h4><p>So it records to MP4 or WebM with <code>recordCanvas()</code>, or goes out as a WebRTC video track with <code>captureStream()</code>, overlay included, to every viewer.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2 id="the-code">The code</h2>
+      <p>The part that involves SnapDOM is short. The rest is a full-screen fragment shader.</p>
+<pre><code class="language-javascript">import { stream, streamTexture } from '@zumer/snapdom-plugins/stream'
+
+const gl = canvas.getContext('webgl2')
+const overlay = streamTexture(gl)
+
+stream(stage, {
+  embedFonts: false,
+  onFrame: (frame) =&gt; overlay.update(frame), // uploads frame.rects only
+})
+
+// every animation frame: upload the video, pass each .glass box to the shader, draw
+for (const el of stage.querySelectorAll('.glass')) {
+  const r = el.getBoundingClientRect() // relative to the stage
+  rects.push(r.left - base.left, r.top - base.top, r.width, r.height)
+}</code></pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="limits">Limits</h2>
+      <ul>
+        <li>The glass shape is the box and its <code>border-radius</code>, one radius per box. Other shapes need their own distance function in the shader.</li>
+        <li>The texture is pixels: links and buttons inside it are not clickable.</li>
+        <li>A box drawn over a translucent background (an <code>rgba()</code> fill with alpha below 1) cannot be repainted alone, so those changes repaint the whole stage. Keep glass boxes free of background colour and let the shader make the glass.</li>
+        <li>Footage from another origin needs CORS to reach WebGL, as with any texture.</li>
+      </ul>
+    </section>
+
+<!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../../showcase/"><span>Previous</span><strong>Live demos</strong></a><a class="is-next" href="../stop-motion/"><span>Next</span><strong>Stop motion</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+  <script type="module">
+    import { stream, streamTexture, recordCanvas } from 'https://esm.sh/@zumer/snapdom-plugins@4/stream?external=@zumer/snapdom'
+
+    const $ = (s) => document.querySelector(s)
+    const W = 960, H = 540, MAX = 12
+    const FX = { clean: 0, glass: 1, shine: 2, crt: 3, holo: 4, glitch: 5 }
+
+    const SCENES = {
+      sports: {
+        html: `<div class="glass score">
+  <span class="team"><i style="background:#ef4444"></i>LIONS</span>
+  <b class="pts">0</b><b class="pts">0</b>
+  <span class="team">HAWKS<i style="background:#3b82f6"></i></span>
+</div>
+<div class="glass clock" data-clock="match"></div>
+<div class="glass live"><i></i>LIVE</div>
+
+<div class="glass goal" hidden>GOAL!<small>LIONS 0 · 0 HAWKS</small></div>
+
+<div class="glass lower">
+  <b>Lionel Andrade</b>
+  <span>Match commentator · North Stadium</span>
+</div>
+
+<div class="glass ticker">
+  <em>LATEST</em>
+  <span data-rotate="Attendance tonight: 41,200|Lions unbeaten in their last six at home|Hawks keeper with four saves so far|Next match: Saturday 18:00">Attendance tonight: 41,200</span>
+</div>`,
+        css: `.glass { position: absolute; display: flex; align-items: center; color: #fff;
+  background: var(--panel); text-shadow: 0 1px 2px #0006; }
+
+.score { left: 28px; top: 26px; height: 52px; border-radius: 14px; padding: 0 6px 0 16px;
+  gap: 12px; font-size: 15px; font-weight: 800; letter-spacing: .08em; }
+.score .team { display: flex; align-items: center; gap: 10px; }
+.score .team i { width: 6px; height: 28px; border-radius: 3px; }
+.score .pts { min-width: 40px; height: 40px; border-radius: 10px; background: var(--cell);
+  display: grid; place-items: center; font-size: 24px; letter-spacing: 0; }
+.clock { left: 362px; top: 26px; height: 52px; border-radius: 14px; padding: 0 16px;
+  color: #facc15; font: 800 20px/1 ui-monospace, Menlo, monospace; }
+.live { right: 28px; top: 26px; height: 52px; border-radius: 14px; padding: 0 18px; gap: 10px;
+  font-size: 15px; font-weight: 800; letter-spacing: .14em; }
+.live i { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; }
+
+.goal { left: 270px; top: 180px; width: 420px; height: 160px; border-radius: 40px;
+  flex-direction: column; justify-content: center; gap: 6px;
+  font-size: 76px; line-height: 80px; font-weight: 900; letter-spacing: .04em; }
+.goal small { font-size: 18px; line-height: 22px; font-weight: 700; letter-spacing: .2em; opacity: .9; }
+.goal[hidden] { display: none; }
+
+.lower { left: 28px; bottom: 82px; height: 84px; border-radius: 18px; padding: 0 28px 0 22px;
+  border-left: 6px solid #facc15; flex-direction: column; align-items: flex-start;
+  justify-content: center; gap: 2px; }
+.lower b { font-size: 26px; line-height: 32px; font-weight: 800; }
+.lower span { font-size: 15px; opacity: .85; }
+
+.ticker { left: 0; right: 0; bottom: 0; height: 44px; gap: 16px; font-size: 16px; font-weight: 600; }
+.ticker em { font-style: normal; height: 44px; padding: 0 16px; display: flex; align-items: center;
+  background: #ef4444; font-size: 14px; font-weight: 800; letter-spacing: .14em; text-shadow: none; }`,
+      },
+      streamer: {
+        html: `<div class="cam"></div>
+
+<div class="glass live"><i></i>LIVE<span>1.2K</span></div>
+
+<div class="glass follow">
+  <small>NEW FOLLOWER</small>
+  <b data-rotate="pixel_queen|nightowl_92|glassmaker|zumer_fan">pixel_queen</b>
+</div>
+
+<div class="glass chat">
+  <p><b style="color:#ff9f0a">mika</b> the overlay is just HTML?</p>
+  <p><b style="color:#30d158">dev_ro</b> works in Safari too</p>
+  <p><b style="color:#64d2ff">nightowl_92</b> gg</p>
+  <p><b style="color:#ff6482">pixel_queen</b> try the glass look</p>
+  <p data-rotate="zumer_fan: first time here|glassmaker: no OBS at all?|dev_ro: record a clip">zumer_fan: first time here</p>
+</div>
+
+<div class="glass name">
+  <b>your_handle</b>
+  <span>Building a video overlay in HTML</span>
+</div>
+
+<div class="glass subs">
+  <span>Sub goal</span><b>87 / 100</b>
+  <div class="bar"><i></i></div>
+</div>`,
+        css: `.glass { position: absolute; display: flex; color: #fff; background: var(--panel);
+  text-shadow: 0 1px 2px #0006; }
+
+.live { left: 24px; top: 24px; height: 44px; border-radius: 22px; padding: 0 18px;
+  align-items: center; gap: 9px; font-size: 14px; font-weight: 800; letter-spacing: .1em; }
+.live i { width: 9px; height: 9px; border-radius: 50%; background: #ff3b30; }
+.live span { font-weight: 500; letter-spacing: 0; opacity: .85; }
+
+.follow { left: 330px; top: 24px; width: 300px; height: 80px; border-radius: 24px;
+  flex-direction: column; align-items: center; justify-content: center; }
+.follow small { font-size: 11px; font-weight: 700; letter-spacing: .18em; opacity: .8; }
+.follow b { font-size: 24px; line-height: 30px; }
+
+.chat { right: 24px; top: 24px; width: 270px; height: 330px; border-radius: 24px; padding: 18px;
+  box-sizing: border-box; flex-direction: column; justify-content: flex-end; gap: 10px;
+  font-size: 15px; line-height: 20px; }
+
+.name { left: 24px; bottom: 24px; height: 76px; border-radius: 22px; padding: 0 24px;
+  flex-direction: column; align-items: flex-start; justify-content: center; }
+.name b { font-size: 22px; line-height: 28px; }
+.name span { font-size: 14px; opacity: .85; }
+
+.subs { right: 24px; bottom: 24px; width: 270px; height: 76px; border-radius: 22px; padding: 0 20px;
+  box-sizing: border-box; flex-wrap: wrap; align-content: center; justify-content: space-between;
+  gap: 8px; font-size: 15px; font-weight: 700; }
+.subs .bar { width: 100%; height: 8px; border-radius: 4px; background: #2a2f3a; }
+.subs .bar i { display: block; width: 87%; height: 8px; border-radius: 4px; background: #30d158; }
+
+/* While the screen is shared, the camera sits in this circle. */
+.cam { position: absolute; left: 24px; bottom: 120px; width: 190px; height: 190px;
+  border-radius: 50%; border: 4px solid #fff; box-sizing: border-box; display: none; }
+&[data-pip] .cam { display: block; }`,
+      },
+    }
+
+    // ---- The stage: the visitor's HTML, with their CSS nested under it.
+    const stage = $('#lgpStage')
+    const userCss = document.createElement('style')
+    document.head.append(userCss)
+    let scene = 'sports'
+    function apply() {
+      userCss.textContent = `#lgpStage { ${$('#lgpCss').value} }`
+      stage.innerHTML = $('#lgpHtml').value
+      tick()
+      start()
+    }
+    function load(name) {
+      scene = name
+      $('#lgpHtml').value = SCENES[name].html
+      $('#lgpCss').value = SCENES[name].css
+      for (const b of document.querySelectorAll('[data-scene]')) b.setAttribute('aria-pressed', String(b.dataset.scene === name))
+      $('#lgpGoal').hidden = name !== 'sports'
+      $('#lgpCam').hidden = $('#lgpScreen').hidden = name !== 'streamer'
+      if (!navigator.mediaDevices?.getDisplayMedia) $('#lgpScreen').hidden = true
+      apply()
+      if (name === 'streamer' && !camera) startCamera()
+    }
+    for (const b of document.querySelectorAll('[data-scene]')) b.addEventListener('click', () => load(b.dataset.scene))
+    let pending = 0
+    for (const id of ['#lgpHtml', '#lgpCss']) $(id).addEventListener('input', () => { clearTimeout(pending); pending = setTimeout(apply, 300) })
+    $('#lgpEditBtn').addEventListener('click', (e) => {
+      const open = $('#lgpEdit').hidden
+      $('#lgpEdit').hidden = !open
+      $('#lgpSrc').classList.toggle('is-open', open)
+      e.currentTarget.setAttribute('aria-pressed', String(open))
+    })
+    // The look is an attribute on the stage: panels switch to glass through CSS, the rest is the shader.
+    $('#lgpFx').addEventListener('change', (e) => { stage.dataset.fx = e.target.value })
+
+    // data-clock and data-rotate: the moving parts the overlays need.
+    const t0 = performance.now()
+    function tick() {
+      const s = (performance.now() - t0) / 1000
+      const match = `${String(Math.floor(s / 60) + 63).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
+      for (const el of stage.querySelectorAll('[data-clock]')) if (el.textContent !== match) el.textContent = match
+    }
+    setInterval(tick, 250)
+    let turn = 0
+    setInterval(() => {
+      turn++
+      for (const el of stage.querySelectorAll('[data-rotate]')) { const items = el.dataset.rotate.split('|'); el.textContent = items[turn % items.length] }
+    }, 3500)
+
+    // ---- Goals: the score, the banner and a glitch burst in every look.
+    let burst = 0, goalTimer = 0
+    function goal(side) {
+      const pts = stage.querySelectorAll('.pts')
+      if (pts[side]) pts[side].textContent = +pts[side].textContent + 1
+      const banner = stage.querySelector('.goal')
+      if (banner) {
+        const small = banner.querySelector('small')
+        if (small && pts.length === 2) small.textContent = `LIONS ${pts[0].textContent} · ${pts[1].textContent} HAWKS`
+        banner.hidden = false
+        clearTimeout(goalTimer)
+        goalTimer = setTimeout(() => { banner.hidden = true }, 2600)
+      }
+      burst = 1
+    }
+    $('#lgpGoal').addEventListener('click', () => goal(0))
+
+    // ---- Simulated football: a top-down pitch the shader films from the stands.
+    const PW = 1050, PH = 760, L = 40, R = 1010, TOP = 70, BOT = 730
+    const pitch = document.createElement('canvas'); pitch.width = PW; pitch.height = PH
+    const px = pitch.getContext('2d')
+    const SHAPE = [[.04, .5], [.18, .18], [.18, .4], [.18, .6], [.18, .82], [.34, .25], [.34, .5], [.34, .75], [.46, .2], [.46, .5], [.46, .8]]
+    const players = [0, 1].flatMap((team) => SHAPE.map(([fx, fy]) => {
+      const hx = team ? R - fx * (R - L) : L + fx * (R - L), hy = TOP + fy * (BOT - TOP)
+      return { team, hx, hy, x: hx, y: hy }
+    }))
+    const ball = { x: PW / 2, y: (TOP + BOT) / 2, vx: 0, vy: 0, z: 0 }
+    function simulate() {
+      for (const team of [0, 1]) {
+        let chaser = null, best = 1e9
+        for (const p of players) if (p.team === team) { const d = Math.hypot(p.x - ball.x, p.y - ball.y); if (d < best) { best = d; chaser = p } }
+        for (const p of players) {
+          if (p.team !== team) continue
+          const tx = p === chaser ? ball.x : p.hx + (ball.x - PW / 2) * .45, ty = p === chaser ? ball.y : p.hy + (ball.y - p.hy) * .2
+          const d = Math.hypot(tx - p.x, ty - p.y) || 1, v = p === chaser ? 2.1 : 1.2
+          p.x += (tx - p.x) / d * Math.min(v, d); p.y += (ty - p.y) / d * Math.min(v, d)
+          if (Math.hypot(p.x - ball.x, p.y - ball.y) < 12 && Math.hypot(ball.vx, ball.vy) < 3) {
+            const gx = team ? L : R, gy = (TOP + BOT) / 2 + (Math.random() - .5) * 120
+            const a = Math.atan2(gy - ball.y, gx - ball.x) + (Math.random() - .5) * 1.1, sp = 5 + Math.random() * 6
+            ball.vx = Math.cos(a) * sp; ball.vy = Math.sin(a) * sp
+          }
+        }
+      }
+      ball.x += ball.vx; ball.y += ball.vy; ball.vx *= .985; ball.vy *= .985
+      const mouth = Math.abs(ball.y - (TOP + BOT) / 2) < 40
+      if ((ball.x < L || ball.x > R) && mouth) {
+        goal(ball.x > R ? 0 : 1)
+        Object.assign(ball, { x: PW / 2, y: (TOP + BOT) / 2, vx: 0, vy: 0 })
+      }
+      if (ball.x < L || ball.x > R) { ball.vx *= -.6; ball.x = Math.min(R, Math.max(L, ball.x)) }
+      if (ball.y < TOP || ball.y > BOT) { ball.vy *= -.6; ball.y = Math.min(BOT, Math.max(TOP, ball.y)) }
+    }
+    function drawPitch() {
+      for (let i = 0; i < 14; i++) { px.fillStyle = i % 2 ? '#2f7d3b' : '#2a7035'; px.fillRect(i * 75, 0, 75, PH) }
+      // Advertising boards behind the far touchline.
+      for (let i = 0; i < 9; i++) {
+        px.fillStyle = ['#0b1220', '#1d4ed8', '#0b1220'][i % 3]; px.fillRect(i * 117, 0, 117, 44)
+        px.fillStyle = '#fff'; px.font = '700 20px Arial, Helvetica, sans-serif'; px.textAlign = 'center'
+        px.fillText(i % 3 === 1 ? 'HTML TO VIDEO' : 'SNAPDOM', i * 117 + 58, 30)
+      }
+      px.strokeStyle = '#ffffffcc'; px.lineWidth = 4
+      px.strokeRect(L, TOP, R - L, BOT - TOP)
+      px.beginPath(); px.moveTo(PW / 2, TOP); px.lineTo(PW / 2, BOT); px.stroke()
+      px.beginPath(); px.arc(PW / 2, (TOP + BOT) / 2, 91, 0, Math.PI * 2); px.stroke()
+      const my = (TOP + BOT) / 2
+      px.strokeRect(L, my - 201, 165, 402); px.strokeRect(R - 165, my - 201, 165, 402)
+      px.strokeRect(L, my - 92, 55, 184); px.strokeRect(R - 55, my - 92, 55, 184)
+      px.fillStyle = '#ffffffdd'; px.fillRect(L - 18, my - 37, 18, 74); px.fillRect(R, my - 37, 18, 74)
+      for (const p of players) {
+        px.fillStyle = '#0006'; px.beginPath(); px.ellipse(p.x + 5, p.y + 6, 11, 7, 0, 0, Math.PI * 2); px.fill()
+        px.fillStyle = p.team ? '#3b82f6' : '#ef4444'; px.beginPath(); px.arc(p.x, p.y, 10, 0, Math.PI * 2); px.fill()
+        px.fillStyle = '#ffffffaa'; px.beginPath(); px.arc(p.x, p.y, 4, 0, Math.PI * 2); px.fill()
+      }
+      px.fillStyle = '#0007'; px.beginPath(); px.ellipse(ball.x + 4, ball.y + 4, 6, 4, 0, 0, Math.PI * 2); px.fill()
+      px.fillStyle = '#fff'; px.beginPath(); px.arc(ball.x, ball.y, 6, 0, Math.PI * 2); px.fill()
+    }
+
+    // ---- Streamer footage: the camera, or the shared screen with the camera in a circle.
+    let camera = null, screen = null
+    const videoOf = (ms) => { const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.srcObject = ms; v.play(); return v }
+    async function startCamera() {
+      try {
+        camera = videoOf(await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } }))
+        $('#lgpCam').setAttribute('aria-pressed', 'true')
+      } catch (err) { $('#lgpStats').textContent = 'camera unavailable: ' + err.message }
+    }
+    function stopCamera() { for (const t of camera?.srcObject.getTracks() || []) t.stop(); camera = null; $('#lgpCam').setAttribute('aria-pressed', 'false') }
+    $('#lgpCam').addEventListener('click', () => camera ? stopCamera() : startCamera())
+    function stopScreen() { for (const t of screen?.srcObject.getTracks() || []) t.stop(); screen = null; delete stage.dataset.pip; $('#lgpScreen').setAttribute('aria-pressed', 'false') }
+    $('#lgpScreen').addEventListener('click', async () => {
+      if (screen) return stopScreen()
+      try {
+        const ms = await navigator.mediaDevices.getDisplayMedia({ video: true })
+        // Stopping the share from the browser's own bar puts the camera back full frame.
+        ms.getVideoTracks()[0].addEventListener('ended', stopScreen)
+        screen = videoOf(ms)
+        stage.dataset.pip = ''
+        $('#lgpScreen').setAttribute('aria-pressed', 'true')
+      } catch (err) { $('#lgpStats').textContent = 'screen share unavailable: ' + err.message }
+    })
+    const idle = document.createElement('canvas'); idle.width = W; idle.height = H
+    const ix = idle.getContext('2d')
+    function drawIdle() {
+      const g = ix.createLinearGradient(0, 0, W, H); g.addColorStop(0, '#1e1b4b'); g.addColorStop(1, '#4c1d95')
+      ix.fillStyle = g; ix.fillRect(0, 0, W, H)
+      ix.fillStyle = '#ffffffcc'; ix.font = '600 26px -apple-system, Segoe UI, Arial, sans-serif'; ix.textAlign = 'center'
+      ix.fillText('Allow the camera to go live', W / 2, H / 2 + 120)
+    }
+    drawIdle()
+
+    // ---- WebGL: footage, glass, picture in picture, then the overlay through the look.
+    const out = $('#lgpGl')
+    const gl = out.getContext('webgl2', { premultipliedAlpha: false })
+    if (!gl) $('#lgpStats').textContent = 'WebGL2 is not available in this browser'
+    const fs = `#version 300 es
+    precision highp float;
+    uniform sampler2D footage, overlay, pipTex; uniform vec2 res, cover, pipCover; uniform vec3 drop; uniform vec4 pipRect;
+    uniform vec4 rects[${MAX}]; uniform float radii[${MAX}]; uniform int count, scene, fx, pip;
+    uniform float merge, refract, bevel, frost, chroma, t, burst, pan;
+    out vec4 o;
+    const vec2 S = vec2(${W}., ${H}.);
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    // The pitch seen from a camera in the stands: rows nearer the bottom are nearer the lens.
+    vec3 field3(vec2 uv) {
+      float d = 1.274 / (uv.y + .274);
+      vec2 tc = vec2(.5 + pan + (uv.x - .5) * d * .43, .97 - (d - 1.) * .675);
+      if (tc.y < 0.) {
+        vec2 g = floor(uv * vec2(260., 120.));
+        vec3 fan = vec3(.25 + .55 * hash(g + 1.), .2 + .45 * hash(g + 2.), .25 + .55 * hash(g + 3.));
+        vec3 c = mix(vec3(.04, .05, .08), fan, .6 * step(.3, hash(g))) * (.45 + .55 * smoothstep(0., .25, uv.y));
+        return c + step(.9988, hash(g + floor(t * 7.))) * 1.6;
+      }
+      if (tc.x < 0. || tc.x > 1. || tc.y > 1.) return vec3(.11, .32, .15);
+      return texture(footage, tc).rgb;
+    }
+    vec3 bg(vec2 p) {
+      vec2 uv = p / S;
+      return scene == 0 ? field3(uv) : texture(footage, (uv - .5) * cover + .5).rgb;
+    }
+    float box(vec2 p, vec4 r, float rad) {
+      vec2 q = abs(p - r.xy - r.zw * .5) - r.zw * .5 + rad;
+      return length(max(q, 0.)) + min(max(q.x, q.y), 0.) - rad;
+    }
+    // Polynomial smooth minimum: shapes closer than about merge/2 melt into one.
+    float smin(float a, float b, float k) { float h = max(k - abs(a - b), 0.) / max(k, 1e-3); return min(a, b) - h * h * k * .25; }
+    float sdf(vec2 p) {
+      // A drop of radius 0 would still pull nearby shapes toward its centre through smin.
+      float d = drop.z > .5 ? length(p - drop.xy) - drop.z : 1e5;
+      for (int i = 0; i < ${MAX}; i++) { if (i >= count) break; d = smin(d, box(p, rects[i], radii[i]), merge); }
+      return d;
+    }
+    vec4 ov(vec2 uv) { return (uv.x < 0. || uv.y < 0. || uv.x > 1. || uv.y > 1.) ? vec4(0) : texture(overlay, uv); }
+    // Premultiplied, so a split channel keeps its own coverage.
+    vec4 split(vec2 uv, vec2 d) { vec4 r = ov(uv + d), g = ov(uv), b = ov(uv - d);
+      return vec4(r.r * r.a, g.g * g.a, b.b * b.a, max(r.a, max(g.a, b.a))); }
+    vec3 glow(vec2 uv, float px) { vec3 s = vec3(0);
+      for (int i = 0; i < 16; i++) { float a = float(i) * 2.39996, r = px * sqrt(float(i + 1) / 16.);
+        vec4 c = ov(uv + vec2(cos(a), sin(a)) * r / S); s += c.rgb * c.a; }
+      return s / 16.; }
+    void main() {
+      vec2 p = vec2(gl_FragCoord.x, res.y - gl_FragCoord.y) / res * S;
+      vec2 uv = p / S;
+      vec3 col = bg(p);
+      if (fx == 1) {
+        float d = sdf(p);
+        col *= 1. - .3 * smoothstep(22., 0., sdf(p - vec2(0, 7))) * step(0., d);
+        if (d < 0.) {
+          vec2 e = vec2(.75, 0);
+          vec2 n = normalize(vec2(sdf(p + e.xy) - sdf(p - e.xy), sdf(p + e.yx) - sdf(p - e.yx)) + 1e-6);
+          // 1 at the rim, 0 on the flat top: the lens pulls the image inward at the rim.
+          float rim = 1. - smoothstep(0., bevel, -d);
+          vec2 q = p + n * rim * rim * refract;
+          vec3 g = vec3(0);
+          for (int i = 0; i < 12; i++) {
+            float a = float(i) * 2.39996, r = frost * sqrt(float(i) / 12.);
+            vec2 off = vec2(cos(a), sin(a)) * r;
+            float k = chroma * rim;
+            g += vec3(bg(q + off + n * k).r, bg(q + off).g, bg(q + off - n * k).b);
+          }
+          g /= 12.;
+          float lum = dot(g, vec3(.299, .587, .114));
+          // A touch of smoke and saturation, so text on the glass reads over busy footage.
+          g = mix(vec3(lum), g, 1.2) * .82;
+          g = mix(g, g * .55, smoothstep(.5, .9, lum) * .8);
+          float spec = pow(max(dot(n, normalize(vec2(-1, -1.4))), 0.), 3.) * rim;
+          float back = pow(max(dot(n, normalize(vec2(1, 1.4))), 0.), 4.) * rim;
+          g += .5 * spec + .18 * back + .4 * smoothstep(1.4, 0., -d);
+          col = mix(col, g + .06, smoothstep(0., 1., -d));
+        }
+      }
+      if (pip == 1) {
+        vec2 c = pipRect.xy + pipRect.zw * .5;
+        if (length(p - c) < pipRect.z * .5) col = texture(pipTex, ((p - c) / pipRect.zw) * pipCover + .5).rgb;
+      }
+      // The look reads the overlay; the footage underneath stays as it is.
+      vec2 q = uv; float g = burst;
+      if (fx == 5) g = max(g, .3 + .7 * step(.93, hash(vec2(floor(t * 8.), 1.))));
+      if (fx == 3) { vec2 cc = q - .5; q = .5 + cc * (1. + .12 * dot(cc, cc)); }
+      if (fx == 4) q.x += (hash(vec2(floor(q.y * 90.), floor(t * 20.))) - .5) * .004;
+      if (g > 0.) {
+        float row = floor(q.y * 24.), slice = step(1. - .45 * g, hash(vec2(row, floor(t * 14.))));
+        q.x += (hash(vec2(row, floor(t * 30.))) - .5) * .12 * g * slice;
+      }
+      vec4 c = split(q, vec2(.004 * g + (fx == 3 ? .0012 : 0.), 0));
+      vec3 add = vec3(0);
+      if (fx == 2) {
+        // A light sweep across the graphics every few seconds, as broadcast packages do.
+        float s = fract(t * .22) * 2.6 - .8, band = exp(-pow((q.x + q.y * .45 - s) * 14., 2.));
+        add = vec3(1) * band * .6 * c.a + glow(q, 9.) * .25;
+      } else if (fx == 3) {
+        c.rgb *= .78 + .22 * sin(q.y * S.y * 3.14159);
+        add = glow(q, 10.) * .8;
+      } else if (fx == 4) {
+        float l = dot(c.rgb, vec3(.3, .59, .11));
+        c = vec4(vec3(.25, .85, 1.) * (pow(l, 1.6) * 1.05 + .04 * c.a), c.a);
+        c *= (.7 + .2 * sin(q.y * 500. - t * 9.)) * (.85 + .15 * hash(vec2(floor(t * 24.), 3.)));
+        add = glow(q, 14.) * vec3(.2, .8, 1.) * .45;
+      }
+      col = col * (1. - c.a) + c.rgb + add;
+      if (fx == 3) { vec2 v = uv - .5; col *= 1. - .7 * dot(v, v); }
+      o = vec4(col, 1);
+    }`
+    const vs = `#version 300 es
+    in vec2 a; void main() { gl_Position = vec4(a, 0, 1); }`
+    function shader(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s }
+    const prog = gl.createProgram()
+    gl.attachShader(prog, shader(gl.VERTEX_SHADER, vs)); gl.attachShader(prog, shader(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(prog); gl.useProgram(prog)
+    gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW)
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0)
+    const U = (n) => gl.getUniformLocation(prog, n)
+    function texture(unit, mip) {
+      gl.activeTexture(gl.TEXTURE0 + unit)
+      const tex = gl.createTexture()
+      gl.bindTexture(gl.TEXTURE_2D, tex)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, mip ? gl.LINEAR_MIPMAP_LINEAR : gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT)
+      return tex
+    }
+    // Mipmaps keep the far touchline from shimmering.
+    const footageTex = texture(0, true)
+    const pipTex = texture(2, false)
+    gl.activeTexture(gl.TEXTURE1)
+    const overlayTex = streamTexture(gl)
+    gl.uniform1i(U('footage'), 0); gl.uniform1i(U('overlay'), 1); gl.uniform1i(U('pipTex'), 2)
+
+    // ---- The stream. A CSS edit is not a mutation of the stage, so every edit restarts it.
+    const stats = { patch: 0, full: 0, ms: [], uploaded: 0, total: 0, reasons: {} }
+    let live = null
+    function start() {
+      live?.stop()
+      Object.assign(stats, { patch: 0, full: 0, ms: [], uploaded: 0, total: 0, reasons: {} })
+      live = stream(stage, {
+        dpr: Math.min(devicePixelRatio || 1, 2), embedFonts: false,
+        onFrame(f) {
+          gl.activeTexture(gl.TEXTURE1)
+          stats.uploaded += overlayTex.update(f); stats.total += overlayTex.width * overlayTex.height
+          f.full ? stats.full++ : stats.patch++
+          if (f.reason) stats.reasons[f.reason] = (stats.reasons[f.reason] || 0) + 1
+          stats.ms.push(f.ms); if (stats.ms.length > 60) stats.ms.shift()
+        },
+      })
+    }
+
+    // ---- Pointer: drag any positioned overlay piece; in the glass look a drop follows the pointer.
+    const pointer = { x: W / 2, y: H / 2, in: false, down: false }
+    let drag = null
+    const toStage = (e) => { const r = out.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H] }
+    const pieces = () => [...stage.children].filter((el) => el.getClientRects().length && getComputedStyle(el).position === 'absolute')
+    out.addEventListener('pointerdown', (e) => {
+      const [x, y] = toStage(e)
+      Object.assign(pointer, { x, y, in: true, down: true })
+      out.setPointerCapture(e.pointerId)
+      const base = stage.getBoundingClientRect()
+      for (const el of pieces().reverse()) {
+        const r = el.getBoundingClientRect()
+        if (x < r.left - base.left || x > r.right - base.left || y < r.top - base.top || y > r.bottom - base.top) continue
+        drag = { el, dx: x - el.offsetLeft, dy: y - el.offsetTop }
+        el.style.right = 'auto'; el.style.bottom = 'auto'
+        out.style.cursor = 'grabbing'
+        break
+      }
+    })
+    out.addEventListener('pointermove', (e) => {
+      const [x, y] = toStage(e)
+      Object.assign(pointer, { x, y, in: true })
+      if (!drag) return
+      drag.el.style.left = `${Math.round(x - drag.dx)}px`
+      drag.el.style.top = `${Math.round(y - drag.dy)}px`
+    })
+    const release = () => { drag = null; pointer.down = false; out.style.cursor = '' }
+    out.addEventListener('pointerup', (e) => { release(); if (e.pointerType !== 'mouse') pointer.in = false })
+    out.addEventListener('pointercancel', () => { release(); pointer.in = false })
+    out.addEventListener('pointerleave', () => { if (!drag) pointer.in = false })
+
+    // ---- Springs: in the glass look each shape follows its box a little late, so what moves stretches and wobbles.
+    const STIFF = 240, DAMP = 15
+    const springs = new WeakMap()
+    const dropSpring = { x: W / 2, y: H / 2, vx: 0, vy: 0, r: 0, vr: 0 }
+    function spring(s, tx, ty, dt) {
+      s.vx += ((tx - s.x) * STIFF - s.vx * DAMP) * dt; s.x += s.vx * dt
+      s.vy += ((ty - s.y) * STIFF - s.vy * DAMP) * dt; s.y += s.vy * dt
+    }
+    const cover = (vw, vh, w, h) => { const s = Math.max(w / vw, h / vh); return [w / (vw * s), h / (vh * s)] }
+
+    // ---- Each animation frame.
+    const rects = new Float32Array(MAX * 4), radii = new Float32Array(MAX)
+    let last = performance.now(), pan = 0
+    function frame(t) {
+      const dt = Math.min(.033, (t - last) / 1000); last = t
+      const dpr = Math.min(devicePixelRatio || 1, 2)
+      const w = Math.round(out.clientWidth * dpr), h = Math.round(out.clientHeight * dpr)
+      if (out.width !== w || out.height !== h) { out.width = w; out.height = h }
+      burst = Math.max(0, burst - dt * 1.6)
+      const fx = FX[stage.dataset.fx] ?? 0
+
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, footageTex)
+      if (scene === 'sports') {
+        simulate(); drawPitch()
+        pan += ((Math.min(.3, Math.max(-.3, (ball.x / PW - .5) * .7))) - pan) * .03
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, pitch)
+      } else {
+        const main = screen?.readyState >= 2 ? screen : camera?.readyState >= 2 ? camera : null
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, main || idle)
+        gl.uniform2f(U('cover'), ...(main ? cover(main.videoWidth, main.videoHeight, W, H) : [1, 1]))
+      }
+      gl.generateMipmap(gl.TEXTURE_2D)
+      const base = stage.getBoundingClientRect()
+      const usePip = scene === 'streamer' && screen && camera?.readyState >= 2 && stage.querySelector('.cam')
+      gl.uniform1i(U('pip'), usePip ? 1 : 0)
+      if (usePip) {
+        const r = usePip.getBoundingClientRect()
+        gl.uniform4f(U('pipRect'), r.left - base.left + 4, r.top - base.top + 4, r.width - 8, r.height - 8)
+        gl.uniform2f(U('pipCover'), ...cover(camera.videoWidth, camera.videoHeight, 1, 1))
+        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, pipTex)
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, camera)
+      }
+
+      let count = 0
+      if (fx === 1) {
+        for (const el of stage.querySelectorAll('.glass')) {
+          if (count === MAX || !el.getClientRects().length) continue
+          const r = el.getBoundingClientRect()
+          const cx = r.left - base.left + r.width / 2, cy = r.top - base.top + r.height / 2
+          let sp = springs.get(el)
+          if (!sp) springs.set(el, sp = { x: cx, y: cy, vx: 0, vy: 0 })
+          spring(sp, cx, cy, dt)
+          // The lag stretches the glass along the motion and thins it across, like a drop.
+          const lx = cx - sp.x, ly = cy - sp.y
+          const gw = Math.max(8, r.width + Math.abs(lx) * .9 - Math.abs(ly) * .3)
+          const gh = Math.max(8, r.height + Math.abs(ly) * .9 - Math.abs(lx) * .3)
+          rects.set([cx - lx * .5 - gw / 2, cy - ly * .5 - gh / 2, gw, gh], count * 4)
+          radii[count++] = Math.min(parseFloat(getComputedStyle(el).borderTopLeftRadius) || 0, gw / 2, gh / 2)
+        }
+      }
+      spring(dropSpring, pointer.x, pointer.y, dt)
+      const targetR = fx === 1 && pointer.in && !drag ? (pointer.down ? 58 : 40) : 0
+      dropSpring.vr += ((targetR - dropSpring.r) * STIFF - dropSpring.vr * DAMP) * dt; dropSpring.r = Math.max(0, dropSpring.r + dropSpring.vr * dt)
+
+      gl.uniform4fv(U('rects'), rects); gl.uniform1fv(U('radii'), radii); gl.uniform1i(U('count'), count)
+      gl.uniform3f(U('drop'), dropSpring.x, dropSpring.y, dropSpring.r)
+      gl.uniform1i(U('scene'), scene === 'sports' ? 0 : 1); gl.uniform1i(U('fx'), fx)
+      gl.uniform1f(U('t'), t / 1000); gl.uniform1f(U('burst'), burst); gl.uniform1f(U('pan'), pan)
+      gl.uniform2f(U('res'), w, h)
+      gl.uniform1f(U('merge'), +$('#lgpMerge').value)
+      gl.uniform1f(U('refract'), +$('#lgpRefract').value); gl.uniform1f(U('bevel'), +$('#lgpBevel').value)
+      gl.uniform1f(U('frost'), +$('#lgpFrost').value); gl.uniform1f(U('chroma'), $('#lgpChroma').value / 10)
+      gl.viewport(0, 0, w, h)
+      if (overlayTex.width) gl.drawArrays(gl.TRIANGLES, 0, 6)
+      requestAnimationFrame(frame)
+    }
+
+    $('#lgpRec').addEventListener('click', async (e) => {
+      const btn = e.currentTarget
+      if (btn.getAttribute('aria-pressed') === 'true') return
+      let rec
+      try { rec = recordCanvas(out, { fps: 30, duration: 6000 }) } catch (err) { $('#lgpStats').textContent = err.message; return }
+      btn.setAttribute('aria-pressed', 'true'); btn.textContent = 'Recording'
+      const blob = await rec.done
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = 'video-overlay.' + (rec.type.includes('mp4') ? 'mp4' : 'webm')
+      a.click()
+      btn.setAttribute('aria-pressed', 'false'); btn.textContent = 'Record'
+    })
+
+    setInterval(() => {
+      const ms = stats.ms.slice().sort((a, b) => a - b)
+      if (!ms.length) return
+      const kf = stats.reasons.keyframe || 0
+      $('#lgpStats').title = 'Full frames: ' + Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ')
+      $('#lgpStats').textContent = `HTML frame ${ms[ms.length >> 1].toFixed(1)} ms · ${stats.patch} patches / ${stats.full - kf} full + ${kf} idle keyframes · GPU upload ${(100 * stats.uploaded / (stats.total || 1)).toFixed(1)}% per frame`
+    }, 400)
+
+    load('sports')
+    requestAnimationFrame(frame)
+  </script>
+</body>
+</html>
