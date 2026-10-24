@@ -16,7 +16,7 @@ Install the plugins next to a core supported by their peer dependency:
 npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-Plugins 4.x in this checkout require SnapDOM 3.3.8 or newer within 3.x. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed and available on npm in `@zumer/snapdom-plugins` 4.x. The `@latest` command above installs the published release. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
+Plugins 4.x in this checkout require SnapDOM 3.4.0 or newer within 3.x. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed and available on npm in `@zumer/snapdom-plugins` 4.x. The `@latest` command above installs the published release. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
 
 ## Usage
 
@@ -222,8 +222,22 @@ console.log(art);
 | `width` | `number` | `80` | Character width of output |
 | `charset` | `string` | `' .:-=+*#%@'` | Characters from lightest to darkest |
 | `invert` | `boolean` | `false` | Invert luminance mapping |
+| `format` | `'text' \| 'html'` | `'text'` | Plain text, or colored HTML in a `<pre>` |
+| `contrast` | `number` | `0` | Non-negative luminance contrast boost |
 
-`toAscii({ width, charset, invert })` overrides any of the three per call.
+`toAscii({ width, charset, invert, format, contrast })` overrides any of them per call.
+
+The conversion is also exported on its own. `asciiFromCanvas(source, options)` turns any
+drawable (a canvas, an image, a video frame) into ASCII with the same options, and
+`asciiStream(element, options)` runs it on every frame of a [`stream()`](stream/README.md):
+
+```js
+import { asciiStream } from '@zumer/snapdom-plugins/ascii-export';
+
+const live = asciiStream(el, { width: 100, fps: 15, onText: (text) => (pre.textContent = text) });
+await live.ready;
+live.stop();
+```
 
 ---
 

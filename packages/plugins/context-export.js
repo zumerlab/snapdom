@@ -228,7 +228,7 @@ function buildNode(el, rootRect, maxNodes, geometry, state) {
         Math.round(r.left - rootRect.left), Math.round(r.top - rootRect.top),
         Math.round(r.width), Math.round(r.height),
       ]
-    } catch { }
+    } catch { /* a node without layout keeps no box */ }
   }
   const text = visibleText(el)
   if (text) node.text = text
