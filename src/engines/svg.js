@@ -611,7 +611,7 @@ export async function composeAndSerialize(state, ex) {
   // A stream patch is laid out at the page's subpixel offset (options.__subpixel): padding is
   // layout, so box backgrounds snap to the same pixels as in the full frame, where a
   // viewBox shift (a transform) left rounded corners 8 pixels off. Pinned by
-  // __tests__/plugin.stream.test.js.
+  // __tests__/engine.svg.subpixel.test.js.
   const phaseX = options.__subpixel?.x || 0
   const phaseY = options.__subpixel?.y || 0
   const vbW = Math.ceil(vbW0 + pad * 2 + phaseX)
