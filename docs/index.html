@@ -400,8 +400,11 @@
       location.replace('./showcase/' + location.hash)
     }
 
-    // Analytics wait for load so they never compete with the first paint.
-    if (location.hostname === 'snapdom.dev') addEventListener('load', () => {
+    // Third-party fetches start after load and the next painted frame: on snapdom.dev load can
+    // fire before first paint, and anything requested earlier delays the hero text in Lighthouse.
+    const afterFirstPaint = callback => addEventListener('load', () => requestAnimationFrame(() => setTimeout(callback)), { once: true })
+
+    if (location.hostname === 'snapdom.dev') afterFirstPaint(() => {
       const umami = document.createElement('script')
       umami.defer = true
       umami.src = 'https://cloud.umami.is/script.js'
@@ -443,9 +446,10 @@
     { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs" } }
   </script>
   <script type="module">
-    // The core is fetched after load: the hero text paints without waiting on the CDN.
-    const core = new Promise(resolve => document.readyState === 'complete' ? resolve() : addEventListener('load', resolve, { once: true }))
-      .then(() => import('https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'))
+    // The core is warmed after first paint (afterFirstPaint, above) so the hero text never waits on the CDN;
+    // a press imports it directly, since a hidden tab runs no animation frames.
+    const loadCore = () => import('https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs')
+    afterFirstPaint(loadCore)
 
     const pluginRolls = [
       { mod: 'filter', fn: 'filter', opts: { preset: 'vintage' }, label: "filter({ preset: 'vintage' })" },
@@ -496,7 +500,7 @@
           }
         }
 
-        const { snapdom } = await core
+        const { snapdom } = await loadCore()
         const started = performance.now()
         const image = await snapdom.toPng(stage, { scale: .32, embedFonts: false, cache: 'auto', exclude: ['#hero-flash'], plugins })
         const print = document.createElement('div')
