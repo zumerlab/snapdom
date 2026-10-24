@@ -913,11 +913,21 @@
       .pl-status { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #fff3c4; color: #7a5600; font: 700 12px/1.6 Arial, sans-serif; }
       .output pre.pl-text { text-align: left; font: 12px/1.15 ui-monospace, Menlo, monospace; white-space: pre; overflow: auto; max-height: 320px; background: #fff; padding: 10px; border-radius: 8px; }
       .pl-ascii-card { background: #fff; color: #0F1E4D; }
-      .pl-ascii-logo { display: flex; align-items: center; gap: 14px; }
-      .pl-ascii-logo i { flex: none; width: 84px; height: 84px; border-radius: 50%; background: #0F1E4D; }
-      .pl-ascii-logo b { font: 900 84px/1 Arial, sans-serif; letter-spacing: -2px; }
-      .pl-ascii-bars { display: flex; gap: 8px; align-items: flex-end; height: 70px; margin-top: 16px; }
-      .pl-ascii-bars i { flex: 1; background: #0F1E4D; }
+      .pl-ascii-card { display: flex; align-items: center; gap: 18px; }
+      .pl-cube-scene { flex: none; width: 170px; height: 170px; perspective: 560px; display: grid; place-items: center; }
+      .pl-cube { position: relative; width: 96px; height: 96px; transform-style: preserve-3d; animation: pl-cube-spin 9s linear infinite; }
+      .pl-cube i { position: absolute; inset: 0; background: #0F1E4D; border: 3px solid #fff; display: grid; place-items: center; color: #fff; font: 900 34px Arial, sans-serif; }
+      .pl-cube i:nth-child(1) { transform: rotateY(0deg) translateZ(48px); }
+      .pl-cube i:nth-child(2) { transform: rotateY(90deg) translateZ(48px); background: #2D5BFF; }
+      .pl-cube i:nth-child(3) { transform: rotateY(180deg) translateZ(48px); background: #1b2f73; }
+      .pl-cube i:nth-child(4) { transform: rotateY(-90deg) translateZ(48px); background: #2D5BFF; }
+      .pl-cube i:nth-child(5) { transform: rotateX(90deg) translateZ(48px); background: #4e6fff; }
+      .pl-cube i:nth-child(6) { transform: rotateX(-90deg) translateZ(48px); background: #0a1538; }
+      @keyframes pl-cube-spin { from { transform: rotateX(-20deg) rotateY(0deg); } to { transform: rotateX(340deg) rotateY(360deg); } }
+      @media (prefers-reduced-motion: reduce) { .pl-cube { animation-duration: 40s; } }
+      .pl-ascii-text { display: grid; gap: 6px; }
+      .pl-ascii-text b { font: 900 56px/1 Arial, sans-serif; letter-spacing: -2px; }
+      .pl-ascii-text span { font: 700 18px/1.2 Arial, sans-serif; color: #2D5BFF; }
       /* Not a <pre>: the site styles every pre as a dark code block with tall lines, which stretches the drawing. */
       .output .pl-ascii { white-space: pre; font: 12px/1 ui-monospace, Menlo, Consolas, monospace; color: #0F1E4D; background: #fff; border: 1px solid #c6d2e8; padding: 12px; overflow: auto; text-align: left; max-width: 100%; }
       @media (max-width: 600px) { .output .pl-ascii { font-size: 5.5px; padding: 8px; } }
@@ -1063,10 +1073,10 @@
 
     <section id="ascii-demo">
       <h2 id="ascii-export-plugin">ASCII art <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>ascii-export</code> adds <code>toAscii()</code>, which redraws the capture as plain text characters: dark areas become dense characters, light areas stay blank.</p>
+      <p class="demo-explanation"><code>ascii-export</code> adds <code>toAscii()</code>, which redraws the capture as plain text characters: dark areas become dense characters, light areas stay blank. The cube is CSS, spinning; the export freezes whatever angle it has when you click.</p>
       <div class="card pl-card pl-ascii-card" id="pl-ascii-src">
-        <div class="pl-ascii-logo"><i></i><b>DOM</b></div>
-        <div class="pl-ascii-bars"><i style="height:30%"></i><i style="height:55%"></i><i style="height:42%"></i><i style="height:78%"></i><i style="height:100%"></i></div>
+        <div class="pl-cube-scene"><div class="pl-cube"><i>S</i><i>N</i><i>A</i><i>P</i><i>D</i><i>O</i></div></div>
+        <div class="pl-ascii-text"><b contenteditable="true" spellcheck="false">3D</b><span contenteditable="true" spellcheck="false">Spinning, as text</span></div>
       </div>
       <button data-umami-event="Plugin ascii" onclick="runPluginDemo('ascii', this)">Export as ASCII</button>
       <div class="output" id="pl-ascii-out"></div>

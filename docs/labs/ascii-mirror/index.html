@@ -33,7 +33,18 @@
     .lab-ascii-mirror #lamCard { width: min(100%, 320px); background: #fff; color: #0F1E4D; padding: 22px; display: grid; gap: 12px; border: 1px solid var(--border-soft); }
     .lab-ascii-mirror #lamCard h3 { margin: 0; padding: 10px 12px; background: #2D5BFF; color: #fff; font-size: 26px; line-height: 1.1; }
     .lab-ascii-mirror #lamCard p { margin: 0; padding: 10px 12px; background: #e9eefc; font-size: 15px; line-height: 1.4; }
-    .lab-ascii-mirror #lamCard .lam-dot { width: 64px; height: 64px; border-radius: 50%; background: #0F1E4D; justify-self: end; }
+    .lab-ascii-mirror .pl-cube-scene { flex: none; width: 170px; height: 170px; perspective: 560px; display: grid; place-items: center; }
+    .lab-ascii-mirror .pl-cube { position: relative; width: 96px; height: 96px; transform-style: preserve-3d; animation: pl-cube-spin 9s linear infinite; animation-play-state: var(--lam-play, paused); }
+    .lab-ascii-mirror .pl-cube i { position: absolute; inset: 0; background: #0F1E4D; border: 3px solid #fff; display: grid; place-items: center; color: #fff; font: 900 34px Arial, sans-serif; }
+    .lab-ascii-mirror .pl-cube i:nth-child(1) { transform: rotateY(0deg) translateZ(48px); }
+    .lab-ascii-mirror .pl-cube i:nth-child(2) { transform: rotateY(90deg) translateZ(48px); background: #2D5BFF; }
+    .lab-ascii-mirror .pl-cube i:nth-child(3) { transform: rotateY(180deg) translateZ(48px); background: #1b2f73; }
+    .lab-ascii-mirror .pl-cube i:nth-child(4) { transform: rotateY(-90deg) translateZ(48px); background: #2D5BFF; }
+    .lab-ascii-mirror .pl-cube i:nth-child(5) { transform: rotateX(90deg) translateZ(48px); background: #4e6fff; }
+    .lab-ascii-mirror .pl-cube i:nth-child(6) { transform: rotateX(-90deg) translateZ(48px); background: #0a1538; }
+    @keyframes pl-cube-spin { from { transform: rotateX(-20deg) rotateY(0deg); } to { transform: rotateX(340deg) rotateY(360deg); } }
+    @media (prefers-reduced-motion: reduce) { .pl-cube { animation-duration: 40s; } }
+    .lab-ascii-mirror .lam-cube-scene { justify-self: center; width: 150px; height: 150px; }
     .lab-ascii-mirror #lamOut { margin: 0; padding: 0; width: 100%; overflow: auto; font: 7px/1 ui-monospace, Menlo, Consolas, monospace; white-space: pre; color: #0F1E4D; background: #fff; min-height: 280px; }
     .lab-ascii-mirror #lamOut pre { font-size: 7px; line-height: 1; }
     .lab-ascii-mirror .lam-stats { margin: 12px 0 0; font-size: 12px; color: var(--text-muted); }
@@ -44,16 +55,16 @@
 <link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "A live element, <span class=\"accent\">as text</span>", "lead": "Type in the card. The right side is the same element redrawn as ASCII art on every change, through the stream plugin.", "links": []} -->
+  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "A live element, <span class=\"accent\">as text</span>", "lead": "A card with text and a spinning CSS cube. The right side is the same element redrawn as ASCII art on every frame, through the stream plugin.", "links": []} -->
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="../../showcase/">Live demos</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="../video-overlay/">Video overlay</a><a href="../webrtc-overlay/">WebRTC overlay</a><a href="../stop-motion/">Stop motion</a><a href="../paint-canvas/">Paint on a capture</a><a href="../capture-stages/">Capture stages</a><a href="../target-range/">Target range</a><a href="../webgl-live-mirror/">Live mirror</a><a href="./" aria-current="page">ASCII mirror</a><a href="../webgl-seamless-dom/">Seamless DOM</a><a href="../webgl-shatter/">Shattered capture</a></div></div></nav></aside>
 
 <article class="pane-read sec-labs" data-title="ASCII mirror">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>ASCII mirror</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>A live element, <span class="accent">as text</span></h1><p class="doc-lead">Type in the card. The right side is the same element redrawn as ASCII art on every change, through the stream plugin.</p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>ASCII mirror</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>A live element, <span class="accent">as text</span></h1><p class="doc-lead">A card with text and a spinning CSS cube. The right side is the same element redrawn as ASCII art on every frame, through the stream plugin.</p></header>
 <div class="pane-content"><!-- content -->
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two plugins, chained. <code>stream()</code> keeps a canvas in step with the card and repaints only the boxes that changed. <code>asciiFromCanvas()</code>, the function behind the <code>ascii-export</code> plugin, turns each frame into characters. No capture result in between: the canvas goes straight from one to the other.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>One call: <code>asciiStream(el, { onText })</code>. Under it, <code>stream()</code> keeps a canvas in step with the card, and <code>asciiFromCanvas()</code>, the function behind the <code>ascii-export</code> plugin, turns each frame into characters. No capture result in between: the canvas goes straight from one to the other.</p></div>
 
     <section class="prose">
       <h2 id="what-you-re-looking-at">What you're looking at</h2>
@@ -78,17 +89,17 @@
         </div>
         <div class="lam-workspace">
           <div class="lam-pane">
-            <div class="lam-pane-label"><span>Editable DOM</span><strong>stream()</strong></div>
+            <div class="lam-pane-label"><span>Editable DOM</span><strong>contenteditable + CSS 3D</strong></div>
             <div class="lam-surface">
               <div id="lamCard">
                 <h3 contenteditable="true" spellcheck="false">Hello, text</h3>
-                <p contenteditable="true" spellcheck="false">Every keystroke becomes a patched frame, then characters.</p>
-                <div class="lam-dot"></div>
+                <p contenteditable="true" spellcheck="false">Keystrokes and the spinning cube become patched frames, then characters.</p>
+                <div class="pl-cube-scene lam-cube-scene"><div class="pl-cube"><i>S</i><i>N</i><i>A</i><i>P</i><i>D</i><i>O</i></div></div>
               </div>
             </div>
           </div>
           <div class="lam-pane">
-            <div class="lam-pane-label"><span>ASCII output</span><strong>asciiFromCanvas()</strong></div>
+            <div class="lam-pane-label"><span>ASCII output</span><strong>asciiStream()</strong></div>
             <div class="lam-surface"><pre id="lamOut" data-code-output>starting…</pre></div>
           </div>
         </div>
@@ -99,27 +110,26 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4 aria-level="3"><code>stream()</code> watches the card</h4><p>The first frame is a full SnapDOM capture. After that, a mutation or a keystroke is traced to the nearest box with a solid background, and only that subtree is captured and drawn into its rectangle.</p></li>
-        <li><h4 aria-level="3"><code>onFrame</code> hands over the canvas</h4><p>Each repaint calls <code>onFrame(frame)</code> with <code>frame.canvas</code> and the list of changed rects. The demo ignores the rects and converts the whole canvas; it is 90 columns wide, so that costs under a millisecond.</p></li>
-        <li><h4 aria-level="3"><code>asciiFromCanvas()</code> does the pixel work</h4><p>It downsamples the canvas to one pixel per character, maps luminance to the charset and returns a string, or colored HTML when <code>format: 'html'</code>. It is the same code the <code>toAscii()</code> export uses, exported on its own so it can run on any drawable.</p></li>
+        <li><h4 aria-level="3"><code>stream()</code> watches the card</h4><p>The first frame is a full SnapDOM capture. After that, a keystroke is traced to the nearest box with a solid background and only that subtree is captured and drawn into its rectangle. The cube is different: a 3D transform leaves the flow, so while it spins every frame is a full capture, capped here at 15 fps. Stop the cube (pause it from devtools, or delete it) and the stats switch to patches.</p></li>
+        <li><h4 aria-level="3"><code>asciiFromCanvas()</code> does the pixel work</h4><p>On each repaint it downsamples the canvas to one pixel per character, maps luminance to the charset and returns a string, or colored HTML when <code>format: 'html'</code>. It is the same code the <code>toAscii()</code> export uses, exported on its own so it runs on any drawable: a stream frame, a video, your own canvas.</p></li>
+        <li><h4 aria-level="3"><code>asciiStream()</code> is the two together</h4><p>It takes the ascii options and the stream options in one object and calls <code>onText(text, frame)</code> after every repaint. The handle it returns is the stream's: <code>ready</code>, <code>stats</code>, <code>stop()</code>.</p></li>
         <li><h4 aria-level="3">The <code>&lt;pre&gt;</code> is replaced</h4><p><code>textContent</code> for plain text, <code>innerHTML</code> for the colored version. Nothing else on the page is touched.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2 id="copy-paste-example">Copy-paste example</h2>
-<pre><code class="language-javascript">import { stream } from '@zumer/snapdom-plugins/stream'
-import { asciiFromCanvas } from '@zumer/snapdom-plugins/ascii-export'
+<pre><code class="language-javascript">import { asciiStream } from '@zumer/snapdom-plugins/ascii-export'
 
 const out = document.querySelector('pre')
-const live = stream(document.querySelector('#card'), {
-  onFrame(frame) {
-    out.textContent = asciiFromCanvas(frame.canvas, { width: 90 })
-  }
+const live = asciiStream(document.querySelector('#card'), {
+  width: 90,
+  fps: 15,
+  onText: text => { out.textContent = text }
 })
 await live.ready
 // later: live.stop()</code></pre>
-      <p>The same pattern works for any pixel-level plugin: <code>color-tint</code> or <code>filter</code> on a frame, a video element instead of a stream, or a canvas you drew yourself.</p>
+      <p>Without the sugar it is two calls: <code>stream(el, { onFrame: f => out.textContent = asciiFromCanvas(f.canvas, { width: 90 }) })</code>. The same shape works for any pixel-level step on a frame, or for a video element instead of a stream.</p>
     </section>
 
     <section class="prose">
@@ -174,29 +184,47 @@ await live.ready
     const card = document.getElementById('lamCard'), out = document.getElementById('lamOut'), stats = document.getElementById('lamStats')
     const charset = document.getElementById('lamCharset'), width = document.getElementById('lamWidth'), widthOut = document.getElementById('lamWidthOut')
     const color = document.getElementById('lamColor'), invert = document.getElementById('lamInvert')
-    let last = null, frames = 0, patched = 0, times = []
 
-    function render(canvas) {
-      if (!canvas) return
-      const t0 = performance.now()
-      const text = asciiFromCanvas(canvas, { width: Number(width.value), charset: charset.value, format: color.checked ? 'html' : 'text', invert: invert.checked })
-      if (color.checked) out.innerHTML = text; else out.textContent = text
-      times.push(performance.now() - t0); if (times.length > 60) times.shift()
-    }
+    // asciiStream ships with the plugin; until that release lands on npm, the same wiring runs inline.
+    const asciiStream = asciiMod.asciiStream ?? ((el, o) => {
+      const { onText, onFrame, width, charset, invert, format, contrast, ...so } = o
+      return stream(el, { ...so, onFrame(f) { onFrame?.(f); onText?.(asciiFromCanvas(f.canvas, { width, charset, invert, format, contrast }), f) } })
+    })
+
+    let live = null, frames = 0, patched = 0, times = [], t0 = 0
     function report() {
       const med = times.length ? times.slice().sort((a, b) => a - b)[times.length >> 1] : 0
       stats.textContent = `${frames} frames · ${patched} patched · ascii ${med.toFixed(2)} ms per frame`
     }
-    for (const el of [charset, color, invert]) el.addEventListener('change', () => { render(last); report() })
-    width.addEventListener('input', () => { widthOut.value = width.value; render(last); report() })
-
-    try {
-      const live = stream(card, { onFrame(frame) { last = frame.canvas; frames++; if (!frame.full) patched++; render(frame.canvas); report() } })
-      await live.ready
-      addEventListener('pagehide', () => live.stop())
-    } catch (error) {
-      stats.textContent = `Could not start the stream: ${error.message}`
+    async function start() {
+      live?.stop()
+      try {
+        live = asciiStream(card, {
+          fps: 15, width: Number(width.value), charset: charset.value, format: color.checked ? 'html' : 'text', invert: invert.checked,
+          onFrame(frame) { frames++; if (!frame.full) patched++; t0 = performance.now() },
+          onText(text) {
+            // Colored output comes wrapped in its own <pre>; the spans go into ours.
+            if (color.checked) out.innerHTML = text.replace(/^<pre[^>]*>/, '').replace(/<\/pre>$/, ''); else out.textContent = text
+            times.push(performance.now() - t0); if (times.length > 60) times.shift()
+            report()
+          }
+        })
+        await live.ready
+      } catch (error) {
+        stats.textContent = `Could not start the stream: ${error.message}`
+      }
     }
+    // The options are fixed when the stream starts, so a control change restarts it.
+    for (const el of [charset, color, invert]) el.addEventListener('change', start)
+    width.addEventListener('input', () => { widthOut.value = width.value })
+    width.addEventListener('change', start)
+    addEventListener('pagehide', () => live?.stop())
+    // Run only while the demo is on screen: the cube spins and the stream captures at 15 fps.
+    const demo = document.querySelector('.lab-ascii-mirror')
+    new IntersectionObserver(([entry]) => {
+      card.style.setProperty('--lam-play', entry.isIntersecting ? 'running' : 'paused')
+      if (entry.isIntersecting) { if (!live) start() } else { live?.stop(); live = null }
+    }, { rootMargin: '80px' }).observe(demo)
   </script>
 </body>
 </html>
