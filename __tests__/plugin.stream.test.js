@@ -242,6 +242,26 @@ describe('stream plugin', () => {
     }
   })
 
+  it('repaints the clipping box, not the row it cuts, when the changed row overflows it', async () => {
+    // The row is the first opaque ancestor, but the 40px box above it hides half of it: a
+    // patch of the whole row painted the hidden half over the root (19200 pixels off).
+    const root = document.createElement('div')
+    root.style.cssText = 'width:400px;padding:8px;background:#000;font:14px/20px monospace;color:#000'
+    root.innerHTML = '<div style="overflow:hidden;height:40px;background:#000">' +
+      '<div style="height:80px;background:#fff;padding:4px"><span>row text</span></div></div>' +
+      '<div style="height:300px;background:#000"></div>'
+    document.body.append(root)
+    roots.push(root)
+    const s = open(root)
+    await s.ready
+    const next = s.next()
+    root.querySelector('span').textContent = 'changed'
+    const frame = await next
+    expect(frame.full, frame.reason).toBe(false)
+    expect(frame.rects[0].height).toBe(40)
+    expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
+  })
+
   it('falls back when the changed box is transparent, since old pixels would show through', async () => {
     const root = grid('background:transparent')
     const s = open(root)

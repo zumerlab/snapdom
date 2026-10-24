@@ -215,27 +215,30 @@ export function stream(element, options = {}) {
   function hostFor(node) {
     let el = node?.nodeType === 1 ? node : node?.parentElement
     if (!el || el === element || !element.contains(el)) return null
-    const chain = []
-    for (let a = el; a && a !== element; a = a.parentElement) chain.push(a)
-    // Search above the highest ancestor with an effect or a clip the box would escape.
+    const chain = [], styles = []
+    for (let a = el; a && a !== element; a = a.parentElement) { chain.push(a); styles.push(getComputedStyle(a)) }
+    // Search above the highest ancestor with an effect.
     let start = 0
-    for (let i = 0; i < chain.length; i++) {
-      const cs = getComputedStyle(chain[i])
-      if (hasEffect(cs)) start = i + 1
-      else if (i > 0 && clips(cs) && escapesClip(rectOf(chain[0]), rectOf(chain[i]), cs)) start = i
-    }
+    for (let i = 0; i < chain.length; i++) if (hasEffect(styles[i])) start = i + 1
     for (let i = start; i < chain.length; i++) {
-      const cs = getComputedStyle(chain[i])
+      const cs = styles[i]
       if (!opaqueColor(cs.backgroundColor)) continue
       // Visible overflow paints outside the box, over pixels the patch does not repaint.
       if (!clips(cs) && (chain[i].scrollWidth > chain[i].clientWidth + 1 || chain[i].scrollHeight > chain[i].clientHeight + 1)) continue
-      return chain[i]
+      // A box a clipping ancestor cuts, past its edges or into a rounded corner, would be
+      // drawn whole: a row half out of a 40px scroller painted its hidden half (19200 px
+      // off). The host is the box itself, so the test is on its rect, not on the changed
+      // node's. Resume at the outermost ancestor that cuts it.
+      const r = rectOf(chain[i])
+      let cut = -1
+      for (let m = i + 1; m < chain.length; m++) if (clips(styles[m]) && escapesClip(r, rectOf(chain[m]), styles[m])) cut = m
+      if (cut < 0) return chain[i]
+      i = cut - 1
     }
     return null
   }
 
   async function full() {
-    // A full frame is the one long task of a stream; 'auto' lets a long clone yield (#503).
     const t0 = performance.now()
     // A full frame is the one long task of a stream; 'auto' lets a long clone yield (#503).
     // Lab, 1000 cards under constant edits: worst frame gap 67 -> 33 ms. Under edits on
