@@ -131,8 +131,8 @@ const live = await result.toStream({ onFrame });
   them.
 - Text ink that spills past a box edge onto a pixel shared with a neighbour waits for the
   keyframe.
-- Needs SnapDOM with the `__subpixel` layout option (the release after 3.3.7). On an older core
-  the stream still runs, but patches at fractional positions are not pixel-exact.
+- Needs SnapDOM 3.3.8 or newer, which has the `__subpixel` layout option. On an older core the
+  stream still runs, but patches at fractional positions are not pixel-exact.
 
 Demos: `demos/stream-templates.html`, `demos/stream-overlay.html`, `demos/stream-webrtc.html`, `demos/stream-webgl.html`,
-`demos/stream-lab.html`.
+`demos/stream-lab.html`, `demos/stream-glass.html`, `demos/stream-fx.html`, `demos/stream-virtual.html`.
