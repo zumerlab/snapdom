@@ -3,21 +3,21 @@
 <head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Painting Without a Canvas Element, and Other SnapDOM Plugin Experiments</title>
-  <meta name="description" content="A screenshot library's plugin hooks turned out to be enough to build a paint app with no canvas element, a DOM editor that's secretly a WebGL texture, and a shooting gallery — all with the same two-hook pattern." />
+  <title>Painting without a canvas, and other SnapDOM plugin tricks</title>
+  <meta name="description" content="SnapDOM plugin hooks were enough to build a paint app with no canvas, a DOM editor that is secretly a WebGL texture, and a shooting gallery." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/blog/painting-without-canvas/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="Painting Without a Canvas Element, and Other SnapDOM Plugin Experiments" />
+  <meta property="og:title" content="Painting without a canvas, and other SnapDOM plugin tricks" />
   <meta property="og:description" content="A paint app with no canvas element, a DOM editor that's secretly a WebGL texture, and a shooting gallery — three toys built on the same two SnapDOM plugin hooks." />
   <meta property="og:url" content="https://snapdom.dev/blog/painting-without-canvas/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Painting without a canvas element, and other SnapDOM plugin experiments","description":"A screenshot library's plugin hooks turned out to be enough to build a paint app with no canvas element, a DOM editor that's secretly a WebGL texture, and a shooting gallery — all with the same two-hook pattern.","url":"https://snapdom.dev/blog/painting-without-canvas/","datePublished":"2026-07-21","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Painting without a canvas element, and other SnapDOM plugin experiments","description":"A screenshot library's plugin hooks turned out to be enough to build a paint app with no canvas element, a DOM editor that's secretly a WebGL texture, and a shooting gallery — all with the same two-hook pattern.","url":"https://snapdom.dev/blog/painting-without-canvas/","datePublished":"2026-07-21","dateModified":"2026-10-23","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"image":"https://snapdom.dev/assets/og-card.jpg"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"Painting Without a Canvas Element","item":"https://snapdom.dev/blog/painting-without-canvas/"}]}</script>
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
@@ -39,7 +39,7 @@
 <article class="pane-read sec-record" data-title="Painting without a canvas">
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Blog</span><span aria-hidden="true">/</span><span>Posts</span><span aria-hidden="true">/</span><span>Painting without a canvas</span></nav><span class="doc-meta">SnapDOM Blog</span></div><h1>Painting without a <span class="accent">canvas</span> element</h1><p class="doc-lead">And a couple of other things that fell out of giving a screenshot library a plugin system with two hooks: <code>afterClone</code> and <code>afterRender</code>.</p></header>
 <div class="pane-content"><!-- content -->
-    <p class="byline">Zumerlab · July 21, 2026 · Historical API examples. In v3, eligible captures can be reused; the stateful plugins here request fresh work. The default export URL is SVG, and the current <a href="../../docs/plugins/">plugin guide</a> supersedes the cache options shown below.</p>
+    <p class="byline">Juan Martin Muda · July 21, 2026 · Historical API examples. In v3, eligible captures can be reused; the stateful plugins here request fresh work. The default export URL is SVG, and the current <a href="../../docs/plugins/">plugin guide</a> supersedes the cache options shown below.</p>
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>SnapDOM captures a DOM subtree by cloning it, serializing the clone to an SVG <code>&lt;foreignObject&gt;</code>, and rasterizing that. Its plugin hooks fire on every capture with access to the same closure, so a plugin can hold state across calls that the library itself never persists. Three demos built on that: a <a href="../../labs/paint-canvas/">paint app with no <code>&lt;canvas&gt;</code> element</a>, a <a href="../../labs/webgl-seamless-dom/">contenteditable box that's secretly rendering through WebGL</a>, and a <a href="../../labs/target-range/">shooting gallery</a> that uses the exact same trick as the paint app.</p></div>
 

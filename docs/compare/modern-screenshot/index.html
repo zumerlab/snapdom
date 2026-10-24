@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SnapDOM vs modern-screenshot — Compared (2026)</title>
-  <meta name="description" content="SnapDOM vs modern-screenshot: two foreignObject-based DOM-to-image libraries compared on features, output formats, plugins and maintenance — plus a migration map." />
+  <meta name="description" content="SnapDOM vs modern-screenshot: two foreignObject DOM-to-image libraries compared on features, formats, plugins and maintenance, plus a migration map." />
   <meta name="keywords" content="snapdom vs modern-screenshot, modern-screenshot alternative, modern-screenshot vs html-to-image, dom to image foreignobject, html to image typescript" />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/compare/modern-screenshot/" />
@@ -33,7 +33,7 @@
     "@type": "Article",
     "headline": "SnapDOM vs modern-screenshot — Compared",
     "datePublished": "2026-06-29",
-    "dateModified": "2026-10-15",
+    "dateModified": "2026-10-23",
     "description": "Side-by-side comparison of SnapDOM and modern-screenshot: feature matrix, output formats, plugin system and a migration map.",
     "url": "https://snapdom.dev/compare/modern-screenshot/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -44,7 +44,7 @@
   }
   </script>
 
-  <link rel="preconnect" href="https://api.github.com">
+  <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">
   <link rel="stylesheet" href="../../page.css">
 
@@ -76,7 +76,7 @@
 <header class="demo-panel-head"><span class="demo-panel-title">Live demo</span><button type="button" class="demo-act is-primary" data-act="run">Run</button><button type="button" class="demo-act" data-act="baseline" hidden>Baseline</button><button type="button" class="demo-act" data-act="compare" hidden>Compare</button><button type="button" class="demo-act" data-act="reset">Reset</button></header>
 <div class="demo-panel-body"><p class="demo-label">Live element</p>
 <div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#2D5BFF}.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #0F1E4D}</style><h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div><sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div><p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
-<footer class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</footer></section></div>
+<div class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</div></section></div>
 <article class="pane-read sec-ecosystem" data-title="vs modern-screenshot" data-demo="compare" data-lib="modern-screenshot" data-note="Judge the pixels yourself; one run is not a benchmark." data-demo-label="SnapDOM · modern-screenshot">
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs modern-screenshot</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">modern-screenshot</span></h1><p class="doc-lead">Two modern libraries, the same core idea: clone the DOM and let the browser render it inside an SVG <code>&lt;foreignObject&gt;</code>. Here's where they actually differ — and how to move between them.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration map</a></p></header>
 <div class="pane-content"><!-- content -->
@@ -146,7 +146,7 @@
       <h2 id="when">When to use which</h2>
       <div class="verdict-grid">
         <div class="verdict-card snapdom">
-          <h4>Choose SnapDOM when…</h4>
+          <h4 aria-level="3">Choose SnapDOM when…</h4>
           <ul>
             <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
             <li>The output must match what the browser rendered, verified against pixels.</li>
@@ -155,7 +155,7 @@
           </ul>
         </div>
         <div class="verdict-card other">
-          <h4>Check your existing workflow…</h4>
+          <h4 aria-level="3">Check your existing workflow…</h4>
           <ul>
             <li>Decide whether post-processing or capture lifecycle hooks suit your transformations.</li>
             <li>Test your Web Components in the browsers you support.</li>
@@ -170,7 +170,7 @@
       <h2 id="code">Same task, side by side</h2>
       <p>Capturing <code>#card</code> as a PNG and inserting the resulting image into the page:</p>
 
-      <h4>modern-screenshot</h4>
+      <h4 aria-level="3">modern-screenshot</h4>
       <pre class="code-block"><span class="kw">import</span> { domToPng } <span class="kw">from</span> <span class="str">'modern-screenshot'</span>;
 
 <span class="kw">const</span> <span class="op">dataUrl</span> = <span class="kw">await</span> <span class="fn">domToPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
@@ -178,7 +178,7 @@
 img.src = dataUrl;
 document.body.<span class="fn">appendChild</span>(img);</pre>
 
-      <h4>SnapDOM</h4>
+      <h4 aria-level="3">SnapDOM</h4>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
 <span class="kw">const</span> <span class="op">img</span> = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));

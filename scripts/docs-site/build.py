@@ -44,10 +44,12 @@ def code(title, src):
     return (f'<div class="pane-code"><div class="pane-code-bar"><span>{E(title)}</span><button type="button" data-copy>copy</button></div>'
             f'<pre><code>{E(src)}</code></pre></div>')
 
-def doc_head(trail, meta, title, lead):
+def doc_head(trail, meta, title, lead, h1=True):
+    # A page holding several panes keeps one h1; the other pane titles are h2 styled alike.
     crumbs = '<span aria-hidden="true">/</span>'.join(f'<span>{E(t)}</span>' for t in trail)
+    heading = f'<h1>{title}</h1>' if h1 else f'<h2 class="doc-title">{title}</h2>'
     return (f'<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb">{crumbs}</nav>'
-            f'<span class="doc-meta">{E(meta)}</span></div><h1>{title}</h1><p class="doc-lead">{lead}</p></header>')
+            f'<span class="doc-meta">{E(meta)}</span></div>{heading}<p class="doc-lead">{lead}</p></header>')
 
 def tag(text):
     tone = 'core' if re.match('core', text, re.I) else 'experimental' if re.search('exp', text, re.I) else 'project' if re.search('separate', text, re.I) else 'plugin'
@@ -75,7 +77,7 @@ DEMO = '''<div class="pane-demo"><section class="demo-panel sec-capture" aria-la
 <header class="demo-panel-head"><span class="demo-panel-title">Live demo</span><button type="button" class="demo-act is-primary" data-act="run">Run</button><button type="button" class="demo-act" data-act="baseline" hidden>Baseline</button><button type="button" class="demo-act" data-act="compare" hidden>Compare</button><button type="button" class="demo-act" data-act="reset">Reset</button></header>
 <div class="demo-panel-body"><p class="demo-label">Live element</p>
 {target}<p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
-<footer class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</footer></section></div>'''
+<div class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</div></section></div>'''
 
 SAMPLE = '''<div class="sample-card" data-target><div class="sample-card-kicker">Component preview</div><div class="sample-card-title" data-title contenteditable spellcheck="false">Capture an editable component</div>
 <div class="sample-card-bars" aria-hidden="true"><i style="height:38%"></i><i style="height:52%"></i><i style="height:44%"></i><i style="height:70%"></i><i style="height:61%"></i><i style="height:84%"></i><i style="height:96%"></i></div>
@@ -93,7 +95,9 @@ document.querySelectorAll('[data-copy]').forEach(button => button.addEventListen
 </script>'''
 
 def page(path, active, head_meta, groups, sections, placeholder, label):
-    body = (f'{header(active)}\n<main id="main" class="pane" data-pane>\n{sidebar(groups, placeholder, label)}\n{demo_panel()}\n'
+    # Start in the state panes.js picks for the first topic, so a late script does not shift the page.
+    no_demo = '' if 'data-demo=' in sections[0].split('>', 1)[0] else ' no-demo'
+    body = (f'{header(active)}\n<main id="main" class="pane{no_demo}" data-pane>\n{sidebar(groups, placeholder, label)}\n{demo_panel()}\n'
             f'<article class="pane-read">\n' + '\n'.join(sections) + '\n</article>\n</main>\n' + footer() + '\n' + COPY_JS)
     doc = f'''<!DOCTYPE html>
 <html lang="en">
@@ -108,6 +112,7 @@ def page(path, active, head_meta, groups, sections, placeholder, label):
   <link rel="stylesheet" href="../navigation.css">
   <link rel="stylesheet" href="../panes.css">
   <script defer src="../site.js"></script>
+  <script>document.documentElement.classList.add('panes-pending')</script>
   <script type="module" src="../panes.js"></script>
 </head>
 <body>

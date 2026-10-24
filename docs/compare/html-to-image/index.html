@@ -30,7 +30,7 @@
     "@type": "Article",
     "headline": "SnapDOM vs html-to-image — Side-by-Side Comparison",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-10-15",
+    "dateModified": "2026-10-23",
     "description": "Compare SnapDOM and html-to-image including a migration snippet.",
     "url": "https://snapdom.dev/compare/html-to-image/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -65,14 +65,14 @@
         "name": "Does SnapDOM render web fonts better than html-to-image?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Both libraries can embed @font-face declarations. SnapDOM v3.x.x defaults to embedFonts: 'auto' for used web fonts and also supports localFonts and excludeFonts. Check the exported text with your actual font files and browser."
+          "text": "Both libraries can embed @font-face declarations. SnapDOM 3 defaults to embedFonts: 'auto' for used web fonts and also supports localFonts and excludeFonts. Check the exported text with your actual font files and browser."
         }
       }
     ]
   }
   </script>
 
-  <link rel="preconnect" href="https://api.github.com">
+  <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">
   <link rel="stylesheet" href="../../page.css">
 
@@ -104,7 +104,7 @@
 <header class="demo-panel-head"><span class="demo-panel-title">Live demo</span><button type="button" class="demo-act is-primary" data-act="run">Run</button><button type="button" class="demo-act" data-act="baseline" hidden>Baseline</button><button type="button" class="demo-act" data-act="compare" hidden>Compare</button><button type="button" class="demo-act" data-act="reset">Reset</button></header>
 <div class="demo-panel-body"><p class="demo-label">Live element</p>
 <div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#2D5BFF}.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #0F1E4D}</style><h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div><sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div><p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
-<footer class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</footer></section></div>
+<div class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</div></section></div>
 <article class="pane-read sec-ecosystem" data-title="vs html-to-image" data-demo="compare" data-lib="html-to-image" data-note="Judge the pixels yourself; one run is not a benchmark." data-demo-label="SnapDOM · html-to-image">
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs html-to-image</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">html-to-image</span></h1><p class="doc-lead">Two libraries built around the same SVG <code>foreignObject</code> approach — compared on fidelity, fonts, Shadow DOM, plugins and developer experience.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
 <div class="pane-content"><!-- content -->
@@ -176,7 +176,7 @@
       <h2 id="when">When to use which</h2>
       <div class="verdict-grid">
         <div class="verdict-card snapdom">
-          <h4>Choose SnapDOM when…</h4>
+          <h4 aria-level="3">Choose SnapDOM when…</h4>
           <ul>
             <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
             <li>The output must match what the browser rendered, verified against pixels.</li>
@@ -185,7 +185,7 @@
           </ul>
         </div>
         <div class="verdict-card other">
-          <h4>Check before migrating…</h4>
+          <h4 aria-level="3">Check before migrating…</h4>
           <ul>
             <li>SnapDOM plugins extend the capture lifecycle; existing html-to-image post-processing needs adapting.</li>
             <li>Compare open Shadow DOM, CSS counters and line-clamp on the components you ship.</li>
@@ -199,7 +199,7 @@
       <h2 id="code">Same task, side by side</h2>
       <p>Capturing <code>#card</code> as a PNG and inserting the resulting image into the page:</p>
 
-      <h4>html-to-image</h4>
+      <h4 aria-level="3">html-to-image</h4>
       <pre class="code-block"><span class="kw">import</span> { toPng } <span class="kw">from</span> <span class="str">'html-to-image'</span>;
 
 <span class="kw">const</span> dataUrl = <span class="kw">await</span> <span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
@@ -207,7 +207,7 @@
 img.src = dataUrl;
 document.body.<span class="fn">appendChild</span>(img);</pre>
 
-      <h4>SnapDOM</h4>
+      <h4 aria-level="3">SnapDOM</h4>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
 <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
@@ -253,7 +253,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>Does SnapDOM render web fonts better than html-to-image?</summary>
-        <p>Both libraries can embed <code>@font-face</code> declarations. SnapDOM v3.x.x defaults to <code>embedFonts: 'auto'</code> for used web fonts and also supports <code>localFonts</code> and <code>excludeFonts</code>. Check the exported text with your actual font files and browser.</p>
+        <p>Both libraries can embed <code>@font-face</code> declarations. SnapDOM 3 defaults to <code>embedFonts: 'auto'</code> for used web fonts and also supports <code>localFonts</code> and <code>excludeFonts</code>. Check the exported text with your actual font files and browser.</p>
       </details>
 
       <details>

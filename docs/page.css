@@ -21,11 +21,13 @@
   --accent-ink: #1D3FD8;
   --green: #1E9F6E;
   --green-soft: rgba(30,159,110,0.12);
+  --green-text: #167F57;
   --amber: #F5A623;
   --amber-soft: rgba(245,166,35,0.18);
   --amber-ink: #8A4F00;
   --rose: #E63946;
   --rose-soft: rgba(230,57,70,0.12);
+  --rose-text: #CF2A38;
   --cyan: #2BA8C9;
   --code-bg: #0F1E4D;
   --code-text: #D9E2F7;
@@ -221,8 +223,8 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 .cmp-table tbody tr:last-child td { border-bottom: none; }
 .cmp-table tbody tr:hover { background: var(--surface-hover); }
 .cmp-table td.feature { color: var(--text); font-weight: 600; }
-.cmp-table td.yes { color: var(--green); font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
-.cmp-table td.no { color: var(--rose); font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+.cmp-table td.yes { color: var(--green-text); font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
+.cmp-table td.no { color: var(--rose-text); font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
 .cmp-table td.partial { color: var(--amber-ink); font-family: var(--font-mono); font-size: 13px; font-weight: 700; }
 .cmp-table td.num { font-family: var(--font-mono); color: var(--accent); font-size: 13px; font-weight: 700; }
 
@@ -307,6 +309,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
 .cta-card::after { bottom: 10px; right: 10px; border-bottom: 3px solid var(--accent); border-right: 3px solid var(--accent); }
 .cta-card h2 { font-family: var(--font-display); font-size: 30px; font-weight: 400; letter-spacing: 0.5px; margin-bottom: 10px; color: #FFFFFF; }
 .cta-card p { color: rgba(217, 226, 247, 0.8); font-size: 15px; max-width: 460px; margin: 0 auto 26px; }
+.pane-read .cta-card code { color: #FFFFFF; background: rgba(255,255,255,0.12); }
 .cta-card .btn { margin: 0 6px; }
 .cta-card .btn-ghost { color: #FFFFFF; border-color: rgba(255,255,255,0.35); }
 .cta-card .btn-ghost:hover { border-color: #FFFFFF; color: #FFFFFF; }

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WebGL Live Mirror — DOM, Live on the GPU — SnapDOM Labs</title>
-  <meta name="description" content="Typing into a contenteditable element triggers a live SnapDOM capture on every keystroke. A defineExports plugin feeds the result straight into a persistent WebGL texture, and a dirty/working queue keeps fast typing from piling up stale renders." />
+  <meta name="description" content="Every keystroke in a contenteditable triggers a SnapDOM capture. A defineExports plugin feeds it into a persistent WebGL texture without stale renders." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/webgl-live-mirror/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"WebGL Live Mirror — DOM, live on the GPU","description":"Typing into a contenteditable element triggers a live SnapDOM capture on every keystroke. A defineExports plugin feeds the result straight into a persistent WebGL texture, and a dirty/working queue keeps fast typing from piling up stale renders.","url":"https://snapdom.dev/labs/webgl-live-mirror/","datePublished":"2026-07-21","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"WebGL Live Mirror — DOM, live on the GPU","description":"Every keystroke in a contenteditable triggers a SnapDOM capture. A defineExports plugin feeds it into a persistent WebGL texture without stale renders.","url":"https://snapdom.dev/labs/webgl-live-mirror/","datePublished":"2026-07-21","dateModified":"2026-10-23","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"WebGL Live Mirror","item":"https://snapdom.dev/labs/webgl-live-mirror/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -133,12 +133,12 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4>Typing fires an <code>input</code> listener</h4><p>Every keystroke in the <code>contenteditable</code> element dispatches a native <code>input</code> event. The only listener attached to it calls <code>updateMirror()</code>.</p></li>
-        <li><h4><code>updateMirror()</code> sets a <code>dirty</code> flag</h4><p>If a capture is already running, it just marks the work as <code>dirty</code> and returns — it never queues a second capture. If nothing is running, it enters a <code>while (dirty)</code> loop and captures the editable element with <code>{ plugins: [mirrorPlugin] }</code>.</p></li>
-        <li><h4>The plugin's <code>defineExports(ctx)</code> adds a <code>webgl</code> export</h4><p>SnapDOM wires that up automatically as <code>capture.toWebgl()</code>. Calling it hands the export function the capture's own context — including <code>ctx.export.url</code>, the rendered SVG data URL for this specific capture.</p></li>
-        <li><h4>The export loads that SVG into the existing texture</h4><p>The export function creates an <code>Image</code>, points it at <code>ctx.export.url</code>, and once it decodes, hands it to the <code>WebGLMirror</code> instance's <code>update()</code> method, which uploads it as a new <code>TEXTURE_2D</code> and returns the canvas.</p></li>
-        <li><h4>An independent render loop keeps drawing it</h4><p>The mirror's own <code>requestAnimationFrame</code> loop — started once, completely outside of SnapDOM — redraws that texture every frame, applying whichever shader is currently selected. SnapDOM never drives the render loop; it only refreshes what's on the texture.</p></li>
-        <li><h4>The <code>dirty</code> re-check collapses bursts of keystrokes</h4><p>Because <code>dirty</code> is checked again right after each capture finishes, typing a whole sentence quickly produces exactly one trailing capture instead of one per keystroke — the loop always converges on the latest DOM state.</p></li>
+        <li><h4 aria-level="3">Typing fires an <code>input</code> listener</h4><p>Every keystroke in the <code>contenteditable</code> element dispatches a native <code>input</code> event. The only listener attached to it calls <code>updateMirror()</code>.</p></li>
+        <li><h4 aria-level="3"><code>updateMirror()</code> sets a <code>dirty</code> flag</h4><p>If a capture is already running, it just marks the work as <code>dirty</code> and returns — it never queues a second capture. If nothing is running, it enters a <code>while (dirty)</code> loop and captures the editable element with <code>{ plugins: [mirrorPlugin] }</code>.</p></li>
+        <li><h4 aria-level="3">The plugin's <code>defineExports(ctx)</code> adds a <code>webgl</code> export</h4><p>SnapDOM wires that up automatically as <code>capture.toWebgl()</code>. Calling it hands the export function the capture's own context — including <code>ctx.export.url</code>, the rendered SVG data URL for this specific capture.</p></li>
+        <li><h4 aria-level="3">The export loads that SVG into the existing texture</h4><p>The export function creates an <code>Image</code>, points it at <code>ctx.export.url</code>, and once it decodes, hands it to the <code>WebGLMirror</code> instance's <code>update()</code> method, which uploads it as a new <code>TEXTURE_2D</code> and returns the canvas.</p></li>
+        <li><h4 aria-level="3">An independent render loop keeps drawing it</h4><p>The mirror's own <code>requestAnimationFrame</code> loop — started once, completely outside of SnapDOM — redraws that texture every frame, applying whichever shader is currently selected. SnapDOM never drives the render loop; it only refreshes what's on the texture.</p></li>
+        <li><h4 aria-level="3">The <code>dirty</code> re-check collapses bursts of keystrokes</h4><p>Because <code>dirty</code> is checked again right after each capture finishes, typing a whole sentence quickly produces exactly one trailing capture instead of one per keystroke — the loop always converges on the latest DOM state.</p></li>
       </ol>
     </section>
 
@@ -192,7 +192,7 @@ editable.addEventListener('input', updateMirror)</pre>
 
     <section class="prose">
       <h2 id="limits-and-things-to-watch">Limits and things to watch</h2>
-      <p>A keystroke can trigger a fresh capture and texture upload. Keep the captured element small or debounce the input handler for heavier content. SnapDOM v3.x.x handles eligible reuse automatically; the timing hooks in this demo are stateful and force fresh capture work. Resource caches can still be reused.</p>
+      <p>A keystroke can trigger a fresh capture and texture upload. Keep the captured element small or debounce the input handler for heavier content. SnapDOM 3 handles eligible reuse automatically; the timing hooks in this demo are stateful and force fresh capture work. Resource caches can still be reused.</p>
     </section>
 
     <section class="related">

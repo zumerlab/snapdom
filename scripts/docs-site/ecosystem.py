@@ -40,7 +40,7 @@ def eco_topic(p):
         return topic(p, p['section'], inner)
     tools = p['group'] == 'Tools'
     meta = 'Experimental' if p.get('exp') else 'Separate project' if tools else '@zumer/snapdom-plugins'
-    inner = doc_head(['Ecosystem', p['group'], p['t']], meta, E(p['t']), E(p['lead']))
+    inner = doc_head(['Ecosystem', p['group'], p['t']], meta, E(p['t']), E(p['lead']), h1=False)
     inner += f'<div class="provided-by"><span class="topic-sub">{E(p["sub"])}</span>{tag("Experimental") if p.get("exp") else ""}</div>'
     if p.get('note'):
         inner += f'<aside class="callout"><div class="callout-label">Status</div>{E(p["note"])}</aside>'
@@ -63,14 +63,14 @@ def eco_topic(p):
 
 ECO_META = '''  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SnapDOM Ecosystem — plugins, SnapEye, SnapSurf &amp; SnapDIFF</title>
-  <meta name="description" content="Plugins and tools built on SnapDOM: official and community plugins, PDF and Vector, SnapDIFF for visual regression testing, SnapEye for coding agents and SnapSurf for browser navigation. Try each one live.">
+  <title>SnapDOM ecosystem: plugins, SnapEye, SnapSurf, SnapDIFF</title>
+  <meta name="description" content="Plugins and tools built on SnapDOM: official and community plugins, SnapDIFF for visual regression, SnapEye for coding agents, SnapSurf for browsing.">
   <meta name="robots" content="index, follow">
   <link rel="canonical" href="https://snapdom.dev/ecosystem/">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SnapDOM Ecosystem — plugins, SnapEye, SnapSurf &amp; SnapDIFF">
+  <meta property="og:title" content="SnapDOM ecosystem: plugins, SnapEye, SnapSurf, SnapDIFF">
   <meta property="og:description" content="Extend a capture with plugins, or use the tools for agents and visual testing. What each one does and how they fit together.">
   <meta property="og:url" content="https://snapdom.dev/ecosystem/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">

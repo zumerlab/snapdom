@@ -176,12 +176,17 @@
 
 /* ── Reading column ── */
 .pane-topic[hidden] { display: none; }
+/* Until panes.js runs, show only the topic it will pick (the hash target, else the first),
+   so hiding the others does not shift the page. Without JavaScript every topic stays visible. */
+.panes-pending .pane-read > .pane-topic:not(:target) { display: none; }
+.panes-pending .pane:not(:has(.pane-topic:target)) .pane-nav > div:not(:first-child) .pane-nav-items { display: none; }
+.panes-pending .pane-read:not(:has(> .pane-topic:target)) > .pane-topic:first-of-type { display: block; }
 .doc-head { margin-bottom: 28px; }
 .doc-head-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 20px; }
 .doc-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--c); font: 400 13px var(--font-code); letter-spacing: .06em; text-transform: uppercase; }
 .doc-crumbs span[aria-hidden] { color: rgba(15,30,77,0.3); }
 .doc-meta { color: #59647D; font: 400 12px var(--font-code); letter-spacing: .06em; text-transform: uppercase; }
-.doc-head h1 { color: var(--c); font: 700 clamp(40px, 4.4vw, 60px)/1.04 Arial, Helvetica, sans-serif; letter-spacing: -.04em; overflow-wrap: anywhere; }
+.doc-head h1, .doc-head h2.doc-title { margin: 0; color: var(--c); font: 700 clamp(40px, 4.4vw, 60px)/1.04 Arial, Helvetica, sans-serif; letter-spacing: -.04em; overflow-wrap: anywhere; }
 .doc-lead { max-width: 64ch; margin-top: 20px; font: 400 19px/1.65 Arial, Helvetica, sans-serif; text-wrap: pretty; }
 .pane-read h2 { margin: 48px 0 14px; font: 700 26px/1.2 Arial, Helvetica, sans-serif; letter-spacing: -.025em; }
 .pane-read > .pane-topic > p, .pane-para { max-width: 68ch; margin: 0 0 16px; font: 400 16px/1.7 Arial, Helvetica, sans-serif; }

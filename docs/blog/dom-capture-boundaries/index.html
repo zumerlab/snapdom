@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"DOM capture boundaries and integration patterns","description":"Run SnapDOM from Node with Playwright or Puppeteer, handle cross-origin iframe boundaries, and separate browser automation from DOM capture.","url":"https://snapdom.dev/blog/dom-capture-boundaries/","datePublished":"2026-08-22","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"DOM capture boundaries and integration patterns","description":"Run SnapDOM from Node with Playwright or Puppeteer, handle cross-origin iframe boundaries, and separate browser automation from DOM capture.","url":"https://snapdom.dev/blog/dom-capture-boundaries/","datePublished":"2026-08-22","dateModified":"2026-10-23","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"image":"https://snapdom.dev/assets/og-card.jpg"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"DOM Capture Boundaries","item":"https://snapdom.dev/blog/dom-capture-boundaries/"}]}</script>
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
@@ -35,7 +35,7 @@
 <article class="pane-read sec-record" data-title="DOM capture boundaries">
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Blog</span><span aria-hidden="true">/</span><span>Posts</span><span aria-hidden="true">/</span><span>DOM capture boundaries</span></nav><span class="doc-meta">SnapDOM Blog</span></div><h1>DOM capture boundaries and integration patterns</h1><p class="doc-lead">SnapDOM needs a readable DOM and leaves navigation to browser tooling. Browser control connects it to Node, cross-origin documents and automated application flows.</p></header>
 <div class="pane-content"><!-- content -->
-    <p class="byline">Zumerlab · August 22, 2026</p>
+    <p class="byline">Juan Martin Muda · August 22, 2026</p>
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>Let Playwright or Puppeteer create the browser state. Run SnapDOM inside that page, then return <code>result.url</code> or a raster data URL to Node. A same-origin iframe can be captured from its parent; a cross-origin document must be served from the same origin or captured from its own page or frame context. <code>useProxy</code> can fetch assets, but it cannot grant access to iframe DOM.</p></div>
 

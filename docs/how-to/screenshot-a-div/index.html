@@ -33,7 +33,7 @@
     "url": "https://snapdom.dev/how-to/screenshot-a-div/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-10-15",
+    "dateModified": "2026-10-23",
     "author": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab" },
     "publisher": { "@type": "Organization", "@id": "https://snapdom.dev/#organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
     "mainEntityOfPage": "https://snapdom.dev/how-to/screenshot-a-div/",
@@ -75,7 +75,7 @@
   }
   </script>
 
-  <link rel="preconnect" href="https://api.github.com">
+  <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">
   <link rel="stylesheet" href="../../page.css">
 
@@ -144,15 +144,15 @@ const img = await snapdom.toPng(el);</pre><p>If image decoding rejects, fix or r
     <section class="prose">
       <h2 id="use">Step 4 — Do something with the image</h2>
 
-      <h4>Append it to the page</h4>
+      <h4 aria-level="3">Append it to the page</h4>
       <pre class="code-block"><span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(el);
 document.body.<span class="fn">appendChild</span>(img);</pre>
 
-      <h4>Download it as a file</h4>
+      <h4 aria-level="3">Download it as a file</h4>
       <pre class="code-block"><span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(el);
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
 
-      <h4>Get a Blob to upload to a server</h4>
+      <h4 aria-level="3">Get a Blob to upload to a server</h4>
       <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(el, { format: <span class="str">'png'</span> });
 
 <span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
@@ -166,7 +166,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
       <pre class="code-block"><span class="op">&lt;!</span><span class="kw">DOCTYPE html</span><span class="op">&gt;</span>
 <span class="op">&lt;</span><span class="kw">html</span><span class="op">&gt;</span>
 <span class="op">&lt;</span><span class="kw">body</span><span class="op">&gt;</span>
-  <span class="op">&lt;</span><span class="fn">div</span> id=<span class="str">"card"</span> style=<span class="str">"padding:24px;background:#6366f1;color:#fff;border-radius:12px;"</span><span class="op">&gt;</span>
+  <span class="op">&lt;</span><span class="fn">div</span> id=<span class="str">"card"</span> style=<span class="str">"padding:24px;background:#4f46e5;color:#fff;border-radius:12px;"</span><span class="op">&gt;</span>
     <span class="op">&lt;</span><span class="fn">h2</span><span class="op">&gt;</span>Hello SnapDOM<span class="op">&lt;/</span><span class="fn">h2</span><span class="op">&gt;</span>
     <span class="op">&lt;</span><span class="fn">p</span><span class="op">&gt;</span>This entire div is about to become a PNG.<span class="op">&lt;/</span><span class="fn">p</span><span class="op">&gt;</span>
   <span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
@@ -189,9 +189,9 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
       <p>The example above, running on this page — same div, same <code>snapdom.toPng</code> call:</p>
       <div class="demo-box">
         <div class="demo-stage">
-          <div id="demo-card" style="padding:24px;background:#6366f1;color:#fff;border-radius:12px;max-width:320px;">
-            <h2 id="hello-snapdom" style="margin:0 0 8px;font-size:20px;">Hello SnapDOM</h2>
-            <p style="margin:0;font-size:14px;">This entire div is about to become a PNG.</p>
+          <div id="demo-card" style="padding:24px;background:#4f46e5;color:#fff;border-radius:12px;max-width:320px;">
+            <h2 id="hello-snapdom" style="margin:0 0 8px;font-size:20px;color:#fff;">Hello SnapDOM</h2>
+            <p style="margin:0;font-size:14px;color:#fff;">This entire div is about to become a PNG.</p>
           </div>
         </div>
         <div class="demo-actions">

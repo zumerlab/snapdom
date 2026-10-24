@@ -350,6 +350,7 @@ function show(id, scroll) {
 if (topics.length) {
   window.addEventListener('hashchange', () => show(location.hash.slice(1), true))
   show(location.hash.slice(1), true)
+  document.documentElement.classList.remove('panes-pending')
   // The browser scrolls to the fragment again once the page has loaded.
   window.addEventListener('load', () => requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'instant' })), { once: true })
 } else {

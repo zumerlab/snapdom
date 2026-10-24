@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SnapDOM: Capture, modify and convert DOM elements</title>
-  <meta name="description" content="A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
+  <meta name="description" content="High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.">
   <meta name="keywords" content="snapdom, DOM capture, html2canvas alternative, HTML to image, SVG export, JavaScript screenshot">
   <meta name="author" content="zumerlab">
   <meta name="robots" content="index, follow">
@@ -13,12 +13,12 @@
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="website">
   <meta property="og:title" content="SnapDOM: capture, modify and convert DOM elements">
-  <meta property="og:description" content="A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
+  <meta property="og:description" content="High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.">
   <meta property="og:url" content="https://snapdom.dev/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="SnapDOM: capture, modify and convert DOM elements">
-  <meta name="twitter:description" content="A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.">
+  <meta name="twitter:description" content="High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
   <link rel="icon" type="image/png" href="./assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="icon" type="image/svg+xml" href="./assets/favicon/favicon.svg">
@@ -34,12 +34,24 @@
     "alternateName": "@zumer/snapdom",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
-    "description": "A high-performance engine for capturing, modifying and converting DOM elements into any format. Images in the core; plugins add PDF, HTML, vector, GIF, video and agent context. MIT, zero dependencies.",
+    "description": "High-performance engine to capture, modify and convert DOM elements. Images in the core; plugins add PDF, HTML, vector, GIF and video. MIT, zero dependencies.",
     "url": "https://snapdom.dev/",
     "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom",
     "codeRepository": "https://github.com/zumerlab/snapdom",
     "license": "https://spdx.org/licenses/MIT.html",
-    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "publisher": { "@id": "https://zumerlab.com/#organization" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": "https://zumerlab.com/#organization",
+    "name": "Zumerlab",
+    "url": "https://zumerlab.com/",
+    "logo": "https://snapdom.dev/assets/favicon/favicon-96x96.png",
+    "sameAs": ["https://github.com/zumerlab", "https://www.npmjs.com/org/zumer"]
   }
   </script>
   <link rel="stylesheet" href="./shared.css">
@@ -138,7 +150,7 @@
     .install-tabs button[aria-selected="true"] { border-bottom-color: #9eb3ff; color: var(--white); }
     .install-line .install { margin: 0; }
     .demo-panel .stage-row { min-height: 128px; }
-    .tray-empty { padding-top: 22px; color: var(--muted); opacity: .7; font: 9px var(--font-code); letter-spacing: 1.2px; text-transform: uppercase; }
+    .tray-empty { padding-top: 22px; color: var(--muted); font: 9px var(--font-code); letter-spacing: 1.2px; text-transform: uppercase; }
     .output-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
     .output-card { display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--white); border: 1px solid var(--line); transition: border-color .15s; }
     .output-card:hover { border-color: var(--blue); }
@@ -207,7 +219,7 @@
         <div>
           <p class="eyebrow">High-performance DOM engine · zero dependencies</p>
           <h1>Capture, modify and convert DOM elements into any format.</h1>
-          <p class="lead">SnapDOM runs in the browser. Images ship in the core; plugins turn the same capture into PDF, HTML, vector artwork, GIF, video or context for agents.</p>
+          <p class="lead">SnapDOM is an MIT JavaScript library that converts DOM elements to PNG, SVG or canvas, a faster html2canvas alternative. It runs in the browser. Images ship in the core; plugins turn the same capture into PDF, HTML, vector artwork, GIF, video or context for agents.</p>
           <div class="actions">
             <a class="btn btn-primary" href="./docs/">Get started</a>
             <a class="btn btn-secondary" href="#outputs">Choose your output</a>
@@ -236,7 +248,7 @@
             <span class="stage-cross" style="left:33.33%;top:33.33%">+</span>
             <span class="stage-cross" style="left:66.66%;top:66.66%">+</span>
             <div class="stage-bracket tl"></div><div class="stage-bracket tr"></div><div class="stage-bracket bl"></div><div class="stage-bracket br"></div>
-            <img class="stage-mascot mascot-art" src="./assets/mascots/mr-snapdom-guides.webp" alt="Mr. SnapDOM guiding the way with a map" width="1254" height="1254" decoding="async">
+            <img class="stage-mascot mascot-art" src="./assets/mascots/mr-snapdom-guides.webp" alt="Mr. SnapDOM guiding the way with a map" width="640" height="640" decoding="async">
             <span class="stage-annot" style="top:20px;left:52px">Subject: Mr. SnapDOM</span>
             <span class="stage-annot" style="bottom:20px;right:52px">AF · locked</span>
             <span class="stage-annot vert" style="top:50%;right:20px;transform:translateY(-50%)">Live DOM: not a screenshot</span>
@@ -248,7 +260,7 @@
             <div class="hero-tray" id="hero-tray" aria-live="polite"><span class="tray-empty">Prints land here</span></div>
           </div>
           </div>
-          <footer class="demo-panel-status" id="hero-status" role="status">Press the shutter. This stage is captured for real.</footer>
+          <div class="demo-panel-status" id="hero-status" role="status">Press the shutter. This stage is captured for real.</div>
         </section>
       </div>
     </section>
@@ -257,12 +269,12 @@
       <div class="wrap logo-row">
         <span>Used in production by</span>
         <div class="logo-list">
-          <a href="https://github.com/lobehub/lobehub" target="_blank" rel="noopener" aria-label="LobeHub repository"><img src="./assets/made-with/lobehub.png" alt="LobeHub" title="LobeHub"></a>
-          <a href="https://github.com/huggingface/chat-ui" target="_blank" rel="noopener" aria-label="Hugging Face Chat UI repository"><img src="./assets/made-with/huggingface.png" alt="Hugging Face" title="Hugging Face Chat UI"></a>
-          <a href="https://github.com/Tencent/tmagic-editor" target="_blank" rel="noopener" aria-label="Tencent TMagic Editor repository"><img src="./assets/made-with/Tencent.png" alt="Tencent" title="Tencent TMagic Editor"></a>
-          <a href="https://github.com/seek-oss/playroom" target="_blank" rel="noopener" aria-label="SEEK Playroom repository"><img src="./assets/made-with/seek-oss.png" alt="SEEK" title="SEEK Playroom"></a>
-          <a href="https://github.com/antvis/GPT-Vis" target="_blank" rel="noopener" aria-label="AntV GPT-Vis repository"><img src="./assets/made-with/antvis.png" alt="AntV" title="AntV GPT-Vis"></a>
-          <a href="https://github.com/metabrainz/listenbrainz-server" target="_blank" rel="noopener" aria-label="MetaBrainz ListenBrainz repository"><img src="./assets/made-with/metabrainz.png" alt="MetaBrainz" title="MetaBrainz ListenBrainz"></a>
+          <a href="https://github.com/lobehub/lobehub" target="_blank" rel="noopener" aria-label="LobeHub repository"><img src="./assets/made-with/lobehub.png" width="128" height="128" loading="lazy" alt="LobeHub" title="LobeHub"></a>
+          <a href="https://github.com/huggingface/chat-ui" target="_blank" rel="noopener" aria-label="Hugging Face Chat UI repository"><img src="./assets/made-with/huggingface.png" width="128" height="128" loading="lazy" alt="Hugging Face" title="Hugging Face Chat UI"></a>
+          <a href="https://github.com/Tencent/tmagic-editor" target="_blank" rel="noopener" aria-label="Tencent TMagic Editor repository"><img src="./assets/made-with/Tencent.png" width="128" height="128" loading="lazy" alt="Tencent" title="Tencent TMagic Editor"></a>
+          <a href="https://github.com/seek-oss/playroom" target="_blank" rel="noopener" aria-label="SEEK Playroom repository"><img src="./assets/made-with/seek-oss.png" width="128" height="128" loading="lazy" alt="SEEK" title="SEEK Playroom"></a>
+          <a href="https://github.com/antvis/GPT-Vis" target="_blank" rel="noopener" aria-label="AntV GPT-Vis repository"><img src="./assets/made-with/antvis.png" width="128" height="128" loading="lazy" alt="AntV" title="AntV GPT-Vis"></a>
+          <a href="https://github.com/metabrainz/listenbrainz-server" target="_blank" rel="noopener" aria-label="MetaBrainz ListenBrainz repository"><img src="./assets/made-with/metabrainz.png" width="128" height="128" loading="lazy" alt="MetaBrainz" title="MetaBrainz ListenBrainz"></a>
           <a class="logo-more" href="./made-with/">View more projects</a>
         </div>
       </div>
@@ -348,7 +360,7 @@
 
     <section class="section">
       <div class="wrap showcase-callout">
-        <div class="showcase-visual"><img class="mascot-art" src="./assets/mascots/mr-snapdom-showcase.webp" alt="Mr. SnapDOM presenting an image frame" width="1254" height="1254" loading="lazy" decoding="async"></div>
+        <div class="showcase-visual"><img class="mascot-art" src="./assets/mascots/mr-snapdom-showcase.webp" alt="Mr. SnapDOM presenting an image frame" width="640" height="640" loading="lazy" decoding="async"></div>
         <div class="showcase-copy">
           <p class="eyebrow">Live demos</p>
           <h2>Run the complete demo suite.</h2>
@@ -388,7 +400,8 @@
       location.replace('./showcase/' + location.hash)
     }
 
-    if (location.hostname === 'snapdom.dev') {
+    // Analytics wait for load so they never compete with the first paint.
+    if (location.hostname === 'snapdom.dev') addEventListener('load', () => {
       const umami = document.createElement('script')
       umami.defer = true
       umami.src = 'https://cloud.umami.is/script.js'
@@ -403,7 +416,7 @@
       function gtag(){ dataLayer.push(arguments) }
       gtag('js', new Date())
       gtag('config', 'G-4G88ZHG7S1', { transport_type: 'beacon' })
-    }
+    })
 
     // One install line, npm or CDN.
     const installCommand = document.getElementById('install-command')
@@ -430,7 +443,9 @@
     { "imports": { "@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs" } }
   </script>
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'
+    // The core is fetched after load: the hero text paints without waiting on the CDN.
+    const core = new Promise(resolve => document.readyState === 'complete' ? resolve() : addEventListener('load', resolve, { once: true }))
+      .then(() => import('https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'))
 
     const pluginRolls = [
       { mod: 'filter', fn: 'filter', opts: { preset: 'vintage' }, label: "filter({ preset: 'vintage' })" },
@@ -481,6 +496,7 @@
           }
         }
 
+        const { snapdom } = await core
         const started = performance.now()
         const image = await snapdom.toPng(stage, { scale: .32, embedFonts: false, cache: 'auto', exclude: ['#hero-flash'], plugins })
         const print = document.createElement('div')

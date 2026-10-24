@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WebGL Shatter — A Capture, Shattered — SnapDOM Labs</title>
-  <meta name="description" content="Five WebGL shaders — shatter, ripple, glitch, dissolve, metal — all start from the same place: a SnapDOM capture of a live, editable card turned into a WebGL texture. A custom plugin adds the one export core doesn't have." />
+  <meta name="description" content="Five WebGL shaders (shatter, ripple, glitch, dissolve, metal) start from one SnapDOM capture of a live, editable card turned into a texture." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/webgl-shatter/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"WebGL Shatter — a capture, shattered","description":"Five WebGL shaders — shatter, ripple, glitch, dissolve, metal — all start from the same place: a SnapDOM capture of a live, editable card turned into a WebGL texture. A custom plugin adds the one export core doesn't have.","url":"https://snapdom.dev/labs/webgl-shatter/","datePublished":"2026-07-21","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"WebGL Shatter — a capture, shattered","description":"Five WebGL shaders — shatter, ripple, glitch, dissolve, metal — all start from the same place: a SnapDOM capture of a live, editable card turned into a WebGL texture. A custom plugin adds the one export core doesn't have.","url":"https://snapdom.dev/labs/webgl-shatter/","datePublished":"2026-07-21","dateModified":"2026-10-23","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"WebGL Shatter","item":"https://snapdom.dev/labs/webgl-shatter/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -99,11 +99,11 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4>Ripple, Glitch, Dissolve, Metal: one texture, one shader</h4><p><code>snapdom.toCanvas(card, { scale: 2 })</code> captures the card once as a single canvas. That canvas becomes a WebGL texture via <code>texImage2D</code>, and a per-effect fragment shader distorts or reveals it over a fixed duration — or, for Metal, indefinitely while tracking pointer position.</p></li>
-        <li><h4>The card hides while the effect plays</h4><p>The card's CSS <code>visibility</code> is set to <code>hidden</code> right after the texture is captured, and restored once the effect finishes — except Metal, which stays hidden and interactive until you explicitly exit it.</p></li>
-        <li><h4>Shatter needs more than one texture</h4><p>The <code>shatterExport</code> plugin's <code>defineExports(ctx)</code> returns a <code>shatter</code> export function. Calling <code>result.toShatter({ cols, rows })</code> first gets a canvas via <code>ctx.exports.canvas(opts)</code> — the same core canvas exporter, called directly, bypassing the plugin pipeline's own hook re-runs.</p></li>
-        <li><h4>That canvas is sliced into a grid</h4><p>The canvas is cut into <code>cols × rows</code> small canvases with <code>drawImage</code>, each one becoming its own WebGL texture positioned at its origin cell.</p></li>
-        <li><h4>Physics takes over</h4><p>Each piece gets a random launch velocity and rotation on spawn; gravity is applied every frame, and pieces fade out until none are left.</p></li>
+        <li><h4 aria-level="3">Ripple, Glitch, Dissolve, Metal: one texture, one shader</h4><p><code>snapdom.toCanvas(card, { scale: 2 })</code> captures the card once as a single canvas. That canvas becomes a WebGL texture via <code>texImage2D</code>, and a per-effect fragment shader distorts or reveals it over a fixed duration — or, for Metal, indefinitely while tracking pointer position.</p></li>
+        <li><h4 aria-level="3">The card hides while the effect plays</h4><p>The card's CSS <code>visibility</code> is set to <code>hidden</code> right after the texture is captured, and restored once the effect finishes — except Metal, which stays hidden and interactive until you explicitly exit it.</p></li>
+        <li><h4 aria-level="3">Shatter needs more than one texture</h4><p>The <code>shatterExport</code> plugin's <code>defineExports(ctx)</code> returns a <code>shatter</code> export function. Calling <code>result.toShatter({ cols, rows })</code> first gets a canvas via <code>ctx.exports.canvas(opts)</code> — the same core canvas exporter, called directly, bypassing the plugin pipeline's own hook re-runs.</p></li>
+        <li><h4 aria-level="3">That canvas is sliced into a grid</h4><p>The canvas is cut into <code>cols × rows</code> small canvases with <code>drawImage</code>, each one becoming its own WebGL texture positioned at its origin cell.</p></li>
+        <li><h4 aria-level="3">Physics takes over</h4><p>Each piece gets a random launch velocity and rotation on spawn; gravity is applied every frame, and pieces fade out until none are left.</p></li>
       </ol>
     </section>
 

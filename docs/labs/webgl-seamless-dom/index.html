@@ -3,8 +3,8 @@
 <head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Seamless DOM WebGL — The Text You See Isn't Text — SnapDOM Labs</title>
-  <meta name="description" content="A text field where every glyph is a WebGL texture. A transparent contenteditable proxy owns the caret; a hidden DOM element is what SnapDOM actually captures, cross-faded into view by a double-buffered plugin." />
+  <title>Seamless DOM WebGL: text that isn't text | SnapDOM Labs</title>
+  <meta name="description" content="A text field where every glyph is a WebGL texture. A transparent contenteditable owns the caret while SnapDOM captures a hidden element behind it." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/webgl-seamless-dom/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Seamless DOM to WebGL — the text you see isn't text","description":"A transparent contenteditable proxy owns the caret while a hidden DOM element is what SnapDOM actually captures. A plugin double-buffers two WebGL textures and cross-fades between them, so every keystroke updates the canvas without a flicker.","url":"https://snapdom.dev/labs/webgl-seamless-dom/","datePublished":"2026-07-21","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Seamless DOM to WebGL — the text you see isn't text","description":"A transparent contenteditable proxy owns the caret while a hidden DOM element is what SnapDOM actually captures. A plugin double-buffers two WebGL textures and cross-fades between them, so every keystroke updates the canvas without a flicker.","url":"https://snapdom.dev/labs/webgl-seamless-dom/","datePublished":"2026-07-21","dateModified":"2026-10-23","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Seamless DOM","item":"https://snapdom.dev/labs/webgl-seamless-dom/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -116,12 +116,12 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4>A transparent proxy owns the caret</h4><p>The <code>.input-layer</code> sits visually on top of the WebGL canvas with fully transparent text and background. It exists only to give the browser something to place a real caret on and to receive real keyboard and paste events — its text is transparent while the caret and selection remain visible.</p></li>
-        <li><h4>Every edit is mirrored to a hidden element</h4><p>On every <code>input</code> event — plus paste, plus Enter (a <code>beforeinput</code> override inserts a literal newline instead of letting <code>contenteditable</code> create a new <code>&lt;div&gt;</code>) — the proxy's text is copied into the hidden <code>#dom-source</code> element and <code>refresh()</code> runs.</p></li>
-        <li><h4><code>refresh()</code> coalesces bursts</h4><p>Same <code>dirty</code>/<code>working</code> loop as the live-mirror demo: if a capture is already in flight when new input arrives, it's flagged dirty and picked up by the loop that's already running, instead of stacking up parallel captures. It captures <code>#dom-source</code> with the <code>seamlessWebgl</code> plugin attached.</p></li>
-        <li><h4>The plugin exports into the renderer</h4><p>The plugin's <code>defineExports</code> returns a <code>webgl</code> export. Calling it hands the capture's URL to <code>renderer.update(ctx.export.url)</code> instead of returning an image to the page.</p></li>
-        <li><h4>The idle texture is loaded, not the visible one</h4><p><code>SeamlessRenderer.update()</code> loads the new capture into whichever of its two textures — <code>current</code> or <code>next</code> — isn't currently on screen, then starts a roughly 110ms blend toward it.</p></li>
-        <li><h4>The shader mixes, then the effect applies</h4><p>The render loop's fragment shader mixes <code>beforeImage</code> and <code>afterImage</code> by a <code>blend</code> uniform that ramps 0 1 over that window. Whatever shader is selected in the dropdown runs on top of that already-blended result.</p></li>
+        <li><h4 aria-level="3">A transparent proxy owns the caret</h4><p>The <code>.input-layer</code> sits visually on top of the WebGL canvas with fully transparent text and background. It exists only to give the browser something to place a real caret on and to receive real keyboard and paste events — its text is transparent while the caret and selection remain visible.</p></li>
+        <li><h4 aria-level="3">Every edit is mirrored to a hidden element</h4><p>On every <code>input</code> event — plus paste, plus Enter (a <code>beforeinput</code> override inserts a literal newline instead of letting <code>contenteditable</code> create a new <code>&lt;div&gt;</code>) — the proxy's text is copied into the hidden <code>#dom-source</code> element and <code>refresh()</code> runs.</p></li>
+        <li><h4 aria-level="3"><code>refresh()</code> coalesces bursts</h4><p>Same <code>dirty</code>/<code>working</code> loop as the live-mirror demo: if a capture is already in flight when new input arrives, it's flagged dirty and picked up by the loop that's already running, instead of stacking up parallel captures. It captures <code>#dom-source</code> with the <code>seamlessWebgl</code> plugin attached.</p></li>
+        <li><h4 aria-level="3">The plugin exports into the renderer</h4><p>The plugin's <code>defineExports</code> returns a <code>webgl</code> export. Calling it hands the capture's URL to <code>renderer.update(ctx.export.url)</code> instead of returning an image to the page.</p></li>
+        <li><h4 aria-level="3">The idle texture is loaded, not the visible one</h4><p><code>SeamlessRenderer.update()</code> loads the new capture into whichever of its two textures — <code>current</code> or <code>next</code> — isn't currently on screen, then starts a roughly 110ms blend toward it.</p></li>
+        <li><h4 aria-level="3">The shader mixes, then the effect applies</h4><p>The render loop's fragment shader mixes <code>beforeImage</code> and <code>afterImage</code> by a <code>blend</code> uniform that ramps 0 1 over that window. Whatever shader is selected in the dropdown runs on top of that already-blended result.</p></li>
       </ol>
     </section>
 

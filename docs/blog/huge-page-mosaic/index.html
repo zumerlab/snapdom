@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"}}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-10-23","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"image":"https://snapdom.dev/assets/og-card.jpg"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"Tiled Rasterization","item":"https://snapdom.dev/blog/huge-page-mosaic/"}]}</script>
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
@@ -38,7 +38,7 @@
     .tile-doc-kpi { display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border: 1px solid #BAC5DE; }
     .tile-doc-kpi span { color: #5C6884; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
     .tile-doc-kpi strong { color: #0F1E4D; font-size: 34px; line-height: 1; }
-    .tile-doc-kpi em { color: #1E9F6E; font-size: 13px; font-style: normal; font-weight: 700; }
+    .tile-doc-kpi em { color: #167F57; font-size: 13px; font-style: normal; font-weight: 700; }
     .tile-doc-chart { height: 500px; padding: 38px 42px; background: #EAF0FF; }
     .tile-doc-eyebrow { color: #2D5BFF; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
     .tile-doc-chart h4, .tile-doc-regions h4, .tile-doc-timeline h4 { margin: 8px 0 24px; color: #0F1E4D; font-size: 28px; letter-spacing: -1px; text-transform: none; }
@@ -95,7 +95,7 @@
 <article class="pane-read sec-record" data-title="Tiled rasterization">
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Blog</span><span aria-hidden="true">/</span><span>Posts</span><span aria-hidden="true">/</span><span>Tiled rasterization</span></nav><span class="doc-meta">SnapDOM Blog</span></div><h1><span class="accent">Tiled rasterization</span> for large DOM captures</h1><p class="doc-lead">Since v2.24, SnapDOM can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.</p></header>
 <div class="pane-content"><!-- content -->
-    <p class="byline">Zumerlab · August 11, 2026</p>
+    <p class="byline">Juan Martin Muda · August 11, 2026</p>
 
     <div class="tldr"><div class="tldr-label">TL;DR</div><p>A very tall DOM capture can serialize to SVG just fine and still fail when the browser tries to decode that SVG into one enormous bitmap. SnapDOM's new <code>toCanvas({ crop })</code> windows the SVG <em>before</em> image decode. Capture once, move that window across <code>result.meta</code>, and you can preserve the requested resolution while each tile fits the browser's raster limits—without ever allocating the full-page canvas. It solves the raster ceiling; it does not make cloning an enormous DOM free.</p></div>
 
@@ -139,7 +139,7 @@
             <section class="tile-doc-chart">
               <span class="tile-doc-eyebrow">Performance</span>
               <h4>Recurring revenue by quarter</h4>
-              <div class="tile-doc-bars" aria-label="Bar chart">
+              <div class="tile-doc-bars" role="img" aria-label="Bar chart">
                 <div class="tile-doc-bar" data-label="Q1" style="height:38%"></div>
                 <div class="tile-doc-bar" data-label="Q2" style="height:51%"></div>
                 <div class="tile-doc-bar" data-label="Q3" style="height:46%"></div>

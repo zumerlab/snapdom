@@ -86,7 +86,7 @@
   <!-- Preconnect to critical origins only (reduces DNS/TLS overhead) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://api.github.com">
+  <link rel="preconnect" href="https://img.shields.io">
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
 
   <!-- === Stylesheets ===
@@ -1174,43 +1174,43 @@
 
     <section id="lab-stop-motion">
       <h2 id="lab-stop-motion-title">Stop motion</h2>
-      <p class="demo-explanation">Pose a figure, capture each frame, play it back as a flipbook. <a href="../labs/stop-motion/">More info</a></p>
+      <p class="demo-explanation">Pose a figure, capture each frame, play it back as a flipbook. <a href="../labs/stop-motion/">More about the stop motion lab</a></p>
       <iframe class="lab-frame" src="../labs/stop-motion/?embed" title="Stop motion demo" loading="lazy"></iframe>
     </section>
 
     <section id="lab-paint-canvas">
       <h2 id="lab-paint-canvas-title">Paint on a capture</h2>
-      <p class="demo-explanation">Paint on top of a captured image. <a href="../labs/paint-canvas/">More info</a></p>
+      <p class="demo-explanation">Paint on top of a captured image. <a href="../labs/paint-canvas/">More about the paint canvas lab</a></p>
       <iframe class="lab-frame" src="../labs/paint-canvas/?embed" title="Paint on a capture demo" loading="lazy"></iframe>
     </section>
 
     <section id="lab-target-range">
       <h2 id="lab-target-range-title">Target range</h2>
-      <p class="demo-explanation">Shoot at a capture and watch the holes pile up. <a href="../labs/target-range/">More info</a></p>
+      <p class="demo-explanation">Shoot at a capture and watch the holes pile up. <a href="../labs/target-range/">More about the target range lab</a></p>
       <iframe class="lab-frame" src="../labs/target-range/?embed" title="Target range demo" loading="lazy"></iframe>
     </section>
 
     <section id="lab-capture-stages">
       <h2 id="lab-capture-stages-title">Capture stages</h2>
-      <p class="demo-explanation">Compare a capture that stops early with a full render, timed side by side. <a href="../labs/capture-stages/">More info</a></p>
+      <p class="demo-explanation">Compare a capture that stops early with a full render, timed side by side. <a href="../labs/capture-stages/">More about the capture stages lab</a></p>
       <iframe class="lab-frame" src="../labs/capture-stages/?embed" title="Capture stages demo" loading="lazy"></iframe>
     </section>
 
     <section id="lab-webgl-live-mirror">
       <h2 id="lab-webgl-live-mirror-title">Live mirror</h2>
-      <p class="demo-explanation">Type into a card and see it mirrored live on a WebGL surface. <a href="../labs/webgl-live-mirror/">More info</a></p>
+      <p class="demo-explanation">Type into a card and see it mirrored live on a WebGL surface. <a href="../labs/webgl-live-mirror/">More about the WebGL live mirror lab</a></p>
       <iframe class="lab-frame" src="../labs/webgl-live-mirror/?embed" title="Live mirror demo" loading="lazy"></iframe>
     </section>
 
     <section id="lab-webgl-seamless-dom">
       <h2 id="lab-webgl-seamless-dom-title">Seamless DOM</h2>
-      <p class="demo-explanation">Editable text rendered through WebGL without a visible seam. <a href="../labs/webgl-seamless-dom/">More info</a></p>
+      <p class="demo-explanation">Editable text rendered through WebGL without a visible seam. <a href="../labs/webgl-seamless-dom/">More about the WebGL seamless DOM lab</a></p>
       <iframe class="lab-frame" src="../labs/webgl-seamless-dom/?embed" title="Seamless DOM demo" loading="lazy"></iframe>
     </section>
 
     <section id="lab-webgl-shatter">
       <h2 id="lab-webgl-shatter-title">Shattered capture</h2>
-      <p class="demo-explanation">Break a capture into pieces with WebGL physics. <a href="../labs/webgl-shatter/">More info</a></p>
+      <p class="demo-explanation">Break a capture into pieces with WebGL physics. <a href="../labs/webgl-shatter/">More about the WebGL shatter lab</a></p>
       <iframe class="lab-frame" src="../labs/webgl-shatter/?embed" title="Shattered capture demo" loading="lazy"></iframe>
     </section>
     <!-- Automatic capture reuse -->
@@ -1331,7 +1331,7 @@
     const available = !!drawApi;
     document.getElementById('btn-htmlcanvas-api').disabled = !available;
     if (!available) {
-      statusApi.innerHTML = '<span style="color:var(--rose)">Browser drawing API unavailable. Enable the canvas drawing flag in a compatible browser to try the second engine.</span>';
+      statusApi.innerHTML = '<span style="color:#CF2A38">Browser drawing API unavailable. Enable the canvas drawing flag in a compatible browser to try the second engine.</span>';
     } else {
       statusApi.textContent = `${drawApi}() available`;
       statusApi.style.color = 'var(--green)';
@@ -1345,7 +1345,7 @@
         outDefault.innerHTML = '';
         outDefault.appendChild(img);
       } catch (e) {
-        outDefault.innerHTML = `<span style="color:var(--rose)">${e.message}</span>`;
+        outDefault.innerHTML = `<span style="color:#CF2A38">${e.message}</span>`;
       }
     };
 

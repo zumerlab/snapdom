@@ -3,9 +3,21 @@
 <head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Capture Stages — a plugin decides how far the pipeline runs</title>
-  <meta name="description" content="A capture freezes a clone and can continue through rendering. Compare the clone and render stages declared by plugins, and see which exports each stage produces."/>
+  <title>Capture Stages: how far the pipeline runs | SnapDOM Labs</title>
+  <meta name="description" content="A capture freezes a clone and can continue through rendering. Compare the clone and render stages plugins declare and the exports each produces."/>
   <link rel="canonical" href="https://snapdom.dev/labs/capture-stages/"/>
+  <meta name="robots" content="index, follow">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Capture Stages: how far the pipeline runs | SnapDOM Labs">
+  <meta property="og:description" content="A capture freezes a clone and can continue through rendering. Compare the clone and render stages plugins declare and the exports each produces.">
+  <meta property="og:url" content="https://snapdom.dev/labs/capture-stages/">
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Capture Stages: how far the pipeline runs | SnapDOM Labs">
+  <meta name="twitter:description" content="A capture freezes a clone and can continue through rendering. Compare the clone and render stages plugins declare and the exports each produces.">
+  <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture Stages: how far the pipeline runs","description":"A capture freezes a clone and can continue through rendering. Compare the clone and render stages plugins declare and the exports each produces.","url":"https://snapdom.dev/labs/capture-stages/","image":"https://snapdom.dev/assets/og-card.jpg","datePublished":"2026-08-12","dateModified":"2026-10-23","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Capture Stages","item":"https://snapdom.dev/labs/capture-stages/"}]}</script>
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
   <style>
@@ -85,7 +97,7 @@ import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mj
 const sample = document.getElementById('sample')
 sample.innerHTML = Array.from({ length: 36 }, (_, i) => `
   <article>
-    <h4>Item ${i + 1}</h4>
+    <h4 aria-level="2">Item ${i + 1}</h4>
     <p>Short description for row ${i + 1}.</p>
     <button>Open ${i + 1}</button>
   </article>`).join('')

@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Paint Canvas — The PNG Is the Canvas — SnapDOM Labs</title>
-  <meta name="description" content="A paint app with no <canvas> element. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on it, so the exported PNG becomes the paint surface itself." />
+  <meta name="description" content="A paint app with no canvas element. A SnapDOM plugin keeps drawing on the last captured clone, so the exported PNG is the paint surface." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/paint-canvas/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Paint Canvas — the PNG is the canvas","description":"A paint app with no <canvas> element. A SnapDOM plugin holds onto the clone from the last capture and keeps drawing on it, so the exported PNG becomes the paint surface itself.","url":"https://snapdom.dev/labs/paint-canvas/","datePublished":"2026-07-21","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Paint Canvas — the PNG is the canvas","description":"A paint app with no canvas element. A SnapDOM plugin keeps drawing on the last captured clone, so the exported PNG is the paint surface.","url":"https://snapdom.dev/labs/paint-canvas/","datePublished":"2026-07-21","dateModified":"2026-10-23","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Paint Canvas","item":"https://snapdom.dev/labs/paint-canvas/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -30,7 +30,7 @@
     .lab-paint .toolbar label { font-size: 12.5px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); }
     .lab-paint .stage { display: flex; justify-content: center; margin-bottom: 16px; }
     .lab-paint #board { position: relative; width: min(380px, 90vw); height: min(380px, 90vw); border-radius: 0; overflow: hidden; box-shadow: 0 12px 32px rgba(15,30,77,0.25); cursor: none; background: #fff; touch-action: none; user-select: none; border: 1px solid var(--border); }
-    .lab-paint #board img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; pointer-events: none; }
+    .lab-paint #board img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: contain; pointer-events: none; }
     .lab-paint #liveStrokes { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
     .lab-paint #brushCursor { position: absolute; border-radius: 50%; border: 1.5px solid rgba(15,30,77,0.6); box-shadow: 0 0 0 1px rgba(255,255,255,0.7); pointer-events: none; opacity: 0; z-index: 5; }
     .lab-paint .demo-actions { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
@@ -85,18 +85,18 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4>A hidden source element, never the visible board</h4><p>A 420×420 <code>&lt;div&gt;</code> off-screen holds one empty <code>&lt;svg class="strokes"&gt;</code>. This — not the board you see — is what SnapDOM actually captures.</p></li>
-        <li><h4>The visible line is free</h4><p>While you drag, a local SVG <code>&lt;path&gt;</code> on the visible board follows the pointer using <code>getCoalescedEvents()</code> for smooth sampling. This never touches SnapDOM, so the line itself has zero capture latency.</p></li>
-        <li><h4>The stroke is handed to the plugin periodically</h4><p>Roughly every 120ms, the in-progress stroke's path data is passed to <code>plugin.recordStroke()</code> and <code>snapdom.toPng()</code> runs again on the hidden source.</p></li>
-        <li><h4><code>afterClone</code> restores state, then applies the stroke</h4><p>Instead of cloning the pristine (empty) source, the plugin swaps in the clone it saved from the <em>previous</em> render. It then finds the in-progress stroke's <code>&lt;path&gt;</code> by a <code>data-stroke-id</code> and updates it — or appends a new one if this is a new stroke. One continuous drag stays one <code>&lt;path&gt;</code> element, never hundreds.</p></li>
-        <li><h4><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next capture.</p></li>
-        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download button just points at that same <code>&lt;img&gt;.src</code> — no second capture needed.</p></li>
+        <li><h4 aria-level="3">A hidden source element, never the visible board</h4><p>A 420×420 <code>&lt;div&gt;</code> off-screen holds one empty <code>&lt;svg class="strokes"&gt;</code>. This — not the board you see — is what SnapDOM actually captures.</p></li>
+        <li><h4 aria-level="3">The visible line is free</h4><p>While you drag, a local SVG <code>&lt;path&gt;</code> on the visible board follows the pointer using <code>getCoalescedEvents()</code> for smooth sampling. This never touches SnapDOM, so the line itself has zero capture latency.</p></li>
+        <li><h4 aria-level="3">The stroke is handed to the plugin periodically</h4><p>Roughly every 120ms, the in-progress stroke's path data is passed to <code>plugin.recordStroke()</code> and <code>snapdom.toPng()</code> runs again on the hidden source.</p></li>
+        <li><h4 aria-level="3"><code>afterClone</code> restores state, then applies the stroke</h4><p>Instead of cloning the pristine (empty) source, the plugin swaps in the clone it saved from the <em>previous</em> render. It then finds the in-progress stroke's <code>&lt;path&gt;</code> by a <code>data-stroke-id</code> and updates it — or appends a new one if this is a new stroke. One continuous drag stays one <code>&lt;path&gt;</code> element, never hundreds.</p></li>
+        <li><h4 aria-level="3"><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next capture.</p></li>
+        <li><h4 aria-level="3">The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download button just points at that same <code>&lt;img&gt;.src</code> — no second capture needed.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2 id="why-this-needed-a-plugin">Why this needed a plugin</h2>
-      <p>SnapDOM v3.x.x can reuse eligible captures, but the accumulated drawing here belongs to the plugin. On each stroke, the plugin replaces the new clone with its saved clone and adds the latest mark. Its stateful hooks run on fresh captures.</p>
+      <p>SnapDOM 3 can reuse eligible captures, but the accumulated drawing here belongs to the plugin. On each stroke, the plugin replaces the new clone with its saved clone and adds the latest mark. Its stateful hooks run on fresh captures.</p>
       <p>The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks share the plugin closure. <code>afterClone</code> adds the new mark to <code>savedClone</code>; <code>afterRender</code> saves the resulting tree for the next call. The plugin owns this drawing state independently of capture reuse.</p>
     </section>
 
@@ -255,6 +255,7 @@ async function render (stroke) {
       const btn = document.createElement('button')
       btn.className = 'swatch' + (c === color ? ' active' : '')
       btn.style.background = c
+      btn.setAttribute('aria-label', 'Paint color ' + c)
       btn.addEventListener('click', () => {
         color = c
         swatchesEl.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'))
@@ -275,6 +276,7 @@ async function render (stroke) {
       const img = await snapdom.toPng(canvasSource, { plugins: [plugin] })
       img.style.width = '100%'
       img.style.height = '100%'
+      img.alt = 'Painted board'
       board.querySelector('img')?.remove()
       board.insertBefore(img, liveSvg)
       downloadLink.href = img.src

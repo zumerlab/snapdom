@@ -14,15 +14,12 @@ if (stableDocumentation) {
     .catch(() => {})
 }
 
+// shields.io caches the count; api.github.com allows 60 unauthenticated calls an hour per IP,
+// and every 403 past that is a console error on each page.
 if (starNodes.length) {
-  const compact = value => new Intl.NumberFormat('en', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value)
-
-  fetch('https://api.github.com/repos/zumerlab/snapdom')
+  fetch('https://img.shields.io/github/stars/zumerlab/snapdom.json')
     .then(response => response.ok ? response.json() : Promise.reject())
-    .then(repo => starNodes.forEach(node => { node.textContent = compact(repo.stargazers_count) }))
+    .then(({ value }) => starNodes.forEach(node => { node.textContent = value.toUpperCase() }))
     .catch(() => {})
 }
 

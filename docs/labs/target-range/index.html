@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Target Range — Every Shot Hits the Clone — SnapDOM Labs</title>
-  <meta name="description" content="A shooting-gallery demo where bullet holes are never drawn on the live DOM. A SnapDOM plugin holds onto the last captured clone and appends a new hit to it on every shot, so the exported PNG accumulates damage across the whole game." />
+  <meta name="description" content="A shooting gallery where bullet holes never touch the live DOM. A SnapDOM plugin appends each hit to the last captured clone, so the PNG keeps the damage." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/target-range/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Target Range — every shot hits the clone","description":"A shooting-gallery demo where bullet holes are never drawn on the live DOM. A SnapDOM plugin holds onto the last captured clone and appends a new hit to it on every shot, so the exported PNG accumulates damage across the whole game.","url":"https://snapdom.dev/labs/target-range/","datePublished":"2026-07-21","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Target Range — every shot hits the clone","description":"A shooting gallery where bullet holes never touch the live DOM. A SnapDOM plugin appends each hit to the last captured clone, so the PNG keeps the damage.","url":"https://snapdom.dev/labs/target-range/","datePublished":"2026-07-21","dateModified":"2026-10-23","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Target Range","item":"https://snapdom.dev/labs/target-range/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -38,8 +38,8 @@
     .lab-target-range #overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: rgba(15,23,42,0.88); text-align: center; padding: 16px; z-index: 10; color: #e2e8f0; }
     .lab-target-range #overlay.hidden { display: none; }
     .lab-target-range #overlay h2 { margin: 0; font-size: 1.3em; color: #fff; }
-    .lab-target-range #overlay p { margin: 0; opacity: .8; font-size: .9em; }
-    .lab-target-range .hint { text-align: center; opacity: .7; font-size: .8em; max-width: 420px; margin: 14px auto 0; color: var(--text-muted); font-family: var(--font-mono); }
+    .lab-target-range #overlay p { margin: 0; color: #fff; opacity: .8; font-size: .9em; }
+    .lab-target-range .hint { text-align: center; font-size: .8em; max-width: 420px; margin: 14px auto 0; color: var(--text-muted); font-family: var(--font-mono); }
 
     /* ── Explainer diagram ── */
     .flow-strip { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 28px; font-family: var(--font-mono); font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
@@ -96,19 +96,19 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4>A hidden source element, never the visible board</h4><p>A 340×340 <code>&lt;div&gt;</code> off-screen holds one SVG target built once from a ring definition. This — not the board you see — is what SnapDOM actually captures.</p></li>
-        <li><h4>The shot is scored locally, against where the reticle really was</h4><p>On click, the reticle's actual position (after sway and recoil, not the raw mouse position) is converted to a percentage and scored against the ring radii. That <code>{ xPct, yPct, color }</code> is handed to <code>plugin.addHit()</code>.</p></li>
-        <li><h4><code>addHit()</code> appends a marker to the plugin's saved clone</h4><p>If this is the very first shot, the plugin clones the live source once to start from. Every call after that appends a jagged, randomized torn-paper hole — positioned in percentage coordinates so it survives the clone render round trip — to the clone it already has.</p></li>
-        <li><h4><code>snapdom.toPng()</code> runs again, plugin included</h4><p>The demo doesn't touch the target's own DOM at all. It just calls <code>snapdom.toPng(target, { plugins: [plugin] })</code> again, same as the first shot.</p></li>
-        <li><h4><code>afterClone</code> swaps in the saved clone</h4><p>Instead of letting SnapDOM clone the pristine (hole-free) source, the plugin replaces <code>ctx.clone</code> with the clone it's been building — which already carries every hole from every previous shot.</p></li>
-        <li><h4><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next shot.</p></li>
-        <li><h4>The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download link just points at that same <code>&lt;img&gt;.src</code> — it becomes the download source without a second capture.</p></li>
+        <li><h4 aria-level="3">A hidden source element, never the visible board</h4><p>A 340×340 <code>&lt;div&gt;</code> off-screen holds one SVG target built once from a ring definition. This — not the board you see — is what SnapDOM actually captures.</p></li>
+        <li><h4 aria-level="3">The shot is scored locally, against where the reticle really was</h4><p>On click, the reticle's actual position (after sway and recoil, not the raw mouse position) is converted to a percentage and scored against the ring radii. That <code>{ xPct, yPct, color }</code> is handed to <code>plugin.addHit()</code>.</p></li>
+        <li><h4 aria-level="3"><code>addHit()</code> appends a marker to the plugin's saved clone</h4><p>If this is the very first shot, the plugin clones the live source once to start from. Every call after that appends a jagged, randomized torn-paper hole — positioned in percentage coordinates so it survives the clone render round trip — to the clone it already has.</p></li>
+        <li><h4 aria-level="3"><code>snapdom.toPng()</code> runs again, plugin included</h4><p>The demo doesn't touch the target's own DOM at all. It just calls <code>snapdom.toPng(target, { plugins: [plugin] })</code> again, same as the first shot.</p></li>
+        <li><h4 aria-level="3"><code>afterClone</code> swaps in the saved clone</h4><p>Instead of letting SnapDOM clone the pristine (hole-free) source, the plugin replaces <code>ctx.clone</code> with the clone it's been building — which already carries every hole from every previous shot.</p></li>
+        <li><h4 aria-level="3"><code>afterRender</code> checkpoints the result</h4><p>After SnapDOM finishes rendering, the plugin clones what it just produced and holds onto it as the new baseline for the next shot.</p></li>
+        <li><h4 aria-level="3">The output <code>&lt;img&gt;</code> replaces the board's picture</h4><p>The resulting PNG is inserted directly into the board. The download link just points at that same <code>&lt;img&gt;.src</code> — it becomes the download source without a second capture.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2 id="why-this-needed-a-plugin">Why this needed a plugin</h2>
-      <p>SnapDOM v3.x.x can reuse eligible captures, but the accumulated drawing here belongs to the plugin. On each shot, the plugin replaces the new clone with its saved clone and adds the latest mark. Its stateful hooks run on fresh captures.</p>
+      <p>SnapDOM 3 can reuse eligible captures, but the accumulated drawing here belongs to the plugin. On each shot, the plugin replaces the new clone with its saved clone and adds the latest mark. Its stateful hooks run on fresh captures.</p>
       <p>The <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md" target="_blank" rel="noopener"><code>afterClone</code> and <code>afterRender</code></a> hooks share the plugin closure. <code>afterClone</code> adds the new mark to <code>savedClone</code>; <code>afterRender</code> saves the resulting tree for the next call. The plugin owns this drawing state independently of capture reuse.</p>
     </section>
 

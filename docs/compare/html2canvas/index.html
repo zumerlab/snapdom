@@ -33,7 +33,7 @@
     "@type": "Article",
     "headline": "SnapDOM vs html2canvas — A Modern html2canvas Alternative",
     "datePublished": "2026-04-09",
-    "dateModified": "2026-10-15",
+    "dateModified": "2026-10-23",
     "description": "Side-by-side comparison of SnapDOM and html2canvas: feature matrix, code examples, and migration guide.",
     "url": "https://snapdom.dev/compare/html2canvas/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
@@ -60,7 +60,7 @@
         "name": "html2canvas doesn't render web fonts correctly, what do I use?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "First check that your fonts load before capture. SnapDOM v3.x.x uses embedFonts: 'auto' by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser."
+          "text": "First check that your fonts load before capture. SnapDOM 3 uses embedFonts: 'auto' by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser."
         }
       },
       {
@@ -83,14 +83,14 @@
   }
   </script>
 
-  <link rel="preconnect" href="https://api.github.com">
+  <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">
   <link rel="stylesheet" href="../../page.css">
 
   <style>
     /* Maintenance callout */
     .maint-callout { background: var(--rose-soft, rgba(255,77,109,0.10)); border: 1px solid var(--rose, #E63946); border-radius: 0; padding: 18px 22px; margin: 0 0 24px; }
-    .maint-callout .maint-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--rose, #C9264B); margin-bottom: 8px; font-weight: 700; }
+    .maint-callout .maint-label { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #B3202E; margin-bottom: 8px; font-weight: 700; }
     .maint-callout p { color: var(--text); font-size: 15px; line-height: 1.6; margin: 0; }
     .maint-callout a { color: var(--rose, #C9264B); border-bottom: 2px solid var(--rose-soft, rgba(255,77,109,0.30)); text-decoration: none; font-weight: 700; }
     .maint-callout a:hover { border-bottom-color: var(--rose, #C9264B); }
@@ -159,7 +159,7 @@
 <header class="demo-panel-head"><span class="demo-panel-title">Live demo</span><button type="button" class="demo-act is-primary" data-act="run">Run</button><button type="button" class="demo-act" data-act="baseline" hidden>Baseline</button><button type="button" class="demo-act" data-act="compare" hidden>Compare</button><button type="button" class="demo-act" data-act="reset">Reset</button></header>
 <div class="demo-panel-body"><p class="demo-label">Live element</p>
 <div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#2D5BFF}.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #0F1E4D}</style><h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div><sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div><p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
-<footer class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</footer></section></div>
+<div class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</div></section></div>
 <article class="pane-read sec-ecosystem" data-title="vs html2canvas" data-demo="compare" data-lib="html2canvas" data-note="Judge the pixels yourself; one run is not a benchmark." data-demo-label="SnapDOM · html2canvas">
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs html2canvas</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">html2canvas</span></h1><p class="doc-lead">Compare DOM-to-canvas and SVG-based capture, then review output types, font handling and the options needed to migrate.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
 <div class="pane-content"><!-- content -->
@@ -241,7 +241,7 @@
       <h2 id="when">When to use which</h2>
       <div class="verdict-grid">
         <div class="verdict-card snapdom">
-          <h4>Choose SnapDOM when…</h4>
+          <h4 aria-level="3">Choose SnapDOM when…</h4>
           <ul>
             <li>You need fast captures, including repeat captures of the same element. Measure it in the <a href="../live/">live benchmark</a>.</li>
             <li>The output must match what the browser rendered, verified against pixels.</li>
@@ -250,7 +250,7 @@
           </ul>
         </div>
         <div class="verdict-card other">
-          <h4>Keep html2canvas when…</h4>
+          <h4 aria-level="3">Keep html2canvas when…</h4>
           <ul>
             <li>Your existing captures meet your requirements and migration would add work without a measured benefit.</li>
           </ul>
@@ -263,7 +263,7 @@
       <h2 id="code">Same task, side by side</h2>
       <p>Capturing <code>#card</code> as a PNG and inserting the resulting image into the page:</p>
 
-      <h4>html2canvas</h4>
+      <h4 aria-level="3">html2canvas</h4>
       <pre class="code-block"><span class="kw">import</span> html2canvas <span class="kw">from</span> <span class="str">'html2canvas'</span>;
 
 <span class="kw">const</span> <span class="op">canvas</span> = <span class="kw">await</span> <span class="fn">html2canvas</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
@@ -271,7 +271,7 @@
 img.src = canvas.<span class="fn">toDataURL</span>(<span class="str">'image/png'</span>);
 document.body.<span class="fn">appendChild</span>(img);</pre>
 
-      <h4>SnapDOM</h4>
+      <h4 aria-level="3">SnapDOM</h4>
       <pre class="code-block"><span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
 
 <span class="kw">const</span> <span class="op">img</span> = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
@@ -319,7 +319,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
       <details>
         <summary>html2canvas doesn't render web fonts correctly, what do I use?</summary>
-        <p>First check that your fonts load before capture. SnapDOM v3.x.x uses <code>embedFonts: 'auto'</code> by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser.</p>
+        <p>First check that your fonts load before capture. SnapDOM 3 uses <code>embedFonts: 'auto'</code> by default to embed used web fonts in the SVG. The font files must be accessible to the page; test the resulting image in your target browser.</p>
       </details>
 
       <details>

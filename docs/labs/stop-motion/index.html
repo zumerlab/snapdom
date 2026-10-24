@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Stop Motion — You Choose the Frames — SnapDOM Labs</title>
-  <meta name="description" content="A stop-motion pose flipbook. A tiny SnapDOM plugin's afterRender hook hands back ctx.dataURL for each capture you explicitly ask for — no accumulation, no persisted clone, just data pulled out of a finished render." />
+  <meta name="description" content="A stop-motion flipbook. A small SnapDOM plugin&#x27;s afterRender hook returns ctx.dataURL for each capture you ask for, with no persisted clone." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/stop-motion/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Stop Motion — you choose the frames","description":"A stop-motion pose flipbook. A tiny SnapDOM plugin's afterRender hook hands back ctx.dataURL for each capture you explicitly ask for — no accumulation, no persisted clone, just data pulled out of a finished render.","url":"https://snapdom.dev/labs/stop-motion/","datePublished":"2026-07-21","dateModified":"2026-10-15","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Stop Motion — you choose the frames","description":"A stop-motion pose flipbook. A tiny SnapDOM plugin's afterRender hook hands back ctx.dataURL for each capture you explicitly ask for — no accumulation, no persisted clone, just data pulled out of a finished render.","url":"https://snapdom.dev/labs/stop-motion/","datePublished":"2026-07-21","dateModified":"2026-10-23","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Stop Motion","item":"https://snapdom.dev/labs/stop-motion/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -91,12 +91,12 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4>The plugin factory closes over a counter</h4><p><code>frameCollector(onFrame)</code> returns a plugin holding a private <code>index</code> variable — nothing else. It persists the frame count, but no clone or DOM reference.</p></li>
-        <li><h4>Moving a slider never captures anything</h4><p>Dragging Horizontal, Vertical, or Rotation just updates inline styles and a CSS custom property on the live <code>#actor</code> element. SnapDOM is not involved yet.</p></li>
-        <li><h4>Capture pose runs one real capture</h4><p>The button calls <code>snapdom(poseScene, { plugins: [collector] })</code> against the current, live state of the stage — whatever pose the sliders are showing right now.</p></li>
-        <li><h4><code>afterRender</code> fires with the finished context</h4><p>Once SnapDOM renders the SVG, the plugin's <code>afterRender(ctx)</code> hook runs, increments its counter, and calls back with <code>{ index, url: ctx.dataURL }</code>.</p></li>
-        <li><h4>The page pushes the URL into an array</h4><p><code>capturedFrames.push(frame.url)</code>, plus a thumbnail appended to the filmstrip. The plugin doesn't know or care that a filmstrip exists — it just handed the URL to a callback.</p></li>
-        <li><h4>Play iterates the array on a timer</h4><p>Pressing Play walks <code>capturedFrames</code> for a few loops, swapping <code>&lt;img id="playback"&gt;.src</code> on an interval. The plugin is done by this point — playback is pure application code.</p></li>
+        <li><h4 aria-level="3">The plugin factory closes over a counter</h4><p><code>frameCollector(onFrame)</code> returns a plugin holding a private <code>index</code> variable — nothing else. It persists the frame count, but no clone or DOM reference.</p></li>
+        <li><h4 aria-level="3">Moving a slider never captures anything</h4><p>Dragging Horizontal, Vertical, or Rotation just updates inline styles and a CSS custom property on the live <code>#actor</code> element. SnapDOM is not involved yet.</p></li>
+        <li><h4 aria-level="3">Capture pose runs one real capture</h4><p>The button calls <code>snapdom(poseScene, { plugins: [collector] })</code> against the current, live state of the stage — whatever pose the sliders are showing right now.</p></li>
+        <li><h4 aria-level="3"><code>afterRender</code> fires with the finished context</h4><p>Once SnapDOM renders the SVG, the plugin's <code>afterRender(ctx)</code> hook runs, increments its counter, and calls back with <code>{ index, url: ctx.dataURL }</code>.</p></li>
+        <li><h4 aria-level="3">The page pushes the URL into an array</h4><p><code>capturedFrames.push(frame.url)</code>, plus a thumbnail appended to the filmstrip. The plugin doesn't know or care that a filmstrip exists — it just handed the URL to a callback.</p></li>
+        <li><h4 aria-level="3">Play iterates the array on a timer</h4><p>Pressing Play walks <code>capturedFrames</code> for a few loops, swapping <code>&lt;img id="playback"&gt;.src</code> on an interval. The plugin is done by this point — playback is pure application code.</p></li>
       </ol>
     </section>
 
