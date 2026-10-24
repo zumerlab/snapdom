@@ -35,6 +35,12 @@ export function stream(element: Element, options?: StreamOptions): Stream
 /** Plugin form: adds `result.toStream(options)` to a capture result. */
 export function streamExport(defaults?: StreamOptions): SnapdomPlugin
 
+declare module '@zumer/snapdom' {
+  interface CaptureResult {
+    toStream(options?: StreamOptions): Promise<Stream>
+  }
+}
+
 /** A WebGL texture kept in step with a stream; `update` uploads only the changed rects on WebGL2. */
 export function streamTexture(
   gl: WebGLRenderingContext | WebGL2RenderingContext,

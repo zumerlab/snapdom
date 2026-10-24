@@ -9,6 +9,9 @@ describe('packages/plugins/index.js barrel export', () => {
     const names = [
       'timestampOverlay', 'asciiExport', 'replaceText', 'filter', 'colorTint',
       'pdf', 'vector', 'agentMap', 'contextExport', 'htmlExport', 'gifExport', 'videoExport', 'redactInputs',
+      // The helpers next to a plugin ship through the barrel too: index.d.ts re-exports every
+      // subpath whole, so a name it declares has to exist at runtime (asciiStream did not).
+      'stream', 'streamExport', 'streamTexture', 'recordCanvas', 'asciiFromCanvas', 'asciiStream',
     ]
     for (const name of names) {
       expect(mod[name], `expected a "${name}" export`).toBeTypeOf('function')

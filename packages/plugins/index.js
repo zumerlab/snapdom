@@ -7,7 +7,7 @@
  */
 
 export { timestampOverlay } from './timestamp-overlay.js';
-export { asciiExport } from './ascii-export.js';
+export { asciiExport, asciiFromCanvas, asciiStream } from './ascii-export.js';
 export { replaceText } from './replace-text.js';
 export { redactInputs } from './redact-inputs.js';
 export { filter } from './filter.js';
