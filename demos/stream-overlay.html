@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live DOM Video Overlay</title>
+<style>
+  :root { --bg: #08090c; --line: #232a36; --text: #e8edf5; --muted: #8b95a7; --accent: #facc15; --hot: #ef4444; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header p { margin: 0; color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: 960px 1fr; gap: 20px; padding: 20px; align-items: start; }
+  @media (max-width: 1300px) { .wrap { grid-template-columns: 1fr; } }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 6px; }
+  #out { width: 960px; height: 540px; max-width: 100%; display: block; background: #000; border: 1px solid var(--line); border-radius: 6px; }
+  .side { display: grid; gap: 14px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #0e1117; }
+  .box h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 400; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  input[type=text] { width: 100%; background: #151a23; color: var(--text); border: 1px solid #2a3240; border-radius: 6px; padding: 7px 9px; font: inherit; }
+  button { background: #1b2230; color: var(--text); border: 1px solid #2f3a4d; border-radius: 6px; padding: 7px 10px; cursor: pointer; font: inherit; }
+  button:hover { background: #253045; }
+  button.rec { border-color: #7f1d1d; }
+  button.rec.on { background: var(--hot); border-color: var(--hot); }
+  #hud { font: 12px/1.6 ui-monospace, Menlo, monospace; }
+  #hud b { color: var(--accent); font-weight: 400; }
+  label.chk { display: flex; gap: 6px; align-items: center; color: var(--muted); cursor: pointer; }
+  .src { margin-top: 20px; padding: 0 20px 30px; }
+  .checker { width: 960px; height: 540px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
+
+  /* ---- The overlay. A transparent 960x540 root; every box that changes is opaque. ---- */
+  #overlay { position: relative; width: 960px; height: 540px; font: 16px/20px Arial, Helvetica, sans-serif; color: #fff; }
+  .score { position: absolute; left: 24px; top: 24px; display: flex; background: #0b0f17; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 14px #0009; }
+  .team { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #0b0f17; }
+  .team i { width: 10px; height: 28px; border-radius: 2px; display: block; }
+  .team span { font-weight: 700; letter-spacing: .04em; }
+  .pts { min-width: 44px; text-align: center; font: 700 26px/32px Arial, Helvetica, sans-serif; padding: 4px 8px; background: #161d2b; }
+  .clock { padding: 0 14px; display: flex; align-items: center; background: #facc15; color: #111; font: 700 20px/40px ui-monospace, Menlo, monospace; }
+  .live { position: absolute; right: 24px; top: 24px; background: #0b0f17; border-radius: 6px; padding: 6px 12px 6px 28px; font-weight: 700; letter-spacing: .1em; }
+  .live::before { content: ''; position: absolute; left: 11px; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .lower { position: absolute; left: 24px; bottom: 76px; display: flex; flex-direction: column; }
+  .lower .name { background: #f8fafc; color: #0b0f17; font: 700 24px/30px Arial, Helvetica, sans-serif; padding: 6px 16px; border-radius: 4px 4px 0 0; }
+  .lower .role { background: #1d4ed8; color: #fff; padding: 6px 16px; border-radius: 0 0 4px 4px; }
+  .ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #0b0f17; overflow: hidden; display: flex; align-items: center; }
+  .ticker .tag { background: #ef4444; height: 40px; padding: 0 14px; display: flex; align-items: center; font-weight: 700; position: relative; z-index: 1; }
+  .ticker .run { white-space: nowrap; animation: run 18s linear infinite; padding-left: 20px; }
+  @keyframes run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Live DOM video overlay</h1>
+  <p>A broadcast graphics layer made of real HTML, composited on video and recorded, repainting only what changed.</p>
+</header>
+<div class="wrap">
+  <div>
+    <p class="label">Program output (footage + streamed overlay)</p>
+    <canvas id="out" width="960" height="540"></canvas>
+  </div>
+  <div class="side">
+    <div class="box">
+      <h2>Score</h2>
+      <div class="grid2">
+        <button data-team="0">+1 Home</button><button data-team="1">+1 Away</button>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Lower third</h2>
+      <div style="display:grid;gap:8px">
+        <input type="text" id="name" value="Alex Morgan">
+        <input type="text" id="role" value="Match commentator">
+      </div>
+    </div>
+    <div class="box">
+      <h2>Footage</h2>
+      <div class="grid2">
+        <button id="cam">Use camera</button>
+        <label class="chk"><input type="file" id="file" accept="video/*" style="display:none"><button id="pick" type="button">Load a video</button></label>
+      </div>
+    </div>
+    <div class="box">
+      <h2>Output</h2>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button class="rec" id="rec">Record 10 s</button>
+        <label class="chk"><input type="checkbox" id="patches" checked> Patches</label>
+      </div>
+      <div id="hud" style="margin-top:10px">waiting for the first frame</div>
+    </div>
+  </div>
+</div>
+<div class="src">
+  <p class="label">The overlay DOM (source, over a transparency checkerboard)</p>
+  <div class="checker">
+    <div id="overlay">
+      <div class="score">
+        <div class="team"><i style="background:#22c55e"></i><span>HOME</span></div><div class="pts" id="p0">0</div>
+        <div class="pts" id="p1">0</div><div class="team"><span>AWAY</span><i style="background:#3b82f6"></i></div>
+        <div class="clock" id="clock">00:00.0</div>
+      </div>
+      <div class="live">LIVE</div>
+      <div class="lower"><div class="name" id="lname">Alex Morgan</div><div class="role" id="lrole">Match commentator</div></div>
+      <div class="ticker"><div class="tag">NEWS</div><div class="run" id="run"></div></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { snapdom } from '../dist/snapdom.mjs'
+const $ = (s) => document.querySelector(s)
+
+// ---- Overlay state, driven from the control panel like a real graphics operator.
+const headlines = ['Kick-off delayed by rain, now under way', 'Home keeper with three saves in the first half',
+  'Attendance tonight: 41,200', 'Next match: Saturday 18:00', 'Weather: clearing later, 14 degrees']
+$('#run').textContent = (headlines.join('   ·   ') + '   ·   ').repeat(2)
+const score = [0, 0]
+for (const b of document.querySelectorAll('[data-team]')) {
+  b.addEventListener('click', () => { const t = +b.dataset.team; score[t]++; $('#p' + t).textContent = score[t] })
+}
+$('#name').addEventListener('input', (e) => { $('#lname').textContent = e.target.value })
+$('#role').addEventListener('input', (e) => { $('#lrole').textContent = e.target.value })
+const t0 = performance.now()
+setInterval(() => {
+  const s = (performance.now() - t0) / 1000
+  $('#clock').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${(s % 60).toFixed(1).padStart(4, '0')}`
+}, 100)
+
+// ---- Footage: a generated pitch, or the camera, or a file.
+const out = $('#out'), octx = out.getContext('2d')
+let video = null
+const players = Array.from({ length: 14 }, (_, i) => ({ x: Math.random() * 960, y: 120 + Math.random() * 330, vx: (Math.random() - .5) * 2, vy: (Math.random() - .5) * 1.2, c: i < 7 ? '#22c55e' : '#3b82f6' }))
+const ball = { x: 480, y: 280, vx: 3.1, vy: 1.7 }
+function pitch(t) {
+  for (let i = 0; i < 12; i++) { octx.fillStyle = i % 2 ? '#2f7a3a' : '#2a6e34'; octx.fillRect(i * 80, 0, 80, 540) }
+  octx.strokeStyle = '#ffffffb0'; octx.lineWidth = 3
+  octx.strokeRect(40, 70, 880, 420); octx.beginPath(); octx.moveTo(480, 70); octx.lineTo(480, 490); octx.stroke()
+  octx.beginPath(); octx.arc(480, 280, 60, 0, Math.PI * 2); octx.stroke()
+  for (const p of players) {
+    p.x += p.vx + Math.sin(t / 900 + p.y) * .4; p.y += p.vy
+    if (p.x < 50 || p.x > 910) p.vx *= -1
+    if (p.y < 90 || p.y > 470) p.vy *= -1
+    octx.fillStyle = '#0006'; octx.beginPath(); octx.ellipse(p.x, p.y + 9, 9, 4, 0, 0, Math.PI * 2); octx.fill()
+    octx.fillStyle = p.c; octx.beginPath(); octx.arc(p.x, p.y, 8, 0, Math.PI * 2); octx.fill()
+  }
+  ball.x += ball.vx; ball.y += ball.vy
+  if (ball.x < 50 || ball.x > 910) ball.vx *= -1
+  if (ball.y < 80 || ball.y > 480) ball.vy *= -1
+  octx.fillStyle = '#fff'; octx.beginPath(); octx.arc(ball.x, ball.y, 5, 0, Math.PI * 2); octx.fill()
+  const g = octx.createLinearGradient(0, 0, 0, 540); g.addColorStop(0, '#0000'); g.addColorStop(1, '#0005')
+  octx.fillStyle = g; octx.fillRect(0, 0, 960, 540)
+}
+function useVideo(src) {
+  video = document.createElement('video')
+  video.muted = true; video.loop = true; video.playsInline = true
+  if (src instanceof MediaStream) video.srcObject = src; else video.src = src
+  video.play()
+}
+$('#cam').addEventListener('click', async () => { try { useVideo(await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 540 } })) } catch (e) { $('#hud').textContent = 'camera unavailable: ' + e.message } })
+$('#pick').addEventListener('click', () => $('#file').click())
+$('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) useVideo(URL.createObjectURL(f)) })
+
+// ---- The stream: the overlay as a canvas that repaints only what changed.
+const stats = { patch: 0, full: 0, ms: [], reasons: {} }
+let overlay = null
+function start() {
+  overlay?.stop()
+  Object.assign(stats, { patch: 0, full: 0, ms: [], reasons: {} })
+  overlay = snapdom.stream($('#overlay'), {
+    dpr: 1, embedFonts: false, patches: $('#patches').checked,
+    onFrame(f) {
+      f.full ? stats.full++ : stats.patch++
+      if (f.reason) stats.reasons[f.reason] = (stats.reasons[f.reason] || 0) + 1
+      stats.ms.push(f.ms); if (stats.ms.length > 60) stats.ms.shift()
+    },
+  })
+}
+$('#patches').addEventListener('change', start)
+start()
+
+function frame(t) {
+  if (video && video.readyState >= 2) {
+    const s = Math.max(960 / video.videoWidth, 540 / video.videoHeight)
+    octx.drawImage(video, (960 - video.videoWidth * s) / 2, (540 - video.videoHeight * s) / 2, video.videoWidth * s, video.videoHeight * s)
+  } else pitch(t)
+  if (overlay?.canvas.width) octx.drawImage(overlay.canvas, 0, 0, 960, 540)
+  requestAnimationFrame(frame)
+}
+requestAnimationFrame(frame)
+
+// ---- Recording: the composited canvas is a MediaStream like any other.
+$('#rec').addEventListener('click', () => {
+  if (!window.MediaRecorder) { $('#hud').textContent = 'MediaRecorder is not available here'; return }
+  const type = ['video/webm;codecs=vp9', 'video/webm', 'video/mp4'].find((t) => MediaRecorder.isTypeSupported(t))
+  const rec = new MediaRecorder(out.captureStream(30), { mimeType: type })
+  const chunks = []
+  rec.ondataavailable = (e) => chunks.push(e.data)
+  rec.onstop = () => {
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(new Blob(chunks, { type }))
+    a.download = 'overlay.' + (type.includes('mp4') ? 'mp4' : 'webm')
+    a.click()
+    $('#rec').classList.remove('on'); $('#rec').textContent = 'Record 10 s'
+  }
+  rec.start()
+  $('#rec').classList.add('on'); $('#rec').textContent = 'Recording...'
+  setTimeout(() => rec.stop(), 10000)
+})
+
+setInterval(() => {
+  const ms = stats.ms.slice().sort((a, b) => a - b)
+  if (!ms.length) return
+  $('#hud').innerHTML = `overlay frame <b>${ms[ms.length >> 1].toFixed(1)} ms</b> median<br>` +
+    `frames <b>${stats.patch}</b> patch / <b>${stats.full}</b> full<br>` +
+    `full because: ${Object.entries(stats.reasons).map(([k, v]) => `${k} ${v}`).join(', ').replace(/</g, '&lt;') || 'none'}`
+}, 300)
+</script>
+</body>
+</html>
