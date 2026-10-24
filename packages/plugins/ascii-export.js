@@ -46,35 +46,57 @@ export function asciiExport(options = {}) {
             ...opts, width: ctx.width, height: ctx.height, scale: 1, dpr: 1, canvas: null,
             backgroundColor: !opts.backgroundColor || opts.backgroundColor === 'transparent' ? '#ffffff' : opts.backgroundColor,
           });
-          const rows = Math.max(1, Math.round(cols * source.height / source.width * 0.5));
-          const canvas = document.createElement('canvas');
-          canvas.width = cols;
-          canvas.height = rows;
-          const c = canvas.getContext('2d');
-          // Squash the bitmap, not the SVG viewport: Firefox preserves its viewBox aspect ratio.
-          c.drawImage(source, 0, 0, cols, rows);
-          const data = c.getImageData(0, 0, cols, rows).data;
-
-          const colored = outputFormat === 'html';
-          let ascii = colored ? '<pre style="margin:0;font:7px/1 monospace;white-space:pre;overflow-wrap:normal;max-width:100%;overflow:auto;background:white">' : '';
-          for (let y = 0; y < rows; y++) {
-            for (let x = 0; x < cols; x++) {
-              const i = (y * cols + x) * 4;
-              let lum = 1 - (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
-              lum = Math.max(0, Math.min(1, (1 + gain) * (lum - 0.5) + 0.5));
-              if (inv) lum = 1 - lum;
-              const ci = Math.min(Math.floor(lum * chars.length), chars.length - 1);
-              const char = chars[ci];
-              if (colored) {
-                const safe = char.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-                ascii += `<span style="color:rgb(${data[i]},${data[i + 1]},${data[i + 2]})">${safe}</span>`;
-              } else ascii += char;
-            }
-            ascii += '\n';
-          }
-          return colored ? ascii + '</pre>' : ascii;
+          return asciiFromCanvas(source, { width: cols, charset: chars, invert: inv, format: outputFormat, contrast: gain });
         }
       };
     }
   };
+}
+
+/**
+ * Convert any drawable (canvas, image, video frame) to ASCII art. Pure pixel work, no capture:
+ * use it on a `stream()` frame, a video element or a canvas of your own.
+ * @param {CanvasImageSource & { width: number, height: number }} source
+ * @param {Object} [options]
+ * @param {number} [options.width=80] - Character width of output
+ * @param {string|string[]} [options.charset=' .:-=+*#%@'] - Characters from lightest to darkest
+ * @param {boolean} [options.invert=false]
+ * @param {'text'|'html'} [options.format='text']
+ * @param {number} [options.contrast=0]
+ * @returns {string}
+ */
+export function asciiFromCanvas(source, options = {}) {
+  const cols = Math.max(1, Math.floor(options.width ?? 80));
+  const chars = Array.isArray(options.charset) ? options.charset : Array.from(options.charset ?? ' .:-=+*#%@');
+  const inv = options.invert ?? false;
+  const colored = options.format === 'html';
+  const gain = options.contrast ?? 0;
+  const srcW = source.videoWidth || source.naturalWidth || source.width;
+  const srcH = source.videoHeight || source.naturalHeight || source.height;
+  const rows = Math.max(1, Math.round(cols * srcH / srcW * 0.5));
+  const canvas = document.createElement('canvas');
+  canvas.width = cols;
+  canvas.height = rows;
+  const c = canvas.getContext('2d', { willReadFrequently: true });
+  // Squash the bitmap, not the SVG viewport: Firefox preserves its viewBox aspect ratio.
+  c.drawImage(source, 0, 0, cols, rows);
+  const data = c.getImageData(0, 0, cols, rows).data;
+
+  let ascii = colored ? '<pre style="margin:0;font:7px/1 monospace;white-space:pre;overflow-wrap:normal;max-width:100%;overflow:auto;background:white">' : '';
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      const i = (y * cols + x) * 4;
+      let lum = 1 - (data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114) / 255;
+      lum = Math.max(0, Math.min(1, (1 + gain) * (lum - 0.5) + 0.5));
+      if (inv) lum = 1 - lum;
+      const ci = Math.min(Math.floor(lum * chars.length), chars.length - 1);
+      const char = chars[ci];
+      if (colored) {
+        const safe = char.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+        ascii += `<span style="color:rgb(${data[i]},${data[i + 1]},${data[i + 2]})">${safe}</span>`;
+      } else ascii += char;
+    }
+    ascii += '\n';
+  }
+  return colored ? ascii + '</pre>' : ascii;
 }

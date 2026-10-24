@@ -23,6 +23,9 @@ export interface AsciiExportOptions {
 /** Adds `result.toAscii()`. */
 export declare function asciiExport(options?: AsciiExportOptions): SnapdomPlugin;
 
+/** ASCII art from any drawable (a canvas, an image, a video frame, a `stream()` frame). No capture involved. */
+export declare function asciiFromCanvas(source: CanvasImageSource & { width: number; height: number }, options?: AsciiExportOptions & { charset?: string | string[] }): string;
+
 declare module '@zumer/snapdom' {
   interface CaptureResult {
     toAscii(options?: AsciiExportOptions): Promise<string>;
