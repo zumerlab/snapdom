@@ -608,8 +608,14 @@ export async function composeAndSerialize(state, ex) {
 
   // Ceil so a fractional content extent (rotated bbox, fractional bleed) is never
   // truncated when the svg size is rasterized to whole pixels (bottom/right edge loss).
-  const vbW = Math.ceil(vbW0 + pad * 2)
-  const vbH = Math.ceil(vbH0 + pad * 2)
+  // A stream patch is laid out at the page's subpixel offset (options.__subpixel): padding is
+  // layout, so box backgrounds snap to the same pixels as in the full frame, where a
+  // viewBox shift (a transform) left rounded corners 8 pixels off. Pinned by
+  // __tests__/api.stream.test.js.
+  const phaseX = options.__subpixel?.x || 0
+  const phaseY = options.__subpixel?.y || 0
+  const vbW = Math.ceil(vbW0 + pad * 2 + phaseX)
+  const vbH = Math.ceil(vbH0 + pad * 2 + phaseY)
 
   // Stable Chrome doesn't paint foreignObject overflow when rasterizing svg-as-image
   // (headless chromium does — don't trust it): the fo must cover the whole viewBox and
@@ -621,8 +627,8 @@ export async function composeAndSerialize(state, ex) {
   // there fo x/y is safe: the band it leaves unpainted is exactly the culled region.
   const offX = limitDecimals(-(limitDecimals(minX) - pad))
   const offY = limitDecimals(-(limitDecimals(minY) - pad))
-  const padL = Math.max(0, offX)
-  const padT = Math.max(0, offY)
+  const padL = Math.max(0, offX) + phaseX
+  const padT = Math.max(0, offY) + phaseY
   const foW = limitDecimals(vbW - Math.min(0, offX))
   const foH = limitDecimals(vbH - Math.min(0, offY))
   // Lay the clone out on the live device-pixel grid (#508). Chromium implements the device
@@ -675,7 +681,9 @@ export async function composeAndSerialize(state, ex) {
   // its border-box — standalone-SVG Chromium clips fo content at the container box.
   container.style.cssText =
     'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
-    `width:${foW}px;height:${foH}px` +
+    // A stream patch needs the root at its exact live width: w0 is offsetWidth, rounded,
+    // and a width:auto root filled the rest, so a 38.69px cell drew 39.31px wide.
+    `width:${phaseX || phaseY ? limitDecimals(padL + rect.width) : foW}px;height:${foH}px` +
     // !important: Chromium 140 serializes the `all:initial` expansion with
     // `padding-inline: initial` AFTER this shorthand, so on data-URL re-parse it
     // would reset the left/right padding (rotated-root offset) unless it loses

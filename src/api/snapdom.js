@@ -19,6 +19,7 @@ import { collectFontUsage, ensureFontsReady, fontKeyFamily } from '../modules/fo
 import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
+import { bindStreamCapture, stream } from './stream.js'
 import { markInternalNode } from '../utils/ownership.js'
 import { restoreCompressedAssets } from '../modules/compress.js'
 
@@ -73,11 +74,12 @@ async function fromString(html, options) {
 // here so a benchmark page can say which build it measured: the live lab loads the published
 // package from unpkg unless served by `npm run site`, and a v2 row read as v3 cost an evening.
 const version = typeof __SNAPDOM_VERSION__ === 'string' ? __SNAPDOM_VERSION__ : 'src'
-export const snapdom = Object.assign(main, { plugins, fromString, version, preCapture })
+export const snapdom = Object.assign(main, { plugins, fromString, version, preCapture, stream })
 // preCapture's prefetch goes through the public entry, so it is exactly a capture (hooks,
 // burst state, result). Bound here rather than imported there: preCapture.js is imported
 // by this module, and a cycle would leave it a dead binding.
 bindCapture(main)
+bindStreamCapture(main)
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
