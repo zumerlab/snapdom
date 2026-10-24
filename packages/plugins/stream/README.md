@@ -73,6 +73,19 @@ const rec = recordCanvas(output, { fps: 30, duration: 10000 });
 const blob = await rec.done; // MP4 or WebM, whichever the browser records
 ```
 
+## WebRTC
+
+The composited canvas is a video track like a camera's, so an HTML overlay travels inside the
+video to every viewer, with no desktop software and no server-side render:
+
+```js
+const track = output.captureStream(30).getVideoTracks()[0];
+track.contentHint = 'detail'; // graphics are text: keep the resolution
+peerConnection.addTrack(track, new MediaStream([track]));
+```
+
+`demos/stream-webrtc.html` sends one tab's program to viewer tabs this way.
+
 ## As an export
 
 `streamExport()` adds `toStream()` to a capture result, next to `toMp4()` and `toGif()`:
@@ -95,4 +108,5 @@ const live = await result.toStream({ onFrame });
 - Needs SnapDOM with the `__subpixel` layout option (the release after 3.3.7). On an older core
   the stream still runs, but patches at fractional positions are not pixel-exact.
 
-Demos: `demos/stream-webgl.html`, `demos/stream-overlay.html`, `demos/stream-lab.html`.
+Demos: `demos/stream-webgl.html`, `demos/stream-overlay.html`, `demos/stream-webrtc.html`,
+`demos/stream-lab.html`.

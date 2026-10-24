@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HTML Overlay over WebRTC</title>
+<style>
+  :root { --bg: #08090c; --line: #232a36; --text: #e8edf5; --muted: #8b95a7; --accent: #facc15; --ok: #4ade80; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+  header { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  header p { margin: 0; color: var(--muted); }
+  .wrap { display: grid; grid-template-columns: 960px 1fr; gap: 20px; padding: 20px; align-items: start; }
+  @media (max-width: 1300px) { .wrap { grid-template-columns: 1fr; } }
+  .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 6px; }
+  #out, #remote { width: 960px; height: 540px; max-width: 100%; display: block; background: #000; border: 1px solid var(--line); border-radius: 6px; }
+  .side { display: grid; gap: 14px; }
+  .box { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #0e1117; }
+  .box h2 { font-size: 13px; margin: 0 0 10px; color: var(--muted); font-weight: 400; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  input[type=text] { width: 100%; background: #151a23; color: var(--text); border: 1px solid #2a3240; border-radius: 6px; padding: 7px 9px; font: inherit; }
+  button, a.btn { background: #1b2230; color: var(--text); border: 1px solid #2f3a4d; border-radius: 6px; padding: 7px 10px; cursor: pointer; font: inherit; text-decoration: none; text-align: center; }
+  button:hover, a.btn:hover { background: #253045; }
+  .stats { font: 12px/1.6 ui-monospace, Menlo, monospace; }
+  .stats b { color: var(--accent); font-weight: 400; }
+  .ok { color: var(--ok); }
+  .src { padding: 0 20px 30px; }
+  .checker { width: 960px; height: 540px; max-width: 100%; border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background: repeating-conic-gradient(#14171d 0% 25%, #0d0f13 0% 50%) 0 0 / 24px 24px; }
+  body.viewer .sender-only { display: none; }
+  body:not(.viewer) .viewer-only { display: none; }
+
+  /* ---- The overlay. A transparent 960x540 root; every box that changes is opaque. ---- */
+  #overlay { position: relative; width: 960px; height: 540px; font: 16px/20px Arial, Helvetica, sans-serif; color: #fff; }
+  .score { position: absolute; left: 24px; top: 24px; display: flex; background: #0b0f17; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 14px #0009; }
+  .team { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: #0b0f17; }
+  .team i { width: 10px; height: 28px; border-radius: 2px; display: block; }
+  .team span { font-weight: 700; letter-spacing: .04em; }
+  .pts { min-width: 44px; text-align: center; font: 700 26px/32px Arial, Helvetica, sans-serif; padding: 4px 8px; background: #161d2b; }
+  .clock { padding: 0 14px; display: flex; align-items: center; background: #facc15; color: #111; font: 700 20px/40px ui-monospace, Menlo, monospace; }
+  .live { position: absolute; right: 24px; top: 24px; background: #0b0f17; border-radius: 6px; padding: 6px 12px 6px 28px; font-weight: 700; letter-spacing: .1em; }
+  .live::before { content: ''; position: absolute; left: 11px; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+  .lower { position: absolute; left: 24px; bottom: 76px; display: flex; flex-direction: column; }
+  .lower .name { background: #f8fafc; color: #0b0f17; font: 700 24px/30px Arial, Helvetica, sans-serif; padding: 6px 16px; border-radius: 4px 4px 0 0; }
+  .lower .role { background: #1d4ed8; color: #fff; padding: 6px 16px; border-radius: 0 0 4px 4px; }
+  .ticker { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: #0b0f17; overflow: hidden; display: flex; align-items: center; }
+  .ticker .tag { background: #ef4444; height: 40px; padding: 0 14px; display: flex; align-items: center; font-weight: 700; position: relative; z-index: 1; }
+  .ticker .run { white-space: nowrap; animation: run 18s linear infinite; padding-left: 20px; }
+  @keyframes run { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+</style>
+</head>
+<body>
+<header>
+  <h1 class="sender-only">HTML overlay over WebRTC: sender</h1>
+  <h1 class="viewer-only">HTML overlay over WebRTC: viewer</h1>
+  <p class="sender-only">Real HTML graphics composited on video in the browser and sent as a WebRTC video track. No OBS, no server render.</p>
+  <p class="viewer-only">This tab only receives a WebRTC video track. The overlay arrives as pixels inside the video.</p>
+</header>
+
+<div class="wrap viewer-only">
+  <div>
+    <p class="label">Received over WebRTC</p>
+    <video id="remote" autoplay playsinline muted></video>
+  </div>
+  <div class="side"><div class="box"><h2>Connection</h2><div class="stats" id="vstats">waiting for the sender tab</div></div></div>
+</div>
+
+<div class="wrap sender-only">
+  <div>
+    <p class="label">Program output, sent as a WebRTC track</p>
+    <canvas id="out" width="960" height="540"></canvas>
+  </div>
+  <div class="side">
+    <div class="box">
+      <h2>Viewers</h2>
+      <a class="btn" id="open" href="?viewer" target="_blank">Open a viewer tab</a>
+      <div class="stats" id="sstats" style="margin-top:10px">no viewers yet</div>
+    </div>
+    <div class="box">
+      <h2>Score</h2>
+      <div class="grid2"><button data-team="0">+1 Home</button><button data-team="1">+1 Away</button></div>
+    </div>
+    <div class="box">
+      <h2>Lower third</h2>
+      <div style="display:grid;gap:8px"><input type="text" id="name" value="Alex Morgan"><input type="text" id="role" value="Match commentator"></div>
+    </div>
+    <div class="box">
+      <h2>Footage</h2>
+      <div class="grid2"><button id="cam">Use camera</button><button id="pick">Load a video</button></div>
+      <input type="file" id="file" accept="video/*" style="display:none">
+    </div>
+    <div class="box"><h2>Overlay stream</h2><div class="stats" id="ostats">starting</div></div>
+  </div>
+</div>
+<div class="src sender-only">
+  <p class="label">The overlay DOM (source)</p>
+  <div class="checker">
+    <div id="overlay">
+      <div class="score">
+        <div class="team"><i style="background:#22c55e"></i><span>HOME</span></div><div class="pts" id="p0">0</div>
+        <div class="pts" id="p1">0</div><div class="team"><span>AWAY</span><i style="background:#3b82f6"></i></div>
+        <div class="clock" id="clock">00:00.0</div>
+      </div>
+      <div class="live">LIVE</div>
+      <div class="lower"><div class="name" id="lname">Alex Morgan</div><div class="role" id="lrole">Match commentator</div></div>
+      <div class="ticker"><div class="tag">NEWS</div><div class="run" id="run"></div></div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
+<script type="module">
+import { stream } from '../packages/plugins/stream.js'
+const $ = (s) => document.querySelector(s)
+const viewer = new URLSearchParams(location.search).has('viewer')
+document.body.classList.toggle('viewer', viewer)
+
+// Signalling between tabs of the same origin. A real app would use its own server.
+const channel = new BroadcastChannel('snapdom-stream-webrtc')
+const send = (msg) => channel.postMessage(msg)
+
+if (viewer) {
+  const id = Math.random().toString(36).slice(2)
+  const pc = new RTCPeerConnection()
+  pc.ontrack = (e) => { $('#remote').srcObject = e.streams[0] }
+  pc.onicecandidate = (e) => e.candidate && send({ to: 'sender', from: id, candidate: e.candidate.toJSON() })
+  channel.onmessage = async ({ data }) => {
+    if (data.to !== id) return
+    if (data.offer) {
+      await pc.setRemoteDescription(data.offer)
+      await pc.setLocalDescription(await pc.createAnswer())
+      send({ to: 'sender', from: id, answer: pc.localDescription.toJSON() })
+    } else if (data.candidate) await pc.addIceCandidate(data.candidate)
+  }
+  // Ask until a sender answers; the sender tab may open after this one.
+  const hello = setInterval(() => pc.remoteDescription ? clearInterval(hello) : send({ to: 'sender', from: id, hello: true }), 500)
+  send({ to: 'sender', from: id, hello: true })
+  setInterval(async () => {
+    const v = $('#remote')
+    if (!v.videoWidth) return
+    let fps = 0
+    for (const r of (await pc.getStats()).values()) if (r.type === 'inbound-rtp' && r.kind === 'video') fps = r.framesPerSecond || 0
+    $('#vstats').innerHTML = `<span class="ok">receiving</span><br>video <b>${v.videoWidth}x${v.videoHeight}</b><br>frames per second <b>${fps}</b><br>state <b>${pc.connectionState}</b>`
+  }, 500)
+} else {
+  // ---- Overlay state, driven from the controls.
+  const headlines = ['Kick-off delayed by rain, now under way', 'Home keeper with three saves in the first half',
+    'Attendance tonight: 41,200', 'Next match: Saturday 18:00', 'Weather: clearing later, 14 degrees']
+  $('#run').textContent = (headlines.join('   ·   ') + '   ·   ').repeat(2)
+  const score = [0, 0]
+  for (const b of document.querySelectorAll('[data-team]')) b.addEventListener('click', () => { const t = +b.dataset.team; $('#p' + t).textContent = ++score[t] })
+  $('#name').addEventListener('input', (e) => { $('#lname').textContent = e.target.value })
+  $('#role').addEventListener('input', (e) => { $('#lrole').textContent = e.target.value })
+  const t0 = performance.now()
+  setInterval(() => {
+    const s = (performance.now() - t0) / 1000
+    $('#clock').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${(s % 60).toFixed(1).padStart(4, '0')}`
+  }, 100)
+
+  // ---- Footage: a generated pitch, the camera or a file.
+  const out = $('#out'), octx = out.getContext('2d')
+  let video = null
+  const players = Array.from({ length: 14 }, (_, i) => ({ x: 60 + Math.random() * 840, y: 120 + Math.random() * 330, vx: (Math.random() - .5) * 2, vy: (Math.random() - .5) * 1.2, c: i < 7 ? '#22c55e' : '#3b82f6' }))
+  function pitch() {
+    for (let i = 0; i < 12; i++) { octx.fillStyle = i % 2 ? '#2f7a3a' : '#2a6e34'; octx.fillRect(i * 80, 0, 80, 540) }
+    octx.strokeStyle = '#ffffffb0'; octx.lineWidth = 3
+    octx.strokeRect(40, 70, 880, 420); octx.beginPath(); octx.moveTo(480, 70); octx.lineTo(480, 490); octx.stroke()
+    octx.beginPath(); octx.arc(480, 280, 60, 0, Math.PI * 2); octx.stroke()
+    for (const p of players) {
+      p.x += p.vx; p.y += p.vy
+      if (p.x < 50 || p.x > 910) p.vx *= -1
+      if (p.y < 90 || p.y > 470) p.vy *= -1
+      octx.fillStyle = p.c; octx.beginPath(); octx.arc(p.x, p.y, 8, 0, Math.PI * 2); octx.fill()
+    }
+  }
+  function useVideo(src) {
+    video = document.createElement('video')
+    video.muted = true; video.loop = true; video.playsInline = true
+    if (src instanceof MediaStream) video.srcObject = src; else video.src = src
+    video.play()
+  }
+  $('#cam').addEventListener('click', async () => { try { useVideo(await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 540 } })) } catch (e) { $('#ostats').textContent = 'camera unavailable: ' + e.message } })
+  $('#pick').addEventListener('click', () => $('#file').click())
+  $('#file').addEventListener('change', (e) => { const f = e.target.files[0]; if (f) useVideo(URL.createObjectURL(f)) })
+
+  // ---- The overlay as a canvas that repaints only what changed, composited every frame.
+  const stats = { patch: 0, full: 0, ms: [] }
+  const overlay = stream($('#overlay'), {
+    dpr: 1, embedFonts: false,
+    onFrame(f) { f.full ? stats.full++ : stats.patch++; stats.ms.push(f.ms); if (stats.ms.length > 60) stats.ms.shift() },
+  })
+  function frame() {
+    if (video && video.readyState >= 2) {
+      const s = Math.max(960 / video.videoWidth, 540 / video.videoHeight)
+      octx.drawImage(video, (960 - video.videoWidth * s) / 2, (540 - video.videoHeight * s) / 2, video.videoWidth * s, video.videoHeight * s)
+    } else pitch()
+    if (overlay.canvas.width) octx.drawImage(overlay.canvas, 0, 0, 960, 540)
+    requestAnimationFrame(frame)
+  }
+  requestAnimationFrame(frame)
+
+  // ---- WebRTC: the composited canvas is the video track, one peer connection per viewer.
+  const track = out.captureStream(30).getVideoTracks()[0]
+  // Broadcast graphics are text: keep the resolution sharp and let the frame rate give way.
+  track.contentHint = 'detail'
+  const peers = new Map()
+  channel.onmessage = async ({ data }) => {
+    if (data.to !== 'sender') return
+    let pc = peers.get(data.from)
+    if (data.hello && !pc) {
+      pc = new RTCPeerConnection()
+      peers.set(data.from, pc)
+      const sender = pc.addTrack(track, new MediaStream([track]))
+      const params = sender.getParameters()
+      params.degradationPreference = 'maintain-resolution'
+      params.encodings = [{ ...(params.encodings?.[0] || {}), maxBitrate: 6_000_000 }]
+      await sender.setParameters(params).catch(() => {})
+      pc.onicecandidate = (e) => e.candidate && send({ to: data.from, candidate: e.candidate.toJSON() })
+      pc.onconnectionstatechange = () => { if (['failed', 'closed', 'disconnected'].includes(pc.connectionState)) peers.delete(data.from) }
+      await pc.setLocalDescription(await pc.createOffer())
+      send({ to: data.from, offer: pc.localDescription.toJSON() })
+    } else if (data.answer && pc) await pc.setRemoteDescription(data.answer)
+    else if (data.candidate && pc) await pc.addIceCandidate(data.candidate)
+  }
+
+  setInterval(() => {
+    const live = [...peers.values()].filter((p) => p.connectionState === 'connected').length
+    $('#sstats').innerHTML = live ? `<span class="ok">${live} viewer${live > 1 ? 's' : ''} connected</span>` : 'no viewers yet'
+    const ms = stats.ms.slice().sort((a, b) => a - b)
+    if (ms.length) $('#ostats').innerHTML = `frame cost <b>${ms[ms.length >> 1].toFixed(1)} ms</b> median<br>frames <b>${stats.patch}</b> patch / <b>${stats.full}</b> full`
+  }, 400)
+}
+</script>
+</body>
+</html>
