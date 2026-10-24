@@ -696,7 +696,8 @@ export function snapshotComputedStyle(style, universe = null) {
 
 /**
  * Split a multi-layer `background-image` on its top-level commas, so a gradient's own commas
- * stay inside their layer.
+ * stay inside their layer. Parentheses inside a quoted url() are part of the URL: an SVG data
+ * URL with `:)` in its text used to end the layer early and merge the next layer into it.
  * @param {string} bg
  * @returns {string[]}
  */
@@ -704,8 +705,15 @@ export function splitBackgroundImage(bg) {
   const parts = []
   let depth = 0
   let lastIndex = 0
+  let quote = ''
   for (let i = 0; i < bg.length; i++) {
     const char = bg[i]
+    if (char === '\\') { i++; continue }
+    if (quote) {
+      if (char === quote) quote = ''
+      continue
+    }
+    if (char === '"' || char === "'") quote = char
     if (char === '(') depth++
     if (char === ')') depth--
     if (char === ',' && depth === 0) {

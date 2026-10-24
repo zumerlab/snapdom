@@ -113,6 +113,12 @@ describe('splitBackgroundImage', () => {
     expect(parts).toHaveLength(2)
     expect(parts[1]).toBe('url(b.png)')
   })
+
+  it('ignores parentheses and commas inside quoted URLs', () => {
+    const svg = 'url("data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22><text>:), (</text></svg>")'
+    expect(splitBackgroundImage(`${svg}, url("b.png")`)).toEqual([svg, 'url("b.png")'])
+    expect(splitBackgroundImage('url("a(1.png"), url("b\\".png")')).toEqual(['url("a(1.png")', 'url("b\\".png")'])
+  })
 })
 
 describe('getStyleKey – width softening (#429/#434/#436)', () => {
