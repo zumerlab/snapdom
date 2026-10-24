@@ -28,6 +28,9 @@ import { nextFrame } from '../utils/browser.js'
  *  sits inside one of these waits for it instead of forcing the same styles twice. */
 const visibilityWarmups = new Set()
 
+/** Replaced elements are atomic inlines even at `display: inline`. */
+const REPLACED_INLINE = /^(?:IMG|VIDEO|CANVAS|IFRAME|EMBED|OBJECT|SVG|svg|INPUT|SELECT|TEXTAREA|BUTTON)$/
+
 /** #315/#512: paints ::placeholder from --sd-ph/--sd-ph-o, which deepClone sets on the input
  *  clone. Emitted only when a placeholder was cloned: its -webkit-text-fill-color, mounted in a
  *  page, joins the document's property universe and changes every later pseudo's snapshot key
@@ -386,6 +389,14 @@ export async function prepareClone(element, options = {}) {
     // Individual translate is separate from computed transform. Like its matrix e/f,
     // its page placement has already been discarded by the root's bbox compensation.
     clone.style.translate = 'none'
+    // An atomic inline (an input, a button, an inline-block) sits on the container's line
+    // and aligns its baseline with that line's strut, a 16px default font, not the page's:
+    // a captured <input> landed 1px low in its own image, 414 pixels off its in-page render
+    // in Chromium, 410 in WebKit. Top-align it to the line. Pinned by
+    // __tests__/core.prepare.inlineRoot.test.js.
+    if (/^inline-/.test(computed.display) || (computed.display === 'inline' && REPLACED_INLINE.test(element.tagName))) {
+      clone.style.verticalAlign = 'top'
+    }
     // Its containing block stayed in the page too: a percentage min/max size would resolve
     // against the foreignObject instead. No-op unless one of them holds a `%`.
     freezeRootPercentSizes(element, clone, computed)
