@@ -134,5 +134,5 @@ const live = await result.toStream({ onFrame });
 - Needs SnapDOM with the `__subpixel` layout option (the release after 3.3.7). On an older core
   the stream still runs, but patches at fractional positions are not pixel-exact.
 
-Demos: `demos/stream-webgl.html`, `demos/stream-overlay.html`, `demos/stream-webrtc.html`,
+Demos: `demos/stream-templates.html`, `demos/stream-overlay.html`, `demos/stream-webrtc.html`, `demos/stream-webgl.html`,
 `demos/stream-lab.html`.
