@@ -15,7 +15,7 @@
 [data-export-file] a { text-decoration:underline; text-underline-offset:3px; }
 .plugin-page details summary { cursor:pointer; font-size:13px; padding:12px 0; }
 .pdf-reference section { margin:32px 0; }
-.pdf-reference .eyebrow { color:var(--c); font:12px ui-monospace,monospace; text-transform:uppercase; }
+.pdf-reference .eyebrow { color:var(--c); font:12px Arial, Helvetica, sans-serif; text-transform: none; }
 .pdf-reference h2 { margin:12px 0 20px; font-size:26px; line-height:1.25; }
 .pdf-reference p { margin:12px 0; line-height:1.65; }
 .pdf-reference .spec { display:grid; gap:16px; margin:24px 0; }

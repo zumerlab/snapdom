@@ -135,10 +135,10 @@ body > .site-shell + .hero .hero-badge {
   color: #2D5BFF;
   background: transparent;
   border: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .site-shell ~ * .btn { border-radius: 0; }
 

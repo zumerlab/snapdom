@@ -3,10 +3,10 @@
   display: block;
   margin-bottom: 6px;
   color: #b9caff;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: .1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
 }
 .tier .amount { line-height: 1.12; }
 .tier .amount small { display: block; margin: 6px 0 0; font-size: 14px; line-height: 1.5; }
