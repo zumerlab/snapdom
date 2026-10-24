@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.4.0](https://github.com/zumerlab/snapdom/compare/v3.3.7...v3.4.0)
+
+> 24 October 2026
+
+##### ✨ feat
+
+- feat: add snapdom.stream, a live canvas that repaints only what changed [`5ef8168`](https://github.com/zumerlab/snapdom/commit/5ef81689cbddb95c50575325c1141c973d88af03)
+- feat: export JPEG files beyond the canvas limit [`a595422`](https://github.com/zumerlab/snapdom/commit/a595422556912e244dd0c5d02243624b2a522c73)
+- feat(stream): add broadcast overlay templates [`85f0d31`](https://github.com/zumerlab/snapdom/commit/85f0d317db4c98790b6d43ff15e78a85c3c2e4da)
+- feat(debug): keep the console quiet unless debug is true [`91a95f5`](https://github.com/zumerlab/snapdom/commit/91a95f59fd720a1167210ee8a0bec91dd78fe329)
+- feat(stream): patch out-of-flow boxes that move or resize [`0eab5ca`](https://github.com/zumerlab/snapdom/commit/0eab5ca2499b964dc08096b3249c684240461f2c)
+- feat(engine): lay a capture root out at a subpixel offset on request [`59ddd11`](https://github.com/zumerlab/snapdom/commit/59ddd11d22080a379d9045478ce7fbd790f48fec)
+
+##### 🛠 fix
+
+- fix(fonts): embed families whose name holds "__" [`#542`](https://github.com/zumerlab/snapdom/pull/542)
+- fix: right-to-left fidelity found by the new RTL demos [`193ab04`](https://github.com/zumerlab/snapdom/commit/193ab04bb29f8030c06a4803b71deae037a8c98e)
+- fix(icons): keep an icon font's share of the line in the clone [`09ebf09`](https://github.com/zumerlab/snapdom/commit/09ebf09562395b26ca5d36ec7daf2e6e79341031)
+- fix(svg): size a body capture from the body box, not the margins around it [`9bddee9`](https://github.com/zumerlab/snapdom/commit/9bddee95474c9da2521ea283b2037bae01f20adf)
+- fix: keep live-page mounts styled under a strict style-src CSP [`80313aa`](https://github.com/zumerlab/snapdom/commit/80313aa16c8417c75e697fb40720d8a2022902e1)
+- fix(toCanvas): keep emoji and late nested images in Safari exports [`3842f3e`](https://github.com/zumerlab/snapdom/commit/3842f3e0301e6984f7a7827b34b261f762bcb2eb)
+- fix(svg): place page-anchored boxes of a body capture where the page does [`c992d6e`](https://github.com/zumerlab/snapdom/commit/c992d6e9b72e827860780747ecdb0cf915662d75)
+- fix(styles): resolve oklch, lab and color() through a canvas for gradient text [`7aa2290`](https://github.com/zumerlab/snapdom/commit/7aa229032f2d34c4af0c26e456feb2a3f5264f0b)
+- fix(clone): capture opaque WebGL canvases that clear every frame [`49512cf`](https://github.com/zumerlab/snapdom/commit/49512cfc79004c7ac8de348ab9eacb0301bb0d78)
+- fix(prepare): top-align an atomic inline capture root [`e76e9d8`](https://github.com/zumerlab/snapdom/commit/e76e9d8e985fd42e4b3e1aa235a9ffdfe745da1c)
+- fix(toCanvas): keep 1px borders in downscaled Firefox exports at DPR 1 [`a3ee108`](https://github.com/zumerlab/snapdom/commit/a3ee10833efd537488b2cf41303b2276ff10555f)
+- fix(prepare): carry the capture root's language into the clone [`442f845`](https://github.com/zumerlab/snapdom/commit/442f845c3e7609cb7d76a0fd673a8c6bf04319d8)
+- fix(fetch): strip whitespace from the header of fetched data URLs [`b255f98`](https://github.com/zumerlab/snapdom/commit/b255f9890609d0ae9fef85293a2ed2b329ad5be6)
+- fix(svg): grow a right-to-left body capture on the side its content spills [`5de36e9`](https://github.com/zumerlab/snapdom/commit/5de36e942f399c0b307eec945ce6e0aa188a47ba)
+- fix(styles): never freeze the width of a MathML token [`1fc05b9`](https://github.com/zumerlab/snapdom/commit/1fc05b9c1587ff592e6aa8217d3e3fc7411958a7)
+- perf(stream): keep full frames from freezing the page [`ab4b6c4`](https://github.com/zumerlab/snapdom/commit/ab4b6c40d3cacde110f449fc4466ae75ab44d0bb)
+- fix(engine): give a __subpixel root its exact width at phase zero too [`0198ded`](https://github.com/zumerlab/snapdom/commit/0198dedd93cc54c81f8b36cbcf6e94b2f416d692)
+
+##### 📦 other (chore/refactor/test/demo)
+
+- test(visual): load Orbit locally in d3-zumly and stamp a fixed text [`05fe871`](https://github.com/zumerlab/snapdom/commit/05fe871bf8bcf1b8f081332c9411587174ca45dc)
+- demo: add stream demos for WebGL textures, video overlays and a lab [`137546b`](https://github.com/zumerlab/snapdom/commit/137546ba6d154f1515c3864b392991fcaba42360)
+- refactor(stream): move the stream into @zumer/snapdom-plugins/stream [`eb6e990`](https://github.com/zumerlab/snapdom/commit/eb6e990601f68d7664095b389d66102f3bbabad6)
+- test: add a live parity check of every demo against the page [`0873b9d`](https://github.com/zumerlab/snapdom/commit/0873b9d5ea4e6aee8d142ba164350cc138d62b82)
+- test: cover counters, cross-origin font imports, clip fonts, selection, backdrop siblings and canvas retry [`938cc5c`](https://github.com/zumerlab/snapdom/commit/938cc5c3409b9f24aa0c4f76fbb81ee20c28378f)
+- demo(stream): bend live video through liquid glass overlay boxes [`5145eaf`](https://github.com/zumerlab/snapdom/commit/5145eaf937eeb7c671f90e7a9584bc6e2f3c559f)
+- demo(stream): place two live elements in a 3D virtual set [`d28eaa7`](https://github.com/zumerlab/snapdom/commit/d28eaa7698fe172bca96c5d60a6509859c2f24e1)
+- demo(stream): style the overlay templates with shader looks [`4287419`](https://github.com/zumerlab/snapdom/commit/42874195ac053e0a3737c7fc1c7dcd6fdf949a01)
+- demo(stream): send an HTML overlay inside a WebRTC video track [`8557f5e`](https://github.com/zumerlab/snapdom/commit/8557f5ef5e2b3d0cbb7053146339a2ea9d2a5dd6)
+- test(visual): serve Roboto locally to d21 and d25 [`824abab`](https://github.com/zumerlab/snapdom/commit/824abab21e87a03dc996059b968cbe8df5d61c81)
+- test(visual): add d-modern-css and d-text-layout demos [`654601b`](https://github.com/zumerlab/snapdom/commit/654601b7d9140078d2067f1f88f26f3094d4a18a)
+- demo(stream): a playground for the overlay templates [`f995bf4`](https://github.com/zumerlab/snapdom/commit/f995bf40144535b9b5c1090add0cc3b4ca9932ba)
+- chore(scripts): cut package.json scripts down to the release flow [`2de95bb`](https://github.com/zumerlab/snapdom/commit/2de95bb459310d0ad3ba9cb915bcac0818d79374)
+- test(visual): add d-rtl-body and d-rtl-layout demos [`6969b2e`](https://github.com/zumerlab/snapdom/commit/6969b2ec22356332dd9f6a6c0ea724617cd9fe5d)
+- chore(scripts): bring back publish:dev, test:coverage and cross:report [`37fba91`](https://github.com/zumerlab/snapdom/commit/37fba91f8115a3e5ae5201ffd8a96fdac7dc4b51)
+- test(engine): pin the __subpixel root layout in the core [`54aaf64`](https://github.com/zumerlab/snapdom/commit/54aaf64ce29cf8dd56045275d8e8ab478c7291c5)
+- test: stop two tests from failing under the full BROWSER=all run [`1b25c3d`](https://github.com/zumerlab/snapdom/commit/1b25c3da75ed784049269906f8af46faf1444b40)
+- test(visual): serve d24's fonts locally [`bd97b5d`](https://github.com/zumerlab/snapdom/commit/bd97b5db54e74c002d4e085c4003c185939f4732)
+- test: run four workers per engine under BROWSER=all [`462b243`](https://github.com/zumerlab/snapdom/commit/462b243e68dfa37bfff591e2b1596e4d097ed057)
+- test(parity): tolerate sub-pixel drift, time-box each demo [`6426184`](https://github.com/zumerlab/snapdom/commit/642618404370b512987d5b2cf3f9bcd39614e3ea)
+- chore(coverage): mark Firefox- and WebKit-only blocks with c8 ignore [`5c565cb`](https://github.com/zumerlab/snapdom/commit/5c565cba801861f67d7c37f8f6cf3adca0ffa358)
+- chore(plugins): require SnapDOM 3.3.8 for the stream [`ad3db94`](https://github.com/zumerlab/snapdom/commit/ad3db9413adb57c933d269a17b1e659482b4a454)
+- refactor(stream): allow form controls as patch hosts again [`b78f610`](https://github.com/zumerlab/snapdom/commit/b78f6108e8a326b91b5fa3b15701f28c6a0fdf92)
+- test(parity): wait for d60's own capture, note d11 and d42 [`44bb292`](https://github.com/zumerlab/snapdom/commit/44bb29219e6edccdec9b90961c0bb76113acbc58)
+- test: give the #531 stroked-text test 30 s for its WebKit screenshots [`d69ac62`](https://github.com/zumerlab/snapdom/commit/d69ac628ac70510ab2e06525745a2987471a94b2)
+- chore(scripts): leave the visual suites out of test:coverage [`5f6be3a`](https://github.com/zumerlab/snapdom/commit/5f6be3a1e579f080aaafba22435671f432f01e67)
+
 #### [v3.3.7](https://github.com/zumerlab/snapdom/compare/v3.3.6...v3.3.7)
 
 > 22 October 2026
