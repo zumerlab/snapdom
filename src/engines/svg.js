@@ -682,8 +682,10 @@ export async function composeAndSerialize(state, ex) {
   container.style.cssText =
     'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
     // A stream patch needs the root at its exact live width: w0 is offsetWidth, rounded,
-    // and a width:auto root filled the rest, so a 38.69px cell drew 39.31px wide.
-    `width:${phaseX || phaseY ? limitDecimals(padL + rect.width) : foW}px;height:${foH}px` +
+    // and a width:auto root filled the rest, so a 38.69px cell drew 39.31px wide. Keyed on
+    // the option, not on a non-zero phase: a lower third that came to rest on a whole pixel
+    // drew 0.03px narrow and moved its glyphs.
+    `width:${options.__subpixel ? limitDecimals(padL + rect.width) : foW}px;height:${foH}px` +
     // !important: Chromium 140 serializes the `all:initial` expansion with
     // `padding-inline: initial` AFTER this shorthand, so on data-URL re-parse it
     // would reset the left/right padding (rotated-root offset) unless it loses
