@@ -123,8 +123,12 @@ function start() {
   })
 }
 
+// Clear only what the last pass drew: at 3000 cards this canvas is 620x29000 px, and
+// clearing all of it every frame cost more than the stream itself.
+let drawn = []
 function drawMarks() {
-  mctx.clearRect(0, 0, marks.width, marks.height)
+  for (const r of drawn) mctx.clearRect(r.x - 4, r.y - 4, r.width + 8, r.height + 8)
+  drawn = []
   if ($('#marksOn').checked) {
     const now = performance.now()
     flashes = flashes.filter((f) => now - f.t < 600)
@@ -134,6 +138,7 @@ function drawMarks() {
       mctx.lineWidth = f.full ? 6 : 2
       mctx.strokeRect(f.x + 1, f.y + 1, f.width - 2, f.height - 2)
       if (!f.full) { mctx.fillStyle = `rgba(232,121,249,${a * .18})`; mctx.fillRect(f.x, f.y, f.width, f.height) }
+      drawn.push(f)
     }
   }
   requestAnimationFrame(drawMarks)

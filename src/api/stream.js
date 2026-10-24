@@ -31,8 +31,11 @@ const EVENTS = ['input', 'change', 'focusin', 'focusout', 'pointerover', 'pointe
 const FORM_CONTROL = /^(?:INPUT|TEXTAREA|SELECT|BUTTON)$/
 /** A patch larger than this share of the frame costs about what a full frame does. */
 const MAX_PATCH_AREA = 0.5
-/** Self-healing keyframe: anything the heuristics missed lasts at most this long. */
+/** Self-healing keyframe: anything the heuristics missed lasts at most this long, or 50
+ *  full frames' worth of time, so the safety net costs under 2% of the main thread (a
+ *  3000-card lab frame took 235 ms: every 2 s it froze the page 7 times in 8 s). */
 const KEYFRAME_MS = 2000
+const KEYFRAME_COST = 50
 
 function opaqueColor(value) {
   if (!value || value === 'transparent') return false
@@ -133,6 +136,9 @@ export function stream(element, options = {}) {
   let floaters = []
   let forceFull = true
   let lastKeyframe = 0
+  let keyframeDue = false // set from idle time once the keyframe interval has passed
+  let fullMs = 0
+  let idleAsked = false
   let stopped = false
   let busy = false
   let lastTick = 0
@@ -193,7 +199,12 @@ export function stream(element, options = {}) {
   }
 
   async function full() {
-    const res = await capture(element, opts)
+    // A full frame is the one long task of a stream; 'auto' lets a long clone yield (#503).
+    const t0 = performance.now()
+    // A full frame is the one long task of a stream; 'auto' lets a long clone yield (#503).
+    // Lab, 1000 cards under constant edits: worst frame gap 67 -> 33 ms. Under edits on
+    // every frame a big tree tears and redoes in one task, which only the interval helps.
+    const res = await capture(element, { fast: 'auto', ...opts })
     const { vbW, vbH, contentX = 0, contentY = 0 } = res.meta
     // Safari keeps toCanvas, whose WebKit draw workarounds a raw decode would skip.
     const src = isSafari() ? await res.toCanvas() : await decode(res.url)
@@ -205,6 +216,8 @@ export function stream(element, options = {}) {
     oy = contentY * k
     snapshotLayout()
     lastKeyframe = performance.now()
+    keyframeDue = false
+    fullMs = lastKeyframe - t0
     stats.full++
     return [{ x: 0, y: 0, width: w, height: h }]
   }
@@ -296,7 +309,7 @@ export function stream(element, options = {}) {
   function plan() {
     if (!patches) return 'patches off'
     if (forceFull) return 'resize'
-    if (performance.now() - lastKeyframe > KEYFRAME_MS) return 'keyframe'
+    if (keyframeDue) return 'keyframe'
     const now = element.getBoundingClientRect()
     if (!sameRect({ left: 0, top: 0, width: now.width, height: now.height }, { left: 0, top: 0, width: rootRect.width, height: rootRect.height })) return 'root resized'
     rootRect = now
@@ -340,7 +353,14 @@ export function stream(element, options = {}) {
       if (a.playState === 'running') dirty.add(a.effect?.target || element)
     }
     netTargets(observer.takeRecords(), dirty, restyled)
-    if (!dirty.size && !forceFull && now - lastKeyframe <= KEYFRAME_MS) { stats.skipped++; return }
+    // The keyframe waits for idle time, so it never lands on top of a burst of edits.
+    if (!keyframeDue && !idleAsked && now - lastKeyframe > Math.max(KEYFRAME_MS, fullMs * KEYFRAME_COST)) {
+      idleAsked = true
+      const due = () => { keyframeDue = true; idleAsked = false }
+      if (typeof requestIdleCallback === 'function') requestIdleCallback(due, { timeout: KEYFRAME_MS })
+      else due()
+    }
+    if (!dirty.size && !forceFull && !keyframeDue) { stats.skipped++; return }
     busy = true
     lastTick = now
     try {
