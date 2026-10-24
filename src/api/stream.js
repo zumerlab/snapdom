@@ -30,7 +30,6 @@ let capture = null
 export function bindStreamCapture(fn) { capture = fn }
 
 const EVENTS = ['input', 'change', 'focusin', 'focusout', 'pointerover', 'pointerout', 'scroll', 'toggle']
-const FORM_CONTROL = /^(?:INPUT|TEXTAREA|SELECT|BUTTON)$/
 /** A patch larger than this share of the frame costs about what a full frame does. */
 const MAX_PATCH_AREA = 0.5
 /** Self-healing keyframe: anything the heuristics missed lasts at most this long, or 50
@@ -211,9 +210,6 @@ export function stream(element, options = {}) {
     for (let i = start; i < chain.length; i++) {
       const cs = getComputedStyle(chain[i])
       if (!opaqueColor(cs.backgroundColor)) continue
-      // A form control is never the capture root: in WebKit an <input> captured alone drew
-      // its text lower than the same input captured inside its card (279 pixels differed).
-      if (FORM_CONTROL.test(chain[i].tagName)) continue
       // Visible overflow paints outside the box, over pixels the patch does not repaint.
       if (!clips(cs) && (chain[i].scrollWidth > chain[i].clientWidth + 1 || chain[i].scrollHeight > chain[i].clientHeight + 1)) continue
       return chain[i]
