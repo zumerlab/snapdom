@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.plugins.mjs"}}</script>
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ASCII Mirror — a live element as text — SnapDOM Labs</title>
@@ -155,41 +155,11 @@ await live.ready
 <!-- pane:end -->
 
   <script type="module">
-    import { stream } from 'https://esm.sh/@zumer/snapdom-plugins@4/stream?external=@zumer/snapdom'
-    import * as asciiMod from 'https://esm.sh/@zumer/snapdom-plugins@4/ascii-export?external=@zumer/snapdom'
-
-    // asciiFromCanvas ships with the plugin; until that release lands on npm, the same loop runs inline.
-    const asciiFromCanvas = asciiMod.asciiFromCanvas ?? function (source, options = {}) {
-      const cols = Math.max(1, Math.floor(options.width ?? 80))
-      const chars = Array.from(options.charset ?? ' .:-=+*#%@')
-      const colored = options.format === 'html', gain = options.contrast ?? 0, inv = !!options.invert
-      const rows = Math.max(1, Math.round(cols * source.height / source.width * 0.5))
-      const c = Object.assign(document.createElement('canvas'), { width: cols, height: rows }).getContext('2d', { willReadFrequently: true })
-      c.drawImage(source, 0, 0, cols, rows)
-      const d = c.getImageData(0, 0, cols, rows).data
-      let s = colored ? '<pre style="margin:0;font:7px/1 monospace;white-space:pre;overflow-wrap:normal;max-width:100%;overflow:auto;background:white">' : ''
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const i = (y * cols + x) * 4
-          let lum = 1 - (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255
-          lum = Math.max(0, Math.min(1, (1 + gain) * (lum - .5) + .5)); if (inv) lum = 1 - lum
-          const ch = chars[Math.min(Math.floor(lum * chars.length), chars.length - 1)]
-          s += colored ? `<span style="color:rgb(${d[i]},${d[i + 1]},${d[i + 2]})">${ch.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]))}</span>` : ch
-        }
-        s += '\n'
-      }
-      return colored ? s + '</pre>' : s
-    }
+    import { asciiStream } from 'https://esm.sh/@zumer/snapdom-plugins@4/ascii-export?external=@zumer/snapdom'
 
     const card = document.getElementById('lamCard'), out = document.getElementById('lamOut'), stats = document.getElementById('lamStats')
     const charset = document.getElementById('lamCharset'), width = document.getElementById('lamWidth'), widthOut = document.getElementById('lamWidthOut')
     const color = document.getElementById('lamColor'), invert = document.getElementById('lamInvert')
-
-    // asciiStream ships with the plugin; until that release lands on npm, the same wiring runs inline.
-    const asciiStream = asciiMod.asciiStream ?? ((el, o) => {
-      const { onText, onFrame, width, charset, invert, format, contrast, ...so } = o
-      return stream(el, { ...so, onFrame(f) { onFrame?.(f); onText?.(asciiFromCanvas(f.canvas, { width, charset, invert, format, contrast }), f) } })
-    })
 
     let live = null, frames = 0, patched = 0, times = [], t0 = 0
     function report() {
