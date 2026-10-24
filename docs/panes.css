@@ -81,6 +81,7 @@
   transition: color .15s;
 }
 .pane-nav-items a:hover { color: var(--c); }
+.nav-new { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: #E63946; color: #fff; font: 700 10px/1.5 Arial, Helvetica, sans-serif; vertical-align: 1px; }
 .pane-nav-items a[aria-current='page'] { border-left-color: var(--c); color: var(--c); font-weight: 700; }
 .pane-nav-items a[hidden] { display: none; }
 

@@ -173,13 +173,16 @@ def convert(section, gi, path, title, demo, flat):
     # A page whose toc carries a group per entry (the showcase) shows those groups as the
     # sidebar; a section group with the same label lends it its colour.
     grouped = toc and len(toc[0]) > 2 and any(p == path for _, _, items in section['groups'] for p, _, _ in items)
+    # Fresh demos get a red "New" pill in the sidebar; drop entries here once they are old news.
+    NEW = {'stream-demo', 'lab-ascii-mirror', 'labs/ascii-mirror/index.html'}
+    new = lambda key: ' <span class="nav-new">New</span>' if key in NEW else ''
     pages = {glabel: (gsec, items) for glabel, gsec, items in section['groups']}
     if grouped:
         for label in dict.fromkeys(t[2] for t in toc):
-            links = ''.join(f'<a href="#{t[0]}">{E(t[1])}</a>' for t in toc if t[2] == label)
+            links = ''.join(f'<a href="#{t[0]}">{E(t[1])}{new(t[0])}</a>' for t in toc if t[2] == label)
             side.append(group_html(label, pages.get(label, ({'Capture': 'capture', 'Plugins': 'export'}.get(label, 'labs'),))[0], links, True))
     for glabel, gsec, items in ([] if grouped else section['groups']):
-        links = ''.join(f'<a href="{rel(path, p)}"{CUR if p == path else ""}>{E(t)}</a>' for p, t, _ in items)
+        links = ''.join(f'<a href="{rel(path, p)}"{CUR if p == path else ""}>{E(t)}{new(p)}</a>' for p, t, _ in items)
         side.append(group_html(glabel, gsec, links, any(p == path for p, _, _ in items)))
     sidebar_html = (f'<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="{section["filter"]}" aria-label="{section["filter"]}"></label>'
                     f'<nav class="pane-nav" aria-label="{section["name"]}">{"".join(side)}</nav></aside>')
