@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.plugins.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASCII Mirror — a live element as text — SnapDOM Labs</title>
+  <meta name="description" content="Type in a card and watch it redrawn as ASCII art in real time. The stream plugin keeps a canvas in step with the element; asciiFromCanvas turns each frame into characters." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/ascii-mirror/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="ASCII Mirror — a live element as text" />
+  <meta property="og:description" content="Type in a card and watch it redrawn as ASCII art in real time, with SnapDOM's stream plugin and asciiFromCanvas." />
+  <meta property="og:url" content="https://snapdom.dev/labs/ascii-mirror/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"ASCII Mirror: a live element as text","description":"Type in a card and watch it redrawn as ASCII art in real time. The stream plugin keeps a canvas in step with the element; asciiFromCanvas turns each frame into characters.","url":"https://snapdom.dev/labs/ascii-mirror/","image":"https://snapdom.dev/assets/og-card.jpg","author":{"@type":"Organization","name":"Zumerlab"},"publisher":{"@type":"Organization","name":"Zumerlab","url":"https://snapdom.dev"},"mainEntityOfPage":"https://snapdom.dev/labs/ascii-mirror/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"ASCII Mirror","item":"https://snapdom.dev/labs/ascii-mirror/"}]}</script>
+  <style>
+    .lab-ascii-mirror { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-ascii-mirror .lam-toolbar { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 16px; font-size: 13px; color: var(--text-muted); }
+    .lab-ascii-mirror .lam-toolbar label { display: flex; align-items: center; gap: 8px; }
+    .lab-ascii-mirror .lam-toolbar select, .lab-ascii-mirror .lam-toolbar input[type=range] { font: inherit; color: var(--text); }
+    .lab-ascii-mirror .lam-toolbar output { min-width: 3ch; color: var(--text); }
+    .lab-ascii-mirror .lam-workspace { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .lab-ascii-mirror .lam-pane { min-width: 0; border: 1px solid var(--border-soft); background: var(--bg); }
+    .lab-ascii-mirror .lam-pane-label { display: flex; justify-content: space-between; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--border-soft); font-size: 12px; color: var(--text-muted); }
+    .lab-ascii-mirror .lam-pane-label strong { color: var(--accent); }
+    .lab-ascii-mirror .lam-surface { display: grid; place-items: center; padding: 22px; min-height: 300px; }
+    .lab-ascii-mirror #lamCard { width: min(100%, 320px); background: #fff; color: #0F1E4D; padding: 22px; display: grid; gap: 12px; border: 1px solid var(--border-soft); }
+    .lab-ascii-mirror #lamCard h3 { margin: 0; padding: 10px 12px; background: #2D5BFF; color: #fff; font-size: 26px; line-height: 1.1; }
+    .lab-ascii-mirror #lamCard p { margin: 0; padding: 10px 12px; background: #e9eefc; font-size: 15px; line-height: 1.4; }
+    .lab-ascii-mirror #lamCard .lam-dot { width: 64px; height: 64px; border-radius: 50%; background: #0F1E4D; justify-self: end; }
+    .lab-ascii-mirror #lamOut { margin: 0; padding: 0; width: 100%; overflow: auto; font: 7px/1 ui-monospace, Menlo, Consolas, monospace; white-space: pre; color: #0F1E4D; background: #fff; min-height: 280px; }
+    .lab-ascii-mirror #lamOut pre { font-size: 7px; line-height: 1; }
+    .lab-ascii-mirror .lam-stats { margin: 12px 0 0; font-size: 12px; color: var(--text-muted); }
+    @media (max-width: 760px) { .lab-ascii-mirror .lam-workspace { grid-template-columns: 1fr; } .lab-ascii-mirror #lamOut { font-size: 5px; } }
+  </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body>
+  <script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "A live element, <span class=\"accent\">as text</span>", "lead": "Type in the card. The right side is the same element redrawn as ASCII art on every change, through the stream plugin.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="../../showcase/">Live demos</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="../video-overlay/">Video overlay</a><a href="../webrtc-overlay/">WebRTC overlay</a><a href="../stop-motion/">Stop motion</a><a href="../paint-canvas/">Paint on a capture</a><a href="../capture-stages/">Capture stages</a><a href="../target-range/">Target range</a><a href="../webgl-live-mirror/">Live mirror</a><a href="./" aria-current="page">ASCII mirror</a><a href="../webgl-seamless-dom/">Seamless DOM</a><a href="../webgl-shatter/">Shattered capture</a></div></div></nav></aside>
+
+<article class="pane-read sec-labs" data-title="ASCII mirror">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>ASCII mirror</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>A live element, <span class="accent">as text</span></h1><p class="doc-lead">Type in the card. The right side is the same element redrawn as ASCII art on every change, through the stream plugin.</p></header>
+<div class="pane-content"><!-- content -->
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two plugins, chained. <code>stream()</code> keeps a canvas in step with the card and repaints only the boxes that changed. <code>asciiFromCanvas()</code>, the function behind the <code>ascii-export</code> plugin, turns each frame into characters. No capture result in between: the canvas goes straight from one to the other.</p></div>
+
+    <section class="prose">
+      <h2 id="what-you-re-looking-at">What you're looking at</h2>
+      <p>The left card is editable HTML on a white background with solid-colored boxes, the shape the stream plugin patches best. The right pane is a <code>&lt;pre&gt;</code>. On every frame the plugin hands over its canvas, the text is recomputed and replaced. Pick a character set, change the width, or switch to color to see each character carry the pixel it came from.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="live-demo">Try it</h2>
+      <div class="lab-ascii-mirror">
+        <div class="lam-toolbar">
+          <label>Charset
+            <select id="lamCharset">
+              <option value=" .:-=+*#%@" selected>Classic</option>
+              <option value=" ░▒▓█">Blocks</option>
+              <option value=" .oO0">Dots</option>
+              <option value=" 01">Binary</option>
+            </select>
+          </label>
+          <label>Width <input id="lamWidth" type="range" min="40" max="140" value="90"> <output id="lamWidthOut">90</output></label>
+          <label><input id="lamColor" type="checkbox"> Color</label>
+          <label><input id="lamInvert" type="checkbox"> Invert</label>
+        </div>
+        <div class="lam-workspace">
+          <div class="lam-pane">
+            <div class="lam-pane-label"><span>Editable DOM</span><strong>stream()</strong></div>
+            <div class="lam-surface">
+              <div id="lamCard">
+                <h3 contenteditable="true" spellcheck="false">Hello, text</h3>
+                <p contenteditable="true" spellcheck="false">Every keystroke becomes a patched frame, then characters.</p>
+                <div class="lam-dot"></div>
+              </div>
+            </div>
+          </div>
+          <div class="lam-pane">
+            <div class="lam-pane-label"><span>ASCII output</span><strong>asciiFromCanvas()</strong></div>
+            <div class="lam-surface"><pre id="lamOut" data-code-output>starting…</pre></div>
+          </div>
+        </div>
+        <p class="lam-stats" id="lamStats">Loading the stream plugin…</p>
+      </div>
+    </section>
+
+    <section class="prose">
+      <h2 id="how-it-works">How it works</h2>
+      <ol class="steps">
+        <li><h4 aria-level="3"><code>stream()</code> watches the card</h4><p>The first frame is a full SnapDOM capture. After that, a mutation or a keystroke is traced to the nearest box with a solid background, and only that subtree is captured and drawn into its rectangle.</p></li>
+        <li><h4 aria-level="3"><code>onFrame</code> hands over the canvas</h4><p>Each repaint calls <code>onFrame(frame)</code> with <code>frame.canvas</code> and the list of changed rects. The demo ignores the rects and converts the whole canvas; it is 90 columns wide, so that costs under a millisecond.</p></li>
+        <li><h4 aria-level="3"><code>asciiFromCanvas()</code> does the pixel work</h4><p>It downsamples the canvas to one pixel per character, maps luminance to the charset and returns a string, or colored HTML when <code>format: 'html'</code>. It is the same code the <code>toAscii()</code> export uses, exported on its own so it can run on any drawable.</p></li>
+        <li><h4 aria-level="3">The <code>&lt;pre&gt;</code> is replaced</h4><p><code>textContent</code> for plain text, <code>innerHTML</code> for the colored version. Nothing else on the page is touched.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2 id="copy-paste-example">Copy-paste example</h2>
+<pre><code class="language-javascript">import { stream } from '@zumer/snapdom-plugins/stream'
+import { asciiFromCanvas } from '@zumer/snapdom-plugins/ascii-export'
+
+const out = document.querySelector('pre')
+const live = stream(document.querySelector('#card'), {
+  onFrame(frame) {
+    out.textContent = asciiFromCanvas(frame.canvas, { width: 90 })
+  }
+})
+await live.ready
+// later: live.stop()</code></pre>
+      <p>The same pattern works for any pixel-level plugin: <code>color-tint</code> or <code>filter</code> on a frame, a video element instead of a stream, or a canvas you drew yourself.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="limits-and-things-to-watch">Limits and things to watch</h2>
+      <p>Patches need a solid background somewhere above the change; on a gradient card every frame is a full capture. Width above 140 columns makes the conversion visible in the frame budget on slow machines. Color mode produces one <code>&lt;span&gt;</code> per character, so keep it under 100 columns.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../webgl-live-mirror/">WebGL Live Mirror: the same stream into a texture</a>
+        <a class="related-card" href="../video-overlay/">Video overlay: stream over live footage</a>
+        <a class="related-card" href="../../showcase/#stream-demo">Live stream plugin demo</a>
+        <a class="related-card" href="../../showcase/#ascii-demo">ASCII export plugin demo</a>
+      </div>
+    </section>
+
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../webgl-live-mirror/"><span>Previous</span><strong>Live mirror</strong></a><a class="is-next" href="../webgl-seamless-dom/"><span>Next</span><strong>Seamless DOM</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+
+  <script type="module">
+    import { stream } from 'https://esm.sh/@zumer/snapdom-plugins@4/stream?external=@zumer/snapdom'
+    import * as asciiMod from 'https://esm.sh/@zumer/snapdom-plugins@4/ascii-export?external=@zumer/snapdom'
+
+    // asciiFromCanvas ships with the plugin; until that release lands on npm, the same loop runs inline.
+    const asciiFromCanvas = asciiMod.asciiFromCanvas ?? function (source, options = {}) {
+      const cols = Math.max(1, Math.floor(options.width ?? 80))
+      const chars = Array.from(options.charset ?? ' .:-=+*#%@')
+      const colored = options.format === 'html', gain = options.contrast ?? 0, inv = !!options.invert
+      const rows = Math.max(1, Math.round(cols * source.height / source.width * 0.5))
+      const c = Object.assign(document.createElement('canvas'), { width: cols, height: rows }).getContext('2d', { willReadFrequently: true })
+      c.drawImage(source, 0, 0, cols, rows)
+      const d = c.getImageData(0, 0, cols, rows).data
+      let s = colored ? '<pre style="margin:0;font:7px/1 monospace;white-space:pre;overflow-wrap:normal;max-width:100%;overflow:auto;background:white">' : ''
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const i = (y * cols + x) * 4
+          let lum = 1 - (d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114) / 255
+          lum = Math.max(0, Math.min(1, (1 + gain) * (lum - .5) + .5)); if (inv) lum = 1 - lum
+          const ch = chars[Math.min(Math.floor(lum * chars.length), chars.length - 1)]
+          s += colored ? `<span style="color:rgb(${d[i]},${d[i + 1]},${d[i + 2]})">${ch.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]))}</span>` : ch
+        }
+        s += '\n'
+      }
+      return colored ? s + '</pre>' : s
+    }
+
+    const card = document.getElementById('lamCard'), out = document.getElementById('lamOut'), stats = document.getElementById('lamStats')
+    const charset = document.getElementById('lamCharset'), width = document.getElementById('lamWidth'), widthOut = document.getElementById('lamWidthOut')
+    const color = document.getElementById('lamColor'), invert = document.getElementById('lamInvert')
+    let last = null, frames = 0, patched = 0, times = []
+
+    function render(canvas) {
+      if (!canvas) return
+      const t0 = performance.now()
+      const text = asciiFromCanvas(canvas, { width: Number(width.value), charset: charset.value, format: color.checked ? 'html' : 'text', invert: invert.checked })
+      if (color.checked) out.innerHTML = text; else out.textContent = text
+      times.push(performance.now() - t0); if (times.length > 60) times.shift()
+    }
+    function report() {
+      const med = times.length ? times.slice().sort((a, b) => a - b)[times.length >> 1] : 0
+      stats.textContent = `${frames} frames · ${patched} patched · ascii ${med.toFixed(2)} ms per frame`
+    }
+    for (const el of [charset, color, invert]) el.addEventListener('change', () => { render(last); report() })
+    width.addEventListener('input', () => { widthOut.value = width.value; render(last); report() })
+
+    try {
+      const live = stream(card, { onFrame(frame) { last = frame.canvas; frames++; if (!frame.full) patched++; render(frame.canvas); report() } })
+      await live.ready
+      addEventListener('pagehide', () => live.stop())
+    } catch (error) {
+      stats.textContent = `Could not start the stream: ${error.message}`
+    }
+  </script>
+</body>
+</html>
