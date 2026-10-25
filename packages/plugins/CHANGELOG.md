@@ -1,5 +1,13 @@
 # Plugin changes
 
+## 4.3.0
+
+> 25 October 2026
+
+**Fixes**
+
+- **stream:** report only dirty rects inside the canvas [`f9302d4`](https://github.com/zumerlab/snapdom/commit/f9302d4bd8b76f4dcab81c83314778cf9074b2a3)
+
 ## 4.2.1
 
 - Fix the stream plugin: a box cut by an ancestor with overflow hidden was painted whole. Patches now stay inside every clipping ancestor.
