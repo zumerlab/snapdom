@@ -155,7 +155,8 @@ await live.ready
 <!-- pane:end -->
 
   <script type="module">
-    import { asciiStream } from 'https://esm.sh/@zumer/snapdom-plugins@4/ascii-export?external=@zumer/snapdom'
+    // Raw ES modules from unpkg: esm.sh builds a package on first request and can time out on a fresh release.
+    import { asciiStream } from 'https://unpkg.com/@zumer/snapdom-plugins@4/ascii-export.js'
 
     const card = document.getElementById('lamCard'), out = document.getElementById('lamOut'), stats = document.getElementById('lamStats')
     const charset = document.getElementById('lamCharset'), width = document.getElementById('lamWidth'), widthOut = document.getElementById('lamWidthOut')

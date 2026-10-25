@@ -162,7 +162,11 @@ for (const el of stage.querySelectorAll('.glass')) {
 <footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
 <!-- pane:end -->
   <script type="module">
-    import { stream, streamTexture, recordCanvas } from 'https://esm.sh/@zumer/snapdom-plugins@4/stream?external=@zumer/snapdom'
+    // Raw ES modules from unpkg: esm.sh builds a package on first request and answered 408 after 30 s for the release that added the stream.
+    const { stream, streamTexture, recordCanvas } = await import('https://unpkg.com/@zumer/snapdom-plugins@4/stream.js').catch((err) => {
+      document.querySelector('#lgpStats').textContent = 'Could not load the stream plugin: ' + err.message
+      throw err
+    })
 
     const $ = (s) => document.querySelector(s)
     const W = 960, H = 540, MAX = 12

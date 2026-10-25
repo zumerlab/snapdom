@@ -32,7 +32,7 @@ const MIME = {
 }
 
 const CDN = /https:\/\/unpkg\.com\/@zumer\/snapdom(@[^/]+)?\/dist\//g
-const PLUGIN_CDN = /https:\/\/esm\.sh\/@zumer\/snapdom-plugins(?:@[^/'"`\s?]+)?(?=\/|['"`?]|$)/g
+const PLUGIN_CDN = /https:\/\/(?:esm\.sh|unpkg\.com)\/@zumer\/snapdom-plugins(?:@[^/'"`\s?]+)?(?=\/|['"`?]|$)/g
 const rewriteJs = (s) => s.replace(CDN, '/__dist/').replace(PLUGIN_CDN, '/__plugins')
 const rewritePluginJs = (s) => rewriteJs(s).replace(/(['"])@zumer\/snapdom(?:\/plugins)?\1/g, '$1/__dist/snapdom.mjs$1')
 const rewriteHtml = (s) => s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, rewriteJs)
