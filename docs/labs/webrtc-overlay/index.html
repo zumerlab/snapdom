@@ -142,7 +142,8 @@ peerConnection.addTrack(track)</code></pre>
     // A receiving peer: answers an offer and plays what arrives in a <video>.
     function receiver(video, signal) {
       const pc = new RTCPeerConnection()
-      pc.ontrack = (e) => { video.srcObject = e.streams[0] }
+      // iOS does not always start a new srcObject on its own, muted and inline or not.
+      pc.ontrack = (e) => { video.srcObject = e.streams[0]; video.play().catch(() => {}) }
       return { pc, async offer(desc) { await pc.setRemoteDescription(desc); await pc.setLocalDescription(await pc.createAnswer()); await gathered(pc); signal(pc.localDescription.toJSON()) } }
     }
 
@@ -194,6 +195,7 @@ peerConnection.addTrack(track)</code></pre>
           camera.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 540 } })
           camera.play()
           btn.setAttribute('aria-pressed', 'true')
+          if (rx.pc.connectionState !== 'connected') connectLocal()
         } catch (err) { camera = null; $('#lwoStats').textContent = 'camera unavailable: ' + err.message }
       })
 
@@ -229,9 +231,19 @@ peerConnection.addTrack(track)</code></pre>
       }
 
       // The receiver on the right lives in this page: the two peers trade descriptions directly.
-      const local = new RTCPeerConnection()
-      const rx = receiver($('#lwoRemote'), (answer) => local.setRemoteDescription(answer))
-      sendTo(local).then((offer) => rx.offer(offer))
+      // Safari gives a page no local ICE candidates until it may use the camera, so there the
+      // offer carries none and the pair stays at "new"; granting Camera connects it again.
+      let local = null, rx = null, hint = ''
+      function connectLocal() {
+        local?.close(); rx?.pc.close()
+        local = new RTCPeerConnection()
+        rx = receiver($('#lwoRemote'), (answer) => local.setRemoteDescription(answer))
+        sendTo(local).then((offer) => {
+          hint = /a=candidate/.test(offer.sdp) ? '' : 'Safari opens a local WebRTC connection only with camera access: press Camera · '
+          rx.offer(offer)
+        })
+      }
+      connectLocal()
 
       // Viewer tabs reach this sender through the channel.
       const peers = new Map()
@@ -248,7 +260,7 @@ peerConnection.addTrack(track)</code></pre>
       setInterval(() => {
         const ms = stats.ms.slice().sort((a, b) => a - b)
         const tabs = [...peers.values()].filter((p) => p.connectionState === 'connected').length
-        watch(rx.pc, `overlay repaint ${ms.length ? ms[ms.length >> 1].toFixed(1) : '…'} ms · ${stats.patch} patches / ${stats.full} full · viewer tabs ${tabs}`)
+        watch(rx.pc, `${hint}overlay repaint ${ms.length ? ms[ms.length >> 1].toFixed(1) : '…'} ms · ${stats.patch} patches / ${stats.full} full · viewer tabs ${tabs}`)
       }, 500)
     }
 
