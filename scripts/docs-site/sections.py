@@ -41,6 +41,8 @@ SECTIONS = [
                                  ('how-to/capture-full-page/index.html','Capture a full page',None),
                                  ('how-to/capture-iframe/index.html','Capture an iframe',None),
                                  ('how-to/visual-regression-screenshot/index.html','Visual regression',None)]),
+   ('Migrate','ecosystem',[('how-to/migrate-from-html2canvas/index.html','Migrate from html2canvas',D(demo='compare',lib='html2canvas',target='tricky',label='SnapDOM · html2canvas',
+                            note='Run both on the same element: pseudo-element, transform with shadow, shadow root, typed value.'))]),
    ('Frameworks','options',[('guides/react/index.html','React',None),
                             ('guides/vue/index.html','Vue',None),
                             ('guides/nextjs/index.html','Next.js',None),
