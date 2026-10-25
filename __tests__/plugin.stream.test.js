@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { stream, streamExport, streamTexture, recordCanvas } from '../packages/plugins/stream.js'
+import { stream, streamExport, streamTexture, recordCanvas, overlayStage, lowerThird } from '../packages/plugins/stream.js'
 
 const roots = []
 const streams = []
@@ -375,6 +375,33 @@ describe('stream plugin', () => {
     let bad = 0
     for (let i = 0; i < gpu.length; i += 4) if (Math.abs(gpu[i] - cpu[i]) > 2 || Math.abs(gpu[i + 1] - cpu[i + 1]) > 2) bad++
     expect(bad).toBe(0)
+  })
+
+  it('reports only rects inside the canvas while a lower third slides out past its edge', async () => {
+    // The template hides by sliding to left:-720px; each step patched where the box was and
+    // where it is, partly off the canvas, and texSubImage2D rejected those uploads.
+    const stage = overlayStage({ width: 960, height: 540 })
+    const lower = lowerThird({ name: 'Alex Morgan', role: 'Match commentator' })
+    stage.append(lower.el)
+    document.body.append(stage)
+    roots.push(stage)
+    const gl = document.createElement('canvas').getContext('webgl2')
+    const tex = streamTexture(gl)
+    const s = open(stage)
+    await s.ready
+    tex.update(s.frames[0])
+    lower.hide()
+    await new Promise(resolve => setTimeout(resolve, 700))
+    const frames = s.frames.slice(1)
+    expect(frames.length).toBeGreaterThan(0)
+    const { width: w, height: h } = s.canvas
+    for (const f of frames) {
+      tex.update(f)
+      for (const r of f.rects) {
+        expect(r.x >= 0 && r.y >= 0 && r.width > 0 && r.height > 0 && r.x + r.width <= w && r.y + r.height <= h, JSON.stringify(r)).toBe(true)
+      }
+    }
+    expect(gl.getError()).toBe(gl.NO_ERROR)
   })
 
   it('records the stream canvas to a video blob', async () => {

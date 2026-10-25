@@ -342,18 +342,26 @@ export function stream(element, options = {}) {
     // demos/stream-webgl.html: 11.9 ms one after another.
     const layers = await Promise.all(hosts.map(renderPatch))
     const out = []
+    // The canvas clips draws past its edge; a reported rect must be clipped too, or a box
+    // sliding off the stage (the lower third hides to left:-720px) hands texSubImage2D a
+    // negative offset and the upload is rejected. Pinned by __tests__/plugin.stream.test.js.
+    const report = (x, y, w, h) => {
+      const x0 = Math.max(0, x), y0 = Math.max(0, y)
+      const x1 = Math.min(canvas.width, x + w), y1 = Math.min(canvas.height, y + h)
+      if (x1 > x0 && y1 > y0) out.push({ x: x0, y: y0, width: x1 - x0, height: y1 - y0 })
+    }
     for (const [host, old] of movedFrom) {
       const r = pixelRect(old)
       const x = Math.round(ox + r.left * k), y = Math.round(oy + r.top * k)
       const w = Math.round(ox + r.right * k) - x, h = Math.round(oy + r.bottom * k) - y
       paintBackdrop(backdrops.get(host), x, y, w, h)
-      out.push({ x, y, width: w, height: h })
+      report(x, y, w, h)
     }
     for (const { layer, x, y, w, h, backdrop } of layers) {
       // A backdrop layer is the full frame's pixels for its whole rect: replace, not blend.
       if (backdrop) ctx.clearRect(x, y, w, h)
       ctx.drawImage(layer, x, y)
-      out.push({ x, y, width: w, height: h })
+      report(x, y, w, h)
     }
     movedFrom.clear()
     // Remember where each host was drawn, not where it is now: a sliding box kept moving
