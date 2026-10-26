@@ -11,6 +11,10 @@
  *   npm run publish:dev               3.0.1-dev.0
  *   npm run publish:dev -- 3.1.0      3.1.0-dev.0, when the next release is a minor
  *   npm run publish:dev -- --dry-run  everything except the upload
+ *   SNAPDOM_CANVAS_ENGINE=1 npm run publish:dev   3.0.1-canvas.0 under the `canvas` tag
+ *
+ * The last form is a build with the experimental html-in-canvas engine compiled in (the flag
+ * reaches esbuild through prepack). It gets its own line so `@dev` never ships that engine.
  *
  * It refuses uncommitted changes, since the tarball would not be the commit it reports (a dry
  * run skips that check), and it runs scripts/check-pack.mjs first, so a dev build cannot ship a package whose
@@ -37,23 +41,24 @@ const lock = readFileSync('package-lock.json', 'utf8')
 const pkg = JSON.parse(manifest)
 const [major, minor, patch] = pkg.version.split('-')[0].split('.').map(Number)
 const base = baseArg || `${major}.${minor}.${patch + 1}`
+const tag = process.env.SNAPDOM_CANVAS_ENGINE === '1' ? 'canvas' : 'dev'
 
 // The next free <n> for this base, from what the registry already holds.
-const devOf = new RegExp(`^${base.replace(/\./g, '\\.')}-dev\\.(\\d+)$`)
+const devOf = new RegExp(`^${base.replace(/\./g, '\\.')}-${tag}\\.(\\d+)$`)
 const taken = JSON.parse(read('npm', ['view', pkg.name, 'versions', '--json']))
   .map((v) => v.match(devOf))
   .filter(Boolean)
   .map((m) => Number(m[1]))
 const n = taken.length ? Math.max(...taken) + 1 : 0
-const version = `${base}-dev.${n}`
+const version = `${base}-${tag}.${n}`
 const sha = read('git', ['rev-parse', '--short', 'HEAD'])
 
-console.log(`\npublish:dev: ${pkg.name}@${version} from commit ${sha}, under the dev tag${dryRun ? ' (dry run)' : ''}\n`)
+console.log(`\npublish:dev: ${pkg.name}@${version} from commit ${sha}, under the ${tag} tag${dryRun ? ' (dry run)' : ''}\n`)
 run('node', ['scripts/check-pack.mjs'])
 
 try {
   run('npm', ['version', version, '--no-git-tag-version'])
-  run('npm', ['publish', '--tag', 'dev', ...(dryRun ? ['--dry-run'] : [])])
+  run('npm', ['publish', '--tag', tag, ...(dryRun ? ['--dry-run'] : [])])
 } finally {
   writeFileSync('package.json', manifest)
   writeFileSync('package-lock.json', lock)
@@ -61,4 +66,4 @@ try {
 
 console.log(dryRun
   ? `\nDry run done. Nothing was uploaded; package.json and package-lock.json are unchanged.`
-  : `\nPublished. Testers: npm install ${pkg.name}@dev  (or @${version})`)
+  : `\nPublished. Testers: npm install ${pkg.name}@${tag}  (or @${version})`)
