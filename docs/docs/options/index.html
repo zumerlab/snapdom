@@ -154,8 +154,9 @@ await snapdom.toSvg(element, {
 });</pre>
       <p>Notes:</p>
       <ul>
-        <li>If the fallback also fails, SnapDOM replaces the <code>&lt;img&gt;</code> with a placeholder block that keeps its width/height.</li>
+        <li>If the fallback also fails, the <code>&lt;img&gt;</code> keeps its box and shows a grey placeholder, and <code>result.warnings</code> lists its URL.</li>
         <li>The callback's width/height come from the original element (dataset, style/attrs, etc.) when available.</li>
+        <li>The callback also gets <code>src</code>, so it can send only the images that failed through your own proxy: see <a href="../../how-to/capture-cross-origin-images/">Capture images without CORS</a>.</li>
       </ul>
     </section>
 
