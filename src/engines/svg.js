@@ -493,8 +493,13 @@ export async function composeAndSerialize(state, ex) {
         offY = bbR.minY
       }
     }
-    minX = limitDecimals(clipWindow.x + offX)
-    minY = limitDecimals(clipWindow.y + offY)
+    // The window starts on a whole output pixel, as Chromium's own screenshot rounds a clip
+    // origin: x 10.5 is device pixel 21 at dpr 2 and rounds to 11 at dpr 1. A fractional
+    // origin drawn as is blurred every edge by half a pixel. WebKit keeps the origin it was
+    // given (see the translate below).
+    const k = isSafari() ? 0 : (options.dpr || 1) * (hasW || hasH ? w / baseW : options.scale || 1)
+    minX = limitDecimals(k ? Math.round((clipWindow.x + offX) * k) / k : clipWindow.x + offX)
+    minY = limitDecimals(k ? Math.round((clipWindow.y + offY) * k) / k : clipWindow.y + offY)
     maxX = limitDecimals(minX + clipWindow.width)
     maxY = limitDecimals(minY + clipWindow.height)
   } else if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
@@ -627,10 +632,6 @@ export async function composeAndSerialize(state, ex) {
   // there fo x/y is safe: the band it leaves unpainted is exactly the culled region.
   const offX = limitDecimals(-(limitDecimals(minX) - pad))
   const offY = limitDecimals(-(limitDecimals(minY) - pad))
-  const padL = Math.max(0, offX) + phaseX
-  const padT = Math.max(0, offY) + phaseY
-  const foW = limitDecimals(vbW - Math.min(0, offX))
-  const foH = limitDecimals(vbH - Math.min(0, offY))
   // Lay the clone out on the live device-pixel grid (#508). Chromium implements the device
   // pixel ratio AS zoom: at 2.625 it resolves fonts at 84px and rounds each line box of
   // `line-height: normal` there, and snaps borders to whole device pixels. The svg image lays
@@ -654,9 +655,25 @@ export async function composeAndSerialize(state, ex) {
   const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? liveLayoutZoom(view) : 1
   // toCanvas rasterizes Firefox exports smaller than this grid at it first (#516).
   options.__layoutZoom = layoutZoom
+  // fo x/y and padding are layout, and layout snaps them to a whole layout pixel. A clip whose
+  // output grid is finer than that (device emulation reports dpr 2 and lays out at 1x, #526;
+  // or scale 2) lost the fraction: a window from x 10.5 at dpr 2 began at device pixel 20,
+  // not 21 (playwright-lite #302). The fraction goes to an exact translate on the outer <g>
+  // instead, and the fo reaches one more layout pixel left and up so it still covers the
+  // viewBox once moved. Not WebKit: it moves no box with its own layer by an ancestor translate
+  // (cropSvgText, toCanvas.js). Pinned by __tests__/core.clip.test.js.
+  const split = clipWindow && !isSafari()
+  const shiftX = split ? limitDecimals(offX - Math.floor(offX * layoutZoom + 0.01) / layoutZoom) : 0
+  const shiftY = split ? limitDecimals(offY - Math.floor(offY * layoutZoom + 0.01) / layoutZoom) : 0
+  const foX = Math.min(0, offX - shiftX) - (shiftX ? 1 / layoutZoom : 0)
+  const foY = Math.min(0, offY - shiftY) - (shiftY ? 1 / layoutZoom : 0)
+  const padL = offX - shiftX - foX + phaseX
+  const padT = offY - shiftY - foY + phaseY
+  const foW = limitDecimals(vbW - foX)
+  const foH = limitDecimals(vbH - foY)
   const fo = document.createElementNS(svgNS, 'foreignObject')
-  fo.setAttribute('x', String(Math.min(0, offX) * layoutZoom))
-  fo.setAttribute('y', String(Math.min(0, offY) * layoutZoom))
+  fo.setAttribute('x', String(foX * layoutZoom))
+  fo.setAttribute('y', String(foY * layoutZoom))
   fo.setAttribute('width', String(foW * layoutZoom))
   fo.setAttribute('height', String(foH * layoutZoom))
   fo.style.overflow = 'visible'
@@ -753,12 +770,15 @@ export async function composeAndSerialize(state, ex) {
     : (hasH ? h : limitDecimals(vbH * (w / vbW)))
 
   const rootFontSize = parseFloat(getStyle(elDoc.documentElement)?.fontSize) || 16
-  // The scale(1/zoom) group rides in the header and footer: the line that joins them to the
+  // The <g> (clip translate, scale(1/zoom)) rides in the header and footer: the line that joins them to the
   // foreignObject keeps its original shape, which measured 1.4 ms cheaper per capture on a
   // 3,000-cell table than a conditional expression in the middle of it.
-  const zoomed = layoutZoom !== 1
-  const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">${zoomed ? `<g transform="scale(${1 / layoutZoom})">` : ''}`
-  const svgFooter = zoomed ? '</g></svg>' : '</svg>'
+  const group = [
+    shiftX || shiftY ? `translate(${shiftX} ${shiftY})` : '',
+    layoutZoom !== 1 ? `scale(${1 / layoutZoom})` : ''
+  ].join(' ').trim()
+  const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">${group ? `<g transform="${group}">` : ''}`
+  const svgFooter = group ? '</g></svg>' : '</svg>'
   svgString = svgHeader + internInlineStyles(foString, fo) + svgFooter
   dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
   state.svgString = svgString

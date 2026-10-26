@@ -2,6 +2,7 @@
 // layout-preserving husks and the output is windowed to the clip rect.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
+import { isSafari } from '../src/utils/browser.js'
 
 const added = []
 function mount(el) {
@@ -391,6 +392,23 @@ describe('clip option (region capture)', () => {
     const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
     const px = canvas.getContext('2d').getImageData(200, 20, 1, 1).data
     expect(px[2] > 200 && px[0] < 60).toBe(false)
+  })
+
+  // playwright-lite #302: at an output grid finer than the layout grid (dpr 2 under device
+  // emulation, here scale 2) the half pixel of the origin was snapped away: 80,60 for 79,59.
+  // WebKit keeps the snap: an ancestor translate does not move its layered boxes.
+  it.skipIf(isSafari())('starts a fractional clip on the output pixel, not the layout pixel', async () => {
+    const box = mount(document.createElement('div'))
+    box.style.cssText = 'position:fixed;left:50px;top:50px;width:20px;height:20px;background:rgb(0,200,0)'
+    const canvas = await snapdom.toCanvas(document.documentElement, {
+      clip: { x: 10.5, y: 20.5, width: 100, height: 50 }, dpr: 1, scale: 2, backgroundColor: null
+    })
+    const ctx = canvas.getContext('2d')
+    const green = (x, y) => {
+      const [r, g] = ctx.getImageData(x, y, 1, 1).data
+      return g > 150 && r < 80
+    }
+    expect([green(79, 59), green(78, 70), green(90, 58)]).toEqual([true, false, false])
   })
 
   it('clip: null behaves exactly like a normal capture', async () => {
