@@ -12,7 +12,7 @@
  */
 
 import { generateCSSClasses, stripTranslate, debugWarn, getStyle, isShadowRoot, shadowHost } from '../utils/index.js'
-import { deepClone } from './clone.js'
+import { deepClone, finishClipHusks } from './clone.js'
 import { sessionWarn } from '../utils/debug.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { paintClippedText } from '../modules/bgClipText.js'
@@ -44,10 +44,11 @@ const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important
  * callers without a session get fresh maps; captureDOM always passes its own.
  * @param {Element} element - Element to clone
  * @param {Object} [options={}] - the normalized context (createContext), plus `__session`
- * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null}>}
+ * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null, standIns: Map<Element, Element>|null}>}
  *   classCSS is the full stylesheet (prefix included); classPrefixCSS is the shadow, pseudo
  *   and suppression part alone, which burst re-prepends after a diff; clipWindow is the
- *   clip rect in the root's own layout pixels
+ *   clip rect in the root's own layout pixels; standIns maps each culled source to the
+ *   husk standing in for it, which nodeMap leaves out
  */
 export async function prepareClone(element, options = {}) {
   // Same-tick DOM/style mutations otherwise reach the clone against a stale epoch
@@ -71,6 +72,7 @@ export async function prepareClone(element, options = {}) {
 
   let clipWindow = null
   let clipRect = null
+  let standIns = null
   if (options.clip) {
     clipRect = resolveClipRect(element, options.clip)
     if (clipRect) sessionCache.clip = { rect: clipRect, root: element }
@@ -244,6 +246,8 @@ export async function prepareClone(element, options = {}) {
 
   try {
     clone = await deepClone(element, sessionCache, options)
+    // Inside the try, ahead of the undo, so the husks measure the layout the cull read.
+    standIns = finishClipHusks(clone, sessionCache, options)
   } catch (e) {
     debugWarn(sessionCache, 'Capture failed while copying the element.', e)
     throw e
@@ -432,6 +436,7 @@ export async function prepareClone(element, options = {}) {
     nodeMap: sessionCache.nodeMap,
     reconcileRisk: sessionCache.reconcileRisk || 0,
     clipWindow,
+    standIns,
   }
 }
 

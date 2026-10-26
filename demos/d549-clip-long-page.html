@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>#549 · clip inside a long page of cards</title>
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                padding: 28px;
+                background: #eef1f5;
+                color: #172033;
+                font: 14px/1.4 Arial, sans-serif;
+            }
+            #target {
+                max-width: 760px;
+                margin: 0 auto 28px;
+                padding: 24px;
+                border: 1px solid #cbd2dc;
+                border-radius: 12px;
+                background: #fff;
+            }
+            h1 { margin: 0 0 6px; font-size: 22px; }
+            h2 { margin: 0 0 10px; font-size: 14px; }
+            .intro { margin: 0 0 20px; color: #4b566b; }
+            .outputs { display: flex; gap: 24px; }
+            canvas { display: block; outline: 1px solid #aeb7c5; }
+            .metric {
+                margin: 9px 0 0;
+                color: #657086;
+                font-variant-numeric: tabular-nums;
+            }
+            .metric.ok { color: #14733a; font-weight: 700; }
+            .metric.bad { color: #b42318; font-weight: 700; }
+            /* Fractional heights: 1.3 line-height on 15px text. Rounding each culled card to
+               whole pixels moved the window down the page. */
+            #cards { max-width: 760px; margin: 0 auto; }
+            .card {
+                margin: 12px 0;
+                padding: 10px 14px;
+                border: 1px solid #cbd2dc;
+                border-radius: 8px;
+                background: #fff;
+                font: 15px/1.3 Arial, sans-serif;
+            }
+            .card h3 { margin: 0 0 4px; font-size: 17px; }
+            .card p { margin: 0; color: #4b566b; }
+            .card .tag { display: inline-block; margin-top: 6px; padding: 1px 8px; border-radius: 9px; background: #dbe7f5; color: #173e62; }
+            .card.mark { background: #fff7d6; border-color: #e0b100; }
+        </style>
+    </head>
+    <body>
+        <main id="target">
+            <h1>#549: <code>clip</code> inside a long page of cards</h1>
+            <p class="intro">Card 300 of 600, clipped from <code>document.body</code> and from the card itself. Both must show the same pixels.</p>
+            <div class="outputs">
+                <section>
+                    <h2>From <code>body</code></h2>
+                    <div id="body-output"></div>
+                </section>
+                <section>
+                    <h2>From the card</h2>
+                    <div id="card-output"></div>
+                </section>
+            </div>
+            <p class="metric" id="metric">capturing…</p>
+        </main>
+        <div id="cards"></div>
+        <script type="module">
+            import { snapdom } from '/dist/snapdom.mjs'
+
+            const cards = document.getElementById('cards')
+            cards.innerHTML = Array.from({ length: 600 }, (_, i) =>
+                `<article class="card${i === 300 ? ' mark' : ''}"><h3>Card ${i}</h3>` +
+                `<p>Some text about item ${i}, long enough to wrap once on a narrow screen.</p>` +
+                `<span class="tag">tag ${i % 7}</span></article>`).join('')
+
+            const base = { dpr: 1, embedFonts: false, burst: false, cache: 'disabled' }
+
+            // Pixels that differ by more than 48 in any channel.
+            function offPixels(a, b) {
+                const da = a.getContext('2d').getImageData(0, 0, a.width, a.height).data
+                const db = b.getContext('2d').getImageData(0, 0, b.width, b.height).data
+                let off = 0
+                for (let i = 0; i < da.length; i += 4) {
+                    if (Math.max(Math.abs(da[i] - db[i]), Math.abs(da[i + 1] - db[i + 1]), Math.abs(da[i + 2] - db[i + 2])) > 48) off++
+                }
+                return off
+            }
+
+            async function render() {
+                const card = cards.children[300]
+                const r = card.getBoundingClientRect()
+                const clip = { x: r.left + scrollX + 4, y: r.top + scrollY + 4, width: 320, height: Math.floor(r.height) - 8 }
+                const fromBody = await snapdom.toCanvas(document.body, { ...base, clip })
+                const fromCard = await snapdom.toCanvas(card, { ...base, clip })
+                document.getElementById('body-output').replaceChildren(fromBody)
+                document.getElementById('card-output').replaceChildren(fromCard)
+                const total = fromBody.width * fromBody.height
+                const off = fromBody.width === fromCard.width && fromBody.height === fromCard.height ? offPixels(fromBody, fromCard) : total
+                const ok = off <= total * 0.02
+                const node = document.getElementById('metric')
+                node.textContent = `${ok ? 'same pixels' : 'regression'}: ${ok ? 'within' : 'over'} 2% apart`
+                node.className = `metric ${ok ? 'ok' : 'bad'}`
+            }
+
+            window.__ready = render().catch((error) => {
+                const node = document.getElementById('metric')
+                node.textContent = `ERROR: ${error.message}`
+                node.className = 'metric bad'
+                throw error
+            })
+        </script>
+    </body>
+</html>

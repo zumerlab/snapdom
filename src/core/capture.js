@@ -84,7 +84,7 @@ export async function captureDOM(element, options) {
   state.element = element
   Object.defineProperty(state, 'options', { value: state, configurable: true })
 
-  let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow
+  let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns
   let fontsCSS = ''
   // Root transform (scale/skew), kept when outerTransforms is on
   let rootTransform2D = null
@@ -147,7 +147,7 @@ export async function captureDOM(element, options) {
     try {
       // Keep this capture's own clone→source map — every later pass must use this
       // reference (sessions are per-capture; there is no shared session global).
-      ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow } = await prepareClone(state.element, state.options))
+      ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns } = await prepareClone(state.element, state.options))
 
       if (reconcileRisk > 0 && !options.reconcile) {
         sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
@@ -166,7 +166,7 @@ export async function captureDOM(element, options) {
       // #426: zero margins that collapse through the root edge so the clone's
       // content sits flush like the captured border box (no clipping / no offset).
       if (clone) {
-        neutralizeRootMarginCollapse(state.element, clone, nodeMap)
+        neutralizeRootMarginCollapse(state.element, clone, nodeMap, standIns)
         // #483: the raster is sized in the root's pre-zoom coordinate space, so an inline
         // `zoom` carried over by cloneNode() would shrink the content and leave blank bands.
         neutralizeRootZoom(state.element, clone)

@@ -365,23 +365,180 @@ function isOutsideClip(node, clip) {
   return true
 }
 
-/**
- * Layout-preserving stand-in for a culled subtree: shallow clone with the original's
- * computed styles (so display/margin/flex/grid participation is identical) and a frozen
- * box, hidden and emptied. Deliberately NOT registered in sessionCache.nodeMap so the
- * pseudo/background walkers skip the pruned subtree.
- * @param {Element} node
- * @param {Object} sessionCache
- * @param {Object} options
- * @returns {Element}
- */
-function makeClipHusk(node, sessionCache, options) {
+/** Stand-in for a culled subtree, the shallow clone emptied. finishClipHusks sets its box
+ *  once the whole tree is cloned and its culled siblings are known. Deliberately NOT
+ *  registered in sessionCache.nodeMap so the pseudo/background walkers skip the pruned
+ *  subtree. */
+function makeClipHusk(node, clip) {
   const husk = node.cloneNode(false)
   if (node.tagName === 'IMG') {
     husk.removeAttribute('src')
     husk.removeAttribute('srcset')
     husk.removeAttribute('sizes')
   }
+  if (!clip.husks) clip.husks = new Map()
+  clip.husks.set(husk, node)
+  return husk
+}
+
+/** Parents whose children stack in one horizontal block flow, where a run of them is a
+ *  single span of fixed height. */
+const FOLD_PARENT_DISPLAY = /^(block|flow-root|list-item|inline-block)$/
+/** Block-level boxes a run may hold. A list-item numbers the markers after it, which
+ *  re-render natively in the clone. */
+const FOLD_DISPLAY = /^(block|flow-root|flex|grid|table)$/
+
+/** Whether a parent stacks its children in one horizontal, single-column block flow. */
+function stacksBlocks(parent) {
+  if (!parent) return false
+  const ps = getStyle(parent)
+  return FOLD_PARENT_DISPLAY.test(ps.display) && ps.writingMode === 'horizontal-tb' &&
+    ps.columnCount === 'auto' && ps.columnWidth === 'auto'
+}
+
+/** Whether a culled element is an in-flow block whose box tells the layout after it nothing
+ *  but its extent. No float or clearance, no counters, not a fieldset's legend or a details'
+ *  summary. */
+function foldsIntoRun(el) {
+  if (el.localName === 'summary' || el.localName === 'legend') return false
+  const cs = getStyle(el)
+  return FOLD_DISPLAY.test(cs.display) && cs.float === 'none' && cs.clear === 'none' &&
+    (cs.position === 'static' || cs.position === 'relative') &&
+    cs.counterReset === 'none' && cs.counterIncrement === 'none' && (cs.counterSet || 'none') === 'none'
+}
+
+/** Whether getBoundingClientRect reads the element where layout put it. No relative offset
+ *  or transform of its own, and no ancestor scale (its box agrees with its offset size). */
+function rectIsLayout(el, r) {
+  const cs = getStyle(el)
+  return (cs.position === 'static' || cs.top === '0px') &&
+    (cs.transform === 'none' || cs.transform === 'matrix(1, 0, 0, 1, 0, 0)') &&
+    (cs.translate || 'none') === 'none' && (cs.rotate || 'none') === 'none' && (cs.scale || 'none') === 'none' &&
+    Math.abs(r.width - el.offsetWidth) < 1 && Math.abs(r.height - el.offsetHeight) < 1
+}
+
+/** Whether `b` is the next box after `a` in flow, with only display:none elements between. */
+function nextInFlow(a, b) {
+  for (let el = a.nextElementSibling; el; el = el.nextElementSibling) {
+    if (el === b) return true
+    if (getStyle(el).display !== 'none') return false
+  }
+  return false
+}
+
+/** The live distance from a box to its previous (dir -1) or next (dir 1) in-flow sibling,
+ *  which is the margin block flow collapsed between them; null when there is none or the
+ *  margins overlap. */
+function siblingGap(el, r, dir) {
+  let sib = dir < 0 ? el.previousElementSibling : el.nextElementSibling
+  while (sib) {
+    const cs = getStyle(sib)
+    if (cs.display !== 'none' && cs.position !== 'absolute' && cs.position !== 'fixed') break
+    sib = dir < 0 ? sib.previousElementSibling : sib.nextElementSibling
+  }
+  if (!sib) return null
+  const s = sib.getBoundingClientRect()
+  const g = dir < 0 ? r.top - s.bottom : s.top - r.bottom
+  return g >= 0 ? g : null
+}
+
+/**
+ * Fold the runs of culled block siblings under one clone parent. The first husk of a run
+ * becomes a spacer as tall as the live run. The rest are dropped, or kept as empty
+ * display:none shells when author styles travel with the clone, so their sibling selectors
+ * match the same elements. Whitespace and comments between them go too, since the span
+ * already holds whatever they laid out.
+ * @param {Element} parent - a clone parent of husks
+ * @param {Map<Element, Element>} husks - husk -> culled source; folded husks are removed
+ * @param {boolean} shells - keep the folded husks as display:none shells
+ * @param {Map<Element, Element>} standIns - gets first and last member -> spacer
+ */
+function foldClipRuns(parent, husks, shells, standIns) {
+  const kids = [...parent.childNodes]
+  for (let i = 0; i < kids.length; i++) {
+    const head = husks.get(kids[i])
+    if (!head || !stacksBlocks(head.parentElement) || !foldsIntoRun(head)) continue
+    const members = [kids[i]]
+    let end = i
+    let last = head
+    for (let j = i + 1; j < kids.length; j++) {
+      const node = husks.get(kids[j])
+      if (node) {
+        if (!foldsIntoRun(node) || !nextInFlow(last, node)) break
+        members.push(kids[j])
+        last = node
+        end = j
+      } else if (kids[j].nodeType !== 8 && (kids[j].nodeType !== 3 || !/^[ \t\n\r\f]*$/.test(kids[j].data))) break
+    }
+    if (members.length < 2) continue
+    const a = head.getBoundingClientRect()
+    const b = last.getBoundingClientRect()
+    if (rectIsLayout(head, a) && rectIsLayout(last, b)) {
+      // As wide as the widest member's margin box, the horizontal extent their husks kept.
+      let width = 0
+      for (const h of members) {
+        const node = husks.get(h)
+        const cs = getStyle(node)
+        width = Math.max(width, node.offsetWidth + (parseFloat(cs.marginLeft) || 0) + (parseFloat(cs.marginRight) || 0))
+        husks.delete(h)
+      }
+      standIns.set(head, members[0]).set(last, members[0])
+      const height = b.bottom - a.top
+      const top = siblingGap(head, a, -1) ?? (parseFloat(getStyle(head).marginTop) || 0)
+      const bottom = siblingGap(last, b, 1) ?? (parseFloat(getStyle(last).marginBottom) || 0)
+      members[0].style.cssText = 'display:block;position:static;float:none;box-sizing:border-box;padding:0;border:0;' +
+        `width:${width}px;min-width:${width}px;max-width:${width}px;` +
+        `height:${height}px;min-height:${height}px;max-height:${height}px;` +
+        `margin:${top}px 0 ${bottom}px;visibility:hidden`
+      for (let k = 1; k < members.length; k++) {
+        if (shells) members[k].style.cssText = 'display:none!important'
+        else members[k].remove()
+      }
+      for (let k = i + 1; k < end; k++) if (kids[k].nodeType !== 1) kids[k].remove()
+    }
+    i = end
+  }
+}
+
+/**
+ * Give every husk deepClone left its layout slot, once the whole tree is cloned. A run of
+ * culled block siblings folds into one spacer measured on the live page (foldClipRuns), so
+ * a long page costs one styled box per run instead of one per card. A 100x40 clip inside
+ * the middle of 3,200 cards spent 52 of its 124 ms dressing culled cards (#549); the
+ * 800-card scene in __tests__/clip.benchmark.js went from 19.6 to 7.8 ms. The live span
+ * also keeps the fractions offset sizes round away, where 200 culled 30.4px blocks moved
+ * the window 80px. Every other husk gets the original's computed style and a frozen box.
+ * Pinned by __tests__/core.clip.test.js.
+ * @param {Element|null} clone - the root clone
+ * @param {Object} sessionCache
+ * @param {Object} options
+ * @returns {Map<Element, Element>|null} culled source -> the husk or spacer standing in for it
+ */
+export function finishClipHusks(clone, sessionCache, options) {
+  const husks = sessionCache.clip?.husks
+  if (!husks) return null
+  const shells = !!clone?.querySelector?.('style')
+  const standIns = new Map()
+  const parents = new Set()
+  for (const husk of husks.keys()) if (husk.parentNode) parents.add(husk.parentNode)
+  for (const parent of parents) foldClipRuns(parent, husks, shells, standIns)
+  for (const [husk, node] of husks) {
+    dressClipHusk(husk, node, sessionCache, options)
+    standIns.set(node, husk)
+  }
+  husks.clear()
+  return standIns
+}
+
+/**
+ * Layout-preserving husk: the original's computed styles (so display/margin/flex/grid
+ * participation is identical) and a frozen box, hidden.
+ * @param {Element} husk
+ * @param {Element} node
+ * @param {Object} sessionCache
+ * @param {Object} options
+ */
+function dressClipHusk(husk, node, sessionCache, options) {
   inlineAllStyles(node, husk, sessionCache, options)
   const { width, height } = getUnscaledDimensions(node)
   if (width > 0) {
@@ -410,27 +567,14 @@ function makeClipHusk(node, sessionCache, options) {
   const parentDisplay = node.parentElement ? getStyle(node.parentElement).display : ''
   const ownPos = getStyle(node).position
   if (!/flex|grid|table/.test(parentDisplay) && (ownPos === 'static' || ownPos === 'relative')) {
-    const inFlow = (el) => {
-      const cs = getStyle(el)
-      return cs.display !== 'none' && cs.position !== 'absolute' && cs.position !== 'fixed'
-    }
     const r = node.getBoundingClientRect()
-    let prev = node.previousElementSibling
-    while (prev && !inFlow(prev)) prev = prev.previousElementSibling
-    if (prev) {
-      const g = r.top - prev.getBoundingClientRect().bottom
-      if (g >= 0) husk.style.marginTop = `${g}px`
-    }
-    let next = node.nextElementSibling
-    while (next && !inFlow(next)) next = next.nextElementSibling
-    if (next) {
-      const g = next.getBoundingClientRect().top - r.bottom
-      if (g >= 0) husk.style.marginBottom = `${g}px`
-    }
+    const top = siblingGap(node, r, -1)
+    if (top !== null) husk.style.marginTop = `${top}px`
+    const bottom = siblingGap(node, r, 1)
+    if (bottom !== null) husk.style.marginBottom = `${bottom}px`
   }
   // offset* are border-box; content-box elements with padding/border would inflate
   husk.style.boxSizing = 'border-box'
-  return husk
 }
 
 /**
@@ -575,7 +719,7 @@ export async function deepClone(node, sessionCache, options) {
   // Clip mode: prune subtrees painting entirely outside the window (before any plugin
   // hooks or tag handlers — no per-node work is spent on culled content).
   if (sessionCache.clip && isOutsideClip(node, sessionCache.clip)) {
-    return makeClipHusk(node, sessionCache, options)
+    return makeClipHusk(node, sessionCache.clip)
   }
   // Per-node plugin hook: the first plugin whose resolveNode returns a value wins
   // (Node = finished replacement clone, null = skip node, undefined = continue).

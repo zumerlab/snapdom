@@ -393,13 +393,16 @@ function firstInFlowBlockChild(el, side) {
  * captured border box actually shows. Source tree drives the decision; the matching
  * clone node is resolved via the session's clone→source `nodeMap` (not child index,
  * which misaligns once `exclude`/`filter` drop nodes during cloning — see pseudo.js).
- * Pinned by __tests__/utils.capture.helpers.test.js.
+ * A clip husk is not in nodeMap and comes from `standIns`. Without it, a culled first child
+ * kept its margin and moved the whole window down by it (#549).
+ * Pinned by __tests__/utils.capture.helpers.test.js and __tests__/core.clip.test.js.
  *
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
  * @param {Map<Node, Node>} [nodeMap] - clone → original
+ * @param {Map<Element, Element>|null} [standIns] - culled original → its husk
  */
-export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap) {
+export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap, standIns = null) {
   if (!originalEl || !cloneRoot || !cloneRoot.style) return
   const rootCS = getComputedStyle(originalEl)
   // Replaced elements and BFC roots never collapse margins with their children.
@@ -419,7 +422,7 @@ export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap) {
       const childSrc = firstInFlowBlockChild(src, side)
       if (!childSrc) break
       const childCln = nodeMap
-        ? Array.from(cln.children).find((c) => nodeMap.get(c) === childSrc) || null
+        ? Array.from(cln.children).find((c) => nodeMap.get(c) === childSrc) || standIns?.get(childSrc) || null
         : cln.children[Array.from(src.children).indexOf(childSrc)] || null
       const childCS = getComputedStyle(childSrc)
       const m = parseFloat(childCS[`margin${Side}`]) || 0

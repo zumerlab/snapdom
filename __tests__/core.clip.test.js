@@ -339,6 +339,60 @@ describe('clip option (region capture)', () => {
     expect(px[0]).toBeLessThan(60)
   })
 
+  it('culled siblings with fractional heights do not drift the window', async () => {
+    const wrap = mount(buildBlocks(200, 30.4))
+    const target = document.createElement('div')
+    target.style.cssText = 'height:40px;background:rgb(255,0,0);'
+    wrap.appendChild(target)
+    wrap.appendChild(buildBlocks(50, 30.4))
+    const r = target.getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    for (const y of [1, 20, 38]) {
+      const px = ctx.getImageData(200, y, 1, 1).data
+      expect([px[0], px[1], px[2]]).toEqual([255, 0, 0])
+    }
+  })
+
+  it('a run of culled cards costs one box, not one per card (#549)', async () => {
+    const wrap = mount(document.createElement('main'))
+    wrap.style.cssText = 'width:400px;'
+    wrap.innerHTML = Array.from({ length: 300 }, (_, i) =>
+      `<section style="position:relative;margin:8px;padding:8px;border:1px solid #ccc;line-height:1.3">CARD_${i}<p>text</p></section><!--item-->`).join('\n')
+    const target = wrap.children[150]
+    target.style.background = 'rgb(255,0,0)'
+    const r = target.getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX + 2, y: r.top + window.scrollY + 2, width: 100, height: 20 }
+    const url = await snapdom.toRaw(document.body, { clip })
+    expect((decodeSvg(url).match(/<section/g) || []).length).toBeLessThan(5)
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    for (const [x, y] of [[1, 1], [98, 18]]) {
+      const px = ctx.getImageData(x, y, 1, 1).data
+      expect([px[0], px[1], px[2]]).toEqual([255, 0, 0])
+    }
+  })
+
+  it('folded siblings stay in the tree when author styles travel with the clone', async () => {
+    // The rule paints even children. Live, the target is the 203rd child and stays clear.
+    // Two kept boxes sit between it and the 200 folded rows: dropping the 199 rows after the
+    // spacer would make it the 4th, and paint it blue.
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'width:400px;'
+    wrap.innerHTML = '<div style="height:20px"></div>'.repeat(200) +
+      '<div style="height:300px"></div><div style="height:0"></div><div class="fold-target" style="height:40px"></div>'
+    const style = mount(document.createElement('style'))
+    style.textContent = '.fold-target:nth-child(even){background:rgb(0,0,255)}'
+    const target = wrap.lastElementChild
+    expect(getComputedStyle(target).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    const r = target.getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const px = canvas.getContext('2d').getImageData(200, 20, 1, 1).data
+    expect(px[2] > 200 && px[0] < 60).toBe(false)
+  })
+
   it('clip: null behaves exactly like a normal capture', async () => {
     const el = mount(document.createElement('div'))
     el.style.cssText = 'width:120px;height:80px;background:teal;'

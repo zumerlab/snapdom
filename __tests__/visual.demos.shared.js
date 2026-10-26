@@ -333,6 +333,10 @@ const overrides = {
   'd548-clip-justify-self': {
     setup: async (win) => { try { await win.__ready } catch { /* error is rendered below */ } },
   },
+  // #549 clips card 300 of 600 from body and from the card itself at load. Wait for both.
+  'd549-clip-long-page': {
+    setup: async (win) => { try { await win.__ready } catch { /* error is rendered below */ } },
+  },
 }
 
 // `overrides[name].skip` wins: a demo skipped for its own reasons should not be reported as
