@@ -385,6 +385,11 @@ export async function prepareClone(element, options = {}) {
     clone.style.willChange = 'auto'
     clone.style.float = 'none'
     clone.style.clear = 'none'
+    // Chromium aligns a block-level box by justify-self, and an absolutely positioned one by
+    // align-self too, inside the container, which is wider than the root under a clip or a
+    // bleed. A 400px root its grid centred drew x=150 at the left edge of a clip from x=100
+    // (#548). Pinned by __tests__/core.prepare.rootAlign.test.js.
+    clone.style.placeSelf = 'normal'
     clone.style.transform = transform || ''
     // Individual translate is separate from computed transform. Like its matrix e/f,
     // its page placement has already been discarded by the root's bbox compensation.

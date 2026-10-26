@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>#548 · clip of a root its grid centres</title>
+        <style>
+            * { box-sizing: border-box; }
+            body {
+                margin: 0;
+                padding: 28px;
+                background: #eef1f5;
+                color: #172033;
+                font: 14px/1.4 Arial, sans-serif;
+            }
+            #target {
+                max-width: 760px;
+                margin: 0 auto;
+                padding: 24px;
+                border: 1px solid #cbd2dc;
+                border-radius: 12px;
+                background: #fff;
+            }
+            h1 { margin: 0 0 6px; font-size: 22px; }
+            h2 { margin: 0 0 10px; font-size: 14px; }
+            .intro { margin: 0 0 20px; color: #4b566b; }
+            /* The grid centres the root: justify-self is what #548 drew off the clip. */
+            .shell {
+                position: relative;
+                display: grid;
+                width: 600px;
+                padding: 16px 0;
+                background: #f8f9fb;
+            }
+            .root {
+                display: flex;
+                width: 400px;
+                height: 100px;
+                justify-self: center;
+                box-shadow: 0 0 0 16px #b8c4d6;
+            }
+            .root span {
+                display: grid;
+                flex: 0 0 100px;
+                place-items: center;
+                color: #fff;
+                font: 700 40px/1 Arial, sans-serif;
+            }
+            .root span:nth-child(1) { background: #e4572e; }
+            .root span:nth-child(2) { background: #2e7d4f; }
+            .root span:nth-child(3) { background: #173e62; }
+            .root span:nth-child(4) { background: #f2a900; }
+            /* Root x = 100 to 300, the clip below. */
+            .window {
+                position: absolute;
+                top: 10px;
+                left: 200px;
+                width: 200px;
+                height: 112px;
+                border: 3px dashed #172033;
+            }
+            .outputs {
+                display: flex;
+                gap: 24px;
+                margin-top: 20px;
+            }
+            canvas { display: block; }
+            .metric {
+                margin: 9px 0 0;
+                color: #657086;
+                font-variant-numeric: tabular-nums;
+            }
+            .metric.ok { color: #14733a; font-weight: 700; }
+            .metric.bad { color: #b42318; font-weight: 700; }
+        </style>
+    </head>
+    <body>
+        <main id="target">
+            <h1>#548: <code>clip</code> of a root its grid centres</h1>
+            <p class="intro">The clip must show B and C, and the shadow capture must hold A to D inside the ring.</p>
+            <section>
+                <h2>Live DOM (dashed: the clip)</h2>
+                <div class="shell">
+                    <div class="root" id="root"><span>A</span><span>B</span><span>C</span><span>D</span></div>
+                    <div class="window"></div>
+                </div>
+            </section>
+            <div class="outputs">
+                <section>
+                    <h2><code>clip</code>, root x = 100 to 300</h2>
+                    <div id="clip-output"></div>
+                    <p class="metric" id="clip-metric">capturing…</p>
+                </section>
+                <section>
+                    <h2><code>outerShadows: true</code></h2>
+                    <div id="shadow-output"></div>
+                    <p class="metric" id="shadow-metric">capturing…</p>
+                </section>
+            </div>
+        </main>
+        <script type="module">
+            import { snapdom } from '/dist/snapdom.mjs'
+
+            const base = { dpr: 1, embedFonts: false, burst: false, cache: 'disabled' }
+
+            // Pixels of `canvas` that differ from the reference's region at (sx, sy).
+            function offPixels(canvas, ox, oy, reference, sx, sy, w, h) {
+                const a = canvas.getContext('2d').getImageData(ox, oy, w, h).data
+                const b = reference.getContext('2d').getImageData(sx, sy, w, h).data
+                let off = 0
+                for (let i = 0; i < a.length; i += 4) {
+                    if (Math.max(Math.abs(a[i] - b[i]), Math.abs(a[i + 1] - b[i + 1]), Math.abs(a[i + 2] - b[i + 2])) > 48) off++
+                }
+                return off
+            }
+
+            function showMetric(node, off, total) {
+                const ok = off <= total * 0.01
+                node.textContent = `${off} px off the whole capture, ${ok ? 'correct' : 'regression'}`
+                node.className = `metric ${ok ? 'ok' : 'bad'}`
+            }
+
+            async function render() {
+                const root = document.getElementById('root')
+                // Without clip or bleed the container is as wide as the root: the reference.
+                const whole = await snapdom.toCanvas(root, base)
+
+                const r = root.getBoundingClientRect()
+                const clip = { x: r.left + scrollX + 100, y: r.top + scrollY, width: 200, height: 100 }
+                const clipped = await snapdom.toCanvas(root, { ...base, clip })
+                document.getElementById('clip-output').replaceChildren(clipped)
+                showMetric(document.getElementById('clip-metric'), offPixels(clipped, 0, 0, whole, 100, 0, 200, 100), 200 * 100)
+
+                const shadowed = await snapdom.toCanvas(root, { ...base, outerShadows: true })
+                document.getElementById('shadow-output').replaceChildren(shadowed)
+                showMetric(document.getElementById('shadow-metric'), offPixels(shadowed, 16, 16, whole, 0, 0, 400, 100), 400 * 100)
+            }
+
+            window.__ready = render().catch((error) => {
+                const node = document.getElementById('shadow-metric')
+                node.textContent = `ERROR: ${error.message}`
+                node.className = 'metric bad'
+                throw error
+            })
+        </script>
+    </body>
+</html>

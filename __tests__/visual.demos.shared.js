@@ -328,6 +328,11 @@ const overrides = {
     setup: async (win) => { win.scrollTo(0, 900) },
   },
   'd523-reconcile-custom-element': { snapdomOptions: { dpr: 1, scale: 0.5, embedFonts: true, reconcile: true } },
+  // #548 captures a grid-centred root with `clip` and with a shadow bleed at load, each
+  // checked against a crop of the plain capture. Wait for both canvases.
+  'd548-clip-justify-self': {
+    setup: async (win) => { try { await win.__ready } catch { /* error is rendered below */ } },
+  },
 }
 
 // `overrides[name].skip` wins: a demo skipped for its own reasons should not be reported as
