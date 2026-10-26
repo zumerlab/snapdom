@@ -1333,6 +1333,11 @@ async function cloneCanvas(node, sessionCache, options) {
       }
     }
   } catch (e) {
+    // A canvas that drew an image from a host without CORS headers (an OpenLayers map, its
+    // tiles) is tainted: no page can read it back, and it renders blank. In 1.9.8 the throw
+    // failed the whole capture, and uMap dropped snapdom over it; blank and quiet, it still
+    // read as a snapdom bug.
+    sessionWarn(options?.__session, 'canvas-tainted', 'a canvas tainted by cross-origin images cannot be read; it renders blank', node)
     debugWarn(sessionCache, 'Couldn\'t read the pixels of a canvas; used its fallback content.', e)
   }
 

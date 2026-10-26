@@ -49,6 +49,7 @@ export type WarningCode =
   | "pseudo-failed"
   | "iframe-failed"
   | "iframe-cross-origin"
+  | "canvas-tainted"
   | "embed-fallback"
   | "reconcile-failed"
   | (string & {});

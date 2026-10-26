@@ -3,8 +3,8 @@
  *
  * An svg-as-image document loads no external resources, so a remote src paints nothing
  * inside the foreignObject. This pass fetches each one through snapFetch and writes the data
- * URL onto the clone; an <img> that cannot be fetched becomes a sized placeholder (or an
- * invisible spacer with `placeholders: false`). SVG <image href> gets the same treatment
+ * URL onto the clone; an <img> that cannot be fetched keeps its box and shows a sized
+ * placeholder (nothing with `placeholders: false`). SVG <image href> gets the same treatment
  * since #341.
  *
  * One contract, measured: an inlined data: URL is written to the clone ONCE. Every src
@@ -61,8 +61,8 @@ function extractImageDimensions(img) {
  *
  * Per <img>: pick one concrete src (srcset and sizes are dropped), reuse a cached data URL,
  * else fetch. A fetch that fails tries `fallbackURL` (string or async callback), then
- * replaces the element with a grey "img" box of the estimated size (plus an `image-fallback`
- * session warning), or with an invisible spacer under `placeholders: false`.
+ * points the <img> at a grey "img" box of the estimated size (plus an `image-fallback`
+ * session warning), or at an empty image under `placeholders: false`.
  * Also runs on the differential path (diff.js) for the rebuilt subtree.
  * Pinned by __tests__/modules.images.test.js.
  * @param {Element} clone - the clone, or the <img> itself when that is the capture root
@@ -146,27 +146,17 @@ export async function inlineImages(clone, options = {}) {
       }
     }
 
+    // The <img> stays and only its source changes. A <div> put in its place lost the clone's
+    // class, and the box with it: Leaflet places each tile absolute and translated, so every
+    // tile a no-CORS host refused piled up at the map origin and half the map came out empty.
+    let mark = ''
     if (options.placeholders !== false) {
       sessionWarn(options.__session, 'image-fallback', `image failed to inline, using placeholder: ${src}`)
-      const fallback = document.createElement('div')
-      fallback.style.cssText = [
-        `width:${fbW}px`,
-        `height:${fbH}px`,
-        'background:#ccc',
-        'display:inline-block',
-        'text-align:center',
-        `line-height:${fbH}px`,
-        'color:#666',
-        'font-size:12px',
-        'overflow:hidden'
-      ].join(';')
-      fallback.textContent = 'img'
-      img.replaceWith(fallback)
-    } else {
-      const spacer = document.createElement('div')
-      spacer.style.cssText = `display:inline-block;width:${fbW}px;height:${fbH}px;visibility:hidden;`
-      img.replaceWith(spacer)
+      mark = '<rect width="100%" height="100%" fill="#ccc"/><text x="50%" y="50%" fill="#666" font-family="sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central">img</text>'
     }
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${fbW}" height="${fbH}">${mark}</svg>`)}`
+    if (!img.width) img.width = fbW
+    if (!img.height) img.height = fbH
   }
 
   // Batch size 6 matches the typical per-origin HTTP/1.1 connection limit;

@@ -54,7 +54,7 @@ describe('inlineImages', () => {
     expect(container.querySelector('img')).toBe(img)
   })
 
- it('replaces <img> with a fallback if the image fails', async () => {
+ it('points a failed <img> at a placeholder and keeps the element', async () => {
   const img = document.createElement('img')
   img.src = 'https://x/fail.png'
   container.appendChild(img)
@@ -64,8 +64,8 @@ describe('inlineImages', () => {
 
   await inlineImages(container)
 
-  expect(container.querySelector('div')).not.toBeNull() // fallback
-  expect(container.querySelector('img')).toBeNull()
+  expect(container.querySelector('img')).toBe(img)
+  expect(decodeURIComponent(img.src)).toContain('>img</text>')
 })
 
 })
@@ -167,19 +167,19 @@ describe('inlineImages – extra coverage', () => {
     expect(img.height).toBe(60)
   })
 
-  it('placeholders:false genera un spacer invisible (no "img" visible)', async () => {
+  it('placeholders:false points the <img> at an empty image of the same size', async () => {
     const img = document.createElement('img')
     img.src = 'https://ex.com/down.png'
+    img.style.width = '40px'
+    img.style.height = '30px'
     wrap.appendChild(img)
 
-    // falla → sin fallbackURL → spacer
+    // fails, no fallbackURL: empty image
     vi.mocked(snapFetch).mockResolvedValueOnce({ ok: false, data: null })
     await inlineImages(wrap, { placeholders: false })
 
-    const fallback = wrap.firstElementChild
-    expect(fallback.tagName).toBe('DIV')
-    expect(fallback.style.visibility).toBe('hidden')
-    expect(fallback.textContent || '').not.toContain('img')
+    expect(wrap.firstElementChild).toBe(img)
+    expect(decodeURIComponent(img.src)).toContain('width="40" height="30"></svg>')
   })
 
   it('processes in batches of 6 (7 images) and applies a placeholder on failure', async () => {
@@ -191,30 +191,29 @@ describe('inlineImages – extra coverage', () => {
       img.src = 'https://ex.com/down.png'
       wrap.appendChild(img)
     }
-    // todas fallan
+    // all of them fail
     vi.mocked(snapFetch).mockResolvedValue({ ok: false, data: null })
 
     await inlineImages(wrap)
 
-    // todas reemplazadas por <div> de placeholder
-    const divs = wrap.querySelectorAll('div')
-    expect(divs.length).toBe(7)
+    // every one of them now shows the placeholder
+    const imgs = [...wrap.querySelectorAll('img')]
+    expect(imgs.length).toBe(7)
+    expect(imgs.every(i => decodeURIComponent(i.src).includes('>img</text>'))).toBe(true)
   })
 
-  it('si fallbackURL arroja error, cae en placeholder por defecto', async () => {
+  it('falls back to the default placeholder when fallbackURL throws', async () => {
     const img = document.createElement('img')
     img.src = 'https://ex.com/bad.png'
     wrap.appendChild(img)
 
-    // fetch del original falla
+    // the original fetch fails
     vi.mocked(snapFetch).mockResolvedValueOnce({ ok: false, data: null })
 
     const badCb = vi.fn(async () => { throw new Error('boom') })
     await inlineImages(wrap, { fallbackURL: badCb })
 
-    const div = wrap.querySelector('div')
-    expect(div).toBeTruthy()
-    expect((div?.textContent || '')).toBe('img')
+    expect(decodeURIComponent(img.src)).toContain('>img</text>')
   })
 
   it('inlines the capture root when it is itself an <img> (bare img capture)', async () => {
