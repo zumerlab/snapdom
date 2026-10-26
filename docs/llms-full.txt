@@ -145,7 +145,7 @@ Examples of plugin helpers are `toHtml()`, `toContext()` and `toAgentMap()`.
 
 ### Choosing an engine
 
-Set `engine: 'html-in-canvas'` to request the second integrated engine. It still requires the browser's experimental feature flag or applicable origin trial; supported Chrome builds expose it through `chrome://flags/#canvas-draw-element`. It also needs a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`. The default build currently omits it; this is separate from whether the browser exposes `drawElementImage` or its earlier `drawElement` API.
+Set `engine: 'html-in-canvas'` to request the second integrated engine. It still requires the browser's experimental feature flag or applicable origin trial; supported Chrome builds expose it through `chrome://flags/#canvas-draw-element`. It also needs a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`, published as `@zumer/snapdom@canvas`. A plugin with a `beforeRender` or `afterRender` hook (html-export, pdf, vector, and redact-inputs with `blocks` or `attributes`) sends the capture to SVG; the other official plugins run on the native engine. The default build currently omits it; this is separate from whether the browser exposes `drawElementImage` or its earlier `drawElement` API.
 
 ```js
 const capture = await snapdom(element, { engine: 'html-in-canvas' });

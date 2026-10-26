@@ -70,7 +70,8 @@ SECTIONS = [
    ('Labs','labs',[('labs/video-overlay/index.html','Video overlay',None),('labs/webrtc-overlay/index.html','WebRTC overlay',None),('labs/stop-motion/index.html','Stop motion',None),('labs/paint-canvas/index.html','Paint on a capture',None),
                    ('labs/capture-stages/index.html','Capture stages',None),('labs/target-range/index.html','Target range',None),
                    ('labs/webgl-live-mirror/index.html','Live mirror',None),('labs/ascii-mirror/index.html','ASCII mirror',None),('labs/webgl-seamless-dom/index.html','Seamless DOM',None),
-                   ('labs/webgl-shatter/index.html','Shattered capture',None)])]},
+                   ('labs/webgl-shatter/index.html','Shattered capture',None),
+                   ('labs/html-in-canvas/index.html','html-in-canvas',None)])]},
  {'name':'Community', 'menu':'Made with', 'filter':'Filter community', 'groups':[
    ('Ecosystem','ecosystem',[('ecosystem/index.html','Plugins and tools','link')]),
    ('Made with','context',[('made-with/index.html','Projects using SnapDOM',None)])]},
@@ -176,7 +177,7 @@ def convert(section, gi, path, title, demo, flat):
     # sidebar; a section group with the same label lends it its colour.
     grouped = toc and len(toc[0]) > 2 and any(p == path for _, _, items in section['groups'] for p, _, _ in items)
     # Fresh demos get a red "New" pill in the sidebar; drop entries here once they are old news.
-    NEW = {'stream-demo', 'lab-ascii-mirror', 'labs/ascii-mirror/index.html', 'lab-video-overlay', 'labs/video-overlay/index.html', 'lab-webrtc-overlay', 'labs/webrtc-overlay/index.html'}
+    NEW = {'stream-demo', 'lab-ascii-mirror', 'labs/ascii-mirror/index.html', 'lab-video-overlay', 'labs/video-overlay/index.html', 'lab-webrtc-overlay', 'labs/webrtc-overlay/index.html', 'labs/html-in-canvas/index.html'}
     new = lambda key: ' <span class="nav-new">New</span>' if key in NEW else ''
     pages = {glabel: (gsec, items) for glabel, gsec, items in section['groups']}
     if grouped:

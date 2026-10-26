@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@canvas/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@canvas/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>html-in-canvas: the browser paints the capture | SnapDOM Labs</title>
+  <meta name="description" content="SnapDOM's experimental second engine: the same captured clone, painted by Chrome's own renderer through the html-in-canvas drawElementImage API. Try it, compare it with the SVG engine and check which plugins it runs." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/html-in-canvas/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="html-in-canvas: the browser paints the capture" />
+  <meta property="og:description" content="SnapDOM's experimental engine paints the captured clone with Chrome's own renderer. Compare it with the SVG engine and check which plugins it runs." />
+  <meta property="og:url" content="https://snapdom.dev/labs/html-in-canvas/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"html-in-canvas: the browser paints the capture","description":"SnapDOM's experimental second engine: the same captured clone, painted by Chrome's own renderer through the html-in-canvas drawElementImage API.","url":"https://snapdom.dev/labs/html-in-canvas/","image":"https://snapdom.dev/assets/og-card.jpg","author":{"@type":"Organization","name":"Zumerlab"},"publisher":{"@type":"Organization","name":"Zumerlab","url":"https://snapdom.dev"},"mainEntityOfPage":"https://snapdom.dev/labs/html-in-canvas/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"html-in-canvas","item":"https://snapdom.dev/labs/html-in-canvas/"}]}</script>
+  <style>
+    .lab-hic { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-hic .hic-support { font-size: 14px; margin: 0 0 18px; padding: 10px 14px; border: 1px solid var(--border-soft); background: var(--bg); }
+    .lab-hic .hic-support.is-on { border-color: var(--green); color: var(--green-text); }
+    .lab-hic .hic-support.is-off { border-color: var(--amber); color: var(--amber-ink); }
+    .lab-hic .hic-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+    .lab-hic .hic-col > strong { display: block; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); font-weight: 600; }
+    .lab-hic .hic-box { min-height: 200px; border: 1px dashed var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 8px; }
+    .lab-hic .hic-box img, .lab-hic .hic-box canvas { max-width: 100%; height: auto; display: block; }
+    .lab-hic .hic-note { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; min-height: 1.4em; }
+    .lab-hic .hic-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 0; }
+    #hicCard { width: 300px; padding: 16px; box-sizing: border-box; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #1d3a8a, #3b82f6); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+    #hicCard h3 { margin: 0 0 8px; font-size: 18px; color: #fff; }
+    #hicCard p, #hicCard label { margin: 0 0 8px; color: #fff; font: 14px/1.4 Arial, Helvetica, sans-serif; }
+    #hicCard p::before { content: "\2605  "; color: #fde047; }
+    #hicCard label { display: block; }
+    #hicCard input[type="email"] { width: 160px; }
+    #hicCard .hic-row { display: flex; align-items: center; gap: 8px; }
+    .hic-table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 12px 0 0; }
+    .hic-table th, .hic-table td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border-soft); vertical-align: top; }
+    .hic-table td:first-child { white-space: nowrap; }
+    .hic-table .is-native { color: var(--green-text); font-weight: 600; }
+    .hic-table .is-svg { color: var(--text-muted); }
+    .hic-table .is-error { color: var(--rose-text); }
+    @media (max-width: 760px) { .lab-hic .hic-grid { grid-template-columns: 1fr; } .hic-table td:first-child { white-space: normal; } }
+  </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body>
+  <script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "The browser paints <span class=\"accent\">the capture</span>", "lead": "SnapDOM's second engine hands the captured clone to Chrome's own renderer through the html-in-canvas API. Compare it with the SVG engine and see which plugins run on it.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="../../showcase/">Live demos</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="../video-overlay/">Video overlay <span class="nav-new">New</span></a><a href="../webrtc-overlay/">WebRTC overlay <span class="nav-new">New</span></a><a href="../stop-motion/">Stop motion</a><a href="../paint-canvas/">Paint on a capture</a><a href="../capture-stages/">Capture stages</a><a href="../target-range/">Target range</a><a href="../webgl-live-mirror/">Live mirror</a><a href="../ascii-mirror/">ASCII mirror <span class="nav-new">New</span></a><a href="../webgl-seamless-dom/">Seamless DOM</a><a href="../webgl-shatter/">Shattered capture</a><a href="./" aria-current="page">html-in-canvas <span class="nav-new">New</span></a></div></div></nav></aside>
+
+<article class="pane-read sec-labs" data-title="html-in-canvas">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>html-in-canvas</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>The browser paints <span class="accent">the capture</span></h1><p class="doc-lead">SnapDOM's second engine hands the captured clone to Chrome's own renderer through the html-in-canvas API. Compare it with the SVG engine and see which plugins run on it.</p></header>
+<div class="pane-content"><!-- content -->
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p><code>snapdom(el, { engine: 'html-in-canvas' })</code> paints the clone SnapDOM already built, styles resolved and images and fonts inlined, with Chrome's own renderer instead of an SVG image. It needs the <code>@canvas</code> build and a Chrome with html-in-canvas turned on. Anywhere else, or on a capture this engine cannot paint, SnapDOM uses the SVG engine and you get the same result object.</p></div>
+
+    <section class="prose">
+      <h2 id="try-it">Try it</h2>
+      <div class="lab-hic">
+        <p class="hic-support" id="hicSupport">Checking this browser…</p>
+        <div class="hic-grid">
+          <div class="hic-col">
+            <strong>Live element</strong>
+            <div class="hic-box">
+              <div id="hicCard">
+                <h3>Quarterly report</h3>
+                <p>Revenue grew 12% this quarter.</p>
+                <label>Email <input type="email" value="ana@example.com"></label>
+                <label>Plan <select><option>Pro</option><option>Free</option></select></label>
+                <div class="hic-row"><label style="margin:0"><input type="checkbox" checked> Subscribed</label><input type="range" value="70" style="width:70px"><button type="button">Send</button></div>
+              </div>
+            </div>
+          </div>
+          <div class="hic-col">
+            <strong>SVG engine</strong>
+            <div class="hic-box" id="hicOutSvg">Not captured yet</div>
+            <p class="hic-note" id="hicNoteSvg"></p>
+          </div>
+          <div class="hic-col">
+            <strong>html-in-canvas engine</strong>
+            <div class="hic-box" id="hicOutNative">Not captured yet</div>
+            <p class="hic-note" id="hicNoteNative"></p>
+          </div>
+        </div>
+        <div class="hic-actions"><button type="button" class="btn btn-primary btn-sm" id="hicCapture" data-umami-event="Labs html-in-canvas capture">Capture with both engines</button></div>
+      </div>
+      <p>Type in the field or change the plan, then capture again. Both columns come from the same clone; only the last step differs.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="plugins">Plugins</h2>
+      <p>A plugin that works on the clone runs as it is: by the time the browser paints, its change is already in the clone. A plugin with a render hook, <code>beforeRender</code> or <code>afterRender</code>, gets the SVG engine on purpose, because it reads the SVG or does its work at that boundary. Those captures still succeed, through SVG.</p>
+      <table class="hic-table" id="hicPlugins">
+        <thead><tr><th>Plugin</th><th>Engine</th><th>Why</th><th>This browser</th></tr></thead>
+        <tbody>
+          <tr data-plugin="timestamp-overlay"><td>timestamp-overlay</td><td>html-in-canvas</td><td>Adds its label to the clone</td><td></td></tr>
+          <tr data-plugin="replace-text"><td>replace-text</td><td>html-in-canvas</td><td>Edits text in the clone</td><td></td></tr>
+          <tr data-plugin="filter"><td>filter</td><td>html-in-canvas</td><td>CSS filter on the clone</td><td></td></tr>
+          <tr data-plugin="color-tint"><td>color-tint</td><td>html-in-canvas</td><td>Overlay on the clone</td><td></td></tr>
+          <tr data-plugin="redact-inputs"><td>redact-inputs</td><td>html-in-canvas</td><td>Masks values in the clone. With <code>blocks</code> or <code>attributes</code> it uses SVG: its final pass runs in <code>beforeRender</code></td><td></td></tr>
+          <tr data-plugin="agent-map"><td>agent-map</td><td>html-in-canvas</td><td>Reads the clone, draws on the pixels</td><td></td></tr>
+          <tr data-plugin="context-export"><td>context-export</td><td>html-in-canvas</td><td>Reads the live page</td><td></td></tr>
+          <tr data-plugin="ascii-export"><td>ascii-export</td><td>html-in-canvas</td><td>Reads the pixels</td><td></td></tr>
+          <tr data-plugin="gif-export"><td>gif-export</td><td>html-in-canvas, every frame</td><td>Recaptures with the same options</td><td></td></tr>
+          <tr data-plugin="video-export"><td>video-export</td><td>html-in-canvas, every frame</td><td>Recaptures with the same options</td><td></td></tr>
+          <tr data-plugin="stream"><td>stream</td><td>html-in-canvas</td><td>Full frames come from the engine</td><td></td></tr>
+          <tr data-plugin="html-export"><td>html-export</td><td>SVG</td><td>Serializes the clone in <code>afterRender</code></td><td></td></tr>
+          <tr data-plugin="pdf"><td>pdf</td><td>SVG</td><td>Its text layer measures the SVG</td><td></td></tr>
+          <tr data-plugin="vector"><td>vector</td><td>SVG</td><td>Takes the clone in <code>beforeRender</code></td><td></td></tr>
+        </tbody>
+      </table>
+      <div class="hic-actions"><button type="button" class="btn btn-ghost btn-sm" id="hicCheck" data-umami-event="Labs html-in-canvas plugin check">Check them in this browser</button></div>
+    </section>
+
+    <section class="prose">
+      <h2 id="how-it-works">How it works</h2>
+      <ol class="steps">
+        <li><h4 aria-level="3">The same clone</h4><p>Everything up to the render is the normal pipeline: computed styles become classes, pseudo-elements become real nodes, images and fonts become data URLs, and clone plugins run. The engine choice comes after all of that.</p></li>
+        <li><h4 aria-level="3">A mount the browser can paint</h4><p>The clone goes into a shadow root under <code>&lt;canvas layoutsubtree content="drawable"&gt;</code>, behind the page. Chrome lays it out like any element, with the page's own form controls, scrollbars and text shaping.</p></li>
+        <li><h4 aria-level="3">Two frames, one draw</h4><p>After one full rendering update the browser holds a snapshot of the mount, and <code>drawElementImage()</code> paints it at your <code>scale</code> and <code>dpr</code>. A blank or unreadable result sends the capture to the SVG engine instead.</p></li>
+        <li><h4 aria-level="3">The bitmap goes straight to the exports</h4><p><code>toCanvas()</code>, <code>toPng()</code> and the rest draw from the painted canvas. <code>result.url</code> is a PNG data URL, made the first time you read it.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2 id="copy-paste-example">Copy-paste example</h2>
+<pre><code class="language-bash">npm install @zumer/snapdom@canvas</code></pre>
+<pre><code class="language-javascript">import { snapdom } from '@zumer/snapdom'
+
+const result = await snapdom(document.querySelector('#card'), { engine: 'html-in-canvas' })
+const png = await result.toPng()</code></pre>
+      <p>The default build leaves this engine out, so the same option there always gives you the SVG engine. Nothing else changes: the options, the result object and the plugins are the ones you already use.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="what-stays-on-svg">What stays on the SVG engine</h2>
+      <p>This engine paints one plain element box. Captures of <code>body</code> or <code>html</code>, a scrolled root, a root or ancestor with a transform or <code>zoom</code>, a root with a <code>filter</code>, and the <code>outerShadows</code>, <code>clip</code>, <code>width</code> and <code>height</code> options all go through SVG, where that geometry is handled. So do captures in browsers without the API.</p>
+      <p>html-in-canvas is a WICG proposal. Chrome ships it behind <code>chrome://flags/#canvas-draw-element</code> and in an origin trial through Chrome 160, and the API is still moving: the canvas attribute was renamed in Chrome 155, which is why SnapDOM sets both names.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../capture-stages/">Capture stages: what happens before the render</a>
+        <a class="related-card" href="../../showcase/#plugins">Every plugin, live</a>
+        <a class="related-card" href="https://github.com/zumerlab/snapdom/issues/172">Issue #172: the html-in-canvas experiment</a>
+        <a class="related-card" href="https://github.com/WICG/html-in-canvas">The WICG explainer</a>
+      </div>
+    </section>
+
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../webgl-shatter/"><span>Previous</span><strong>Shattered capture</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+
+  <script type="module">
+    const support = document.getElementById('hicSupport')
+    const card = document.getElementById('hicCard')
+    const drawApi = (() => {
+      try { return typeof document.createElement('canvas').getContext('2d').drawElementImage === 'function' } catch { return false }
+    })()
+    support.className = 'hic-support ' + (drawApi ? 'is-on' : 'is-off')
+    support.textContent = drawApi
+      ? 'This browser can paint with html-in-canvas.'
+      : 'This browser has no html-in-canvas API, so both columns will come from the SVG engine. In Chrome, turn on chrome://flags/#canvas-draw-element and reload.'
+
+    let snapdom
+    try {
+      ({ snapdom } = await import('@zumer/snapdom'))
+    } catch (error) {
+      support.className = 'hic-support is-off'
+      support.textContent = `The @canvas build could not load: ${error.message}`
+    }
+
+    // Count native paints without changing them: the only reliable answer to "which engine ran".
+    const proto = window.CanvasRenderingContext2D?.prototype
+    const real = proto?.drawElementImage
+    let draws = 0
+    if (real) proto.drawElementImage = function (...args) { draws++; return real.apply(this, args) }
+
+    async function capture(engine, out, note) {
+      draws = 0
+      const start = performance.now()
+      const result = await snapdom(card, { engine, burst: false })
+      const canvas = await result.toCanvas()
+      const ms = performance.now() - start
+      out.replaceChildren(canvas)
+      note.textContent = `${draws ? 'Painted by html-in-canvas' : 'Painted by SVG'} in ${ms.toFixed(0)} ms, ${canvas.width}×${canvas.height}px`
+    }
+
+    document.getElementById('hicCapture').addEventListener('click', async ({ currentTarget: button }) => {
+      if (!snapdom) return
+      button.disabled = true
+      try {
+        await capture(undefined, document.getElementById('hicOutSvg'), document.getElementById('hicNoteSvg'))
+        await capture('html-in-canvas', document.getElementById('hicOutNative'), document.getElementById('hicNoteNative'))
+      } catch (error) {
+        document.getElementById('hicNoteNative').textContent = `Capture failed: ${error.message}`
+      } finally {
+        button.disabled = false
+      }
+    })
+
+    // Raw ES modules from unpkg: esm.sh builds a package on first request and can time out on a fresh release.
+    const PLUGINS = 'https://unpkg.com/@zumer/snapdom-plugins@4'
+    const checks = {
+      'timestamp-overlay': async (m) => ({ plugins: [m.timestampOverlay()] }),
+      'replace-text': async (m) => ({ plugins: [m.replaceText({ replacements: [{ find: 'Quarterly', replace: 'Annual' }] })] }),
+      'filter': async (m) => ({ plugins: [m.filter({ preset: 'grayscale' })] }),
+      'color-tint': async (m) => ({ plugins: [m.colorTint({ color: '#ff0000', opacity: 0.3 })] }),
+      'redact-inputs': async (m) => ({ plugins: [m.redactInputs()] }),
+      'agent-map': async (m) => ({ plugins: [m.agentMap()], run: (r) => r.toAgentMap() }),
+      'context-export': async (m) => ({ plugins: [m.contextExport()], run: (r) => r.toContext() }),
+      'ascii-export': async (m) => ({ plugins: [m.asciiExport({ width: 40 })], run: (r) => r.toAscii() }),
+      'gif-export': async (m) => ({ plugins: [m.gifExport({ frames: 3, fps: 10 })], run: (r) => r.toGif() }),
+      'video-export': async (m) => ({ plugins: [m.videoExport({ frames: 4, fps: 10 })], run: (r) => r.toMp4() }),
+      'stream': async (m) => ({ plugins: [m.streamExport({ fps: 10 })], run: async (r) => { const s = await r.toStream(); await s.ready; s.stop() } }),
+      'html-export': async (m) => ({ plugins: [m.htmlExport()], run: (r) => r.toHtml() }),
+      'pdf': async (m) => ({ plugins: [m.pdf()], run: (r) => r.toPdf() }),
+      'vector': async (m) => ({ plugins: [m.vector()], run: (r) => r.toVector() }),
+    }
+
+    document.getElementById('hicCheck').addEventListener('click', async ({ currentTarget: button }) => {
+      if (!snapdom) return
+      button.disabled = true
+      for (const row of document.querySelectorAll('#hicPlugins tbody tr')) {
+        const name = row.dataset.plugin
+        const cell = row.lastElementChild
+        cell.className = ''
+        cell.textContent = 'Running…'
+        try {
+          const module = await import(`${PLUGINS}/${name}.js`)
+          const { plugins, run } = await checks[name](module)
+          draws = 0
+          const result = await snapdom(card, { engine: 'html-in-canvas', burst: false, plugins })
+          if (run) await run(result)
+          cell.className = draws ? 'is-native' : 'is-svg'
+          cell.textContent = draws ? `html-in-canvas (${draws} ${draws === 1 ? 'paint' : 'paints'})` : 'SVG'
+        } catch (error) {
+          cell.className = 'is-error'
+          cell.textContent = `Failed: ${error.message}`
+        }
+      }
+      button.disabled = false
+    })
+  </script>
+</body>
+</html>

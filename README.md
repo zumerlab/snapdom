@@ -299,7 +299,7 @@ Image compression and resource caching remain automatic. They do not make raster
 
 SnapDOM has two rendering engines: **SVG**, the default, and **html-in-canvas**, which paints the same captured clone through the browser's native canvas API. Select the second with `engine: 'html-in-canvas'`.
 
-The second engine is experimental: it still needs a compatible browser with its canvas drawing flag enabled, plus a build compiled with `SNAPDOM_CANVAS_ENGINE=1`. The default build includes SVG only. Unsupported captures fall back to SVG. A successful native capture produces a bitmap, so its URL and `toRaw()` return PNG, not serialized SVG. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
+The second engine is experimental: it still needs a compatible browser with its canvas drawing flag enabled, plus a build compiled with `SNAPDOM_CANVAS_ENGINE=1`, published as `npm install @zumer/snapdom@canvas`. The default build includes SVG only. Unsupported captures fall back to SVG, and so do captures with a plugin that has a `beforeRender` or `afterRender` hook (html-export, pdf, vector, and redact-inputs with `blocks` or `attributes`); every other official plugin runs on the native engine. A successful native capture produces a bitmap, so its URL and `toRaw()` return PNG, not serialized SVG. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
 
 ## Migrating from v2
 

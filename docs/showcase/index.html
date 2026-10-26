@@ -1299,7 +1299,7 @@ document.body.append(live.canvas)
     <!-- html-in-canvas -->
     <section class="lab-demo" id="demo-htmlcanvas">
       <h2 id="svg-and-html-in-canvas">SVG and html-in-canvas</h2>
-      <p class="demo-explanation">The same element through the default SVG engine and the experimental html-in-canvas engine.</p>
+      <p class="demo-explanation">The same element through the default SVG engine and the experimental html-in-canvas engine. <a href="../labs/html-in-canvas/">The lab</a> compares them and checks every plugin.</p>
 
       <div class="demo-target" id="target-htmlcanvas">
         <strong>Target for html-in-canvas</strong>
@@ -1347,7 +1347,8 @@ document.body.append(live.canvas)
 
   <!-- html-in-canvas logic -->
   <script type="module">
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
+    // The default build leaves the html-in-canvas engine out; the @canvas build carries it.
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@canvas/dist/snapdom.mjs';
 
     const target = document.getElementById('target-htmlcanvas');
     const outDefault = document.getElementById('out-htmlcanvas-default');
