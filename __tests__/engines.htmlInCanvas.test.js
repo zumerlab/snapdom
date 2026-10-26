@@ -213,7 +213,32 @@ describe("engine:'html-in-canvas' — simulated native happy path", () => {
     await expect(result.toBlob({ format: 'svg' })).rejects.toThrow(/raster capture/)
   })
 
-  it('preserves fractional root geometry before applying scale and dpr', async () => {
+  it('never calls requestPaint and names the mount canvas both ways', async () => {
+    // Chrome 155: a removed canvas that had called requestPaint() crashed the renderer at the
+    // next iframe the page created, and toCanvas creates one for every svg decode.
+    const proto = HTMLCanvasElement.prototype
+    const previous = Object.getOwnPropertyDescriptor(proto, 'requestPaint')
+    let requested = 0
+    Object.defineProperty(proto, 'requestPaint', { configurable: true, writable: true, value() { requested++ } })
+    let mount = null
+    stubDrawApi(function (wrapper, _x, _y, width, height) {
+      mount = wrapper.parentElement
+      this.fillRect(0, 0, width, height)
+    })
+    try {
+      const result = await snapdom(makeCard(), { engine: 'html-in-canvas', burst: false })
+      expect(result.url).toMatch(/^data:image\/png/)
+    } finally {
+      if (previous) Object.defineProperty(proto, 'requestPaint', previous)
+      else delete proto.requestPaint
+    }
+    expect(requested).toBe(0)
+    // `layoutsubtree` is what Chrome 155 checks; `content="drawable"` is the explainer's name.
+    expect(mount.hasAttribute('layoutsubtree')).toBe(true)
+    expect(mount.getAttribute('content')).toBe('drawable')
+  })
+
+  it('sizes a fractional root like the svg engine, keeping the fractional meta', async () => {
     stubDrawApi(function (_wrapper, _x, _y, width, height) {
       this.fillStyle = '#09f'
       this.fillRect(0, 0, width, height)
@@ -222,21 +247,20 @@ describe("engine:'html-in-canvas' — simulated native happy path", () => {
     el.style.width = '120.5px'
     el.style.height = '60.25px'
     const rect = el.getBoundingClientRect()
+    const options = { burst: false, embedFonts: false, compress: false, scale: 2, dpr: 2 }
 
-    const result = await snapdom(el, {
-      engine: 'html-in-canvas', burst: false, embedFonts: false, compress: false,
-      scale: 2, dpr: 2,
-    })
+    const result = await snapdom(el, { ...options, engine: 'html-in-canvas' })
     expect(result.meta.w0).toBeCloseTo(rect.width, 4)
     expect(result.meta.h0).toBeCloseTo(rect.height, 4)
 
     const raw = new Image()
     raw.src = result.url
     await raw.decode()
-    expect([raw.naturalWidth, raw.naturalHeight]).toEqual([
-      Math.round(rect.width * 4),
-      Math.round(rect.height * 4),
-    ])
+    // toCanvas sizes from meta.vbW/vbH: a fractional box there lost the last row.
+    const native = await result.toCanvas()
+    const svg = await (await snapdom(el, options)).toCanvas()
+    expect([native.width, native.height]).toEqual([svg.width, svg.height])
+    expect([raw.naturalWidth, raw.naturalHeight]).toEqual([svg.width, svg.height])
   })
 
   it('uses SVG when render-boundary hooks exist, so each hook runs exactly once', async () => {

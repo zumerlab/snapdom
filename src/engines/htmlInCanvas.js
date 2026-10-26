@@ -17,23 +17,24 @@
  * option. On ANY doubt (API missing, unsupported options, tainted or blank paint) it
  * returns null and the caller runs the SVG engine. Correctness never depends on this module.
  *
- * PLATFORM STATUS — VERIFIED ACTIVE in real Chrome (2026-09-03, M148+ with
- * chrome://flags/#canvas-draw-element): detectDrawApi() found drawElementImage, the mounted
- * clone painted, the taint probe passed and the capture came back as a PNG data URL —
- * the first happy-path run on real hardware. Spec context (same date): the old
- * unconditional taint is GONE as a model — the spec is "read-back-allowed rendering":
- * sensitive content (cross-origin iframes/images/url() refs, :visited, system colors, IME,
- * subpixel AA) is EXCLUDED FROM PAINTING instead of tainting, so readback works on Chrome
- * 148+ (origin trial through M154). That exclusion is exactly why this engine draws the
- * FINISHED CLONE and not the live element: the pipeline has already fetched and inlined
- * cross-origin images/fonts into it, making the clone same-origin by construction — native
- * paint fidelity AND full content AND readback. The taint probe below stays as the safety
- * net for pre-OT builds and anything the spec still withholds.
+ * PLATFORM STATUS. First verified in real Chrome 148 (2026-09-03); on 2026-10-26, in
+ * Chrome 155 with chrome://flags/#canvas-draw-element, live parity (scripts/live-parity.mjs
+ * against the page's own screenshot) put every demo this engine accepts at or below the svg
+ * engine's mismatch. The origin trial was approved for M148-M151 and extended through M160
+ * (developer.chrome.com/blog/html-in-canvas-ot-changes). The spec model is "read-back-allowed
+ * rendering": sensitive content (cross-origin iframes/images/url() refs, :visited, system
+ * colors, IME, subpixel AA) is left out of the paint instead of tainting the canvas. That is
+ * why this engine draws the FINISHED CLONE and not the live element: the pipeline has
+ * already inlined cross-origin images and fonts into it, so nothing in it is withheld. The
+ * taint probe below stays as the safety net for anything the spec still withholds.
  *
- * OT contract this module follows: `layoutsubtree` on the canvas, `drawable` on the drawn
- * element, snapshots recorded on every rendering update with the `paint` event (after
- * `canvas.requestPaint()`) as the sync point. On builds without `requestPaint` (the M138
- * dev trial) the double-rAF wait alone is the rendering update.
+ * Contract this module follows: `drawable` on the drawn element, and on the canvas both
+ * `layoutsubtree` (what Chrome 155 still requires) and `content="drawable"` (its name in the
+ * explainer since 2026-09-16). Snapshots are recorded on every rendering update, so one
+ * update after the mount is the sync point. `canvas.requestPaint()` is never called: in Chrome 155
+ * a removed canvas that had requested a paint crashed the renderer at the next iframe
+ * created in the page, and the svg engine's `toCanvas` creates one for every decode
+ * (2026-10-26).
  *
  * NOT OPTIMIZED. The mount/draw path is deliberately the simplest thing that consumes the
  * clone: no bbox/bleed math, document-root expansion or scroll anchoring. Those bails are
@@ -79,6 +80,7 @@ export function detectDrawApi() {
 function mountClone(clone, css, width, height) {
   const canvas = document.createElement('canvas')
   canvas.setAttribute('layoutsubtree', '')
+  canvas.setAttribute('content', 'drawable')
   markInternalNode(canvas)
   // In-flow and painted (hidden/offscreen skips the paint pass → "no paint record"),
   // but behind everything.
@@ -154,10 +156,15 @@ export async function tryCanvasEngine(state, context) {
   // Prefer it over offsetWidth/offsetHeight, which round fractional CSS pixels to integers.
   const width = Math.max(1, rect.width || element.offsetWidth || 1)
   const height = Math.max(1, rect.height || element.offsetHeight || 1)
+  // The bitmap box is the svg engine's: offsetWidth/offsetHeight, whole pixels. Published
+  // fractional, toCanvas (which sizes from meta.vbW/vbH; a canvas truncates) cut a 195.5px
+  // root to 195 rows where the svg engine gave 196 (d42, d549 in live parity, 2026-10-26).
+  const boxW = element.offsetWidth || Math.ceil(width)
+  const boxH = element.offsetHeight || Math.ceil(height)
   const scale = Number.isFinite(context.scale) && context.scale > 0 ? context.scale : 1
   const dpr = Number.isFinite(context.dpr) && context.dpr > 0 ? context.dpr : (window.devicePixelRatio || 1)
-  const outW = Math.max(1, Math.round(width * scale * dpr))
-  const outH = Math.max(1, Math.round(height * scale * dpr))
+  const outW = Math.max(1, Math.round(boxW * scale * dpr))
+  const outH = Math.max(1, Math.round(boxH * scale * dpr))
 
   const css = (state.scrollbarCSS || '') + (state.baseCSS || '') + (state.fontsCSS || '') + (state.classCSS || '')
   const { canvas, wrapper } = mountClone(clone, css, width, height)
@@ -168,23 +175,15 @@ export async function tryCanvasEngine(state, context) {
   let out
   try {
     canvas.getBoundingClientRect() // force layout of the subtree
-    // A rendering update records the drawable snapshot; on OT builds the `paint` event
-    // (armed by requestPaint) is the sync point that guarantees it is current. Bounded:
-    // a missed event just draws after the rAF wait and the blank probe below catches it.
-    // The rAF itself is bounded too (same pattern as toCanvas's frame()): browsers
-    // throttle or suspend rAF in hidden/occluded windows, and an unguarded double-rAF
-    // measured as a flat ~2s per capture in a hidden Chromium 152 window (Electron probe,
-    // 2026-09-03) — the engine must not stall where the svg path would not.
-    const frame = () => new Promise((r) => { requestAnimationFrame(r); setTimeout(r, 50) })
-    await frame()
-    await frame()
-    if (typeof canvas.requestPaint === 'function') {
-      await new Promise((resolve) => {
-        const t = setTimeout(resolve, 200)
-        canvas.addEventListener('paint', () => { clearTimeout(t); resolve() }, { once: true })
-        canvas.requestPaint()
-      })
-    }
+    // One rendering update after the mount records the drawable snapshot (no requestPaint,
+    // see the header): the rAF callback runs at its start and a task queued from it runs
+    // once it has painted. That is half the double rAF it replaced, 16 against 33 ms in
+    // Chrome 155, with every probe drawn from a fresh snapshot, data-URL images included
+    // (2026-10-26). Drawing before any snapshot throws, which lands in the SVG fallback
+    // below. The wait is bounded (same pattern as toCanvas's frame()): browsers throttle or
+    // suspend rAF in hidden/occluded windows, and an unguarded double rAF measured a flat
+    // ~2s per capture in a hidden Chromium 152 window (Electron probe, 2026-09-03).
+    await new Promise((r) => { requestAnimationFrame(() => setTimeout(r, 0)); setTimeout(r, 50) })
     const ctx2d = canvas.getContext('2d')
     const fn = ctx2d && ctx2d[drawApi]
     if (typeof fn !== 'function') return null
@@ -221,8 +220,8 @@ export async function tryCanvasEngine(state, context) {
     out.width = outW
     out.height = outH
     out.getContext('2d').drawImage(canvas, 0, 0)
-    out.style.width = `${Math.round(width * scale)}px`
-    out.style.height = `${Math.round(height * scale)}px`
+    out.style.width = `${boxW * scale}px`
+    out.style.height = `${boxH * scale}px`
   } catch (error) {
     debugWarn(context, 'html-in-canvas: the browser couldn\'t paint it; used the SVG engine.', error)
     return null
@@ -236,8 +235,8 @@ export async function tryCanvasEngine(state, context) {
   const meta = Object.freeze({
     w0: width,
     h0: height,
-    vbW: width,
-    vbH: height,
+    vbW: boxW,
+    vbH: boxH,
     targetW: width,
     targetH: height,
     contentX: 0,
