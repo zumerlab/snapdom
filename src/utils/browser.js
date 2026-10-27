@@ -1,6 +1,6 @@
 /**
- * Engine detection by user agent, the one frame wait the canvas readback needs, and the time
- * slicing behind `fast: false | 'auto'`.
+ * Engine detection by user agent, the one frame wait the canvas readback needs, the font-set
+ * wait every font path shares, and the time slicing behind `fast: false | 'auto'`.
  *
  * Every caller keys a workaround on the rendering ENGINE, not the browser brand: svg-as-image
  * paint timing, native form controls, the download path. So `isSafari` answers true for any
@@ -31,6 +31,31 @@ export function nextFrame(timeout = 1000) {
     try { requestAnimationFrame(done) } catch { done(); return }
     setTimeout(done, timeout)
   })
+}
+
+/**
+ * Wait until `doc.fonts.ready` settles or no face in the set is loading, whichever is first.
+ *
+ * WebKit can leave the set "loading" for good while no face is loading, and `ready` then never
+ * settles. In Safari 27.0.1, the jant#174 scene (a CJK serif stack whose faces try `local()`
+ * first, and an emoji no local font covers) made no font request, still had `ready` pending a
+ * minute later, and hung every capture past 20 s; with this wait the first capture took 129 to
+ * 154 ms. A face really downloading is still waited for. Racing `ready` against a timer was
+ * tried in jant#174 and cost an iPhone about 2 s per capture at 1 s per read, since one capture
+ * reads it more than once.
+ * Pinned by __tests__/utils.fontsSettled.test.js.
+ * @param {Document} [doc=document]
+ * @returns {Promise<void>}
+ */
+export async function fontsSettled(doc = document) {
+  const fonts = doc.fonts
+  let settled = false
+  const ready = fonts.ready.then(() => { settled = true }, () => { settled = true })
+  while (!settled && fonts.status === 'loading') {
+    const loading = [...fonts].filter((f) => f.status === 'loading')
+    if (!loading.length) return
+    await Promise.race([ready, Promise.allSettled(loading.map((f) => f.loaded))])
+  }
 }
 
 /** One slice of a yielding capture: about a frame, so input and paint get a turn per frame. */

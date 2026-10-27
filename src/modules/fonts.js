@@ -21,7 +21,7 @@ import { cache } from '../core/cache'
 import { isIconFont, isIconFontStylesheet } from '../modules/iconFonts.js'
 import { snapFetch } from './snapFetch.js'
 import { pseudoGatesFor, getStyleEnvEpoch, flushStyleInvalidations } from './styles.js'
-import { nextFrame } from '../utils/browser.js'
+import { nextFrame, fontsSettled } from '../utils/browser.js'
 import { markInternalNode } from '../utils/ownership.js'
 import { debugWarn } from '../utils/debug.js'
 
@@ -45,7 +45,7 @@ export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize 
   fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, '')
   const dpr = window.devicePixelRatio || 1
 
-  try { await document.fonts.ready } catch {}
+  try { await fontsSettled() } catch {}
 
   const span = document.createElement('span')
   markInternalNode(span)
@@ -1330,7 +1330,7 @@ export function collectUsedCodepoints(root, keep) {
  * @returns {Promise<void>}
  */
 export async function ensureFontsReady(families, warmupRepetitions = 2, doc = document) {
-  try { await doc.fonts.ready } catch {}
+  try { await fontsSettled(doc) } catch {}
 
   const fams = Array.from(families || []).filter(Boolean)
   if (fams.length === 0) return

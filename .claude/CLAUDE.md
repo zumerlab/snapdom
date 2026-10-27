@@ -109,7 +109,7 @@ Each of these was a real regression or a real win, with the measurement and the 
 
 ### Safari / WebKit
 
-WebKit quirks are handled at their point of impact, each commented where it lives: the paint probe and the second probe after the draw in `waitForImgPaint` / the draw in `toCanvas.js` (WebKit #219770 / #394); the per-capture pre-step in `src/api/snapdom.js` (fonts ready, canvas stores poked); the vector path for a sized `toImg` in `src/exporters/toImg.js`. All were verified in real Safari, and **Playwright's WebKit does not reproduce them**: a green `test:webkit` proves nothing about these paths. Re-verify in real Safari (the `safari-verification` skill) before touching any of them.
+WebKit quirks are handled at their point of impact, each commented where it lives: the paint probe and the second probe after the draw in `waitForImgPaint` / the draw in `toCanvas.js` (WebKit #219770 / #394); the per-capture pre-step in `src/api/snapdom.js` (fonts ready, canvas stores poked); the vector path for a sized `toImg` in `src/exporters/toImg.js`; the font set stuck at "loading" with `ready` pending forever, which every font wait gets past through `fontsSettled` in `src/utils/browser.js` (jant#174; Playwright's WebKit shows the stuck status but its `ready` still resolves). All were verified in real Safari, and **Playwright's WebKit does not reproduce them**: a green `test:webkit` proves nothing about these paths. Re-verify in real Safari (the `safari-verification` skill) before touching any of them.
 
 ### Build outputs
 

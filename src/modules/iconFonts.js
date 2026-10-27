@@ -10,6 +10,7 @@
  */
 
 import { markInternalNode } from '../utils/ownership.js'
+import { fontsSettled } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 
 /** Families treated as icon fonts with no configuration. `iconFonts` adds to this list. */
@@ -231,7 +232,7 @@ export async function ensureMaterialFontsReady(family = 'Material Icons', px = 2
   try {
     await Promise.all([
       document.fonts.load(`400 ${px}px "${String(family).replace(/["']/g, '')}"`),
-      document.fonts.ready
+      fontsSettled()
     ])
   } catch { /* noop */ }
 }
