@@ -2,6 +2,65 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.5.0](https://github.com/zumerlab/snapdom/compare/v3.4.0...v3.5.0)
+
+> 27 October 2026
+
+**Fixes**
+
+- **clip:** fold culled block siblings into one spacer per run [`#549`](https://github.com/zumerlab/snapdom/pull/549)
+- **prepare:** reset the capture root's self-alignment [`#548`](https://github.com/zumerlab/snapdom/pull/548)
+- **counter:** render none, disc, circle and square counter styles [`#547`](https://github.com/zumerlab/snapdom/pull/547)
+- **counter:** keep commas and parentheses inside the counters() separator [`#546`](https://github.com/zumerlab/snapdom/pull/546)
+- **background:** ignore parentheses inside quoted url() when splitting layers [`#545`](https://github.com/zumerlab/snapdom/pull/545)
+- **engine:** make html-in-canvas safe and as exact as the svg engine [`069bacf`](https://github.com/zumerlab/snapdom/commit/069bacf5928d0db295c2f3e024356c03f7b20f9b)
+- **images:** keep a failed image's box and warn on tainted canvases [`80f4898`](https://github.com/zumerlab/snapdom/commit/80f48980366ab199c102cae5acec38c3230815c9)
+- **fonts:** stop waiting on a Safari font set stuck at loading [`0e4b5dd`](https://github.com/zumerlab/snapdom/commit/0e4b5dd293c04dde4a8c6c360d06d66d52f8b91d)
+- **clip:** start a fractional clip on the output pixel grid [`f9d23d0`](https://github.com/zumerlab/snapdom/commit/f9d23d0eef7d473fc65033e0614f67691926342b)
+- **toCanvas:** wait for nested svg images before drawing on Firefox [`171350b`](https://github.com/zumerlab/snapdom/commit/171350b5fbae951465f7e9979bd5ceda411f810a)
+- **stream:** report only dirty rects inside the canvas [`f9302d4`](https://github.com/zumerlab/snapdom/commit/f9302d4bd8b76f4dcab81c83314778cf9074b2a3)
+- **stream:** keep a patch inside the ancestors that clip its host [`eed95f9`](https://github.com/zumerlab/snapdom/commit/eed95f9455160aba6501202688bf07b9c2b0c1a4)
+- **plugins:** export the ascii helpers from the barrel and type toStream [`de84e5c`](https://github.com/zumerlab/snapdom/commit/de84e5c965c78dd5b0147db4fac8b4c8889f8608)
+
+**Performance**
+
+- **fonts:** embed a near-weight face only where it can paint [`ad2bd88`](https://github.com/zumerlab/snapdom/commit/ad2bd8864c5ba312abe49d5d9d21cbd9b6486f1c)
+- **fonts:** leave out webfont families the page never drew [`59e0f8a`](https://github.com/zumerlab/snapdom/commit/59e0f8a625eb9f2b2c5a8e747645164ef1b29954)
+- **fonts:** warm only the font variants a Safari capture uses [`3e92aba`](https://github.com/zumerlab/snapdom/commit/3e92abaf3660f5fb7dcf63c2421c24ca4fff0278)
+
+**Docs**
+
+- **site:** shorter copy in one voice, SEO metadata [`84b1e3f`](https://github.com/zumerlab/snapdom/commit/84b1e3ffc2abcedd225fd47174579db1e6b8e678)
+- **labs:** add the html-in-canvas lab [`f7bb642`](https://github.com/zumerlab/snapdom/commit/f7bb642d83ece9f6efdca0825ab87bb7b2274650)
+- **site:** add a WebRTC overlay lab [`6dbc571`](https://github.com/zumerlab/snapdom/commit/6dbc571658a3e160ea15a09e8668c88c84d69eb1)
+- **how-to:** add the guide for images without CORS [`3cb73f2`](https://github.com/zumerlab/snapdom/commit/3cb73f292c290d954414bae650eeaedc74024dd6)
+- **site:** home hero as a camera, live stream demo [`cfa68d3`](https://github.com/zumerlab/snapdom/commit/cfa68d3c30db4fb1fe9fce6d1801fb712cfa04e0)
+- **labs:** ASCII mirror, stream chained with asciiFromCanvas [`f405001`](https://github.com/zumerlab/snapdom/commit/f405001b5d54df01b33ae1dd0c531cad03e697e4)
+- **how-to:** add the migration guide from html2canvas [`3472e84`](https://github.com/zumerlab/snapdom/commit/3472e8490c5609189c2102b95c1ca0f9cf68154e)
+- **site:** spinning CSS cube in the ASCII demo and the ASCII mirror lab [`ca8d8a4`](https://github.com/zumerlab/snapdom/commit/ca8d8a48f622afb251ada00376d1fdd63852979d)
+- **site:** one typeface, plain labels [`91ec7f6`](https://github.com/zumerlab/snapdom/commit/91ec7f65f5bbd4300ead000da551205a7631b855)
+- **seo:** llms.txt with common questions and comparisons [`90f5542`](https://github.com/zumerlab/snapdom/commit/90f5542b21b237431a2e719e30cd09cc2a583d7c)
+- **site:** import asciiStream from the published plugin in the ASCII lab [`d3df5a8`](https://github.com/zumerlab/snapdom/commit/d3df5a8f2090ecbc47f94782e094ef509a0f40ff)
+- **site:** red New pill on fresh demos in the sidebars [`6397060`](https://github.com/zumerlab/snapdom/commit/639706036e041b1f3f7429a41007783792baa051)
+- **site:** mark the video and WebRTC overlay labs as new [`d856131`](https://github.com/zumerlab/snapdom/commit/d8561316e211a67ad9fd25fab30b60ce6a1e799f)
+- **labs:** connect the WebRTC overlay lab on Safari after camera access [`9c6ce62`](https://github.com/zumerlab/snapdom/commit/9c6ce627a44d8c3e41f63a442d2bc6707e81bbe9)
+- **made-with:** add Open CDM and Meta2d.js [`30ad40a`](https://github.com/zumerlab/snapdom/commit/30ad40a484d57f9e0c51f3cff63bf8d921799664)
+- **site:** load the new plugins in the labs from unpkg, not esm.sh [`88a3322`](https://github.com/zumerlab/snapdom/commit/88a33222958a617353c5afaaccfd1bb8dad02ada)
+- align Chinese README and FEATURES with the new description [`ee4a73c`](https://github.com/zumerlab/snapdom/commit/ee4a73c38672b26d6bde9724459eda46b72c198e)
+- **site:** use the README hero as the link preview card [`c0dfbba`](https://github.com/zumerlab/snapdom/commit/c0dfbba850aaf525151bf1b39ef265e79ba65736)
+
+**Tests**
+
+- **pack:** list the stream files and the helper exports [`c9126ef`](https://github.com/zumerlab/snapdom/commit/c9126ef0665c7ff0b78e63c3d7604738e1a483b9)
+- **stream:** keep the runner's pointer out of the stream tests [`18ff2a1`](https://github.com/zumerlab/snapdom/commit/18ff2a15dfe84bd4f407fdc07ad941ab96f9ffa2)
+
+**Chores**
+
+- **publish:** give canvas-engine dev builds their own canvas tag [`ff51059`](https://github.com/zumerlab/snapdom/commit/ff510599aa01483f2ddbb7addbc322e73c45c4b7)
+- align package and README description with the site [`5936c95`](https://github.com/zumerlab/snapdom/commit/5936c9541a383fe740c42108db6dd8d3944fd30c)
+- update contributors list [`34e01ce`](https://github.com/zumerlab/snapdom/commit/34e01ce14ef92583623da27f99a6f0c928a9a3c4)
+- add thanks.dev to the funding channels [`01f77a2`](https://github.com/zumerlab/snapdom/commit/01f77a26910ffa4dabf26981c9451901f4f6204e)
+
 #### [v3.4.0](https://github.com/zumerlab/snapdom/compare/v3.3.7...v3.4.0)
 
 > 24 October 2026
