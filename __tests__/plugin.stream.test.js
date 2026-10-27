@@ -24,6 +24,11 @@ function grid(cardCss = 'background:#1e293b') {
 }
 
 function open(root, options = {}) {
+  // The stream repaints whatever gets pointerover/pointerout, since :hover can change it. The
+  // runner moves its iframes under the virtual mouse under parallel load, and a card hovered
+  // that way came out as one more 76px patch: two rects, the wrong first rect, or a frame
+  // while nothing changed. Nothing here is about the pointer.
+  root.style.pointerEvents = 'none'
   let resolveNext
   const frames = []
   const s = stream(root, {

@@ -20,6 +20,8 @@ function setup({ visible = true } = {}) {
   stages.push(stage)
   // Hold the endless animations still so a frame and a full capture can be compared.
   for (const a of stage.getAnimations({ subtree: true })) a.pause()
+  // Out of the runner's virtual mouse: a hover is one more patch (plugin.stream.test.js).
+  stage.style.pointerEvents = 'none'
   let resolveNext
   const frames = []
   const s = stream(stage, { dpr: 1, embedFonts: false, onFrame: (f) => { frames.push(f); resolveNext?.(f) } })
