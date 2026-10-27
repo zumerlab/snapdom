@@ -15,7 +15,7 @@ import { isSafari, nextFrame } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
-import { collectFontUsage, ensureFontsReady, fontKeyFamily } from '../modules/fonts.js'
+import { collectFontUsage, ensureFontsReady, fontKeyFamily, documentFontFamilies } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
@@ -189,14 +189,18 @@ snapdom.capture = async (el, context, _token) => {
   if (stageReaches(context.needs || DEFAULT_STAGE, 'render') && isSafari()) {
     if (context.embedFonts) {
       try {
-        // 'auto': wait only on families the document actually declares as webfonts —
+        // 'auto': wait only on webfont families the document has drawn with —
         // waiting on system families costs real time per capture (measured ~30ms on
-        // WebKit) and buys nothing. Explicit true keeps the unconditional wait.
+        // WebKit) and buys nothing, and warming a family it never drew loads it for
+        // nothing. Explicit true keeps the unconditional wait.
         const doc = el.ownerDocument || document
-        const docFamilies = new Set()
+        let drawn = null
         if (context.embedFonts === 'auto') {
-          try { for (const f of doc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase()) } catch { /* no Font Loading API */ }
-          if (docFamilies.size === 0) throw null // nothing to wait for
+          // Layout first: it is what asks for the faces fresh text needs. The warm-up's
+          // offsetWidth forced the same layout here before, so this moves it, not adds it.
+          el.getBoundingClientRect()
+          drawn = documentFontFamilies(doc).drawn
+          if (drawn.size === 0) throw null // nothing to wait for
         }
         // One walk serves both consumers: fontsPhase reuses this usage instead of
         // re-walking the subtree (a few frames staler after ensureFontsReady's wait —
@@ -206,8 +210,8 @@ snapdom.capture = async (el, context, _token) => {
         const usage = collectFontUsage(el)
         if (!context.clip) context.__fontUsage = usage
         let required = usage.required
-        if (context.embedFonts === 'auto') {
-          required = new Set([...required].filter((k) => docFamilies.has(fontKeyFamily(k).toLowerCase())))
+        if (drawn) {
+          required = new Set([...required].filter((k) => drawn.has(fontKeyFamily(k).toLowerCase())))
           if (required.size === 0) throw null
         }
         await ensureFontsReady(required, usage.usedCodepoints, doc)

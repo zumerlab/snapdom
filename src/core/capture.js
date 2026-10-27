@@ -14,7 +14,7 @@ import { emulateBackdropFilters } from '../modules/backdropFilter.js'
 import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { isSafari } from '../utils/index.js'
 import { createSlicer } from '../utils/browser.js'
-import { embedCustomFonts, collectFontUsage, ensureFontsReady, fontKeyFamily } from '../modules/fonts.js'
+import { embedCustomFonts, collectFontUsage, ensureFontsReady, fontKeyFamily, documentFontFamilies } from '../modules/fonts.js'
 import { cache } from '../core/cache.js'
 import { createCaptureSession } from './session.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
@@ -275,20 +275,21 @@ export async function captureDOM(element, options) {
       // Safari's pre-step already walked this subtree — reuse its usage (threaded only
       // for non-clip captures; clip needs the clipKeep-scoped walk).
       const { required, usedCodepoints } = (!preClipRect && options.__fontUsage) || collectFontUsage(state.element, clipKeep)
-      // 'auto': embed only when a used family is actually a document-declared webfont, and
-      // warm only those, as the pre-step does. A system family's span fetches nothing.
-      let warm = required
+      // 'auto': embed only when a used family is a webfont the document has drawn with, and
+      // leave out declared families it never drew (a later family in a stack whose earlier
+      // one covered the text). Warm only drawn webfonts, as the pre-step does: a system
+      // family's span fetches nothing, and an undrawn family's would load it for nothing.
+      let warm = required, embed = required
       if (options.embedFonts === 'auto') {
-        const docFamilies = new Set()
-        try {
-          for (const f of ownerDoc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase())
-        } catch { /* no Font Loading API — treat as no webfonts */ }
-        warm = new Set(Array.from(required).filter((k) => docFamilies.has(fontKeyFamily(k).toLowerCase())))
+        const { declared, drawn } = documentFontFamilies(ownerDoc)
+        const family = (k) => fontKeyFamily(k).toLowerCase()
+        warm = new Set(Array.from(required).filter((k) => drawn.has(family(k))))
         if (!warm.size) return
+        embed = new Set(Array.from(required).filter((k) => drawn.has(family(k)) || !declared.has(family(k))))
       }
       if (isSafari()) await ensureFontsReady(warm, usedCodepoints, ownerDoc)
       fontsCSS = await embedCustomFonts({
-        required,
+        required: embed,
         usedCodepoints,
         exclude: state.options.excludeFonts,
         localFonts: state.options.localFonts,

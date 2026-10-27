@@ -288,6 +288,34 @@ export function fontKeyFamily(key) {
 }
 
 /**
+ * Split the document's webfont families into those it declares and those it has drawn with.
+ *
+ * A browser fetches a face only when some laid-out text needs it, so a family whose faces are
+ * all still "unloaded" was never drawn, however often it appears in a font stack. A face in
+ * "error" was needed and failed, and the text went on to the next family, so it never drew
+ * either. In the jant#174 scene on a Mac, Songti SC drew a CJK quote and every Noto Serif SC
+ * face stayed unloaded in Chromium and Firefox (Safari 27.0.1 also left one in error, its
+ * `local()` source failing), yet 5 of them (35 KB) were embedded; Jant measured 180 KB against
+ * 2 MB on their own card. Layout flips a needed face to "loading" synchronously on all three
+ * engines, so read this after a layout: the fonts phase runs after prepareClone, which also
+ * lays out content-visibility subtrees.
+ * Pinned by __tests__/module.fonts.drawnFamilies.test.js.
+ * @param {Document} doc
+ * @returns {{declared: Set<string>, drawn: Set<string>}} lowercase family names
+ */
+export function documentFontFamilies(doc) {
+  const declared = new Set(), drawn = new Set()
+  try {
+    for (const f of doc.fonts) {
+      const family = String(f.family).replace(/["']/g, '').toLowerCase()
+      declared.add(family)
+      if (f.status === 'loading' || f.status === 'loaded') drawn.add(family)
+    }
+  } catch { /* no Font Loading API */ }
+  return { declared, drawn }
+}
+
+/**
  * The plain family names inside the required keys (family, weight, style, stretchPct).
  * @param {Set<string>} required
  * @returns {Set<string>}

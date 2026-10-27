@@ -1,11 +1,13 @@
 // embedFonts 'auto' (the default): svg-as-image is an isolated document that cannot see
 // the page's loaded webfonts, so webfont text MUST embed for fidelity — but system-font
 // pages must pay nothing. 'auto' embeds exactly when a used family is a document-declared
-// webfont; true/false remain explicit overrides.
+// webfont the document has drawn with; true/false remain explicit overrides.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 
-const FONT_URL = 'data:font/woff2;base64,AAAA' // passes through embedCustomFonts untouched
+// A font that loads: one that fails is never drawn, so 'auto' leaves it out (Firefox and
+// WebKit reject a 4-byte stand-in before the fonts phase reads it).
+const FONT_URL = '/__tests__/fixtures/fonts/inter-400.woff2'
 
 afterEach(() => { document.body.innerHTML = '' })
 
