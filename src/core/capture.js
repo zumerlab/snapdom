@@ -275,22 +275,18 @@ export async function captureDOM(element, options) {
       // Safari's pre-step already walked this subtree — reuse its usage (threaded only
       // for non-clip captures; clip needs the clipKeep-scoped walk).
       const { required, usedCodepoints } = (!preClipRect && options.__fontUsage) || collectFontUsage(state.element, clipKeep)
-      // 'auto': embed only when a used family is actually a document-declared webfont.
+      // 'auto': embed only when a used family is actually a document-declared webfont, and
+      // warm only those, as the pre-step does. A system family's span fetches nothing.
+      let warm = required
       if (options.embedFonts === 'auto') {
         const docFamilies = new Set()
         try {
           for (const f of ownerDoc.fonts) docFamilies.add(String(f.family).replace(/["']/g, '').toLowerCase())
         } catch { /* no Font Loading API — treat as no webfonts */ }
-        const usesWebfont = docFamilies.size > 0 &&
-          Array.from(required).some((k) => docFamilies.has(fontKeyFamily(k).toLowerCase()))
-        if (!usesWebfont) return
+        warm = new Set(Array.from(required).filter((k) => docFamilies.has(fontKeyFamily(k).toLowerCase())))
+        if (!warm.size) return
       }
-      if (isSafari()) {
-        const families = new Set(
-          Array.from(required).map(fontKeyFamily).filter(Boolean)
-        )
-        await ensureFontsReady(families, 1, ownerDoc)
-      }
+      if (isSafari()) await ensureFontsReady(warm, usedCodepoints, ownerDoc)
       fontsCSS = await embedCustomFonts({
         required,
         usedCodepoints,

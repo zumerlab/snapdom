@@ -1318,51 +1318,52 @@ export function collectUsedCodepoints(root, keep) {
 }
 
 /**
- * Wait for the document's fonts, then lay out a hidden span per family so each face has
- * been fetched and rasterized before the clone reads it.
+ * Wait for the document's fonts, then lay out a hidden span per used variant holding the used
+ * codepoints, so the faces the capture embeds have been fetched and rasterized before the
+ * clone reads them. Waits two frames after the layout.
  *
- * Safari-only in practice: every caller gates it on isSafari(), and the pre-step in
- * snapdom.js passes only the families the element uses, since waiting on system families
- * cost about 30 ms per capture on WebKit for nothing. Each repetition waits two frames.
- * @param {Set<string>|string[]} families - plain family names, e.g. "Unbounded"
- * @param {number} [warmupRepetitions=2] - how many times to lay the spans out
+ * Safari-only in practice: every caller gates it on isSafari(), and under `embedFonts: 'auto'`
+ * both pass only the variants of families the document declares, since waiting on system
+ * families cost about 30 ms per capture on WebKit for nothing. The spans used to be one fixed
+ * sample in 700 italic per family, whatever the element used, so they fetched faces nothing
+ * showed. In the jant#174 scene (Noto Serif SC split by unicode-range, a quote set in 400) a
+ * capture's distinct font downloads went from 14 to 11; the 700 faces left come from the
+ * near-weight tier of `embedCustomFonts`. The layout costs WebKit 12 ms for 3000 distinct CJK
+ * codepoints in 12 variants, and rounds to 0 for 95 Latin ones, as the old sample did.
+ * Pinned by __tests__/module.fonts.more.test.js.
+ * @param {Set<string>} required - keys from collectFontUsage: family, weight, style, stretchPct
+ * @param {Set<number>} usedCodepoints
  * @param {Document} [doc=document] - the element's ownerDocument, for iframe content
  * @returns {Promise<void>}
  */
-export async function ensureFontsReady(families, warmupRepetitions = 2, doc = document) {
+export async function ensureFontsReady(required, usedCodepoints, doc = document) {
   try { await fontsSettled(doc) } catch {}
+  if (!required.size) return
 
-  const fams = Array.from(families || []).filter(Boolean)
-  if (fams.length === 0) return
-
-  const warmupOnce = () => {
-    const container = doc.createElement('div')
-    markInternalNode(container)
-    container.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;opacity:0!important;pointer-events:none!important;contain:layout size style;'
-
-    for (const fam of fams) {
-      const span = doc.createElement('span')
-      span.textContent = 'AaBbGg1234ÁÉÍÓÚçñ—∞'
-      span.style.fontFamily = `"${fam}"`
-      span.style.fontWeight = '700'
-      span.style.fontStyle = 'italic'
-      span.style.fontSize = '32px'
-      span.style.lineHeight = '1'
-      span.style.whiteSpace = 'nowrap'
-      span.style.margin = '0'
-      span.style.padding = '0'
-      container.appendChild(span)
-    }
-
-    doc.body.appendChild(container)
-    // Force layout
-    container.offsetWidth
-    doc.body.removeChild(container)
+  // A CSS escape can name a codepoint past U+10FFFF, which fromCodePoint throws on.
+  const text = Array.from(usedCodepoints, (cp) => cp <= 0x10ffff ? String.fromCodePoint(cp) : '').join('')
+  const container = doc.createElement('div')
+  markInternalNode(container)
+  container.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;opacity:0!important;pointer-events:none!important;contain:layout size style;'
+  for (const key of required) {
+    const [family, weight, style, stretch] = key.split(FONT_KEY_SEP)
+    const span = doc.createElement('span')
+    span.textContent = text
+    span.style.fontFamily = `"${family}"`
+    span.style.fontWeight = weight
+    span.style.fontStyle = style
+    span.style.fontStretch = `${stretch}%`
+    span.style.fontSize = '32px'
+    span.style.lineHeight = '1'
+    span.style.whiteSpace = 'nowrap'
+    span.style.margin = '0'
+    span.style.padding = '0'
+    container.appendChild(span)
   }
-
-  for (let i = 0; i < Math.max(1, warmupRepetitions); i++) {
-    warmupOnce()
-    await nextFrame()
-    await nextFrame()
-  }
+  doc.body.appendChild(container)
+  // Force layout
+  container.offsetWidth
+  doc.body.removeChild(container)
+  await nextFrame()
+  await nextFrame()
 }

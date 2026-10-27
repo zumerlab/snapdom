@@ -437,10 +437,28 @@ describe('ensureFontsReady (smoke)', () => {
       return 1
     })
 
-    await ensureFontsReady(['WarmupFam'], 1)
+    await ensureFontsReady(new Set([['WarmupFam', '400', 'normal', '100'].join(FONT_KEY_SEP)]), new Set([65]))
     expect(document.querySelector('[data-warmup]')).toBeFalsy()
 
     raf.mockRestore()
     delete document.fonts
+  })
+
+  it('loads only the faces of the used variants and codepoints', async () => {
+    const face = (src, desc) => new FontFace('WarmupVariants', `url(/__tests__/fixtures/fonts/${src})`, desc)
+    // The used face must hold the glyph: a face without it sends Firefox and WebKit on to the
+    // family's other faces, as the live page would.
+    const used = face('inter-400.woff2', { weight: '400', unicodeRange: 'U+0-7F' })
+    const otherWeight = face('inter-700.woff2', { weight: '700' })
+    const otherRange = face('jbmono-400.woff2', { weight: '400', unicodeRange: 'U+80-FF' })
+    for (const f of [used, otherWeight, otherRange]) document.fonts.add(f)
+    try {
+      await ensureFontsReady(new Set([['WarmupVariants', '400', 'normal', '100'].join(FONT_KEY_SEP)]), new Set([65]))
+      expect(used.status).not.toBe('unloaded')
+      expect(otherWeight.status).toBe('unloaded')
+      expect(otherRange.status).toBe('unloaded')
+    } finally {
+      for (const f of [used, otherWeight, otherRange]) document.fonts.delete(f)
+    }
   })
 })

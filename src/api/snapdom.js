@@ -205,13 +205,12 @@ snapdom.capture = async (el, context, _token) => {
         // the clip font-subset optimization.
         const usage = collectFontUsage(el)
         if (!context.clip) context.__fontUsage = usage
-        const required = usage.required
-        let families = new Set([...required].map(fontKeyFamily).filter(Boolean))
+        let required = usage.required
         if (context.embedFonts === 'auto') {
-          families = new Set([...families].filter((f) => docFamilies.has(f.toLowerCase())))
-          if (families.size === 0) throw null
+          required = new Set([...required].filter((k) => docFamilies.has(fontKeyFamily(k).toLowerCase())))
+          if (required.size === 0) throw null
         }
-        await ensureFontsReady(families, 1, doc)
+        await ensureFontsReady(required, usage.usedCodepoints, doc)
       } catch { /* non-blocking */ }
     }
     // querySelectorAll never matches the element itself — a capture root that IS the <canvas>
