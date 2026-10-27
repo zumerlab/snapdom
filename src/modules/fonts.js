@@ -677,9 +677,11 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
  * @param {Object} ctx
  * @param {Map} ctx.requiredIndex
  * @param {Set<number>} ctx.usedCodepoints
- * @param {(fam:string,styleSpec:string,weightSpec:string,stretchSpec:string)=>boolean} ctx.faceMatchesRequired
+ * @param {(fam:string,styleSpec:string,weightSpec:string,stretchSpec:string)=>({exact:object[],near:object[]}|null)} ctx.faceMatchesRequired
  * @param {Set<string>} ctx.coveredFamilies - families a strict match already satisfied (#478)
  * @param {Array<object>} ctx.provisionalFaces - rejected faces of a used family, held raw (#478)
+ * @param {Array<object>} ctx.nearFaces - tier-2 faces, held raw until coverage is known
+ * @param {(exact:object[], ranges:Array<[number,number]>)=>void} ctx.coverExact
  * @param {((meta:any, ranges:any)=>boolean)|null} ctx.simpleExcluder
  * @param {string} ctx.useProxy
  * @param {RegExp[]} ctx.iconMatchers
@@ -758,8 +760,8 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
         (variationRaw ? `font-variation-settings:${variationRaw};` : '') +
         (urange ? `unicode-range:${urange};` : '')
 
-      const strict = ctx.faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
-      if (!strict && !ctx.requiredIndex.has(family.toLowerCase())) continue
+      const match = ctx.faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
+      if (!match && !ctx.requiredIndex.has(family.toLowerCase())) continue
       const ranges = parseUnicodeRange(urange)
       if (!unicodeIntersects(ctx.usedCodepoints, ranges)) continue
 
@@ -772,8 +774,14 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       }
       if (ctx.simpleExcluder && ctx.simpleExcluder(meta, ranges)) continue
 
+      // Always quote. An unquoted family is a sequence of CSS identifiers, and an identifier
+      // may not start with a digit — so "Press Start 2P", "Baloo 2" and "M PLUS 1p" emitted
+      // an INVALID @font-face that the parser dropped whole, and the font silently failed to
+      // embed while everything else looked fine.
+      const familyDecl = `"${String(family).replace(/^\s*["']|["']\s*$/g, '').replace(/(["\\])/g, '\\$1')}"`
+
       // See the <link> pass: held raw until the family is known to have nothing (#478).
-      if (!strict) {
+      if (!match) {
         ctx.provisionalFaces.push({
           family: family.toLowerCase(),
           block: `@font-face{font-family:${family};src:${srcRaw};${descriptors}}`,
@@ -782,13 +790,19 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
         })
         continue
       }
+      if (match.near.length) {
+        ctx.nearFaces.push({
+          family: family.toLowerCase(),
+          block: `@font-face{font-family:${familyDecl};src:${srcRaw};${descriptors}}`,
+          srcRaw,
+          baseHref: baseHref || location.href,
+          near: match.near,
+          ranges,
+        })
+        continue
+      }
+      ctx.coverExact(match.exact, ranges)
       ctx.coveredFamilies.add(family.toLowerCase())
-
-      // Always quote. An unquoted family is a sequence of CSS identifiers, and an identifier
-      // may not start with a digit — so "Press Start 2P", "Baloo 2" and "M PLUS 1p" emitted
-      // an INVALID @font-face that the parser dropped whole, and the font silently failed to
-      // embed while everything else looked fine.
-      const familyDecl = `"${String(family).replace(/^\s*["']|["']\s*$/g, '').replace(/(["\\])/g, '\\$1')}"`
       if (/url\(/i.test(srcRaw)) {
         const inlinedSrc = await inlineUrlsInCssBlock(srcRaw, baseHref || location.href, ctx.useProxy, ctx.debug)
         await emitFace(`@font-face{font-family:${familyDecl};src:${inlinedSrc};${descriptors}}`)
@@ -857,23 +871,25 @@ export async function embedCustomFonts({
   }
 
   /**
- * Whether a @font-face serves at least one variant the page asked for in its family.
+ * Which of the variants the page asked for in its family a @font-face serves.
  *
- * Three tiers. An exact match on weight (inside the face's range), style kind and stretch.
- * Then a single-weight face within 300 of the request, same style and stretch. Then, when
- * the page asks for italic or oblique and this family only declares a normal face, that
- * normal face, so the engine can synthesize the slant instead of falling back to a system
- * font.
+ * Three tiers. An exact match on weight (inside the face's range), style kind and stretch,
+ * listed in `exact`. Then a single-weight face within 300 of a request, same style and
+ * stretch, listed in `near`: the caller keeps it only where the exact faces leave a used
+ * codepoint uncovered (`nearFaces`). Then, when the page asks for italic or oblique and this
+ * family only declares a normal face, that normal face with both lists empty, so the engine
+ * can synthesize the slant instead of falling back to a system font.
  *
  * @param {string} fam
  * @param {string} styleSpec   font-style from the @font-face, e.g. "normal" or "italic"
  * @param {string} weightSpec  font-weight from the @font-face, e.g. "400" or "400 700"
  * @param {string} stretchSpec font-stretch from the @font-face, e.g. "100%"
- * @returns {boolean}
+ * @returns {{exact: object[], near: object[]}|null} requests from `requiredIndex`; null when
+ *   no tier takes the face
  */
 function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   const famKey = String(fam).toLowerCase()
-  if (!requiredIndex.has(famKey)) return false
+  if (!requiredIndex.has(famKey)) return null
 
   const need = requiredIndex.get(famKey)
   const ws = parseWeightSpec(weightSpec)
@@ -888,30 +904,17 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     (ss.kind !== 'normal' && (reqKind === 'italic' || reqKind === 'oblique'))
   )
 
-  let exactMatched = false
-
   // 1) Exact match
-  for (const r of need) {
+  const exact = need.filter((r) => {
     const wOk = faceIsRange ? (r.w >= ws.min && r.w <= ws.max) : (r.w === faceSingleW)
-    const sOk = styleOK(normStyle(r.s))
-    const tOk = (r.st >= ts.min && r.st <= ts.max)
-
-    if (wOk && sOk && tOk) {
-      exactMatched = true
-      break
-    }
-  }
-
-  if (exactMatched) return true
+    return wOk && styleOK(normStyle(r.s)) && r.st >= ts.min && r.st <= ts.max
+  })
+  if (exact.length) return { exact, near: [] }
 
   // 2) Near weight, same style and stretch
   if (!faceIsRange) {
-    for (const r of need) {
-      const sOk = styleOK(normStyle(r.s))
-      const tOk = (r.st >= ts.min && r.st <= ts.max)
-      const nearWeight = Math.abs(faceSingleW - r.w) <= 300
-      if (nearWeight && sOk && tOk) return true
-    }
+    const near = need.filter((r) => Math.abs(faceSingleW - r.w) <= 300 && styleOK(normStyle(r.s)) && r.st >= ts.min && r.st <= ts.max)
+    if (near.length) return { exact, near }
   }
 
   // 3) Fallback: the DOM asks for italic/oblique but THIS family only declares a normal
@@ -923,7 +926,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         const nearWeight = Math.abs(faceSingleW - r.w) <= 300
         const stretchOK = (r.st >= ts.min && r.st <= ts.max)
         if (nearWeight && stretchOK) {
-          return true
+          return { exact, near: [] }
         }
       }
     }
@@ -935,7 +938,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   // drops a family that has faces; it picks the closest one and synthesises the rest.
   // The caller therefore holds rejected faces of a required family as provisional and
   // emits them only if the family ends the scan with nothing (issue #478).
-  return false
+  return null
 }
 
   const simpleExcluder = buildSimpleExcluder(exclude)
@@ -1001,6 +1004,21 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   // unless it is actually needed.
   const coveredFamilies = new Set()
   const provisionalFaces = []
+  // Tier-2 faces wait for the scan to end, when `exactCover` knows which used codepoints the
+  // exact faces of each request hold. Coverage is read from an explicit unicode-range only:
+  // a subsetter derives it from the file, while a face with no range claims every codepoint
+  // whether or not the file has the glyph.
+  const nearFaces = []
+  const exactCover = new Map()
+  const inRanges = (cp, ranges) => ranges.some(([a, b]) => cp >= a && cp <= b)
+  const coverExact = (exact, ranges) => {
+    if (!ranges.length) return
+    for (const r of exact) {
+      const cover = exactCover.get(r) || new Set()
+      for (const cp of usedCodepoints) if (inRanges(cp, ranges)) cover.add(cp)
+      exactCover.set(r, cover)
+    }
+  }
 
   // ---------- 1) External <link rel="stylesheet"> ----------
   // Snapshot BEFORE detaching the injected links so their @import'd font CSS is still
@@ -1055,8 +1073,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         const srcRaw = getFontFaceDeclaration(face, 'src')
         const srcUrls = extractSrcUrls(srcRaw, link.href)
 
-        const strict = faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
-        if (!strict && !requiredIndex.has(family.toLowerCase())) continue
+        const match = faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
+        if (!match && !requiredIndex.has(family.toLowerCase())) continue
         const ranges = parseUnicodeRange(urange)
         if (!unicodeIntersects(usedCodepoints, ranges)) continue
 
@@ -1065,7 +1083,10 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
         // Far from the request, but this family is used: hold it in case nothing closer
         // shows up (#478). Held raw, so a family that IS covered costs no extra fetch.
-        if (!strict) { provisionalFaces.push({ family: family.toLowerCase(), block: face, srcRaw, baseHref: link.href }); continue }
+        const held = { family: family.toLowerCase(), block: face, srcRaw, baseHref: link.href }
+        if (!match) { provisionalFaces.push(held); continue }
+        if (match.near.length) { nearFaces.push({ ...held, near: match.near, ranges }); continue }
+        coverExact(match.exact, ranges)
         coveredFamilies.add(family.toLowerCase())
 
         const newFace = /url\(/i.test(srcRaw)
@@ -1088,6 +1109,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     faceMatchesRequired,
     coveredFamilies,
     provisionalFaces,
+    nearFaces,
+    coverExact,
     simpleExcluder: exclude ? buildSimpleExcluder(exclude) : null,
     useProxy,
     iconMatchers,
@@ -1113,6 +1136,26 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     } catch {
       // cross-origin protected CSSOM; ignore (text pass already tried)
     }
+  }
+
+  // ---------- 2a) Near-weight faces, where an exact face leaves a gap ----------
+  // A codepoint the exact faces of a request do not cover is drawn by WebKit with the
+  // family's other weights (Chromium and Firefox move on to the next family), so a near face
+  // over such a codepoint paints and stays. Over covered codepoints it never paints: in the
+  // jant#174 scene (Noto Serif SC split per weight, a quote in 400) those 700 faces were
+  // 48 KB of the 83 KB of fonts embedded.
+  for (const n of nearFaces) {
+    const paints = n.near.some((r) => {
+      const cover = exactCover.get(r)
+      if (!cover || !usedCodepoints.size) return true
+      for (const cp of usedCodepoints) if (!cover.has(cp) && (!n.ranges.length || inRanges(cp, n.ranges))) return true
+      return false
+    })
+    if (!paints) continue
+    coveredFamilies.add(n.family)
+    finalCSS += /url\(/i.test(n.srcRaw)
+      ? await inlineUrlsInCssBlock(n.block, n.baseHref, useProxy, debug)
+      : n.block
   }
 
   // ---------- 2b) Families the strict filter left empty (#478) ----------

@@ -102,6 +102,7 @@ Each of these was a real regression or a real win, with the measurement and the 
 - PNG and JPEG files past the canvas limit are rendered in SVG windows and streamed into one file, never a full-size canvas: `toLargeImage`, `src/exporters/toLargeImage.js`, with the encoders in `src/modules/png.js` and `src/modules/jpeg.js` (#543; JPEG takes Firefox's chroma rule, 4:4:4 from quality 0.9 up, measured in the `jpeg.js` comment).
 - A clip's culled block siblings fold into one spacer per run, measured on the live page, so a long page costs one box per run (800 cards, 19.6 -> 7.8 ms) and fractional heights no longer drift the window: `finishClipHusks`, `src/core/clone.js` (#549). The folded husks stay as display:none shells only when author `<style>` travels with the clone, because sibling selectors must match the same elements.
 - snapdom's own scaffolding is never cloned below the root (the decode iframe `toCanvas` keeps in `document.body` was captured through a nested `toPng` by every later `body` capture): the skip at the top of `deepClone`, `src/core/clone.js`.
+- A near-weight face (within 300 of the request) is embedded only over a used codepoint the exact faces' explicit `unicode-range` leaves uncovered, the one case where it paints (WebKit reaches the family's other weights there; Chromium and Firefox move to the next family): `faceMatchesRequired` and step 2a of `embedCustomFonts`, `src/modules/fonts.js` (jant#174 scene: svg 141 -> 68 KB, pixel-identical on all three engines).
 
 ### Experimental canvas engine
 
