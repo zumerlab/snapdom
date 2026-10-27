@@ -16,6 +16,8 @@ export interface StreamOptions extends SnapdomOptions {
   fps?: number
   /** false repaints full frames only. Default true. */
   patches?: boolean
+  /** false stops following running animations and transitions: an animated box keeps its last drawn pixels until something else repaints it. Default true. */
+  animations?: boolean
 }
 
 export interface Stream {

@@ -137,10 +137,14 @@ async function decode(url) {
  * @param {(frame: {full: boolean, reason: string|null, rects: {x:number,y:number,width:number,height:number}[], ms: number, canvas: HTMLCanvasElement}) => void} [options.onFrame]
  * @param {number} [options.fps] - cap on frames per second; default every animation frame.
  * @param {boolean} [options.patches=true] - false repaints full frames only (the baseline).
+ * @param {boolean} [options.animations=true] - false stops following running animations and
+ *   transitions: an animated box keeps its last drawn pixels until a patch, a full frame or the
+ *   keyframe repaints it. A transparent spinner has no host, so by default every tick is a full
+ *   frame (Zumly views at dpr 2, fps 5: 109 ms a frame, against 9-13 ms patches without it).
  * @returns {{canvas: HTMLCanvasElement, stop: () => void, ready: Promise<void>, stats: object}}
  */
 export function stream(element, options = {}) {
-  const { onFrame, fps, patches = true, ...rest } = options
+  const { onFrame, fps, patches = true, animations = true, ...rest } = options
   const opts = { ...rest, outerShadows: false, dpr: rest.dpr ?? (globalThis.devicePixelRatio || 1) }
   const k = (opts.scale ?? 1) * opts.dpr
   const canvas = document.createElement('canvas')
@@ -433,13 +437,15 @@ export function stream(element, options = {}) {
     if (busy || (fps && now - lastTick < 1000 / fps)) return
     // A running animation repaints its target every frame, and once more when it stops: the
     // frame before a pause or the end of a transition is not where it came to rest.
-    const running = new Set()
-    for (const a of element.getAnimations?.({ subtree: true }) || []) {
-      if (a.playState === 'running') running.add(a.effect?.target || element)
+    if (animations) {
+      const running = new Set()
+      for (const a of element.getAnimations?.({ subtree: true }) || []) {
+        if (a.playState === 'running') running.add(a.effect?.target || element)
+      }
+      for (const target of running) dirty.add(target)
+      for (const target of animating) if (!running.has(target)) dirty.add(target)
+      animating = running
     }
-    for (const target of running) dirty.add(target)
-    for (const target of animating) if (!running.has(target)) dirty.add(target)
-    animating = running
     netTargets(observer.takeRecords(), dirty, restyled)
     // The keyframe waits for idle time, so it never lands on top of a burst of edits.
     if (!keyframeDue && !idleAsked && now - lastKeyframe > Math.max(KEYFRAME_MS, fullMs * KEYFRAME_COST)) {

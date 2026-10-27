@@ -46,6 +46,7 @@ All [capture options](https://snapdom.dev/) apply (`scale`, `dpr`, `embedFonts`,
 | `onFrame(frame)` | | called after each repaint: `{ full, reason, rects, ms, canvas }` |
 | `fps` | every animation frame | upper bound on repaints per second |
 | `patches` | `true` | `false` repaints full frames only, for comparison |
+| `animations` | `true` | `false` stops following running animations and transitions: an animated box keeps the pixels it was last drawn with until a patch over it, a full frame or the keyframe. For a still of the page, where a spinner's angle does not matter but its full frames would |
 
 `stream()` returns `{ canvas, ready, stats, stop() }`.
 

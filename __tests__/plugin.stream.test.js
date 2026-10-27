@@ -54,10 +54,10 @@ async function reference(root, canvas) {
   return c
 }
 
-// Pixels whose largest channel difference exceeds a hinting-level tolerance.
-function differs(a, b) {
-  const x = a.getContext('2d').getImageData(0, 0, a.width, a.height).data
-  const y = b.getContext('2d').getImageData(0, 0, b.width, b.height).data
+// Pixels whose largest channel difference exceeds a hinting-level tolerance, inside `r`.
+function differs(a, b, r = { x: 0, y: 0, width: a.width, height: a.height }) {
+  const x = a.getContext('2d').getImageData(r.x, r.y, r.width, r.height).data
+  const y = b.getContext('2d').getImageData(r.x, r.y, r.width, r.height).data
   let bad = 0
   for (let i = 0; i < x.length; i += 4) {
     const d = Math.max(Math.abs(x[i] - y[i]), Math.abs(x[i + 1] - y[i + 1]), Math.abs(x[i + 2] - y[i + 2]), Math.abs(x[i + 3] - y[i + 3]))
@@ -339,6 +339,30 @@ describe('stream plugin', () => {
     const extra = s.frames.slice(before).filter(f => f.reason !== 'resize')
     expect(extra.length, extra.map(f => f.reason).join(', ')).toBe(0)
     expect(s.stats.skipped).toBeGreaterThan(0)
+  })
+
+  it('leaves a running animation alone under animations: false, so an edit beside it is a patch', async () => {
+    const root = grid()
+    const spinner = document.createElement('div')
+    spinner.className = 'spinner'
+    spinner.style.cssText = 'width:20px;height:20px;border:3px solid #38bdf8;border-top-color:transparent;border-radius:50%'
+    root.append(spinner)
+    spinner.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], { duration: 1000, iterations: Infinity })
+    // The control: followed, the transparent spinner has no host and every tick is a full frame.
+    const followed = open(root)
+    await followed.ready
+    expect((await followed.next()).reason).toMatch(/^no host for <div\.spinner>/)
+    followed.stop()
+    const s = open(root, { animations: false })
+    await s.ready
+    for (let f = 0; f < 3; f++) {
+      const next = s.next()
+      root.children[f * 7].querySelector('.v').textContent = `beside the spinner ${f}`
+      const frame = await next
+      expect(frame.full, `frame ${f}: ${frame.reason}`).toBe(false)
+      // Only the patch: the spinner has turned since the canvas last drew it.
+      expect(differs(s.canvas, await reference(root, s.canvas), frame.rects[0]), `frame ${f}`).toBe(0)
+    }
   })
 
   it('streams a capture result through toStream(), with the capture\'s options', async () => {
