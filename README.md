@@ -8,7 +8,10 @@
     <img alt="Website" src="https://img.shields.io/badge/Website-snapdom.dev-2ea44f?style=flat-square">
   </a>
   <a href="https://www.npmjs.com/package/@zumer/snapdom">
-    <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=Version">
+    <img alt="NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=SnapDOM">
+  </a>
+  <a href="https://www.npmjs.com/package/@zumer/snapdom-plugins">
+    <img alt="Plugins NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom-plugins?style=flat-square&label=Plugins">
   </a>
   <a href="https://www.npmjs.com/package/@zumer/snapdom">
     <img alt="NPM weekly downloads" src="https://img.shields.io/npm/dw/@zumer/snapdom?style=flat-square&label=Downloads">

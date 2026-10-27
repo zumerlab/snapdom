@@ -1,5 +1,8 @@
 # @zumer/snapdom-plugins
 
+[![NPM version](https://img.shields.io/npm/v/@zumer/snapdom-plugins?style=flat-square&label=Plugins)](https://www.npmjs.com/package/@zumer/snapdom-plugins)
+[![Core version](https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=SnapDOM)](https://www.npmjs.com/package/@zumer/snapdom)
+
 Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a high-performance DOM engine
 that exports a rendered element as PNG, SVG or canvas in the browser. Core exports images and
 canvases; this package adds HTML, structured context, element maps, PDF, editable vectors, ASCII,
