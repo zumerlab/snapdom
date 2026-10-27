@@ -592,7 +592,10 @@ function dressClipHusk(husk, node, sessionCache, options) {
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error('[SnapDOM] The element cannot be null or undefined.')
   // fast: false | 'auto' (#503). At entry, before any work, so paused nodes resume in order.
-  if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
+  // A loop, not an if: siblings clone concurrently and share one wait, so they all resume in
+  // the same task and each must check the slice again. With an if, 3000 sibling spans at 4x CPU
+  // kept a 132 ms task; with the loop the longest was 58. Pinned by core.capture.fast.test.js.
+  while (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   const clonedAssignedNodes = new Set()
   let pendingSelectedOptions = null
   let pendingTextAreaValue = null

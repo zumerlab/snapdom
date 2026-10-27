@@ -142,6 +142,41 @@ describe('fast option', () => {
     expect(await yieldedDuringClone(el, 'auto')).toBe(true)
   })
 
+  it('checks the slice again for siblings that resume from the same pause', async () => {
+    // Siblings clone concurrently and wait on one shared pause, so they resume in one task.
+    // Each clones slowly here (1 ms), so a batch that does not check the slice again is one
+    // long task whatever the machine: 200 siblings, about 200 ms.
+    const el = document.createElement('div')
+    for (let i = 0; i < 200; i++) el.appendChild(document.createElement('span')).textContent = String(i)
+    document.body.appendChild(el)
+    mounted.push(el)
+    for (const child of el.children) {
+      const native = child.cloneNode.bind(child)
+      vi.spyOn(child, 'cloneNode').mockImplementation((deep) => {
+        const end = performance.now() + 1
+        while (performance.now() < end) { /* a slow clone */ }
+        return native(deep)
+      })
+    }
+    // A task runs from a resume (the pause's message) to the next pause.
+    const events = []
+    const NativeChannel = window.MessageChannel
+    vi.spyOn(window, 'MessageChannel').mockImplementation(function () {
+      const channel = new NativeChannel()
+      channels.push(channel)
+      events.push(['pause', performance.now()])
+      channel.port1.addEventListener('message', () => events.push(['resume', performance.now()]))
+      return channel
+    })
+    await snapdom(el, { fast: false, burst: false, cache: 'disabled' })
+    let longest = 0
+    for (let i = 1; i < events.length; i++) {
+      if (events[i - 1][0] === 'resume' && events[i][0] === 'pause') longest = Math.max(longest, events[i][1] - events[i - 1][1])
+    }
+    expect(events.filter(([kind]) => kind === 'pause').length).toBeGreaterThan(5)
+    expect(longest).toBeLessThan(60)
+  })
+
   it('renders the same bytes whether the clone yields or not', async () => {
     const el = scene()
     const whole = await snapdom(el, { burst: false, cache: 'disabled' })

@@ -124,6 +124,7 @@ Other constraints to preserve when changing the pipeline:
 
 - SVG-as-image decoding runs on the main thread; compression downsampling can use a worker.
 - `fast: false` pauses with a `MessageChannel` task. `scheduler.yield()` resumes ahead of rendering: on a large shadow-DOM table the page went 83-117 ms between frames with it, against 17-33 ms with a message.
+- Siblings clone concurrently and resume from one shared pause in the same task, so each checks the slice again before it clones. Checking only once let 3000 sibling spans at 4x CPU resume as one 132 ms task; checking again kept the longest at 58 ms.
 - Shadow-root content prunes its style reads with the sheets of the roots that can style it. `document.getAnimations()` misses animations inside shadow roots in all three engines, so each root's own list is added.
 - Large foreignObject SVGs served through blob URLs can taint Chromium canvases and break raster exports.
 - System-font metrics can drift in SVG-as-image. Removing reconciliation warnings or relaxing
