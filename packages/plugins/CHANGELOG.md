@@ -1,5 +1,13 @@
 # Plugin changes
 
+## 4.4.0
+
+> 27 October 2026
+
+**Features**
+
+- **stream:** add animations: false to stop following running animations [`932df5e`](https://github.com/zumerlab/snapdom/commit/932df5e7620ebcd9d5206d16fbd683383d77e0b3)
+
 ## 4.3.0
 
 > 25 October 2026
