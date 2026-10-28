@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.6.0](https://github.com/zumerlab/snapdom/compare/v3.5.0...v3.6.0)
+
+> 28 October 2026
+
+**Features**
+
+- **engine:** ship html-in-canvas in the default build, with a guide [`8294802`](https://github.com/zumerlab/snapdom/commit/8294802cedd1d850573d57b369e2130667d9e490)
+- **stream:** add animations: false to stop following running animations [`932df5e`](https://github.com/zumerlab/snapdom/commit/932df5e7620ebcd9d5206d16fbd683383d77e0b3)
+
+**Performance**
+
+- **clone:** check the slice again after a shared pause [`aef63a0`](https://github.com/zumerlab/snapdom/commit/aef63a073b8466e35b3d375514232415d3b29fd6)
+
+**Docs**
+
+- add a plugins version badge to the READMEs [`3bf9489`](https://github.com/zumerlab/snapdom/commit/3bf9489774c89e771cd58dc624e2af35ddbe38ae)
+
+**Chores**
+
+- **parity:** launch the Chrome at CHROME_PATH when set [`c56f581`](https://github.com/zumerlab/snapdom/commit/c56f581a8a240f933b3a54ccd532e4fc99740772)
+
 #### [v3.5.0](https://github.com/zumerlab/snapdom/compare/v3.4.0...v3.5.0)
 
 > 27 October 2026
