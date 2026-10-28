@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Into the dock: a panel painted by Chrome, folded in WebGL | SnapDOM Labs</title>
+  <meta name="description" content="A settings panel full of native controls, captured once with SnapDOM's html-in-canvas engine and folded into a dock with a WebGL vertex shader. The same frame from the raw drawElementImage API and from the SVG engine shows where each one differs." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/labs/into-the-dock/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Into the dock: a panel painted by Chrome, folded in WebGL" />
+  <meta property="og:description" content="One html-in-canvas capture becomes a WebGL texture that folds into a dock. Compare it with the raw API and the SVG engine." />
+  <meta property="og:url" content="https://snapdom.dev/labs/into-the-dock/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Into the dock: a panel painted by Chrome, folded in WebGL","description":"A settings panel captured once with SnapDOM's html-in-canvas engine and folded into a dock with a WebGL vertex shader.","url":"https://snapdom.dev/labs/into-the-dock/","image":"https://snapdom.dev/assets/og-card.jpg","author":{"@type":"Organization","name":"Zumerlab"},"publisher":{"@type":"Organization","name":"Zumerlab","url":"https://snapdom.dev"},"mainEntityOfPage":"https://snapdom.dev/labs/into-the-dock/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Into the dock","item":"https://snapdom.dev/labs/into-the-dock/"}]}</script>
+  <style>
+    .lab-dock { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
+    .lab-dock .dock-status { font-size: 14px; margin: 0 0 18px; padding: 10px 14px; border: 1px solid var(--border-soft); background: var(--bg); }
+    .lab-dock .dock-status.is-on { border-color: var(--green); color: var(--green-text); }
+    .lab-dock .dock-status.is-off { border-color: var(--amber); color: var(--amber-ink); }
+    .dock-stage { position: relative; min-height: 640px; overflow: hidden; border: 1px solid var(--border-soft); background: radial-gradient(120% 90% at 50% 0%, #dfe7f3 0%, #c3cfe0 55%, #a9b8cd 100%); }
+    .dock-gl { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+
+    /* The panel is what gets captured: fixed colors and Arial, no transform on it or its ancestors. */
+    .dock-panel { position: absolute; top: 24px; left: 50%; margin-left: -160px; width: 320px; box-sizing: border-box; overflow: hidden; border: 1px solid #c9d1dd; border-radius: 14px; background: #fff; color: #1f2937; font: 14px/1.4 Arial, Helvetica, sans-serif; }
+    .dock-panel.is-min { visibility: hidden; }
+    .dock-panel .cover { position: relative; height: 72px; background: linear-gradient(rgba(15, 23, 42, .45), rgba(15, 23, 42, .45)), url("https://avatars.githubusercontent.com/u/103702169?v=4") 0 0 / 36px 36px repeat; }
+    .dock-panel .min { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; background: #fff; color: #1f2937; cursor: pointer; }
+    .dock-panel .min::before { content: ""; display: block; width: 10px; height: 2px; margin: 0 auto; background: #1f2937; }
+    .dock-panel .who { display: flex; gap: 10px; align-items: flex-end; margin: 0 16px 6px; }
+    .dock-panel .who img { width: 52px; height: 52px; margin-top: -26px; border-radius: 50%; border: 3px solid #fff; background: #fff; display: block; position: relative; }
+    .dock-panel .who strong { display: block; font-size: 16px; }
+    .dock-panel .who small { display: block; color: #64748b; font-size: 12px; }
+    .dock-panel .rows { padding: 4px 16px 0; }
+    .dock-panel .row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 9px 0; }
+    .dock-panel .row input[type="number"] { width: 64px; }
+    .dock-panel .row input[type="range"] { width: 140px; }
+    .dock-panel .opts { display: flex; gap: 12px; }
+    .dock-panel .opts label { display: flex; align-items: center; gap: 4px; }
+    .dock-panel .list { height: 92px; overflow: auto; margin: 12px 16px 0; border: 1px solid #d6dbe4; border-radius: 8px; }
+    .dock-panel .list div { display: flex; justify-content: space-between; padding: 6px 10px; border-bottom: 1px solid #eef1f5; }
+    .dock-panel .list span { color: #64748b; }
+    .dock-panel .actions { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 16px 16px; }
+    .dock-panel .actions .save { border: 0; border-radius: 6px; padding: 6px 14px; background: #2563eb; color: #fff; font: 600 14px/1.4 Arial, Helvetica, sans-serif; }
+
+    .dock-bar { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: flex-end; gap: 10px; padding: 8px 12px; border-radius: 18px; background: rgba(255, 255, 255, .55); border: 1px solid rgba(255, 255, 255, .7); }
+    .dock-app { width: 48px; height: 48px; border-radius: 12px; }
+    .dock-app:nth-child(1) { background: linear-gradient(#60a5fa, #2563eb); }
+    .dock-app:nth-child(2) { background: linear-gradient(#fbbf24, #d97706); }
+    .dock-app:nth-child(3) { background: linear-gradient(#34d399, #059669); }
+    .dock-sep { width: 1px; height: 44px; background: rgba(15, 23, 42, .2); margin: 0 2px 2px; }
+    .dock-slot { width: 40px; height: 56px; padding: 0; border: 1px dashed rgba(15, 23, 42, .3); border-radius: 6px; background: transparent; cursor: default; }
+    .dock-slot.is-full { border-color: transparent; cursor: pointer; }
+    .dock-slot canvas { display: block; width: 100%; height: 100%; }
+
+    .lab-dock .dock-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 0; }
+    .lab-dock .dock-compare { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 24px 0 0; }
+    .lab-dock .dock-compare strong { display: block; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); font-weight: 600; }
+    .lab-dock .dock-shot { min-height: 160px; border: 1px dashed var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 8px; font-size: 13px; color: var(--text-muted); text-align: center; }
+    .lab-dock .dock-shot canvas { max-width: 100%; height: auto; display: block; }
+    .lab-dock .dock-note { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; min-height: 1.4em; }
+    @media (max-width: 760px) {
+      .lab-dock { padding: 14px; }
+      .dock-panel { width: 288px; margin-left: -144px; }
+      .dock-panel .row input[type="range"] { width: 110px; }
+    }
+    @media (max-width: 520px) { .lab-dock .dock-compare { grid-template-columns: 1fr; } }
+  </style>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script>  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<script defer src="../../code-blocks.js"></script></head>
+<body>
+  <script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "A settings panel, <span class=\"accent\">into the dock</span>", "lead": "One capture with the html-in-canvas engine becomes a WebGL texture that folds into the dock. The same frame from the raw API and from the SVG engine shows where each one differs.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="../../showcase/">Live demos</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="../video-overlay/">Video overlay <span class="nav-new">New</span></a><a href="../webrtc-overlay/">WebRTC overlay <span class="nav-new">New</span></a><a href="../stop-motion/">Stop motion</a><a href="../paint-canvas/">Paint on a capture</a><a href="../capture-stages/">Capture stages</a><a href="../target-range/">Target range</a><a href="../webgl-live-mirror/">Live mirror</a><a href="../ascii-mirror/">ASCII mirror <span class="nav-new">New</span></a><a href="../webgl-seamless-dom/">Seamless DOM</a><a href="../webgl-shatter/">Shattered capture</a><a href="../html-in-canvas/">html-in-canvas <span class="nav-new">New</span></a><a href="./" aria-current="page">Into the dock <span class="nav-new">New</span></a></div></div></nav></aside>
+
+<article class="pane-read sec-labs" data-title="Into the dock">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>Into the dock</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>A settings panel, <span class="accent">into the dock</span></h1><p class="doc-lead">One capture with the html-in-canvas engine becomes a WebGL texture that folds into the dock. The same frame from the raw API and from the SVG engine shows where each one differs.</p></header>
+<div class="pane-content"><!-- content -->
+
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p><code>snapdom(panel, { engine: 'html-in-canvas' })</code> gives one canvas painted by Chrome's own renderer, with the cross-origin avatar already in it. A vertex shader folds that canvas into the dock tile and unfolds it back. In Firefox, Safari and Chrome before 157 the same call gives you the SVG engine, and the fold works the same.</p></div>
+
+    <section class="prose">
+      <h2 id="try-it">Try it</h2>
+      <div class="lab-dock">
+        <p class="dock-status" id="dockStatus">Checking this browser…</p>
+        <div class="dock-stage" id="dockStage">
+          <div class="dock-panel" id="dockPanel">
+            <div class="cover"><button type="button" class="min" id="dockMin" aria-label="Minimize the panel to the dock"></button></div>
+            <div class="who"><img src="https://avatars.githubusercontent.com/u/103702169?v=4" alt="Zumerlab avatar" width="52" height="52"><div><strong>Zumerlab</strong><small>Team settings</small></div></div>
+            <div class="rows">
+              <label class="row">Plan <select><option>Pro</option><option>Team</option><option>Free</option></select></label>
+              <label class="row">Renews <input type="date" value="2026-11-03"></label>
+              <label class="row">Volume <input type="range" value="65"></label>
+              <label class="row">Accent <input type="color" value="#2563eb"></label>
+              <label class="row">Seats <input type="number" value="12" min="1"></label>
+              <div class="row"><label class="opts"><input type="checkbox" checked> Email me</label><span class="opts"><label><input type="radio" name="dockCadence" checked> Weekly</label><label><input type="radio" name="dockCadence"> Daily</label></span></div>
+            </div>
+            <div class="list" tabindex="0" aria-label="Invoices">
+              <div>Invoice #1048<span>$420</span></div><div>Invoice #1047<span>$420</span></div><div>Invoice #1046<span>$380</span></div><div>Invoice #1045<span>$380</span></div>
+              <div>Invoice #1044<span>$380</span></div><div>Invoice #1043<span>$310</span></div><div>Invoice #1042<span>$310</span></div><div>Invoice #1041<span>$290</span></div>
+            </div>
+            <div class="actions"><button type="button">Cancel</button><button type="button" class="save">Save</button></div>
+          </div>
+          <div class="dock-bar"><span class="dock-app"></span><span class="dock-app"></span><span class="dock-app"></span><span class="dock-sep"></span><button type="button" class="dock-slot" id="dockSlot" aria-label="Restore the panel" disabled></button></div>
+          <canvas class="dock-gl" id="dockGl"></canvas>
+        </div>
+        <div class="dock-actions"><button type="button" class="btn btn-primary btn-sm" id="dockGo" data-umami-event="Labs into the dock minimize">Minimize to the dock</button></div>
+        <div class="dock-compare">
+          <div><strong>Raw drawElementImage()</strong><div class="dock-shot" id="shotRaw">Minimize once to fill this</div><p class="dock-note" id="noteRaw"></p></div>
+          <div><strong>SnapDOM, SVG engine</strong><div class="dock-shot" id="shotSvg">Minimize once to fill this</div><p class="dock-note" id="noteSvg"></p></div>
+          <div><strong>SnapDOM, html-in-canvas</strong><div class="dock-shot" id="shotNative">Minimize once to fill this</div><p class="dock-note" id="noteNative"></p></div>
+        </div>
+      </div>
+      <p>Change the plan, move the slider, scroll the invoices, then minimize. Click the tile in the dock to bring the panel back.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="what-the-three-frames-show">What the three frames show</h2>
+      <p><strong>The raw API</strong> draws a copy of the panel that lives inside a <code>&lt;canvas content="drawable"&gt;</code>, because that is the only place <code>drawElementImage()</code> can draw from. The avatar and the cover pattern come from another origin, so Chrome leaves them out of the paint, even though that server allows CORS.</p>
+      <p><strong>The SVG engine</strong> has the avatar, because SnapDOM fetched it and wrote it into the clone as a data URL. It draws the clone as an SVG image, so the invoice list can get a scrollbar the page does not show.</p>
+      <p><strong>The html-in-canvas engine</strong> paints that same clone with Chrome's renderer. The avatar is there and the list looks like the page. This is the frame the dock animation uses.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="how-it-works">How it works</h2>
+      <ol class="steps">
+        <li><h4 aria-level="3">One capture</h4><p><code>snapdom(panel, { engine: 'html-in-canvas' })</code>, then <code>toCanvas()</code>.</p></li>
+        <li><h4 aria-level="3">The canvas becomes a texture</h4><p><code>texImage2D</code> uploads it once, and the live panel hides. Nothing is captured again while it moves.</p></li>
+        <li><h4 aria-level="3">A grid of vertices folds it</h4><p>An 8 by 60 vertex grid starts on the panel's box. As one progress uniform goes from 0 to 1, the lower rows narrow toward the dock tile first, then the whole grid slides down the funnel and lands inside the tile.</p></li>
+        <li><h4 aria-level="3">The tile is the same capture</h4><p>The dock tile shows the canvas at thumbnail size. Clicking it runs the shader backward and shows the live panel again, with your changes still in it.</p></li>
+      </ol>
+    </section>
+
+    <section class="prose">
+      <h2 id="copy-paste-example">Copy-paste example</h2>
+<pre><code class="language-javascript">import { snapdom } from '@zumer/snapdom'
+
+const result = await snapdom(panel, { engine: 'html-in-canvas' })
+const canvas = await result.toCanvas()
+
+gl.bindTexture(gl.TEXTURE_2D, texture)
+gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
+// Animate a vertex grid from the panel's box into the dock tile.</code></pre>
+      <p>The vertex shader is in this page's source. Besides the canvas, it needs only the panel's box and the tile's box.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../html-in-canvas/">The html-in-canvas lab: both engines side by side, and every plugin</a>
+        <a class="related-card" href="../../how-to/html-in-canvas/">The guide: when to use this engine</a>
+        <a class="related-card" href="../webgl-shatter/">Shattered capture: more WebGL on a capture</a>
+      </div>
+    </section>
+
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../html-in-canvas/"><span>Previous</span><strong>html-in-canvas</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+
+  <script type="module">
+    const stage = document.getElementById('dockStage')
+    const panel = document.getElementById('dockPanel')
+    const slot = document.getElementById('dockSlot')
+    const go = document.getElementById('dockGo')
+    const status = document.getElementById('dockStatus')
+    const glCanvas = document.getElementById('dockGl')
+
+    const hasApi = (() => {
+      try { return typeof document.createElement('canvas').getContext('2d').drawElementImage === 'function' } catch { return false }
+    })()
+    status.className = 'dock-status ' + (hasApi ? 'is-on' : 'is-off')
+    status.textContent = hasApi
+      ? 'This browser can paint with html-in-canvas.'
+      : 'This browser has no html-in-canvas API, so the panel is captured with the SVG engine. The fold is the same. Chrome 157 and newer have the API; Firefox and Safari do not.'
+
+    let snapdom
+    try {
+      ({ snapdom } = await import('@zumer/snapdom'))
+    } catch (error) {
+      status.className = 'dock-status is-off'
+      status.textContent = `SnapDOM could not load: ${error.message}`
+    }
+
+    // Count native paints without changing them: the only reliable answer to "which engine ran".
+    const proto = window.CanvasRenderingContext2D?.prototype
+    const realDraw = proto?.drawElementImage
+    let draws = 0
+    if (realDraw) proto.drawElementImage = function (...args) { draws++; return realDraw.apply(this, args) }
+
+    const frame = () => new Promise((resolve) => { requestAnimationFrame(() => setTimeout(resolve, 0)); setTimeout(resolve, 50) })
+
+    // The raw API draws only an element inside a drawable canvas, so it gets a copy of the
+    // panel with the live values carried over (cloneNode copies attributes, not state).
+    async function paintRaw() {
+      const width = panel.offsetWidth, height = panel.offsetHeight, dpr = window.devicePixelRatio || 1
+      const host = document.createElement('canvas')
+      host.setAttribute('layoutsubtree', '')
+      host.setAttribute('content', 'drawable')
+      host.style.cssText = 'position:fixed;top:0;left:0;z-index:-2147483647;pointer-events:none'
+      host.width = Math.round(width * dpr)
+      host.height = Math.round(height * dpr)
+      const copy = panel.cloneNode(true)
+      copy.removeAttribute('id')
+      copy.setAttribute('drawable', '')
+      copy.style.cssText = `position:static;margin:0;width:${width}px`
+      const live = panel.querySelectorAll('input, select'), copied = copy.querySelectorAll('input, select')
+      copied.forEach((el, i) => {
+        // A second checked radio in the same group would uncheck the live one.
+        if (el.type === 'radio') el.name += '-raw'
+        if (el.type === 'checkbox' || el.type === 'radio') el.checked = live[i].checked
+        else el.value = live[i].value
+      })
+      host.appendChild(copy)
+      document.body.appendChild(host)
+      copy.querySelector('.list').scrollTop = panel.querySelector('.list').scrollTop
+      try {
+        await frame()
+        const ctx = host.getContext('2d')
+        ctx.scale(dpr, dpr)
+        realDraw.call(ctx, copy, 0, 0, width, height)
+        const out = document.createElement('canvas')
+        out.width = host.width
+        out.height = host.height
+        out.getContext('2d').drawImage(host, 0, 0)
+        return out
+      } finally {
+        host.remove()
+      }
+    }
+
+    async function capture(engine) {
+      draws = 0
+      const canvas = await (await snapdom(panel, { engine, burst: false })).toCanvas()
+      return { canvas, native: draws > 0 }
+    }
+
+    function show(id, canvas) {
+      const box = document.getElementById(id)
+      const copy = document.createElement('canvas')
+      copy.width = canvas.width
+      copy.height = canvas.height
+      copy.getContext('2d').drawImage(canvas, 0, 0)
+      copy.style.width = `${panel.offsetWidth}px`
+      box.replaceChildren(copy)
+    }
+
+    // WebGL: one texture, one grid, one progress uniform.
+    const gl = glCanvas.getContext('webgl', { premultipliedAlpha: true, alpha: true })
+    const COLS = 8, ROWS = 60
+    let program, texture, indexCount
+    if (gl) {
+      const vs = `
+        attribute vec2 a_uv;
+        uniform vec2 u_res;
+        uniform vec4 u_from; // panel box: x, y, width, height in stage pixels
+        uniform vec4 u_to;   // dock tile box
+        uniform float u_p;
+        varying vec2 v_uv;
+        void main() {
+          // Rows near the dock narrow first; then the grid slides down into the funnel.
+          float squeeze = smoothstep(0.0, 0.5, u_p);
+          float slide = smoothstep(0.2, 1.0, u_p);
+          float top = u_from.y;
+          float y = min(top + a_uv.y * u_from.w + slide * (u_to.y + u_to.w - top), u_to.y + a_uv.y * u_to.w);
+          float f = squeeze * smoothstep(0.0, 1.0, clamp((y - top) / max(u_to.y - top, 1.0), 0.0, 1.0));
+          float left = mix(u_from.x, u_to.x, f);
+          float right = mix(u_from.x + u_from.z, u_to.x + u_to.z, f);
+          gl_Position = vec4(mix(left, right, a_uv.x) / u_res.x * 2.0 - 1.0, 1.0 - y / u_res.y * 2.0, 0.0, 1.0);
+          v_uv = a_uv;
+        }`
+      const fs = `
+        precision mediump float;
+        uniform sampler2D u_tex;
+        varying vec2 v_uv;
+        void main() { gl_FragColor = texture2D(u_tex, v_uv); }`
+      const shader = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s }
+      program = gl.createProgram()
+      gl.attachShader(program, shader(gl.VERTEX_SHADER, vs))
+      gl.attachShader(program, shader(gl.FRAGMENT_SHADER, fs))
+      gl.linkProgram(program)
+      gl.useProgram(program)
+
+      const uv = [], idx = []
+      for (let r = 0; r <= ROWS; r++) for (let c = 0; c <= COLS; c++) uv.push(c / COLS, r / ROWS)
+      for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
+        const i = r * (COLS + 1) + c
+        idx.push(i, i + 1, i + COLS + 1, i + 1, i + COLS + 2, i + COLS + 1)
+      }
+      indexCount = idx.length
+      gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer())
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uv), gl.STATIC_DRAW)
+      const loc = gl.getAttribLocation(program, 'a_uv')
+      gl.enableVertexAttribArray(loc)
+      gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.createBuffer())
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(idx), gl.STATIC_DRAW)
+
+      texture = gl.createTexture()
+      gl.bindTexture(gl.TEXTURE_2D, texture)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
+      gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true)
+      gl.enable(gl.BLEND)
+      gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA)
+    }
+
+    function box(el) {
+      const s = stage.getBoundingClientRect(), r = el.getBoundingClientRect()
+      return [r.left - s.left, r.top - s.top, r.width, r.height]
+    }
+
+    let from, to
+    function draw(p) {
+      gl.viewport(0, 0, glCanvas.width, glCanvas.height)
+      gl.clearColor(0, 0, 0, 0)
+      gl.clear(gl.COLOR_BUFFER_BIT)
+      if (p === null) return
+      gl.uniform2f(gl.getUniformLocation(program, 'u_res'), stage.clientWidth, stage.clientHeight)
+      gl.uniform4fv(gl.getUniformLocation(program, 'u_from'), from)
+      gl.uniform4fv(gl.getUniformLocation(program, 'u_to'), to)
+      gl.uniform1f(gl.getUniformLocation(program, 'u_p'), p)
+      gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0)
+    }
+
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+    const ease = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+    function play(a, b, ms) {
+      if (!gl || reduced) return Promise.resolve()
+      return new Promise((resolve) => {
+        const start = performance.now()
+        const tick = (now) => {
+          const t = Math.min(1, (now - start) / ms)
+          draw(a + (b - a) * ease(t))
+          if (t < 1) requestAnimationFrame(tick)
+          else resolve()
+        }
+        requestAnimationFrame(tick)
+      })
+    }
+
+    let busy = false, minimized = false
+    async function minimize() {
+      if (busy || minimized || !snapdom) return
+      busy = true
+      go.disabled = true
+      try {
+        const native = await capture('html-in-canvas')
+        const svg = await capture(undefined)
+        show('shotNative', native.canvas)
+        document.getElementById('noteNative').textContent = native.native
+          ? 'Painted by html-in-canvas'
+          : 'Painted by the SVG engine: this browser has no html-in-canvas'
+        show('shotSvg', svg.canvas)
+        document.getElementById('noteSvg').textContent = 'Painted by SVG'
+        if (hasApi) {
+          try {
+            show('shotRaw', await paintRaw())
+            document.getElementById('noteRaw').textContent = 'The cross-origin avatar and cover are left out'
+          } catch (error) {
+            document.getElementById('noteRaw').textContent = `The raw call failed: ${error.message}`
+          }
+        } else {
+          document.getElementById('shotRaw').textContent = 'Needs Chrome 157 or newer'
+        }
+
+        // The tile keeps the panel's proportions at the dock's height.
+        slot.style.width = `${Math.round(56 * panel.offsetWidth / panel.offsetHeight)}px`
+        from = box(panel)
+        to = box(slot)
+        const dpr = window.devicePixelRatio || 1
+        glCanvas.width = Math.round(stage.clientWidth * dpr)
+        glCanvas.height = Math.round(stage.clientHeight * dpr)
+        if (gl) {
+          gl.bindTexture(gl.TEXTURE_2D, texture)
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, native.canvas)
+          draw(0)
+        }
+        panel.classList.add('is-min')
+        await play(0, 1, 720)
+        const thumb = document.createElement('canvas')
+        thumb.width = Math.round(to[2] * dpr)
+        thumb.height = Math.round(to[3] * dpr)
+        thumb.getContext('2d').drawImage(native.canvas, 0, 0, thumb.width, thumb.height)
+        slot.replaceChildren(thumb)
+        slot.classList.add('is-full')
+        slot.disabled = false
+        if (gl) draw(null)
+        minimized = true
+        go.textContent = 'Restore from the dock'
+      } catch (error) {
+        panel.classList.remove('is-min')
+        status.className = 'dock-status is-off'
+        status.textContent = `Capture failed: ${error.message}`
+      } finally {
+        go.disabled = false
+        busy = false
+      }
+    }
+
+    async function restore() {
+      if (busy || !minimized) return
+      busy = true
+      go.disabled = true
+      slot.replaceChildren()
+      slot.classList.remove('is-full')
+      slot.disabled = true
+      if (gl) draw(1)
+      await play(1, 0, 620)
+      panel.classList.remove('is-min')
+      if (gl) draw(null)
+      minimized = false
+      go.textContent = 'Minimize to the dock'
+      go.disabled = false
+      busy = false
+    }
+
+    document.getElementById('dockMin').addEventListener('click', minimize)
+    slot.addEventListener('click', restore)
+    go.addEventListener('click', () => (minimized ? restore() : minimize()))
+  </script>
+</body>
+</html>
