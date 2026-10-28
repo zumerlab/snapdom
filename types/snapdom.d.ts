@@ -228,8 +228,10 @@ export interface SnapdomOptions {
   /**
    * Renderer: 'svg' by default. The second engine, 'html-in-canvas', paints the same finished
    * clone through the WICG html-in-canvas API (ctx.drawElementImage, shipped unflagged in
-   * Chrome 157; no Firefox or Safari implementation) with the browser's own painter: native
-   * form controls and scrollbars, no svg-as-image quirks. It falls back silently to the svg
+   * Chrome 157; no Firefox or Safari implementation) with the browser's own painter: scrollbars
+   * and native controls as the page draws them, no svg-as-image quirks. Controls the clone
+   * already draws differently (`<audio controls>`, bare `<progress>` and `<meter>`) look the
+   * same with either engine. It falls back silently to the svg
    * pipeline wherever the API is missing or the capture is not applicable (body/html roots,
    * transformed or zoomed ancestors, clip, width/height, outerShadows, and captures with
    * beforeRender/afterRender plugin hooks), so the same call works in every browser. It is

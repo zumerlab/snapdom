@@ -1,7 +1,10 @@
 /**
  * Second render engine: WICG html-in-canvas (`ctx.drawElementImage`), opt-in through
- * `engine: 'html-in-canvas'`. Paints with the browser's OWN painter, so native form controls
- * come out right and none of the svg-as-image quirks apply.
+ * `engine: 'html-in-canvas'`. Paints with the browser's OWN painter, so scrollbars and native
+ * controls come out as the page draws them and none of the svg-as-image quirks apply. It paints
+ * the clone, so a control the clone already draws differently looks as it does in the svg
+ * engine: `<audio controls>` is a drawn player (#444), and a bare `<progress>` or `<meter>`
+ * loses Chromium's native look (Chrome 157, 2026-10-28, docs/labs/into-the-dock/).
  *
  * IT IS A PEER OF engines/svg.js. Both take the SAME input, the finished clone, and differ
  * only in how they turn it into pixels. That is the whole reason this belongs to snapdom
@@ -17,7 +20,7 @@
  * engine on the same clone. Correctness never depends on this module. It is opt-in, not the
  * default, on the speed goal: the native paint waits for a rendering update, about 35 ms on
  * a card where the svg engine takes 3 (BENCHMARKS.md, "SVG vs html-in-canvas"); it is the
- * fidelity engine for native controls and scrollbars, not the fast one.
+ * fidelity engine for scrollbars and native parts, not the fast one.
  *
  * PLATFORM STATUS. Chrome 157 ships the API without a flag (developer.chrome.com/blog/
  * html-in-canvas; MDN BCD marks `drawElementImage`, `content="drawable"`, `drawable` and
