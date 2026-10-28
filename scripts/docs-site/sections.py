@@ -41,6 +41,7 @@ SECTIONS = [
                                  ('how-to/capture-full-page/index.html','Capture a full page',None),
                                  ('how-to/capture-iframe/index.html','Capture an iframe',None),
                                  ('how-to/capture-cross-origin-images/index.html','Capture images without CORS',None),
+                                 ('how-to/html-in-canvas/index.html','Capture with html-in-canvas',None),
                                  ('how-to/visual-regression-screenshot/index.html','Visual regression',None)]),
    ('Migrate','ecosystem',[('how-to/migrate-from-html2canvas/index.html','Migrate from html2canvas',D(demo='compare',lib='html2canvas',target='tricky',label='SnapDOM · html2canvas',
                             note='Run both on the same element: pseudo-element, transform with shadow, shadow root, typed value.'))]),
@@ -178,7 +179,7 @@ def convert(section, gi, path, title, demo, flat):
     # sidebar; a section group with the same label lends it its colour.
     grouped = toc and len(toc[0]) > 2 and any(p == path for _, _, items in section['groups'] for p, _, _ in items)
     # Fresh demos get a red "New" pill in the sidebar; drop entries here once they are old news.
-    NEW = {'stream-demo', 'lab-ascii-mirror', 'labs/ascii-mirror/index.html', 'lab-video-overlay', 'labs/video-overlay/index.html', 'lab-webrtc-overlay', 'labs/webrtc-overlay/index.html', 'labs/html-in-canvas/index.html'}
+    NEW = {'stream-demo', 'lab-ascii-mirror', 'labs/ascii-mirror/index.html', 'lab-video-overlay', 'labs/video-overlay/index.html', 'lab-webrtc-overlay', 'labs/webrtc-overlay/index.html', 'labs/html-in-canvas/index.html', 'how-to/html-in-canvas/index.html'}
     new = lambda key: ' <span class="nav-new">New</span>' if key in NEW else ''
     pages = {glabel: (gsec, items) for glabel, gsec, items in section['groups']}
     if grouped:

@@ -144,7 +144,7 @@ document.body.appendChild(png);</pre>
           <tr><td class="num">snapdom.download(el, options?)</td><td>Triggers a download</td></tr>
         </tbody>
       </table>
-      <p>SnapDOM's second engine, experimental <code>html-in-canvas</code>, needs the browser feature flag and an enabled build; see <a href="../options/#all-options">engine requirements</a>. On a successful native capture, <code>toRaw()</code> returns PNG, <code>toSvg()</code> returns a PNG-backed image, and <code>toBlob()</code> defaults to PNG. There is no SVG source; requesting an SVG Blob rejects. SVG fallback uses the table's behavior.</p>
+      <p>SnapDOM's second engine, <code>html-in-canvas</code>, runs in Chrome 157 and newer and falls back to SVG elsewhere; see <a href="../options/#all-options">the engine option</a>. On a successful native capture, <code>toRaw()</code> returns PNG, <code>toSvg()</code> returns a PNG-backed image, and <code>toBlob()</code> defaults to PNG. There is no SVG source; requesting an SVG Blob rejects. SVG fallback uses the table's behavior.</p>
     </section>
 
     <section class="prose">

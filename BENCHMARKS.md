@@ -194,7 +194,7 @@ SVG was faster for all five recapture scenes. The native engine waits for browse
 
 With automatic memoization, both engines returned canvas in under 1 ms for the card and dashboard. PNG encoding still added work. These results support SVG as the speed default for the measured workloads; they do not establish a universal winner for every page or browser.
 
-To reproduce, run `SNAPDOM_CANVAS_ENGINE=1 npm run site`, then `node scripts/engine-bench.mjs 15 2` in another terminal. The runner saves per-sample capture, canvas-export and PNG-encoding times plus output images under `output/engine-bench/`.
+To reproduce, run `npm run site`, then `node scripts/engine-bench.mjs 15 2` in another terminal (it launches the installed Chrome; 157 or newer has the API without the flag the script still passes). The runner saves per-sample capture, canvas-export and PNG-encoding times plus output images under `output/engine-bench/`.
 
 ## Run locally
 

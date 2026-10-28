@@ -303,7 +303,7 @@ button.onclick = () => snapdom.toPng(card);
 
 SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 Canvas API 绘制同一份捕获克隆的 **html-in-canvas**。使用 `engine: 'html-in-canvas'` 选择第二个引擎。
 
-第二个引擎仍处于实验阶段：需要兼容的浏览器开启 Canvas 绘制标志，并使用 `SNAPDOM_CANVAS_ENGINE=1` 编译构建。默认构建只包含 SVG。不支持的捕获会回退到 SVG。成功的原生捕获生成位图，因此其 URL 和 `toRaw()` 返回 PNG，而非序列化的 SVG。详情见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+第二个引擎包含在默认构建中，在浏览器具备该 API 时运行：Chrome 157 及更新版本，无需开启标志。Firefox 和 Safari 没有实现，在这些浏览器中以及任何它无法绘制的捕获上，SnapDOM 会在同一份克隆上运行 SVG 引擎，返回相同的结果对象。成功的原生捕获生成位图，因此其 URL 和 `toRaw()` 返回 PNG，而非序列化的 SVG。SVG 仍是默认引擎，因为它更快（原生绘制需要等待一次渲染更新）。详情见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
 ## 从 v2 迁移
 
@@ -322,7 +322,7 @@ SnapDOM 有两个渲染引擎：默认的 **SVG**，以及通过浏览器原生 
 | `resolvePicturePlaceholders` / `pictureResolver` 配置懒加载图片预处理 | 在克隆节点上解析响应式和懒加载图片；这些选项不再记录在文档中，也不再受支持 | 删除这些选项，自定义加载和超时策略应在应用中、捕获前完成；引擎仍会读取 `resolvePicturePlaceholders` 供内部使用，请勿依赖 |
 | 部分可见输入值会被遮蔽 | 核心只遮蔽密码 | 其他字段需要使用 `redactInputs()` |
 | `afterExport` 返回值成为下一个钩子的参数，但不改变调用者收到的结果 | 返回值被忽略；钩子收到同一份导出参数 | 不再通过返回值串联钩子；用 `defineExports` 生成不同输出 |
-| 插件 v2.x.x 提供 `@zumer/snapdom-plugins/html-in-canvas` | 该子路径已移除 | 使用兼容的自定义构建和核心的实验性 `engine: 'html-in-canvas'`；默认构建使用 SVG |
+| 插件 v2.x.x 提供 `@zumer/snapdom-plugins/html-in-canvas` | 该子路径已移除 | 使用核心选项 `engine: 'html-in-canvas'`；没有该 API 的浏览器使用 SVG |
 | TypeScript 导出 `PluginExportFacade` | 该类型名称已移除；`ctx.exports` 仍提供核心导出器 | 在 `defineExports` 中使用类型推导，或使用 `NonNullable<CaptureContext['exports']>` |
 
 ### 同时使用 filter 和 exclude

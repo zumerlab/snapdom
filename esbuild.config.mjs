@@ -1,15 +1,11 @@
 import { build } from 'esbuild'
 import { readFileSync, rmSync } from 'node:fs'
 
-// The experimental canvas engine (src/engines/htmlInCanvas.js) is dead weight in a shipped
-// build: browsers without the origin trial cannot use engine:'html-in-canvas', so every capture
-// falls through to the normal pipeline. Its lazy import still landed in the bundle (nothing
-// is code-split), costing every user ~2KB gzip for a branch that cannot run. This define
-// makes the seam statically false so esbuild drops the branch AND the module. Tests import
-// src directly, where the identifier is undefined and the engine stays live.
-// Build with the engine: SNAPDOM_CANVAS_ENGINE=1 npm run compile
-const CANVAS_ENGINE = process.env.SNAPDOM_CANVAS_ENGINE === '1'
-
+// The html-in-canvas engine (src/engines/htmlInCanvas.js) ships in both bundles since Chrome
+// 157 exposes drawElementImage without a flag. Nothing is code-split, so its lazy import in
+// capture.js is a module boundary, not a separate chunk. It adds 1.1 KB gzip to each bundle
+// (101.0 to 102.1 KB on the ESM, measured 2026-10-28); a define kept it out from 3.0.0 to
+// 3.5.0. scripts/verify-legacy-bundle.mjs pins its presence.
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'))
 const version = pkg.version || '0.0.0'
 
@@ -18,7 +14,7 @@ const common = {
   bundle: true,
   sourcemap: false,
   logLevel: 'info',
-  define: { __SNAPDOM_CANVAS_ENGINE__: String(CANVAS_ENGINE), __SNAPDOM_VERSION__: JSON.stringify(version) },
+  define: { __SNAPDOM_VERSION__: JSON.stringify(version) },
 }
 
 

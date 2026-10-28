@@ -1299,7 +1299,7 @@ document.body.append(live.canvas)
     <!-- html-in-canvas -->
     <section class="lab-demo" id="demo-htmlcanvas">
       <h2 id="svg-and-html-in-canvas">SVG and html-in-canvas</h2>
-      <p class="demo-explanation">The same element through the default SVG engine and the experimental html-in-canvas engine. <a href="../labs/html-in-canvas/">The lab</a> compares them and checks every plugin.</p>
+      <p class="demo-explanation">The same element through the default SVG engine and the html-in-canvas engine, which Chrome 157 ships without a flag. <a href="../labs/html-in-canvas/">The lab</a> compares them and checks every plugin; <a href="../how-to/html-in-canvas/">the guide</a> says when to pick which.</p>
 
       <div class="demo-target" id="target-htmlcanvas">
         <strong>Target for html-in-canvas</strong>
@@ -1347,24 +1347,18 @@ document.body.append(live.canvas)
 
   <!-- html-in-canvas logic -->
   <script type="module">
-    // The default build leaves the html-in-canvas engine out; the @canvas build carries it.
-    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@canvas/dist/snapdom.mjs';
+    import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs';
 
     const target = document.getElementById('target-htmlcanvas');
     const outDefault = document.getElementById('out-htmlcanvas-default');
     const outApi = document.getElementById('out-htmlcanvas-api');
     const statusApi = document.getElementById('status-htmlcanvas');
 
-    // Experimental browser builds have exposed either name. Detect support
-    // instead of assuming an API from the browser version.
+    // Detect the API instead of assuming it from the browser version (Chrome 157 and newer have it).
     function detectDrawApi() {
       try {
-        const c = document.createElement('canvas');
-        const ctx = c.getContext('2d');
-        if (!ctx) return null;
-        if (typeof ctx.drawElementImage === 'function') return 'drawElementImage';
-        if (typeof ctx.drawElement === 'function') return 'drawElement';
-        return null;
+        const ctx = document.createElement('canvas').getContext('2d');
+        return ctx && typeof ctx.drawElementImage === 'function' ? 'drawElementImage' : null;
       } catch { return null; }
     }
 
@@ -1372,7 +1366,7 @@ document.body.append(live.canvas)
     const available = !!drawApi;
     document.getElementById('btn-htmlcanvas-api').disabled = !available;
     if (!available) {
-      statusApi.innerHTML = '<span style="color:#CF2A38">Browser drawing API unavailable. Enable the canvas drawing flag in a compatible browser to try the second engine.</span>';
+      statusApi.innerHTML = '<span style="color:#CF2A38">This browser has no drawElementImage(). Chrome 157 and newer have it; here the option would give you the SVG engine.</span>';
     } else {
       statusApi.textContent = `${drawApi}() available`;
       statusApi.style.color = 'var(--green)';
@@ -1403,7 +1397,7 @@ document.body.append(live.canvas)
         outApi.replaceChildren(img);
         statusApi.textContent = native
           ? `Captured with html-in-canvas (${drawApi}).`
-          : 'SVG fallback. The build must include html-in-canvas and the browser must be able to paint this capture.';
+          : 'SVG fallback: the browser could not paint this capture natively.';
         statusApi.style.color = native ? 'var(--green)' : 'var(--sd-text-muted)';
       } catch (e) {
         outApi.textContent = 'Capture failed.';

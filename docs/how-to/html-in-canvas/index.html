@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Capture with html-in-canvas: Chrome's drawElementImage as a SnapDOM engine</title>
+  <meta name="description" content="Chrome 157 ships html-in-canvas. SnapDOM uses drawElementImage as its second engine: how to turn it on, when it beats the SVG engine, what SnapDOM still does around the native call, and what happens in Firefox and Safari." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/how-to/html-in-canvas/" />
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="Capture with html-in-canvas" />
+  <meta property="og:description" content="Chrome's native drawElementImage as SnapDOM's second engine: how to turn it on, when it is the better engine, and what SnapDOM still does around it." />
+  <meta property="og:url" content="https://snapdom.dev/how-to/html-in-canvas/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Capture with html-in-canvas","description":"Chrome's native drawElementImage as SnapDOM's second engine: how to turn it on, when it is the better engine, and what SnapDOM still does around it.","url":"https://snapdom.dev/how-to/html-in-canvas/","datePublished":"2026-10-28","dateModified":"2026-10-28","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom)"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Do I need a feature check before setting engine: 'html-in-canvas'?","acceptedAnswer":{"@type":"Answer","text":"No. In a browser without the API, and on any capture the native engine cannot paint, SnapDOM runs the SVG engine on the same clone and returns the same result object."}},{"@type":"Question","name":"Is html-in-canvas faster than the SVG engine?","acceptedAnswer":{"@type":"Answer","text":"Not today. The native paint waits for a rendering update, about 35 ms on a small card where the SVG engine takes 3. Repeated captures of an unchanged element are served from memory on both engines."}},{"@type":"Question","name":"Does it work in Firefox or Safari?","acceptedAnswer":{"@type":"Answer","text":"They have no implementation of html-in-canvas. The same call gives you the SVG engine there, with the same result object."}},{"@type":"Question","name":"Can I get an SVG from an html-in-canvas capture?","acceptedAnswer":{"@type":"Answer","text":"No. A native capture is a bitmap: url and toRaw() give a PNG data URL, and an SVG Blob request rejects. Plugins that need the SVG, such as pdf, vector and html-export, make the capture use the SVG engine on their own."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"How-to","item":"https://snapdom.dev/how-to/"},{"@type":"ListItem","position":3,"name":"Capture with html-in-canvas","item":"https://snapdom.dev/how-to/html-in-canvas/"}]}</script>
+  <style>
+    .hic-demo { border: 1px solid var(--border); background: var(--surface); padding: 20px; margin: 16px 0 8px; }
+    .hic-demo .hic-support { font-size: 14px; margin: 0 0 16px; padding: 10px 14px; border: 1px solid var(--border-soft); background: var(--bg); }
+    .hic-demo .hic-support.is-on { border-color: var(--green); color: var(--green-text); }
+    .hic-demo .hic-support.is-off { border-color: var(--amber); color: var(--amber-ink); }
+    .hic-demo .hic-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+    .hic-demo .hic-col > strong { display: block; font-size: 13px; margin-bottom: 8px; color: var(--text-muted); font-weight: 600; }
+    .hic-demo .hic-box { min-height: 220px; border: 1px dashed var(--border); background: var(--bg); display: flex; align-items: center; justify-content: center; padding: 8px; color: var(--text-muted); font-size: 13px; }
+    .hic-demo .hic-box img, .hic-demo .hic-box canvas { max-width: 100%; height: auto; display: block; }
+    .hic-demo .hic-note { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; min-height: 1.4em; font-family: var(--font-mono); }
+    .hic-demo .hic-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 0; }
+    #hicCard { width: 280px; padding: 16px; box-sizing: border-box; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #1d3a8a, #3b82f6); font: 14px/1.4 Arial, Helvetica, sans-serif; text-align: left; }
+    #hicCard h3 { margin: 0 0 8px; font-size: 18px; color: #fff; }
+    #hicCard p, #hicCard label { margin: 0 0 8px; color: #fff; font: 14px/1.4 Arial, Helvetica, sans-serif; }
+    #hicCard label { display: block; }
+    #hicCard select, #hicCard input[type="text"] { font: inherit; }
+    #hicCard .hic-row { display: flex; align-items: center; gap: 8px; }
+    #hicCard .hic-scroll { height: 64px; overflow: auto; background: rgba(255,255,255,0.14); border-radius: 6px; padding: 6px 8px; margin: 0 0 8px; }
+    #hicCard .hic-scroll div { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.18); }
+    @media (max-width: 760px) { .hic-demo .hic-grid { grid-template-columns: 1fr; } }
+  </style>
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body>
+<script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "How-To Recipe", "title": "Capture with <span class=\"accent\">html-in-canvas</span>", "lead": "Chrome 157 can paint a DOM element into a canvas with one call, <code>drawElementImage()</code>. SnapDOM uses that call as its second engine. Here is how to turn it on, when it is the better engine, and what SnapDOM still does for you around it.", "links": []} -->
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter recipes and guides" aria-label="Filter recipes and guides"></label><nav class="pane-nav" aria-label="How-to"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">How to capture the DOM</a></div></div><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Basics</button><div class="pane-nav-items"><a href="../screenshot-a-div/">Screenshot a div</a><a href="../html-to-png/">Convert HTML to PNG</a><a href="../html-to-svg/">Convert HTML to SVG</a><a href="../html-to-canvas/">Render HTML to Canvas</a><a href="../high-resolution-element/">Capture in high resolution</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Real content</button><div class="pane-nav-items"><a href="../export-dashboard-as-image/">Export a dashboard</a><a href="../export-react-component-as-image/">Export a React component</a><a href="../export-invoice-as-image/">Export an invoice</a><a href="../generate-social-card-from-html/">Generate a social card</a><a href="../capture-before-pdf/">Capture before a PDF</a><a href="../export-chart-as-svg/">Export a chart as SVG</a><a href="../save-chart-js-as-png/">Save a Chart.js chart</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Special cases</button><div class="pane-nav-items"><a href="../capture-element-without-puppeteer/">Capture without Puppeteer</a><a href="../capture-shadow-dom/">Capture Shadow DOM</a><a href="../capture-full-page/">Capture a full page</a><a href="../capture-iframe/">Capture an iframe</a><a href="../capture-cross-origin-images/">Capture images without CORS</a><a href="./" aria-current="page">Capture with html-in-canvas <span class="nav-new">New</span></a><a href="../visual-regression-screenshot/">Visual regression</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Migrate</button><div class="pane-nav-items"><a href="../migrate-from-html2canvas/">Migrate from html2canvas</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Frameworks</button><div class="pane-nav-items"><a href="../../guides/react/">React</a><a href="../../guides/vue/">Vue</a><a href="../../guides/nextjs/">Next.js</a><a href="../../guides/svelte/">Svelte</a><a href="../../guides/angular/">Angular</a><a href="../../guides/lit/">Lit</a></div></div></nav></aside>
+
+<article class="pane-read sec-ecosystem" data-title="Capture with html-in-canvas">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>How-to</span><span aria-hidden="true">/</span><span>Special cases</span><span aria-hidden="true">/</span><span>Capture with html-in-canvas</span></nav><span class="doc-meta">How-To Recipe</span></div><h1>Capture with <span class="accent">html-in-canvas</span></h1><p class="doc-lead">Chrome 157 can paint a DOM element into a canvas with one call, <code>drawElementImage()</code>. SnapDOM uses that call as its second engine. Here is how to turn it on, when it is the better engine, and what SnapDOM still does for you around it.</p></header>
+<div class="pane-content"><!-- content --><div class="tldr"><div class="tldr-label">TL;DR</div><p><code>snapdom(el, { engine: 'html-in-canvas' })</code>. In Chrome 157 and newer the capture is painted by Chrome's own renderer, so form controls, scrollbars and text come out exactly as the page draws them. In Firefox, Safari, older Chrome, and on any capture the engine cannot paint, SnapDOM runs the SVG engine on the same clone and you get the same result object. Keep the default for speed; pick this engine when native controls have to look native.</p></div><section class="prose"><h2 id="turn-it-on">Turn it on</h2><p>One option. Everything else, the exports, the plugins and the result object, is what you already use.</p><pre class="code-block">import { snapdom } from '@zumer/snapdom'
+
+const result = await snapdom(document.querySelector('#card'), { engine: 'html-in-canvas' })
+const png = await result.toPng()
+document.body.appendChild(png)</pre><p>A native capture is a bitmap, so its raw form is a PNG data URL; an SVG capture is an SVG one. That is also how you tell which engine ran:</p><pre class="code-block">const native = result.toRaw().startsWith('data:image/png')
+console.log(native ? 'painted by Chrome' : 'SVG engine')</pre><p>There is nothing to feature-detect. Set the option everywhere and let each browser do what it can.</p></section><section class="prose"><h2 id="what-chrome-157-gives-you">What Chrome 157 gives you</h2><p>html-in-canvas is a WICG specification that Chrome ships without a flag since version 157. You mark a canvas as <code>content="drawable"</code>, put the element inside it with the <code>drawable</code> attribute, and once the browser has painted it, draw it into the 2D context:</p><pre class="code-block">&lt;canvas id="c" content="drawable" width="400" height="200"&gt;
+  &lt;div id="card" drawable&gt;…&lt;/div&gt;
+&lt;/canvas&gt;
+
+&lt;script&gt;
+  const ctx = c.getContext('2d')
+  requestAnimationFrame(() =&gt; ctx.drawElementImage(card, 0, 0))
+&lt;/script&gt;</pre><p>The browser paints with its own renderer, so everything it can draw on a page it can draw into the canvas, native controls included. Two things shape the design. The element must be a descendant of that canvas, so the DOM is built around the capture. And the paint is "read-back allowed": content the page is not allowed to read, such as a cross-origin image without CORS headers or a <code>url()</code> reference to one, is left out of the picture instead of tainting the canvas.</p></section><section class="prose"><h2 id="what-snapdom-adds">What SnapDOM adds around that call</h2><p>SnapDOM does not replace the native paint. It prepares what gets painted and takes care of what comes after.</p><ol class="steps">
+        <li><h4 aria-level="3">Capture any element where it is</h4><p>The native call draws only an element that lives inside a drawable canvas. SnapDOM clones the element you point at, resolves its computed styles, turns pseudo-elements into real nodes, inlines images and fonts, and mounts that finished clone into a canvas of its own behind the page. Your DOM does not change and your layout does not know a capture happened.</p></li>
+        <li><h4 aria-level="3">The same call in every browser</h4><p>Firefox and Safari have no html-in-canvas. There, and in Chrome before 157, the same option gives you the SVG engine, with the same result object and the same exports. One code path, no feature check, no second library for the browsers that are not Chrome.</p></li>
+        <li><h4 aria-level="3">What the native paint leaves out, the clone carries</h4><p>By the time the engine draws, the clone holds its images and fonts as data URLs, so a cross-origin image the page can read through CORS is in the picture instead of being withheld. An image no script can read still needs a header or a proxy; <a href="../capture-cross-origin-images/">that guide</a> covers it.</p></li>
+        <li><h4 aria-level="3">Everything before the paint still happens</h4><p><code>exclude</code> and <code>filter</code>, password masking, plugins that edit the clone (redact fields, replace text, stamp a timestamp), shadow DOM, iframes, lazy image resolution: the native paint sees the finished clone, not the raw page.</p></li>
+        <li><h4 aria-level="3">Everything after the paint too</h4><p><code>toPng()</code>, <code>toJpg()</code>, <code>toWebp()</code>, <code>toBlob()</code> and <code>download()</code> at your <code>scale</code> and <code>dpr</code>; GIF, video and live-stream plugins frame by frame; agent context. The painted bitmap goes straight to the pixel exports, so nothing is PNG-encoded until you ask for a string.</p></li>
+        <li><h4 aria-level="3">A capture the engine cannot paint still comes out</h4><p>Captures of <code>body</code> or <code>html</code>, transformed or zoomed roots, <code>clip</code>, <code>width</code>/<code>height</code>, <code>outerShadows</code> and plugins with render hooks go through the SVG engine on their own. You never get an error where the native API would have given you an empty canvas.</p></li>
+      </ol></section><section class="prose"><h2 id="which-engine-when">Which engine, when</h2><p>SVG stays the default because it is faster. The native engine waits for a rendering update before it can draw, which costs about a frame per capture; the SVG engine serializes the clone and draws it as an image. These are warm recaptures from <a href="https://github.com/zumerlab/snapdom/blob/main/BENCHMARKS.md#svg-vs-html-in-canvas">BENCHMARKS.md</a>, Chrome on an Apple M5, DPR 1:</p><table class="cmp-table"><thead><tr><th></th><th>SVG engine (default)</th><th>html-in-canvas</th></tr></thead><tbody>
+        <tr><td class="feature">Browsers</td><td>All</td><td>Chrome 157 and newer; SVG elsewhere</td></tr>
+        <tr><td class="feature">Form controls, scrollbars, text shaping</td><td>Drawn as an SVG image, close to the page</td><td>The page's own renderer</td></tr>
+        <tr><td class="feature">Card, 480×240, to canvas</td><td>2.7 ms</td><td>35.5 ms</td></tr>
+        <tr><td class="feature">Table, 250 rows, to canvas</td><td>52.6 ms</td><td>70.9 ms</td></tr>
+        <tr><td class="feature">Unchanged element, repeated capture</td><td>Under 1 ms</td><td>Under 1 ms</td></tr>
+        <tr><td class="feature">SVG output: <code>toSvg()</code> as SVG, html-export, vector, PDF text layer</td><td>Yes</td><td>No, it is a bitmap; those plugins switch the capture to SVG</td></tr>
+        <tr><td class="feature">Full page, <code>clip</code>, transformed root</td><td>Yes</td><td>The SVG engine runs</td></tr>
+      </tbody></table><p>Pick html-in-canvas for a form, a settings panel, a data grid with its own scrollbars, anything where a native control drawn slightly differently would be noticed. Keep the default for dashboards, cards and social images, where speed matters more and the SVG engine already matches the page.</p></section><section class="prose"><h2 id="live-demo">Both engines on this page</h2><div class="hic-demo"><p class="hic-support" id="hicSupport">Checking this browser…</p><div class="hic-grid"><div class="hic-col"><strong>Live element</strong><div class="hic-box"><div id="hicCard"><h3>Settings</h3><label>Name <input type="text" value="Ana" size="12"></label><label>Plan <select><option>Pro</option><option>Team</option><option>Free</option></select></label><div class="hic-scroll"><div>Invoice #1041</div><div>Invoice #1040</div><div>Invoice #1039</div><div>Invoice #1038</div><div>Invoice #1037</div></div><div class="hic-row"><label style="margin:0"><input type="checkbox" checked> Notify</label><input type="range" value="60" style="width:80px"><button type="button">Save</button></div></div></div></div><div class="hic-col"><strong>SVG engine</strong><div class="hic-box" id="hicOutSvg">Not captured yet</div><p class="hic-note" id="hicNoteSvg"></p></div><div class="hic-col"><strong>html-in-canvas</strong><div class="hic-box" id="hicOutNative">Not captured yet</div><p class="hic-note" id="hicNoteNative"></p></div></div><div class="hic-actions"><button type="button" class="btn btn-primary btn-sm" id="hicCapture" data-umami-event="Howto html-in-canvas capture">Capture with both engines</button><button type="button" class="btn btn-ghost btn-sm" id="hicPlugin" data-umami-event="Howto html-in-canvas plugin">html-in-canvas with a clone plugin</button></div></div><p>Scroll the invoice list, change the plan, then capture again: both columns come from the same clone, and only the painter differs. The second button runs a tiny plugin that edits the clone before the paint, to show that the native engine draws the prepared clone, not the live element. In a browser without the API both columns say so and come from the SVG engine. <a href="../../labs/html-in-canvas/">The lab</a> runs every official plugin through this engine and reports which ones use SVG.</p></section><section class="prose"><h2 id="limits">Limits</h2><p>The engine paints one plain element box. It does not do document roots, transformed or zoomed ancestors, bleed for outer shadows, region clips or capture-level sizing; those captures take the SVG engine, where that geometry lives. A plugin with a <code>beforeRender</code> or <code>afterRender</code> hook makes the capture use SVG too, because it works at that boundary: html-export, pdf, vector, and redact-inputs with <code>blocks</code> or <code>attributes</code>. A paint that comes back blank or unreadable also falls back, so a successful native capture is always a readable bitmap.</p><p>Chromium browsers still on the origin-trial builds (Chrome 148 to 156 with the flag, and forks on those versions) want the older <code>layoutsubtree</code> canvas attribute; SnapDOM sets both names, so they work too.</p></section>
+    <section class="prose faq"><h2 id="faq">Frequently asked questions</h2><details><summary>Do I need a feature check before setting <code>engine: 'html-in-canvas'</code>?</summary><p>No. In a browser without the API, and on any capture the native engine cannot paint, SnapDOM runs the SVG engine on the same clone and returns the same result object.</p></details><details><summary>Is html-in-canvas faster than the SVG engine?</summary><p>Not today. The native paint waits for a rendering update, about 35 ms on a small card where the SVG engine takes 3. Repeated captures of an unchanged element are served from memory on both engines.</p></details><details><summary>Does it work in Firefox or Safari?</summary><p>They have no implementation of html-in-canvas. The same call gives you the SVG engine there, with the same result object.</p></details><details><summary>Can I get an SVG from an html-in-canvas capture?</summary><p>No. A native capture is a bitmap: <code>url</code> and <code>toRaw()</code> give a PNG data URL, <code>toSvg()</code> returns a PNG-backed image, and an SVG Blob request rejects. Plugins that need the SVG, such as pdf, vector and html-export, make the capture use the SVG engine on their own.</p></details></section>
+    <section class="related"><div class="section-label">Related</div><div class="related-grid"><a class="related-card" href="../../labs/html-in-canvas/">The html-in-canvas lab: every plugin, both engines</a><a class="related-card" href="../html-to-canvas/">Render HTML to Canvas</a><a class="related-card" href="../../docs/options/">Capture options</a><a class="related-card" href="../capture-cross-origin-images/">Capture images without CORS</a></div></section>
+    <section class="cta-section"><div class="cta-card"><h2 id="capture-it-in-the-browser">Capture, modify and convert any element</h2><p>Install SnapDOM and export the DOM to PNG, SVG, PDF or any other format.</p><a href="../../showcase/" class="btn btn-primary">Open the demo</a><a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener">Installation</a></div></section>
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../capture-cross-origin-images/"><span>Previous</span><strong>Capture images without CORS</strong></a><a class="is-next" href="../visual-regression-screenshot/"><span>Next</span><strong>Visual regression</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+  <script type="module">
+    const support = document.getElementById('hicSupport')
+    const card = document.getElementById('hicCard')
+    const hasApi = (() => {
+      try { return typeof document.createElement('canvas').getContext('2d').drawElementImage === 'function' } catch { return false }
+    })()
+    support.className = 'hic-support ' + (hasApi ? 'is-on' : 'is-off')
+    support.textContent = hasApi
+      ? 'This browser has drawElementImage(): the right column will be painted by its own renderer.'
+      : 'This browser has no drawElementImage() (Chrome 157 and newer have it), so both columns will come from the SVG engine. The call is the same.'
+
+    let snapdom
+    try {
+      ({ snapdom } = await import('@zumer/snapdom'))
+    } catch (error) {
+      support.className = 'hic-support is-off'
+      support.textContent = `SnapDOM could not load: ${error.message}`
+    }
+
+    const svgOut = document.getElementById('hicOutSvg'), svgNote = document.getElementById('hicNoteSvg')
+    const nativeOut = document.getElementById('hicOutNative'), nativeNote = document.getElementById('hicNoteNative')
+
+    async function capture(options, out, note) {
+      const start = performance.now()
+      const result = await snapdom(card, { burst: false, ...options })
+      const canvas = await result.toCanvas()
+      const ms = performance.now() - start
+      // A native capture is a bitmap: its raw form is a PNG data URL, an SVG capture's is SVG.
+      const native = result.toRaw().startsWith('data:image/png')
+      out.replaceChildren(canvas)
+      note.textContent = `${native ? 'Painted by html-in-canvas' : 'SVG engine'}, ${ms.toFixed(0)} ms, ${canvas.width}×${canvas.height}px`
+    }
+
+    async function run(button, work) {
+      if (!snapdom) return
+      button.disabled = true
+      try { await work() } catch (error) { nativeNote.textContent = `Capture failed: ${error.message}` } finally { button.disabled = false }
+    }
+
+    document.getElementById('hicCapture').addEventListener('click', ({ currentTarget }) => run(currentTarget, async () => {
+      await capture({}, svgOut, svgNote)
+      await capture({ engine: 'html-in-canvas' }, nativeOut, nativeNote)
+    }))
+
+    // A clone-stage plugin: it edits the clone, and whichever engine paints it paints the edit.
+    const stamp = {
+      name: 'howto-stamp',
+      afterClone({ clone }) {
+        const h = clone.querySelector('h3')
+        if (h) h.textContent = `Settings, captured ${new Date().toLocaleTimeString()}`
+      },
+    }
+    document.getElementById('hicPlugin').addEventListener('click', ({ currentTarget }) => run(currentTarget, async () => {
+      await capture({ engine: 'html-in-canvas', plugins: [stamp] }, nativeOut, nativeNote)
+      nativeNote.textContent += ', title edited by the plugin'
+    }))
+  </script>
+</body>
+</html>

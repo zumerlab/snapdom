@@ -306,17 +306,15 @@ export async function captureDOM(element, options) {
 
   // ——— Render engine ———
   // The clone is finished. Which engine turns it into pixels is the only choice left, and
-  // both take the SAME input. The experimental one is opt-in and quarantined behind a lazy
-  // import; the `typeof` guard is the build switch (esbuild defines __SNAPDOM_CANVAS_ENGINE__
-  // as false for shipped bundles, folding the branch and the module away, while src
-  // consumers — the test suite — leave it undefined and keep it live). On ANY doubt it
-  // returns null and the SVG engine runs on the same clone.
-  // The experimental painter cannot expose its bitmap to render-boundary hooks without
-  // creating a different artifact; those hooks make this capture use the exact SVG path.
+  // both take the SAME input. The canvas one is opt-in (`engine: 'html-in-canvas'`) behind a
+  // lazy import, so a capture that never asks for it never loads it. On ANY doubt (no
+  // drawElementImage, geometry it does not do, a tainted or blank paint) it returns null and
+  // the SVG engine runs on the same clone.
+  // The native painter cannot expose its bitmap to render-boundary hooks without creating a
+  // different artifact; those hooks make this capture use the exact SVG path.
   const hasRenderBoundaryHooks = (state.options.plugins || []).some((plugin) => plugin &&
     (typeof plugin.beforeRender === 'function' || typeof plugin.afterRender === 'function'))
-  if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks &&
-      (typeof __SNAPDOM_CANVAS_ENGINE__ === 'undefined' || __SNAPDOM_CANVAS_ENGINE__)) {
+  if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks) {
     const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
     assembleCaptureCSS(state, fontsCSS)
     const canvas = await tryCanvasEngine(state, state.options)

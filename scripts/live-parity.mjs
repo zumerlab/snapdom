@@ -17,6 +17,9 @@
 // Usage: npm run compile && node scripts/live-parity.mjs [demo-name-substring ...]
 //   BROWSER=chromium|firefox|webkit|all (default all). Writes output/live-parity/report.md,
 //   report.json and, for every demo over the report threshold, <engine>/<demo>.{live,capture,diff}.png.
+//   SNAPDOM_ENGINE=html-in-canvas captures with that engine (BROWSER=chromium, through the
+//   installed Chrome: the bundled Chromium predates the API, Chrome 157) and notes every demo
+//   that fell back to svg, so a row measures the native paint or says it did not run.
 import { createServer } from 'node:http'
 import { readFile, readdir, mkdir, writeFile, rm } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
@@ -165,7 +168,9 @@ async function captureInPage({ target, options }) {
   if (Math.abs(zoom - 1) > 0.01) options = { ...options, scale: zoom }
   const res = await window.snapdom(el, options)
   const canvas = await res.toCanvas()
-  return { url: canvas.toDataURL(), meta: res.meta, rect, backdrop, isBody: el === document.body, rotated, zoom }
+  // A native html-in-canvas capture has a PNG url; an svg one says the engine bailed.
+  const svg = options.engine ? res.url.startsWith('data:image/svg') : false
+  return { url: canvas.toDataURL(), meta: res.meta, rect, backdrop, isBody: el === document.body, rotated, zoom, svg }
 }
 
 function parseRgb(c) { return (c.match(/[\d.]+/g) || ['255', '255', '255']).slice(0, 3).map(Number) }
@@ -243,8 +248,10 @@ function cropPng(src, x, y, w, h, backdrop) {
   return out
 }
 
+const SNAPDOM_ENGINE = process.env.SNAPDOM_ENGINE || null
+
 async function runEngine(name, demos, base) {
-  const browser = await playwright[name].launch()
+  const browser = await playwright[name].launch(SNAPDOM_ENGINE && name === 'chromium' ? { channel: 'chrome' } : {})
   const rows = []
   await mkdir(join(OUT, name), { recursive: true })
   for (const demo of demos) {
@@ -277,8 +284,9 @@ async function runEngine(name, demos, base) {
       await page.addScriptTag({ path: join(ROOT, 'dist/snapdom.js') })
       // The reference first: nothing the capture does can then reach the screenshot.
       const shot = PNG.sync.read(await page.screenshot({ fullPage: true, animations: 'disabled' }))
-      const options = { dpr: 1, scale: 1, embedFonts: true, ...conf.options }
+      const options = { dpr: 1, scale: 1, embedFonts: true, ...(SNAPDOM_ENGINE && { engine: SNAPDOM_ENGINE }), ...conf.options }
       const r = await page.evaluate(captureInPage, { target: conf.target || null, options })
+      if (r.svg) row.svgFallback = true
       const cap = PNG.sync.read(Buffer.from(r.url.split(',')[1], 'base64'))
       const crop = { x: Math.round(r.rect.x), y: Math.round(r.rect.y), width: Math.round(r.rect.width), height: Math.round(r.rect.height) }
       const z = r.zoom && Math.abs(r.zoom - 1) > 0.01 ? r.zoom : 1
@@ -339,12 +347,13 @@ const sorted = [...byDemo.entries()].sort((a, b) => worst(b[1]) - worst(a[1]))
 const cell = (c) => !c ? '' : c.error ? `error: ${c.error}` : `${(100 * c.ratio).toFixed(2)}%`
 const lines = [
   '# Live parity', '',
-  `Capture against the live page, ${new Date().toISOString().slice(0, 10)}. A pixel differs past ${PIXEL_DELTA} in summed channels; images under each engine folder for every demo over ${(100 * REPORT_RATIO).toFixed(1)}%.`, '',
+  `Capture against the live page, ${new Date().toISOString().slice(0, 10)}${SNAPDOM_ENGINE ? `, engine: ${SNAPDOM_ENGINE}` : ''}. A pixel differs past ${PIXEL_DELTA} in summed channels; images under each engine folder for every demo over ${(100 * REPORT_RATIO).toFixed(1)}%.`, '',
   `| demo | ${engines.join(' | ')} | notes |`, `|---|${engines.map(() => '---').join('|')}|---|`,
   ...sorted.map(([demo, cells]) => {
     const any = Object.values(cells)[0] || {}
     const nudged = Object.entries(cells).filter(([, c]) => c.nudged).map(([e, c]) => `${e} ${c.nudged}`)
-    const notes = [any.limit, any.network && 'network', any.rotated && `transformed root, aligned at ${any.offset}`, nudged.length && `1px nudge: ${nudged.join(', ')}`].filter(Boolean).join('; ')
+    const fellBack = Object.entries(cells).filter(([, c]) => c.svgFallback).map(([e]) => e)
+    const notes = [any.limit, any.network && 'network', any.rotated && `transformed root, aligned at ${any.offset}`, nudged.length && `1px nudge: ${nudged.join(', ')}`, fellBack.length && `svg fallback: ${fellBack.join(', ')}`].filter(Boolean).join('; ')
     return `| ${demo} | ${engines.map((e) => cell(cells[e])).join(' | ')} | ${notes} |`
   }),
 ]

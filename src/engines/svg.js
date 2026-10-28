@@ -8,7 +8,7 @@
  * data-URL encoding. Those are the same two halves `stages.js` already names.
  *
  * This is an ENGINE, not core: it is what core does by default, not what core is. The
- * experimental canvas engine (htmlInCanvas.js) is meant to be its peer, consuming the same
+ * html-in-canvas engine (htmlInCanvas.js) is its peer, consuming the same
  * finished clone rather than reaching back to the live page.
  *
  * Also re-entered by burst's differential recapture, which rebuilds only dirty subtrees and

@@ -142,7 +142,7 @@ Safari's SVG image path waits for embedded images and fonts to paint before retu
 
 SnapDOM has two rendering engines. SVG is the default. The second, `html-in-canvas`, paints the same finished clone through the browser's native canvas API; select it with `engine: 'html-in-canvas'`.
 
-The second engine is experimental and still requires a compatible browser with its canvas drawing flag enabled. Include it in the build with `SNAPDOM_CANVAS_ENGINE=1`; the default build includes SVG only. Unsupported captures fall back to SVG.
+It ships in the default build and runs in Chrome 157 and newer, where the browser exposes `drawElementImage` without a flag. Firefox and Safari have no implementation; there, and on any capture it cannot paint, SnapDOM runs the SVG engine on the same clone.
 
 The export table above describes SVG captures. Successful native captures produce a bitmap: `url` and `toRaw()` return PNG data URLs, `toSvg()` and `toImg()` return PNG-backed images, and `toBlob()` defaults to PNG. An explicit SVG Blob request fails because this engine does not serialize SVG.
 

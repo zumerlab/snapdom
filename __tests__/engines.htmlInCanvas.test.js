@@ -1,7 +1,8 @@
-// EXPERIMENTAL engine (engine:'html-in-canvas'): in browsers without drawElement/drawElementImage
-// (all current CI engines), the option must be perfectly transparent — the normal svg
-// pipeline serves the capture. Engine-active behavior is verified separately with a
-// flag-enabled Chromium (the header of src/engines/htmlInCanvas.js has the contract).
+// engine:'html-in-canvas': in browsers without drawElementImage (Firefox, WebKit, and the
+// pinned Playwright Chromium, which predates Chrome 157) the option must be perfectly
+// transparent: the normal svg pipeline serves the capture. The native paint itself is
+// checked by hand in Chrome 157 with scripts/live-parity.mjs (the header of
+// src/engines/htmlInCanvas.js has the contract).
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 import { detectDrawApi, tryCanvasEngine } from '../src/engines/htmlInCanvas.js'
@@ -15,7 +16,7 @@ afterEach(() => {
   document.body.innerHTML = ''
 })
 
-/** Simulate the origin-trial API at the same CanvasRenderingContext2D seam the engine uses.
+/** Simulate the shipped API at the same CanvasRenderingContext2D seam the engine uses.
  *  The callback paints through the real 2D context, so probes, copies and exports remain
  *  browser behavior rather than mocked return values. */
 function stubDrawApi(draw) {
@@ -53,7 +54,7 @@ describe("engine:'html-in-canvas' — unsupported-browser transparency", () => {
   })
 
   it('returns null without the draw API', async () => {
-    if (detectDrawApi()) return // flag-enabled environment: covered by the harness instead
+    if (detectDrawApi()) return // a Chromium with the API: covered by live parity instead
     const el = makeCard()
     const state = { element: el, clone: el.cloneNode(true) }
     expect(await tryCanvasEngine(state, createContext({}))).toBeNull()
@@ -233,7 +234,8 @@ describe("engine:'html-in-canvas' — simulated native happy path", () => {
       else delete proto.requestPaint
     }
     expect(requested).toBe(0)
-    // `layoutsubtree` is what Chrome 155 checks; `content="drawable"` is the explainer's name.
+    // `content="drawable"` is the shipped name; `layoutsubtree` is what the trial builds through
+    // Chrome 155 check.
     expect(mount.hasAttribute('layoutsubtree')).toBe(true)
     expect(mount.getAttribute('content')).toBe('drawable')
   })
@@ -297,8 +299,8 @@ describe("engine:'html-in-canvas' — simulated native happy path", () => {
     expect(pixel[0]).toBeGreaterThan(150)
   })
 
-  it('turns an exception from the experimental API into an SVG fallback', async () => {
-    stubDrawApi(function () { throw new Error('experimental API rejected drawable') })
+  it('turns an exception from the draw API into an SVG fallback', async () => {
+    stubDrawApi(function () { throw new Error('draw API rejected drawable') })
     const result = await snapdom(makeCard(), { engine: 'html-in-canvas', burst: false })
     expect(result.url).toMatch(/^data:image\/svg\+xml/)
   })

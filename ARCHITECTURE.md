@@ -42,10 +42,12 @@ through the browser's native canvas API. Its successful artifact is a raster can
 no serialized SVG. Unsupported geometry, unavailable/unsafe native paint, or render-boundary
 plugin hooks fall back to SVG on the same frozen clone.
 
-`html-in-canvas` remains experimental. It needs a compatible browser with its canvas drawing
-flag enabled, a build compiled with `SNAPDOM_CANVAS_ENGINE=1`, and the capture option
-`engine: 'html-in-canvas'`. The default build includes SVG only. To test both engines against
-the local development version, run `SNAPDOM_CANVAS_ENGINE=1 npm run site`.
+`html-in-canvas` ships in the default build and is opt-in per capture with
+`engine: 'html-in-canvas'`. It runs where the browser exposes `drawElementImage`: Chrome 157
+and newer without a flag; Firefox and Safari have no implementation and land in SVG. It is not
+the default because the native paint waits for a rendering update and is slower than SVG on
+every measured scene (BENCHMARKS.md). To compare both engines against the local development
+version, run `npm run site` in a Chrome 157 or newer.
 
 ## PNG and JPEG files beyond canvas limits
 

@@ -181,9 +181,9 @@ The built-in mask without custom selectors permits reuse of unchanged captures. 
 masks and nonempty `selector`, `blocks` or `attributes` rules run on every capture. Changed
 content runs the full pipeline so no field skips redaction.
 
-Nonempty `blocks` or `attributes` rules add a final `beforeRender` pass. In builds with the
-experimental `engine: 'html-in-canvas'` enabled, that pass makes the capture use the SVG
-renderer. Field-only redaction does not add this pass.
+Nonempty `blocks` or `attributes` rules add a final `beforeRender` pass, which makes a capture
+requested with `engine: 'html-in-canvas'` use the SVG renderer. Field-only redaction does not
+add this pass.
 
 `agent-map` and `context-export` omit sensitive values and mask other typed values in their
 structured state fields. Ordinary page text and labels remain. An attached image still

@@ -142,7 +142,7 @@ Safari 的 SVG 图片路径会等待嵌入图片和字体完成绘制，再返�
 
 SnapDOM 有两个渲染引擎，默认使用 SVG。第二个引擎 `html-in-canvas` 通过浏览器原生 Canvas API 绘制同一份已完成处理的克隆；使用 `engine: 'html-in-canvas'` 选择它。
 
-第二个引擎仍处于实验阶段，需要兼容的浏览器开启 Canvas 绘制标志。通过 `SNAPDOM_CANVAS_ENGINE=1` 将它包含在构建中；默认构建只包含 SVG。不支持的捕获会回退到 SVG。
+它包含在默认构建中，在 Chrome 157 及更新版本中运行，浏览器无需开启标志即可提供 `drawElementImage`。Firefox 和 Safari 没有实现；在这些浏览器中以及任何它无法绘制的捕获上，SnapDOM 会在同一份克隆上运行 SVG 引擎。
 
 上面的导出表针对 SVG 捕获。成功的原生捕获生成位图：`url` 和 `toRaw()` 返回 PNG 数据 URL，`toSvg()` 和 `toImg()` 返回以 PNG 为源的图片，`toBlob()` 默认返回 PNG。显式请求 SVG Blob 会失败，因为该引擎不序列化 SVG。
 

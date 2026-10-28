@@ -7,10 +7,10 @@ const sandbox = { $: jquery }
 sandbox.window = sandbox
 const before = new Set(Object.getOwnPropertyNames(sandbox))
 
-vm.runInNewContext(
-  readFileSync(new URL('../dist/snapdom.js', import.meta.url), 'utf8'),
-  sandbox
-)
+const bundle = readFileSync(new URL('../dist/snapdom.js', import.meta.url), 'utf8')
+// The html-in-canvas engine ships in the default build; a define kept it out through 3.5.0.
+assert.match(bundle, /drawElementImage/, 'dist/snapdom.js left out the html-in-canvas engine')
+vm.runInNewContext(bundle, sandbox)
 
 assert.equal(sandbox.$, jquery, 'dist/snapdom.js overwrote window.$')
 assert.equal(typeof sandbox.snapdom, 'function', 'window.snapdom is not a function')

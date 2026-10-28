@@ -1,5 +1,5 @@
 // Compare the two real engines, with identical output stages and isolated module caches.
-// Terminal 1: SNAPDOM_CANVAS_ENGINE=1 npm run site
+// Terminal 1: npm run site
 // Terminal 2: node scripts/engine-bench.mjs [samples=15] [rounds=2]
 // Chrome must be installed. The browser feature is enabled only in this test process.
 // No production hooks or source instrumentation. The rendered result URL descriptor

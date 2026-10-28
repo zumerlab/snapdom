@@ -29,7 +29,7 @@
     "mainEntityOfPage": "https://snapdom.dev/blog/snapdom-v3/",
     "image": "https://snapdom.dev/assets/og-card.jpg",
     "datePublished": "2026-09-14",
-    "dateModified": "2026-10-24",
+    "dateModified": "2026-10-28",
     "author": { "@type": "Person", "name": "Juan Martin Muda", "url": "https://github.com/tinchox5" },
     "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://zumerlab.com" }
   }
@@ -115,7 +115,8 @@ button.addEventListener('click', () =&gt;
         <p>The official <code>@zumer/snapdom-plugins</code> package is on v3 as well: HTML exports, text and JSON context, annotated element maps, image-based PDFs, image effects, and GIF or video recording. Match its major version to the core when you upgrade. Recording exports take new frames from the live element when recording starts.</p>
         <p><em>Update, October 2026: the plugins moved to 4.x, which requires SnapDOM 3.3.0 or newer, and now include a paginated <a href="../../plugins/pdf/">PDF exporter</a> with selectable text and an editable <a href="../../plugins/vector/">Vector exporter</a>.</em></p>
         <p>Plugins also receive capture geometry, the exact export options and canvas cropping support, for exports that must line up with the source interface or share a crop with a core exporter. Examples in the <a href="../../showcase/#plugins">plugin gallery</a>; hooks and custom exports in the <a href="../../docs/plugins/">plugin reference</a>.</p>
-        <p>The default renderer is still SVG. The experimental native <code>html-in-canvas</code> engine needs a compatible browser and a custom build and is left out of the standard bundle.</p>
+        <p>The default renderer is still SVG. The native <code>html-in-canvas</code> engine needs a compatible browser and a custom build and is left out of the standard bundle.</p>
+        <p><em>Update, October 2026: Chrome 157 ships html-in-canvas without a flag, and the engine is now part of the default build. <code>engine: 'html-in-canvas'</code> paints the capture with Chrome's own renderer there and falls back to SVG everywhere else; <a href="../../how-to/html-in-canvas/">the guide</a> says when to use it.</em></p>
       </section>
 
       <section class="prose" aria-labelledby="site-and-comparison">

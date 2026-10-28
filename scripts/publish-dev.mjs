@@ -11,10 +11,9 @@
  *   npm run publish:dev               3.0.1-dev.0
  *   npm run publish:dev -- 3.1.0      3.1.0-dev.0, when the next release is a minor
  *   npm run publish:dev -- --dry-run  everything except the upload
- *   SNAPDOM_CANVAS_ENGINE=1 npm run publish:dev   3.0.1-canvas.0 under the `canvas` tag
  *
- * The last form is a build with the experimental html-in-canvas engine compiled in (the flag
- * reaches esbuild through prepack). It gets its own line so `@dev` never ships that engine.
+ * The `canvas` dist-tag (3.x-canvas.n, the html-in-canvas engine compiled in behind a flag)
+ * is history: the engine ships in every build since Chrome 157 exposes the API unflagged.
  *
  * It refuses uncommitted changes, since the tarball would not be the commit it reports (a dry
  * run skips that check), and it runs scripts/check-pack.mjs first, so a dev build cannot ship a package whose
@@ -41,7 +40,7 @@ const lock = readFileSync('package-lock.json', 'utf8')
 const pkg = JSON.parse(manifest)
 const [major, minor, patch] = pkg.version.split('-')[0].split('.').map(Number)
 const base = baseArg || `${major}.${minor}.${patch + 1}`
-const tag = process.env.SNAPDOM_CANVAS_ENGINE === '1' ? 'canvas' : 'dev'
+const tag = 'dev'
 
 // The next free <n> for this base, from what the registry already holds.
 const devOf = new RegExp(`^${base.replace(/\./g, '\\.')}-${tag}\\.(\\d+)$`)

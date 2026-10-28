@@ -1,12 +1,12 @@
 # SnapDOM: v3 reference
 
-Last updated: 2026-10-05.
+Last updated: 2026-10-28.
 
 SnapDOM (`@zumer/snapdom`) is a high-performance DOM engine that captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into PDF, HTML, editable vector, GIF, video or context for agents. Zero runtime dependencies; about one release a week.
 
 It captures a DOM subtree, its computed styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, searchable, paginated PDFs and editable vector artwork and recordings.
 
-SnapDOM has two integrated render engines: `svg` (default) and experimental `html-in-canvas`. Both receive the same finished clone; the second uses the browser's native painter and falls back to SVG when unavailable or unsuitable for the capture.
+SnapDOM has two integrated render engines: `svg` (default) and `html-in-canvas`. Both receive the same finished clone; the second uses the browser's native painter (Chrome 157 and newer) and falls back to SVG when unavailable or unsuitable for the capture.
 
 Package: `@zumer/snapdom`. License: MIT. Source: https://github.com/zumerlab/snapdom. Documentation: https://snapdom.dev/docs/.
 
@@ -145,7 +145,7 @@ Examples of plugin helpers are `toHtml()`, `toContext()` and `toAgentMap()`.
 
 ### Choosing an engine
 
-Set `engine: 'html-in-canvas'` to request the second integrated engine. It still requires the browser's experimental feature flag or applicable origin trial; supported Chrome builds expose it through `chrome://flags/#canvas-draw-element`. It also needs a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`, published as `@zumer/snapdom@canvas`. A plugin with a `beforeRender` or `afterRender` hook (html-export, pdf, vector, and redact-inputs with `blocks` or `attributes`) sends the capture to SVG; the other official plugins run on the native engine. The default build currently omits it; this is separate from whether the browser exposes `drawElementImage` or its earlier `drawElement` API.
+Set `engine: 'html-in-canvas'` to request the second integrated engine. It runs where the browser exposes `drawElementImage()`: Chrome 157 and newer, without a flag. Firefox and Safari have no implementation and get the SVG engine from the same call. A plugin with a `beforeRender` or `afterRender` hook (html-export, pdf, vector, and redact-inputs with `blocks` or `attributes`) sends the capture to SVG; the other official plugins run on the native engine. SVG stays the default because it is faster: the native paint waits for a rendering update, about 35 ms on a small card where SVG takes 3. Pick html-in-canvas for captures with native form controls or scrollbars that must look exactly like the page. Guide: https://snapdom.dev/how-to/html-in-canvas/
 
 ```js
 const capture = await snapdom(element, { engine: 'html-in-canvas' });
@@ -247,7 +247,7 @@ Export methods accept relevant overrides, such as size, background and quality. 
 | `cache` | `'soft'` | Persistent resource/style cache policy; disabled/false clears and bypasses it; legacy auto/full normalize to soft |
 | `invalidate: boolean` | `false` | Force one fresh capture and clear style snapshots after otherwise unobservable changes |
 | `plugins: PluginUse[]` | unset | Per-capture plugin definitions; override globals by name |
-| `engine` | `'svg'` | Select `'svg'` or experimental `'html-in-canvas'`; native use requires the browser feature and build flag described above |
+| `engine` | `'svg'` | Select `'svg'` or `'html-in-canvas'` (Chrome 157+, SVG fallback elsewhere; see Choosing an engine) |
 | `debug: boolean` | `false` | Log fallbacks and errors to the console; off, SnapDOM logs nothing and `warnings` carries the degradations |
 
 Root `blur()` remains visible and its bleed is included even with `outerShadows: false`. Explicit clip edges do not expand. Descendant transforms remain part of the capture.
@@ -425,7 +425,7 @@ The live page stays unchanged. Field selection uses `types` (default email/tel),
 
 HTML uses the sanitized clone. `agentMap` and `contextExport` share the field, block and attribute policy for source-derived data, regardless of official plugin order. Existing default field masks still apply when you add block or attribute rules.
 
-Custom masks and nonempty `selector`, `blocks` or `attributes` rules disable unchanged-capture memoization, so they run on every capture. Nonempty block or attribute rules add a final `beforeRender` pass; the experimental `engine: 'html-in-canvas'` then falls back to SVG. Field-only redaction does not add that pass. Full plugin options: https://github.com/zumerlab/snapdom/blob/main/packages/plugins/README.md#redact-inputs.
+Custom masks and nonempty `selector`, `blocks` or `attributes` rules disable unchanged-capture memoization, so they run on every capture. Nonempty block or attribute rules add a final `beforeRender` pass; `engine: 'html-in-canvas'` then falls back to SVG. Field-only redaction does not add that pass. Full plugin options: https://github.com/zumerlab/snapdom/blob/main/packages/plugins/README.md#redact-inputs.
 
 ### HTML and structured context
 

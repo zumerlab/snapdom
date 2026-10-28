@@ -226,15 +226,18 @@ export interface SnapdomOptions {
   excludeStyleProps?: RegExp | ((prop: string) => boolean);
 
   /**
-   * Renderer: 'svg' by default. The second engine, 'html-in-canvas', is EXPERIMENTAL and
-   * requires a build with SNAPDOM_CANVAS_ENGINE=1. It renders through the WICG html-in-canvas
-   * API (ctx.drawElementImage — Chrome 148+ origin trial / chrome://flags/#canvas-draw-element)
-   * when available, using the browser's own painter (native form controls, no svg-as-image
-   * quirks). Falls back silently to the svg pipeline whenever unsupported/not applicable,
-   * including captures with beforeRender/afterRender plugin hooks. Successful native-engine
-   * results expose raster exports; reading `.url` or calling `toRaw()` synchronously
-   * materializes and memoizes a PNG data URL, while `toSvg()`/`toImg()` return an image
-   * backed by a PNG encoding of the bitmap. There is no serialized SVG.
+   * Renderer: 'svg' by default. The second engine, 'html-in-canvas', paints the same finished
+   * clone through the WICG html-in-canvas API (ctx.drawElementImage, shipped unflagged in
+   * Chrome 157; no Firefox or Safari implementation) with the browser's own painter: native
+   * form controls and scrollbars, no svg-as-image quirks. It falls back silently to the svg
+   * pipeline wherever the API is missing or the capture is not applicable (body/html roots,
+   * transformed or zoomed ancestors, clip, width/height, outerShadows, and captures with
+   * beforeRender/afterRender plugin hooks), so the same call works in every browser. It is
+   * not the default because the native paint waits for a rendering update (about 35 ms on a
+   * small card, where svg takes 3). Successful native-engine results expose raster exports;
+   * reading `.url` or calling `toRaw()` synchronously materializes and memoizes a PNG data
+   * URL, while `toSvg()`/`toImg()` return an image backed by a PNG encoding of the bitmap.
+   * There is no serialized SVG.
    */
   engine?: 'svg' | 'html-in-canvas';
 

@@ -302,7 +302,7 @@ Image compression and resource caching remain automatic. They do not make raster
 
 SnapDOM has two rendering engines: **SVG**, the default, and **html-in-canvas**, which paints the same captured clone through the browser's native canvas API. Select the second with `engine: 'html-in-canvas'`.
 
-The second engine is experimental: it still needs a compatible browser with its canvas drawing flag enabled, plus a build compiled with `SNAPDOM_CANVAS_ENGINE=1`, published as `npm install @zumer/snapdom@canvas`. The default build includes SVG only. Unsupported captures fall back to SVG, and so do captures with a plugin that has a `beforeRender` or `afterRender` hook (html-export, pdf, vector, and redact-inputs with `blocks` or `attributes`); every other official plugin runs on the native engine. A successful native capture produces a bitmap, so its URL and `toRaw()` return PNG, not serialized SVG. See [ARCHITECTURE.md](ARCHITECTURE.md) for details.
+The second engine ships in the default build and runs where the browser has the API: Chrome 157 and newer, without a flag. Firefox and Safari have no implementation, so there, and on any capture it cannot paint, SnapDOM runs the SVG engine on the same clone and you get the same result object. Captures of `body` or `html`, transformed or zoomed roots, `clip`, `width`/`height` and `outerShadows` use SVG, and so do captures with a plugin that has a `beforeRender` or `afterRender` hook (html-export, pdf, vector, and redact-inputs with `blocks` or `attributes`); every other official plugin runs on the native engine. A successful native capture produces a bitmap, so its URL and `toRaw()` return PNG, not serialized SVG. SVG stays the default because it is faster (the native paint waits for a rendering update, about 35 ms on a small card where SVG takes 3, see [BENCHMARKS.md](BENCHMARKS.md)); pick html-in-canvas when the capture has native form controls or scrollbars that must look exactly like the page. See [ARCHITECTURE.md](ARCHITECTURE.md) and [the guide](https://snapdom.dev/how-to/html-in-canvas/).
 
 ## Migrating from v2
 
@@ -321,7 +321,7 @@ The main capture pattern remains `snapdom(element, options)`. This guide compare
 | `resolvePicturePlaceholders` / `pictureResolver` configured lazy-image preparation | Responsive/lazy image resolution happens on the clone; these options are no longer documented or supported | Remove the options and handle custom loading/timeouts in your app before capture; the engine still reads `resolvePicturePlaceholders` for internal use, do not rely on it |
 | Some visible input values were redacted | Core masks passwords only | Add `redactInputs()` for other fields |
 | `afterExport` returns became the next hook's payload, not the caller's result | Returns are ignored; hooks receive the same export payload | Stop chaining through return values; use `defineExports` to produce a different output |
-| Plugins v2.x.x exposed `@zumer/snapdom-plugins/html-in-canvas` | That subpath is removed | Use the experimental core `engine: 'html-in-canvas'` with a compatible custom build; the default build uses SVG |
+| Plugins v2.x.x exposed `@zumer/snapdom-plugins/html-in-canvas` | That subpath is removed | Use the core option `engine: 'html-in-canvas'`; browsers without the API get SVG |
 | TypeScript exported `PluginExportFacade` | The named type is removed; `ctx.exports` still provides core exporters | Infer it in `defineExports`, or use `NonNullable<CaptureContext['exports']>` |
 
 ### Use filter and exclude together

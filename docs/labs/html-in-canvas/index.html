@@ -1,23 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@canvas/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@canvas/dist/snapdom.mjs"}}</script>
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>html-in-canvas: the browser paints the capture | SnapDOM Labs</title>
-  <meta name="description" content="SnapDOM's experimental second engine: the same captured clone, painted by Chrome's own renderer through the html-in-canvas drawElementImage API. Try it, compare it with the SVG engine and check which plugins it runs." />
+  <meta name="description" content="SnapDOM's second engine: the same captured clone, painted by Chrome's own renderer through the html-in-canvas drawElementImage API, shipped in Chrome 157. Try it, compare it with the SVG engine and check which plugins it runs." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/html-in-canvas/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
   <meta property="og:title" content="html-in-canvas: the browser paints the capture" />
-  <meta property="og:description" content="SnapDOM's experimental engine paints the captured clone with Chrome's own renderer. Compare it with the SVG engine and check which plugins it runs." />
+  <meta property="og:description" content="SnapDOM's second engine paints the captured clone with Chrome's own renderer. Compare it with the SVG engine and check which plugins it runs." />
   <meta property="og:url" content="https://snapdom.dev/labs/html-in-canvas/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"html-in-canvas: the browser paints the capture","description":"SnapDOM's experimental second engine: the same captured clone, painted by Chrome's own renderer through the html-in-canvas drawElementImage API.","url":"https://snapdom.dev/labs/html-in-canvas/","image":"https://snapdom.dev/assets/og-card.jpg","author":{"@type":"Organization","name":"Zumerlab"},"publisher":{"@type":"Organization","name":"Zumerlab","url":"https://snapdom.dev"},"mainEntityOfPage":"https://snapdom.dev/labs/html-in-canvas/"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"html-in-canvas: the browser paints the capture","description":"SnapDOM's second engine: the same captured clone, painted by Chrome's own renderer through the html-in-canvas drawElementImage API, shipped in Chrome 157.","url":"https://snapdom.dev/labs/html-in-canvas/","image":"https://snapdom.dev/assets/og-card.jpg","author":{"@type":"Organization","name":"Zumerlab"},"publisher":{"@type":"Organization","name":"Zumerlab","url":"https://snapdom.dev"},"mainEntityOfPage":"https://snapdom.dev/labs/html-in-canvas/"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"html-in-canvas","item":"https://snapdom.dev/labs/html-in-canvas/"}]}</script>
   <style>
     .lab-hic { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
@@ -59,7 +59,7 @@
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>html-in-canvas</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>The browser paints <span class="accent">the capture</span></h1><p class="doc-lead">SnapDOM's second engine hands the captured clone to Chrome's own renderer through the html-in-canvas API. Compare it with the SVG engine and see which plugins run on it.</p></header>
 <div class="pane-content"><!-- content -->
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p><code>snapdom(el, { engine: 'html-in-canvas' })</code> paints the clone SnapDOM already built, styles resolved and images and fonts inlined, with Chrome's own renderer instead of an SVG image. It needs the <code>@canvas</code> build and a Chrome with html-in-canvas turned on. Anywhere else, or on a capture this engine cannot paint, SnapDOM uses the SVG engine and you get the same result object.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p><code>snapdom(el, { engine: 'html-in-canvas' })</code> paints the clone SnapDOM already built, styles resolved and images and fonts inlined, with Chrome's own renderer instead of an SVG image. It runs in Chrome 157 and newer, where the API ships without a flag. Anywhere else, or on a capture this engine cannot paint, SnapDOM uses the SVG engine and you get the same result object. <a href="../../how-to/html-in-canvas/">The guide</a> explains when to pick it and what SnapDOM adds on top of the raw API.</p></div>
 
     <section class="prose">
       <h2 id="try-it">Try it</h2>
@@ -123,7 +123,7 @@
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
         <li><h4 aria-level="3">The same clone</h4><p>Everything up to the render is the normal pipeline: computed styles become classes, pseudo-elements become real nodes, images and fonts become data URLs, and clone plugins run. The engine choice comes after all of that.</p></li>
-        <li><h4 aria-level="3">A mount the browser can paint</h4><p>The clone goes into a shadow root under <code>&lt;canvas layoutsubtree content="drawable"&gt;</code>, behind the page. Chrome lays it out like any element, with the page's own form controls, scrollbars and text shaping.</p></li>
+        <li><h4 aria-level="3">A mount the browser can paint</h4><p>The clone goes into a shadow root under <code>&lt;canvas content="drawable"&gt;</code>, behind the page. Chrome lays it out like any element, with the page's own form controls, scrollbars and text shaping.</p></li>
         <li><h4 aria-level="3">Two frames, one draw</h4><p>After one full rendering update the browser holds a snapshot of the mount, and <code>drawElementImage()</code> paints it at your <code>scale</code> and <code>dpr</code>. A blank or unreadable result sends the capture to the SVG engine instead.</p></li>
         <li><h4 aria-level="3">The bitmap goes straight to the exports</h4><p><code>toCanvas()</code>, <code>toPng()</code> and the rest draw from the painted canvas. <code>result.url</code> is a PNG data URL, made the first time you read it.</p></li>
       </ol>
@@ -131,23 +131,24 @@
 
     <section class="prose">
       <h2 id="copy-paste-example">Copy-paste example</h2>
-<pre><code class="language-bash">npm install @zumer/snapdom@canvas</code></pre>
+<pre><code class="language-bash">npm install @zumer/snapdom</code></pre>
 <pre><code class="language-javascript">import { snapdom } from '@zumer/snapdom'
 
 const result = await snapdom(document.querySelector('#card'), { engine: 'html-in-canvas' })
 const png = await result.toPng()</code></pre>
-      <p>The default build leaves this engine out, so the same option there always gives you the SVG engine. Nothing else changes: the options, the result object and the plugins are the ones you already use.</p>
+      <p>The engine is part of the default build. In a browser without the API the same option gives you the SVG engine, so you can leave it on without a feature check. Nothing else changes: the options, the result object and the plugins are the ones you already use.</p>
     </section>
 
     <section class="prose">
       <h2 id="what-stays-on-svg">What stays on the SVG engine</h2>
       <p>This engine paints one plain element box. Captures of <code>body</code> or <code>html</code>, a scrolled root, a root or ancestor with a transform or <code>zoom</code>, a root with a <code>filter</code>, and the <code>outerShadows</code>, <code>clip</code>, <code>width</code> and <code>height</code> options all go through SVG, where that geometry is handled. So do captures in browsers without the API.</p>
-      <p>html-in-canvas is a WICG proposal. Chrome ships it behind <code>chrome://flags/#canvas-draw-element</code> and in an origin trial through Chrome 160, and the API is still moving: the canvas attribute was renamed in Chrome 155, which is why SnapDOM sets both names.</p>
+      <p>html-in-canvas is a WICG specification. Chrome 157 ships it without a flag; before that it was an origin trial and <code>chrome://flags/#canvas-draw-element</code>, and Chromium browsers still on those builds want the older <code>layoutsubtree</code> canvas attribute, which is why SnapDOM sets both names. Firefox and Safari have no implementation, so there every capture uses the SVG engine.</p>
     </section>
 
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
+        <a class="related-card" href="../../how-to/html-in-canvas/">The guide: when to use this engine, and what SnapDOM adds to the raw API</a>
         <a class="related-card" href="../capture-stages/">Capture stages: what happens before the render</a>
         <a class="related-card" href="../../showcase/#plugins">Every plugin, live</a>
         <a class="related-card" href="https://github.com/zumerlab/snapdom/issues/172">Issue #172: the html-in-canvas experiment</a>
@@ -171,14 +172,14 @@ const png = await result.toPng()</code></pre>
     support.className = 'hic-support ' + (drawApi ? 'is-on' : 'is-off')
     support.textContent = drawApi
       ? 'This browser can paint with html-in-canvas.'
-      : 'This browser has no html-in-canvas API, so both columns will come from the SVG engine. In Chrome, turn on chrome://flags/#canvas-draw-element and reload.'
+      : 'This browser has no html-in-canvas API, so both columns will come from the SVG engine. Chrome 157 and newer have it; Firefox and Safari do not.'
 
     let snapdom
     try {
       ({ snapdom } = await import('@zumer/snapdom'))
     } catch (error) {
       support.className = 'hic-support is-off'
-      support.textContent = `The @canvas build could not load: ${error.message}`
+      support.textContent = `SnapDOM could not load: ${error.message}`
     }
 
     // Count native paints without changing them: the only reliable answer to "which engine ran".

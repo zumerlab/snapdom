@@ -1,12 +1,12 @@
 # SnapDOM
 
-Last updated: 2026-10-24. Updated with each release. Full reference: https://snapdom.dev/llms-full.txt
+Last updated: 2026-10-28. Updated with each release. Full reference: https://snapdom.dev/llms-full.txt
 
 > SnapDOM (`@zumer/snapdom`) is a high-performance DOM engine that captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into PDF, HTML, editable vector, GIF, video or context for agents. Zero runtime dependencies; about one release a week.
 
 SnapDOM (`@zumer/snapdom`) captures a DOM subtree, its styles and its assets into a reusable result. The core exports SVG, PNG, JPG, WebP, canvas and blobs, and reports capture geometry. Plugins add HTML, text or JSON context, annotated element maps, searchable, paginated PDFs and editable vector artwork and recordings.
 
-Two integrated engines render the same finished clone: `svg` (default) serializes it, while experimental `html-in-canvas` paints it through the browser's native API. The second engine still needs the browser feature flag or applicable origin trial (supported Chrome builds: `chrome://flags/#canvas-draw-element`) and a build compiled with `SNAPDOM_CANVAS_ENGINE=1 npm run compile`, published as `@zumer/snapdom@canvas`; the default build currently omits it. Unsupported captures fall back to SVG.
+Two integrated engines render the same finished clone: `svg` (default) serializes it, while `html-in-canvas` paints it through the browser's native `drawElementImage()` API, which Chrome 157 ships without a flag. Firefox and Safari have no implementation; there, and on any capture the native engine cannot paint, SnapDOM runs the SVG engine on the same clone. SVG is the default because it is faster (the native paint waits for a rendering update). Guide: https://snapdom.dev/how-to/html-in-canvas/
 
 This reference describes SnapDOM v3.x.x. See the [installation notes](https://github.com/zumerlab/snapdom#installation). Older projects can use the [preserved v2 branch](https://github.com/zumerlab/snapdom/tree/v2).
 
@@ -102,7 +102,7 @@ With `engine: 'svg'`, `url` and synchronous `result.toRaw()` return the serializ
 - `backgroundColor`: transparent by default; JPEG and WebP exports default to white.
 - `quality`: JPEG/WebP quality, default `0.92`.
 - `format`: canonical format field. The normal default is PNG; `toBlob()` has the engine-dependent default above. `type` is a deprecated alias.
-- `engine`: `'svg'` (default) or experimental `'html-in-canvas'`, subject to the browser/build requirements above.
+- `engine`: `'svg'` (default) or `'html-in-canvas'` (Chrome 157+; SVG fallback elsewhere, see above).
 - `exclude`: selector, synchronous predicate returning true to exclude, or an array mixing both. Any matching rule excludes the node. `excludeMode: 'hide'` preserves layout with an invisible spacer; `'remove'` drops the node.
 - `filter`: independent inclusion predicate; true keeps a node, false filters it out. `filterMode` independently selects `'hide'` (default) or `'remove'`. It can be used with `exclude` in the same capture.
 - `clip`: `'viewport'` or a rectangle in page coordinates; prunes outside subtrees before capture work. Export-level canvas `crop` uses capture viewBox coordinates instead.

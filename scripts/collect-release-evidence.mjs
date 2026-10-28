@@ -212,7 +212,7 @@ export function collectReleaseEvidence(options) {
     environment: { node: process.version, npm: optionalVersion('npm', ['--version']), platform: platform(),
       architecture: arch(), release: release(), macOS: platform() === 'darwin' ? optionalVersion('sw_vers', []) : null,
       installed, browserVersionEvidence: 'Bundled revisions are in inputs/playwright-browsers.json; actual launches belong in supplied validation logs.',
-      validationFlags: Object.fromEntries(['BROWSER', 'REQUIRE_VISUAL', 'VITE_UPDATE_VISUAL', 'UPDATE_VISUAL', 'SNAPDOM_CANVAS_ENGINE', 'NETWORK_GATE']
+      validationFlags: Object.fromEntries(['BROWSER', 'REQUIRE_VISUAL', 'VITE_UPDATE_VISUAL', 'UPDATE_VISUAL', 'NETWORK_GATE']
         .map(name => [name, process.env[name] ?? null])) },
     baselines: { count: baselines.length, approvalReference: options.baselineApproval || null },
     visualInputs: { demosPerBrowser: demos.length, count: visualInputs.length, includedLocalInputs: selectedVisualInputs },

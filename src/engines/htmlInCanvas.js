@@ -1,8 +1,7 @@
 /**
- * EXPERIMENTAL render engine: WICG html-in-canvas (`ctx.drawElementImage`, Chrome 148+
- * origin trial / chrome://flags/#canvas-draw-element; the M138-era dev trial shipped the
- * same thing as `drawElement`). Paints with the browser's OWN painter, so native form
- * controls come out right and none of the svg-as-image quirks apply.
+ * Second render engine: WICG html-in-canvas (`ctx.drawElementImage`), opt-in through
+ * `engine: 'html-in-canvas'`. Paints with the browser's OWN painter, so native form controls
+ * come out right and none of the svg-as-image quirks apply.
  *
  * IT IS A PEER OF engines/svg.js. Both take the SAME input, the finished clone, and differ
  * only in how they turn it into pixels. That is the whole reason this belongs to snapdom
@@ -12,29 +11,35 @@
  * exclude and reconcile: it skipped the passes that implement them. Now it mounts the clone
  * core hands it, with the CSS core assembled, so those features come for free.
  *
- * QUARANTINE CONTRACT (this feature is green): everything lives in src/engines/ — core's
- * only knowledge is a lazy-import seam in captureDOM behind the opt-in `engine: 'html-in-canvas'`
- * option. On ANY doubt (API missing, unsupported options, tainted or blank paint) it
- * returns null and the caller runs the SVG engine. Correctness never depends on this module.
+ * CONTRACT WITH CORE: everything lives in src/engines/; core's only knowledge is the
+ * lazy-import seam in captureDOM behind the opt-in option. On ANY doubt (API missing,
+ * unsupported options, tainted or blank paint) it returns null and the caller runs the SVG
+ * engine on the same clone. Correctness never depends on this module. It is opt-in, not the
+ * default, on the speed goal: the native paint waits for a rendering update, about 35 ms on
+ * a card where the svg engine takes 3 (BENCHMARKS.md, "SVG vs html-in-canvas"); it is the
+ * fidelity engine for native controls and scrollbars, not the fast one.
  *
- * PLATFORM STATUS. First verified in real Chrome 148 (2026-09-03); on 2026-10-26, in
- * Chrome 155 with chrome://flags/#canvas-draw-element, live parity (scripts/live-parity.mjs
+ * PLATFORM STATUS. Chrome 157 ships the API without a flag (developer.chrome.com/blog/
+ * html-in-canvas; MDN BCD marks `drawElementImage`, `content="drawable"`, `drawable` and
+ * `requestPaint` stable in 157). Firefox and WebKit have no implementation, so there every
+ * capture lands in the svg engine through `detectDrawApi`. Before 157 it was an origin
+ * trial (M148 to M160) and chrome://flags/#canvas-draw-element: first verified in real
+ * Chrome 148 (2026-09-03); on 2026-10-26, in Chrome 155, live parity (scripts/live-parity.mjs
  * against the page's own screenshot) put every demo this engine accepts at or below the svg
- * engine's mismatch. The origin trial was approved for M148-M151 and extended through M160
- * (developer.chrome.com/blog/html-in-canvas-ot-changes). The spec model is "read-back-allowed
- * rendering": sensitive content (cross-origin iframes/images/url() refs, :visited, system
- * colors, IME, subpixel AA) is left out of the paint instead of tainting the canvas. That is
- * why this engine draws the FINISHED CLONE and not the live element: the pipeline has
- * already inlined cross-origin images and fonts into it, so nothing in it is withheld. The
- * taint probe below stays as the safety net for anything the spec still withholds.
+ * engine's mismatch. The spec model is "read-back-allowed rendering": sensitive content
+ * (cross-origin iframes/images/url() refs, :visited, system colors, IME, subpixel AA) is
+ * left out of the paint instead of tainting the canvas. That is why this engine draws the
+ * FINISHED CLONE and not the live element: the pipeline has already inlined cross-origin
+ * images and fonts into it, so nothing in it is withheld. The taint probe below stays as
+ * the safety net for anything the spec still withholds.
  *
  * Contract this module follows: `drawable` on the drawn element, and on the canvas both
- * `layoutsubtree` (what Chrome 155 still requires) and `content="drawable"` (its name in the
- * explainer since 2026-09-16). Snapshots are recorded on every rendering update, so one
- * update after the mount is the sync point. `canvas.requestPaint()` is never called: in Chrome 155
- * a removed canvas that had requested a paint crashed the renderer at the next iframe
- * created in the page, and the svg engine's `toCanvas` creates one for every decode
- * (2026-10-26).
+ * `content="drawable"` (the shipped name) and `layoutsubtree` (what the trial builds
+ * through Chrome 155, and Chromium forks still on them, check). Snapshots are recorded on
+ * every rendering update, so one update after the mount is the sync point.
+ * `canvas.requestPaint()` is never called: in Chrome 155 a removed canvas that had
+ * requested a paint crashed the renderer at the next iframe created in the page, and the
+ * svg engine's `toCanvas` creates one for every decode (2026-10-26).
  *
  * NOT OPTIMIZED. The mount/draw path is deliberately the simplest thing that consumes the
  * clone: no bbox/bleed math, document-root expansion or scroll anchoring. Those bails are
@@ -47,18 +52,15 @@ import { isInternalNode, markInternalNode } from '../utils/ownership.js'
 import { adoptShadowCSS } from '../utils/capture.helpers.js'
 
 /**
- * Which canvas-place-element method this browser exposes, or null. The origin-trial name
- * (`drawElementImage`) is checked before the M138 dev-trial one. Null sends every capture to
- * the svg engine, which is where every unflagged browser lands today.
- * @returns {'drawElementImage'|'drawElement'|null}
+ * Name the draw method this browser exposes, or null. Null sends every capture to the svg
+ * engine, which is where Firefox, WebKit and Chrome before 157 land. The M138 dev-trial
+ * name (`drawElement`) is no longer checked: no shipping build has it.
+ * @returns {'drawElementImage'|null}
  */
 export function detectDrawApi() {
   try {
-    const c = document.createElement('canvas')
-    const ctx = c.getContext('2d')
-    if (!ctx) return null
-    if (typeof ctx.drawElementImage === 'function') return 'drawElementImage'
-    if (typeof ctx.drawElement === 'function') return 'drawElement'
+    const ctx = document.createElement('canvas').getContext('2d')
+    if (ctx && typeof ctx.drawElementImage === 'function') return 'drawElementImage'
   } catch { /* detection is best-effort */ }
   return null
 }
@@ -148,9 +150,9 @@ export async function tryCanvasEngine(state, context) {
     return null
   }
 
-  /* c8 ignore start -- the real API still needs a flag/origin trial. CI exercises this
-     contract through a CanvasRenderingContext2D stub that performs real 2D paints/probes;
-     re-measure the native implementation on a flagged Chrome before enabling by default. */
+  /* c8 ignore start -- the pinned Playwright Chromium predates the API (Chrome 157). The
+     suite exercises this contract through a CanvasRenderingContext2D stub that performs real
+     2D paints/probes; the native paint is checked by hand with scripts/live-parity.mjs. */
   const rect = element.getBoundingClientRect()
   // Root and ancestor transforms/zoom already bail above, so this is the local border box.
   // Prefer it over offsetWidth/offsetHeight, which round fractional CSS pixels to integers.
@@ -192,8 +194,8 @@ export async function tryCanvasEngine(state, context) {
     fn.call(ctx2d, wrapper, 0, 0, width, height)
     ctx2d.restore()
 
-    // Taint probe: under the OT model a same-origin clone reads back cleanly, but pre-OT
-    // builds tainted unconditionally and future spec churn could reintroduce cases — any
+    // Taint probe: under the shipped model a same-origin clone reads back cleanly, but the
+    // dev-trial builds tainted unconditionally and spec churn could reintroduce cases. Any
     // taint would break every toDataURL/toBlob downstream, so fall back to the SVG engine,
     // which has already fetched and inlined those resources into this very clone.
     let probe

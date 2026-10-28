@@ -38,6 +38,6 @@ export interface RedactInputsOptions {
  * Optional blocks exclude whole subtrees; attribute rules remove named attributes. The live DOM is unchanged.
  * These rules do not search captured text or images for sensitive content.
  * The default mask without selectors permits unchanged-repeat memoization; custom masks and selectors run every capture.
- * Nonempty blocks/attribute rules add a beforeRender pass, so experimental html-in-canvas captures use SVG.
+ * Nonempty blocks/attribute rules add a beforeRender pass, so html-in-canvas captures use SVG.
  */
 export declare function redactInputs(options?: RedactInputsOptions): SnapdomPlugin;
