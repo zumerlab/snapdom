@@ -510,11 +510,18 @@ export function applyStyleClass(node, key, keyToClass) {
   if (bgImage && bgImage !== 'none') node.style.backgroundImage = bgImage
 }
 
+/** Container properties a grid or flex scroller hands to its scroll wrapper. */
+const SCROLLER_LAYOUT = ['grid-template-columns', 'grid-template-rows', 'grid-template-areas',
+  'grid-auto-columns', 'grid-auto-rows', 'grid-auto-flow', 'row-gap', 'column-gap',
+  'align-items', 'justify-items', 'align-content', 'justify-content', 'flex-direction', 'flex-wrap']
+
 /**
  * Scroll compensation for one clone/source pair: hides scrollbars and wraps the clone's
  * children in a translate(-scrollX,-scrollY) inner div, compensating positioned
- * descendants with external containing blocks (#364/#518). No-op for unscrolled sources.
+ * descendants with external containing blocks (#364/#518). A grid or flex scroller hands
+ * its layout to the wrapper. No-op for unscrolled sources.
  * Shared by prepareClone's whole-map pass and differential recapture (delta entries only).
+ * Pinned by __tests__/snapdom.issue518.test.js and __tests__/regression.scrolledLayout.test.js.
  * @param {Element} cloneNode
  * @param {Element} originalNode
  * @param {Map<Node, Node>} nodeMap - clone → source
@@ -597,7 +604,18 @@ export function wrapScrolledClone(cloneNode, originalNode, nodeMap, styleCache) 
   inner.style.direction = 'inherit'
   inner.style.transform = `translate(${-scrollX}px, ${-scrollY}px)`
   inner.style.willChange = 'transform'
-  inner.style.display = 'inline-block'
+  // A grid or flex scroller lays its children out itself: as its only item, an inline-block
+  // wrapper stacked them as blocks in the first track (Zumly's flatten, 2026-10-28). The
+  // wrapper takes the layout over and the scroller becomes a plain box around it.
+  const display = (styleCache?.get(originalNode) || getStyle(originalNode)).display
+  const layout = display.includes('grid') ? 'grid' : display.includes('flex') ? 'flex' : ''
+  if (layout) {
+    cloneNode.style.display = display.startsWith('inline') ? 'inline-block' : 'block'
+    inner.style.display = layout
+    for (const prop of SCROLLER_LAYOUT) inner.style.setProperty(prop, 'inherit')
+  } else {
+    inner.style.display = 'inline-block'
+  }
   inner.style.width = '100%'
   while (cloneNode.firstChild) {
     inner.appendChild(cloneNode.firstChild)
