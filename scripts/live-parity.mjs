@@ -20,6 +20,8 @@
 //   SNAPDOM_ENGINE=html-in-canvas captures with that engine (BROWSER=chromium, through the
 //   installed Chrome: the bundled Chromium predates the API, Chrome 157) and notes every demo
 //   that fell back to svg, so a row measures the native paint or says it did not run.
+//   CHROME_PATH=<binary> launches that Chrome instead (a Chrome for Testing, Beta or Canary
+//   build), to check a release before the installed Chrome reaches it.
 import { createServer } from 'node:http'
 import { readFile, readdir, mkdir, writeFile, rm } from 'node:fs/promises'
 import { extname, join, normalize } from 'node:path'
@@ -251,7 +253,7 @@ function cropPng(src, x, y, w, h, backdrop) {
 const SNAPDOM_ENGINE = process.env.SNAPDOM_ENGINE || null
 
 async function runEngine(name, demos, base) {
-  const browser = await playwright[name].launch(SNAPDOM_ENGINE && name === 'chromium' ? { channel: 'chrome' } : {})
+  const browser = await playwright[name].launch(SNAPDOM_ENGINE && name === 'chromium' ? (process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : { channel: 'chrome' }) : {})
   const rows = []
   await mkdir(join(OUT, name), { recursive: true })
   for (const demo of demos) {
