@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "description": "High-performance DOM engine: captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins add PDF, HTML, vector, GIF, video and agent context.",
   "type": "module",
   "main": "./dist/snapdom.js",
