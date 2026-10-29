@@ -422,6 +422,24 @@ describe('clip option (region capture)', () => {
     expect(px[2] > 200 && px[0] < 60).toBe(false)
   })
 
+  it('a culled grid item keeps its slot from placement alone, without its style snapshot', async () => {
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'width:400px;display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:40px;gap:4px'
+    // Only the tiles far from the window carry rgb(1, 2, 3); the ones the band keeps do not.
+    const tile = (s = '', bg = 'rgb(1, 2, 3)') => `<div style="background:${bg};border:2px solid #000;${s}"></div>`
+    wrap.innerHTML = tile('grid-column:span 3') + tile('order:-1') + tile('grid-row:span 2') + tile('grid-column:2 / span 2') +
+      Array.from({ length: 32 }, () => tile()).join('') + Array.from({ length: 24 }, () => tile('', '#ccc')).join('') +
+      '<div class="grid-target" style="background:rgb(255,0,0)"></div>'
+    const r = wrap.querySelector('.grid-target').getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    expect(decodeSvg(await snapdom.toRaw(document.body, { clip }))).not.toContain('rgb(1, 2, 3)')
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    for (const [x, y] of [[1, 1], [r.width - 2, 38]]) {
+      expect([...ctx.getImageData(Math.round(x), y, 1, 1).data.slice(0, 3)]).toEqual([255, 0, 0])
+    }
+  })
+
   // The spacer is the run's first element, so a travelling author rule still matches it.
   // overflow:hidden made it a block formatting context, which cannot overlap the float, and
   // the window below came out one float lower.

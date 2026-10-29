@@ -541,16 +541,44 @@ export function finishClipHusks(clone, sessionCache, options) {
   return standIns
 }
 
+/** Displays whose box an empty, frozen husk reproduces from its outer display alone. */
+const PLAIN_HUSK_DISPLAY = /^(block|flow-root|list-item|flex|grid|inline-block|inline-flex|inline-grid|inline)$/
+
 /**
- * Layout-preserving husk: the original's computed styles (so display/margin/flex/grid
- * participation is identical) and a frozen box, hidden.
+ * Layout-preserving husk: a frozen box, hidden. A plain in-flow box (PLAIN_HUSK_DISPLAY, no
+ * float or clearance, counters, anchor name, zoom or vertical writing mode) gets only what
+ * places it in its parent: display, margins, what makes it a block formatting context
+ * (overflow, contain, columns; one avoids floats), baseline alignment and its grid/flex slot.
+ * Its full computed style took 2.6 of the 5.9 ms a window of the Zumly board cost (47 culled
+ * grid tiles, 1280x800 at dpr 2); without it the window takes 3.5 ms and its SVG drops from
+ * 79 to 33 KB, pixel-identical on all three engines. Every other husk gets the original's
+ * computed style. Pinned by __tests__/core.clip.test.js.
  * @param {Element} husk
  * @param {Element} node
  * @param {Object} sessionCache
  * @param {Object} options
  */
 function dressClipHusk(husk, node, sessionCache, options) {
-  inlineAllStyles(node, husk, sessionCache, options)
+  const cs = getStyle(node)
+  if (!isSVGEl(node) && node.localName !== 'legend' && PLAIN_HUSK_DISPLAY.test(cs.display) &&
+      cs.float === 'none' && cs.clear === 'none' && cs.position !== 'absolute' && cs.position !== 'fixed' &&
+      cs.writingMode === 'horizontal-tb' && cs.counterReset === 'none' && cs.counterIncrement === 'none' &&
+      (cs.counterSet || 'none') === 'none' && (cs.anchorName || 'none') === 'none' && (cs.zoom || '1') === '1') {
+    // A zero side stays zero: auto would let a src-less <img> take its broken-image size.
+    let css = `display:${cs.display};width:0;height:0;margin:${cs.marginTop} ${cs.marginRight} ${cs.marginBottom} ${cs.marginLeft};padding:0;border:0;`
+    if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') css += `overflow:${cs.overflowX} ${cs.overflowY};`
+    if (cs.contain !== 'none') css += `contain:${cs.contain};`
+    if (cs.columnCount !== 'auto' || cs.columnWidth !== 'auto') css += `columns:${cs.columnWidth} ${cs.columnCount};`
+    if (cs.verticalAlign !== 'baseline') css += `vertical-align:${cs.verticalAlign};`
+    if (cs.order !== '0') css += `order:${cs.order};`
+    if (cs.alignSelf !== 'auto') css += `align-self:${cs.alignSelf};`
+    if (cs.justifySelf !== 'auto') css += `justify-self:${cs.justifySelf};`
+    const area = `${cs.gridRowStart} / ${cs.gridColumnStart} / ${cs.gridRowEnd} / ${cs.gridColumnEnd}`
+    if (area !== 'auto / auto / auto / auto') css += `grid-area:${area};`
+    husk.style.cssText = css
+  } else {
+    inlineAllStyles(node, husk, sessionCache, options)
+  }
   const { width, height } = getUnscaledDimensions(node)
   if (width > 0) {
     husk.style.width = `${width}px`
@@ -567,7 +595,7 @@ function dressClipHusk(husk, node, sessionCache, options) {
   // have had, un-collapsing its margins with neighbors: 68 husks drifted deep-scroll
   // Wikipedia +812px, shifting the whole clip window one viewport. The husk is empty
   // (shallow clone), so there is nothing to clip anyway; it keeps the original's own
-  // computed overflow from inlineAllStyles.
+  // computed overflow.
   // Escaped-margin compensation: an empty husk can't reproduce the child margins that
   // collapsed THROUGH the original's edges (Wikipedia loses 16px per husked <section>
   // — the whole flow drifts). Assign the LIVE measured gap to both husk edges: since
@@ -577,7 +605,6 @@ function dressClipHusk(husk, node, sessionCache, options) {
   // margins never collapse, an inline-level box sits in a line, and there the computed
   // margins already inlined are correct.
   const parentDisplay = node.parentElement ? getStyle(node.parentElement).display : ''
-  const cs = getStyle(node)
   if (!/flex|grid|table/.test(parentDisplay) && !cs.display.startsWith('inline') && cs.float === 'none' &&
       (cs.position === 'static' || cs.position === 'relative')) {
     const r = node.getBoundingClientRect()
