@@ -210,7 +210,6 @@ export function stream(element, options = {}) {
   let hoverList = null // the :hover selectors at the last full frame, null if unreadable
   let hovered = new Set() // what they matched at the last look
   let hoverMoved = false
-  let nodes = 0 // in the root at the last full frame, the root included
   let forceFull = true
   let lastKeyframe = 0
   let keyframeDue = false // set from idle time once the keyframe interval has passed
@@ -270,9 +269,7 @@ export function stream(element, options = {}) {
     rootRect = element.getBoundingClientRect()
     floaters = []
     glass = []
-    const all = element.querySelectorAll('*')
-    nodes = all.length + 1
-    for (const el of all) {
+    for (const el of element.querySelectorAll('*')) {
       rects.set(el, rectOf(el))
       const cs = getComputedStyle(el)
       if (cs.position === 'absolute' || cs.position === 'fixed' || cs.position === 'sticky' ||
@@ -336,6 +333,13 @@ export function stream(element, options = {}) {
 
   async function full() {
     const t0 = performance.now()
+    // Read before the capture, at every full frame. A pointer that moves while it runs is then
+    // diffed next tick; read after it, the first capture left the events nothing to go by, and
+    // a pointer over the Zumly board's gaps made the root dirty (a 400 ms full frame, 4 of 4).
+    // A sheet added later counts from the next keyframe.
+    const sels = hoverSelectors(element)
+    hoverList = sels && sels.length * (element.getElementsByTagName('*').length + 1) <= HOVER_BUDGET ? sels.join(',') : null
+    try { hovered = hoverMatches() } catch { hoverList = null }
     // A full frame is the one long task of a stream; 'auto' lets a long clone yield (#503).
     // Lab, 1000 cards under constant edits: worst frame gap 67 -> 33 ms. Under edits on
     // every frame a big tree tears and redoes in one task, which only the interval helps.
@@ -349,10 +353,6 @@ export function stream(element, options = {}) {
     ox = contentX * k
     oy = contentY * k
     snapshotLayout()
-    // Read again at every full frame, so a sheet added later counts from the next keyframe.
-    const sels = hoverSelectors(element)
-    hoverList = sels && sels.length * nodes <= HOVER_BUDGET ? sels.join(',') : null
-    try { hovered = hoverMatches() } catch { hoverList = null }
     lastKeyframe = performance.now()
     keyframeDue = false
     fullMs = lastKeyframe - t0

@@ -330,13 +330,18 @@ describe('stream plugin', () => {
     // Moving over the gaps of Zumly's 48-tile board made the root dirty, and every move a
     // 300 ms full frame. Dispatched events stand in for the pointer, which hovers nothing here.
     const root = grid()
-    const moves = async (s) => {
-      await s.ready
-      const before = s.frames.length
+    const cross = () => {
       for (const el of [root, root.children[0], root.children[0].firstChild, root.children[9]]) {
         el.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
         el.dispatchEvent(new PointerEvent('pointerout', { bubbles: true }))
       }
+    }
+    const moves = async (s) => {
+      // While the first frame is captured too: Zumly's pointer was already moving then.
+      cross()
+      await s.ready
+      const before = s.frames.length
+      cross()
       await new Promise(r => setTimeout(r, 200))
       s.stop()
       return s.frames.slice(before).filter(f => f.reason !== 'resize')
