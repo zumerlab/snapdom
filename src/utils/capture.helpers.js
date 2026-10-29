@@ -354,9 +354,12 @@ function establishesBFC(cs) {
 /**
  * First child element that participates in margin-collapsing through `el`'s edge.
  * Returns null when inline/text content precedes it (which opens an inline
- * formatting context and prevents collapse-through).
+ * formatting context and prevents collapse-through), and undefined when `el` has none.
+ * A display:contents child lays its own children out in `el`'s flow, so the search goes
+ * inside it; skipped whole, the block before it counted as last and lost its margin.
  * @param {Element} el
  * @param {'top'|'bottom'} side
+ * @returns {Element|null|undefined}
  */
 function firstInFlowBlockChild(el, side) {
   const kids = Array.from(el.childNodes)
@@ -369,7 +372,12 @@ function firstInFlowBlockChild(el, side) {
     if (n.nodeType !== Node.ELEMENT_NODE) continue
     const cs = getComputedStyle(n)
     const disp = String(cs.display || '')
-    if (disp === 'none' || disp === 'contents') continue
+    if (disp === 'none') continue
+    if (disp === 'contents') {
+      const inner = firstInFlowBlockChild(n, side)
+      if (inner !== undefined) return inner
+      continue
+    }
     if (cs.position === 'absolute' || cs.position === 'fixed') continue
     if (cs.float && cs.float !== 'none') return null
     // Only block-level boxes collapse margins with the parent. Inline-level boxes
@@ -378,7 +386,7 @@ function firstInFlowBlockChild(el, side) {
     if (disp.startsWith('inline')) return null
     return n
   }
-  return null
+  return undefined
 }
 
 /**

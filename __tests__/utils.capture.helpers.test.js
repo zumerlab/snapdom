@@ -74,6 +74,18 @@ describe('neutralizeRootMarginCollapse (#426, nodeMap alignment)', () => {
     expect(decoyCln.style.marginTop).toBe('5px')
   })
 
+  it('looks inside a display:contents child for the last block, and leaves the block before it alone', () => {
+    const src = document.createElement('div')
+    src.innerHTML = '<div style="height:40px;margin-bottom:20px"></div><div style="display:contents"><div style="height:40px"></div></div>'
+    document.body.appendChild(src)
+    const clone = src.cloneNode(true)
+    const nodeMap = new Map([[clone.children[0], src.children[0]], [clone.children[1], src.children[1]]])
+
+    neutralizeRootMarginCollapse(src, clone, nodeMap)
+
+    expect(clone.children[0].style.marginBottom).toBe('20px')
+  })
+
   it('handles null/undefined gracefully', () => {
     expect(() => neutralizeRootMarginCollapse(null, document.createElement('div'))).not.toThrow()
     expect(() => neutralizeRootMarginCollapse(document.createElement('div'), null)).not.toThrow()

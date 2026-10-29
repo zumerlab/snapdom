@@ -356,6 +356,34 @@ describe('clip option (region capture)', () => {
     }
   })
 
+  // A culled toolbar above a sticky panel took its margin from the next box's rect. Behind a
+  // display:contents wrapper that rect is all zeros, and a stuck panel's is where the scroll
+  // left it: either way the gap was the scroll distance, and the window below the panel
+  // came out blank (codingcodertg/DELIVERY-APP#550).
+  it.each([
+    ['a display:contents wrapper', '<div style="display:contents">', '</div>'],
+    ['a stuck sticky panel', '', '']
+  ])('a culled box followed by %s keeps its margin', async (_, open, close) => {
+    const main = mount(document.createElement('main'))
+    // Padding closes main's edges, so the root margin collapse pass leaves the culled box alone.
+    main.style.cssText = 'width:400px;margin:0;padding:10px 0;'
+    main.innerHTML = '<div style="height:40px;margin-bottom:8px"></div>' + open +
+      '<div style="position:sticky;top:0;height:60px;background:rgb(0,160,0)"></div><div style="height:1500px"></div>' +
+      '<div class="target" style="height:100px;background:rgb(255,0,0)"></div><div style="height:1000px"></div>' + close
+    const target = main.querySelector('.target')
+    const y = Math.round(target.getBoundingClientRect().top + window.scrollY - 150)
+    window.scrollTo(0, y)
+    if (window.scrollY !== y) return // runner can't scroll: nothing to assert
+    const t = target.getBoundingClientRect()
+    const canvas = await snapdom.toCanvas(document.body, { clip: 'viewport', dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    const k = canvas.width / document.documentElement.clientWidth
+    const at = (x, y) => [...ctx.getImageData(Math.round(x * k), Math.round(y * k), 1, 1).data.slice(0, 3)]
+    expect(at(t.left + 200, t.top + 2)).toEqual([255, 0, 0])
+    expect(at(t.left + 200, t.bottom - 2)).toEqual([255, 0, 0])
+    expect(at(t.left + 200, 30)).toEqual([0, 160, 0])
+  })
+
   it('a run of culled cards costs one box, not one per card (#549)', async () => {
     const wrap = mount(document.createElement('main'))
     wrap.style.cssText = 'width:400px;'

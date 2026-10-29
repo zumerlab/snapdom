@@ -407,11 +407,12 @@ function foldsIntoRun(el) {
     cs.counterReset === 'none' && cs.counterIncrement === 'none' && (cs.counterSet || 'none') === 'none'
 }
 
-/** Whether getBoundingClientRect reads the element where layout put it. No relative offset
- *  or transform of its own, and no ancestor scale (its box agrees with its offset size). */
+/** Whether getBoundingClientRect reads the element where layout put it. Not display:contents
+ *  (no box) or sticky (painted where the scroll left it), no relative offset or transform of
+ *  its own, and no ancestor scale (its box agrees with its offset size). */
 function rectIsLayout(el, r) {
   const cs = getStyle(el)
-  return (cs.position === 'static' || cs.top === '0px') &&
+  return cs.display !== 'contents' && (cs.position === 'static' || (cs.position === 'relative' && cs.top === '0px')) &&
     (cs.transform === 'none' || cs.transform === 'matrix(1, 0, 0, 1, 0, 0)') &&
     (cs.translate || 'none') === 'none' && (cs.rotate || 'none') === 'none' && (cs.scale || 'none') === 'none' &&
     Math.abs(r.width - el.offsetWidth) < 1 && Math.abs(r.height - el.offsetHeight) < 1
@@ -427,8 +428,10 @@ function nextInFlow(a, b) {
 }
 
 /** The live distance from a box to its previous (dir -1) or next (dir 1) in-flow sibling,
- *  which is the margin block flow collapsed between them; null when there is none or the
- *  margins overlap. */
+ *  which is the margin block flow collapsed between them; null when there is none, the
+ *  margins overlap, or the sibling's rect is not its layout box. A display:contents wrapper
+ *  (all zeros) or a stuck sticky panel read as the next box gave a culled toolbar a 463px
+ *  margin on a page scrolled 549px, and the window showed content from above it. */
 function siblingGap(el, r, dir) {
   let sib = dir < 0 ? el.previousElementSibling : el.nextElementSibling
   while (sib) {
@@ -438,6 +441,7 @@ function siblingGap(el, r, dir) {
   }
   if (!sib) return null
   const s = sib.getBoundingClientRect()
+  if (!rectIsLayout(sib, s)) return null
   const g = dir < 0 ? r.top - s.bottom : s.top - r.bottom
   return g >= 0 ? g : null
 }
