@@ -21,8 +21,11 @@ live.stop();
 
 The first frame is a full capture. After that, every change (mutations, typing, focus, hover,
 running animations) is traced to the nearest box that can be repainted on its own, and only
-that subtree is captured and drawn into its rect. A frame that cannot be patched exactly is a
-full frame, and `frame.reason` says why (`'root resized'`, `'no host for <div.x>'`, ...).
+that subtree is captured and drawn into its rect. A change in a box that cannot (a value on a
+translucent card, a row under a badge) repaints a window of the element instead: a `clip`
+capture of that box, with everything that paints there. The pointer repaints only what a
+`:hover` rule restyles. A frame that cannot be patched exactly is a full frame, and
+`frame.reason` says why (`'root resized'`, `'no host for <div.x>'`, ...).
 A keyframe in idle time heals anything the change tracking could not see, at most every 2 s
 and never more than 2% of the main thread.
 

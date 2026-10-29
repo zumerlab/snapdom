@@ -1,7 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, inject, it } from 'vitest'
+import { userEvent } from 'vitest/browser'
 import { snapdom } from '../src/index.js'
 import { stream, streamExport, streamTexture, recordCanvas, overlayStage, lowerThird } from '../packages/plugins/stream.js'
 
+// The first real pointer command in a fresh test iframe took 6.6 s on webkit under load (see
+// regression.interaction.staleness.test.js); the engine count is the load.
+const ENGINES = inject('engines') ?? 1
 const roots = []
 const streams = []
 afterEach(() => {
@@ -23,12 +27,12 @@ function grid(cardCss = 'background:#1e293b') {
   return root
 }
 
-function open(root, options = {}) {
-  // The stream repaints whatever gets pointerover/pointerout, since :hover can change it. The
-  // runner moves its iframes under the virtual mouse under parallel load, and a card hovered
-  // that way came out as one more 76px patch: two rects, the wrong first rect, or a frame
-  // while nothing changed. Nothing here is about the pointer.
-  root.style.pointerEvents = 'none'
+function open(root, { pointer = false, ...options } = {}) {
+  // The stream repaints what the pointer moves :hover onto. The runner moves its iframes under
+  // the virtual mouse under parallel load, and a card hovered that way came out as one more
+  // 76px patch: two rects, the wrong first rect, or a frame while nothing changed. Only the
+  // tests that pass `pointer` are about the pointer.
+  if (!pointer) root.style.pointerEvents = 'none'
   let resolveNext
   const frames = []
   const s = stream(root, {
@@ -267,17 +271,24 @@ describe('stream plugin', () => {
     expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
   })
 
-  it('falls back when the changed box is transparent, since old pixels would show through', async () => {
-    const root = grid('background:transparent')
+  it('repaints a value on a glass card as a window of the root, since no box under it is opaque', async () => {
+    // Zumly's board: translucent tiles with a backdrop-filter and a faded title. Every value
+    // was a full frame. The emptied value collapses its row, so the card is the window.
+    const root = grid('background:hsl(200 70% 60% / .16);backdrop-filter:blur(8px) saturate(1.4)')
+    for (const b of root.querySelectorAll('b')) b.style.opacity = '.85'
     const s = open(root)
     await s.ready
-    const next = s.next()
-    root.children[1].querySelector('.v').textContent = ''
-    expect((await next).full).toBe(true)
-    expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
+    for (const [i, text] of [[1, 'glass 1'], [6, 'glass 6'], [13, '']]) {
+      const next = s.next()
+      root.children[i].querySelector('.v').textContent = text
+      const frame = await next
+      expect(frame.full, `card ${i}: ${frame.reason}`).toBe(false)
+      expect(frame.rects[0].width).toBeLessThan(s.canvas.width / 3)
+      expect(differs(s.canvas, await reference(root, s.canvas)), `card ${i}`).toBe(0)
+    }
   })
 
-  it('falls back when a positioned element paints over the changed box', async () => {
+  it('repaints a box under a positioned element as a window of the root, the element on top', async () => {
     const root = grid()
     root.style.position = 'relative'
     const badge = document.createElement('div')
@@ -287,9 +298,74 @@ describe('stream plugin', () => {
     await s.ready
     const next = s.next()
     root.children[0].querySelector('.v').textContent = 'under the badge'
-    expect((await next).full).toBe(true)
+    const frame = await next
+    expect(frame.full, frame.reason).toBe(false)
     expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
   })
+
+  it('falls back when a blur would carry the change past the box', async () => {
+    // A blurred card spreads its text past any box inside it; a glass pane over a card blurs
+    // whatever changes under it into the pixels around.
+    for (const scene of ['blurred card', 'glass pane']) {
+      const root = grid()
+      if (scene === 'blurred card') root.children[2].style.filter = 'blur(2px)'
+      else {
+        root.style.position = 'relative'
+        const pane = document.createElement('div')
+        pane.style.cssText = 'position:absolute;left:330px;top:4px;width:80px;height:40px;background:#fff2;backdrop-filter:blur(4px)'
+        root.append(pane)
+      }
+      const s = open(root)
+      await s.ready
+      const next = s.next()
+      root.children[2].querySelector('.v').textContent = 'spread'
+      expect((await next).full, scene).toBe(true)
+      expect(differs(s.canvas, await reference(root, s.canvas)), scene).toBe(0)
+      s.stop()
+      root.remove()
+    }
+  })
+
+  it('ignores the pointer over boxes no :hover rule matches', async () => {
+    // Moving over the gaps of Zumly's 48-tile board made the root dirty, and every move a
+    // 300 ms full frame. Dispatched events stand in for the pointer, which hovers nothing here.
+    const root = grid()
+    const moves = async (s) => {
+      await s.ready
+      const before = s.frames.length
+      for (const el of [root, root.children[0], root.children[0].firstChild, root.children[9]]) {
+        el.dispatchEvent(new PointerEvent('pointerover', { bubbles: true }))
+        el.dispatchEvent(new PointerEvent('pointerout', { bubbles: true }))
+      }
+      await new Promise(r => setTimeout(r, 200))
+      s.stop()
+      return s.frames.slice(before).filter(f => f.reason !== 'resize')
+    }
+    const extra = await moves(open(root))
+    expect(extra.length, extra.map(f => f.reason).join(', ')).toBe(0)
+    // The control: past the query budget the same events repaint what they cross.
+    const style = document.createElement('style')
+    style.textContent = Array.from({ length: 5000 }, (_, i) => `.x${i}:hover{color:red}`).join('')
+    document.head.append(style)
+    roots.push(style)
+    expect((await moves(open(root))).length).toBeGreaterThan(0)
+  })
+
+  it('repaints what a :hover rule restyles when the pointer moves onto it', async () => {
+    const style = document.createElement('style')
+    style.textContent = '.hot:hover .v { color: #000; background: #fde68a }'
+    document.head.append(style)
+    roots.push(style)
+    const root = grid()
+    root.children[5].classList.add('hot')
+    const s = open(root, { pointer: true })
+    await s.ready
+    const next = s.next()
+    await userEvent.hover(root.children[5])
+    const frame = await next
+    expect(frame.full, frame.reason).toBe(false)
+    expect(differs(s.canvas, await reference(root, s.canvas))).toBe(0)
+  }, 15000 * ENGINES)
 
   it('patches above an ancestor with opacity instead of below it', async () => {
     const root = grid()
@@ -348,10 +424,10 @@ describe('stream plugin', () => {
     spinner.style.cssText = 'width:20px;height:20px;border:3px solid #38bdf8;border-top-color:transparent;border-radius:50%'
     root.append(spinner)
     spinner.animate([{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }], { duration: 1000, iterations: Infinity })
-    // The control: followed, the transparent spinner has no host and every tick is a full frame.
+    // The control: followed, the spinner repaints with nothing edited.
     const followed = open(root)
     await followed.ready
-    expect((await followed.next()).reason).toMatch(/^no host for <div\.spinner>/)
+    expect((await followed.next()).rects.length).toBeGreaterThan(0)
     followed.stop()
     const s = open(root, { animations: false })
     await s.ready

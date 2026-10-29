@@ -10,8 +10,11 @@
  * was restyled hands the change to the enclosing box that did not; an absolutely positioned
  * box over a solid or clear backdrop may move and resize itself, since it pushes nothing.
  * Only that subtree is captured, laid out at its subpixel phase, and drawn over its backdrop
- * or where it is fully opaque. Anything this cannot prove is a full frame, with the reason
- * on the frame.
+ * or where it is fully opaque. A change with no such box (a value on a glass card, a row
+ * under a badge) repaints a window of the root: a `clip` capture of the box the change stayed
+ * inside, which has everything that paints there. Anything this cannot prove is a full
+ * frame, with the reason on the frame. The pointer counts only through `:hover` rules: a move
+ * repaints the elements whose match it changed.
  *
  * Measured 2026-10-23, 1000px grid, one card's text changed per frame, median ms per frame
  * (full / patch): 400 cards Chromium 11.7 / 4.2, Firefox 28 / 4, WebKit 20 / 4; 2000 cards
@@ -34,6 +37,13 @@ const WEBKIT = typeof navigator !== 'undefined' && (/ipad|iphone|ipod/i.test(nav
   (/applewebkit/i.test(navigator.userAgent) && !/chrome|chromium|crios|edg|opr|android/i.test(navigator.userAgent)))
 
 const EVENTS = ['input', 'change', 'focusin', 'focusout', 'pointerover', 'pointerout', 'scroll', 'toggle']
+const HOVER_EVENTS = new Set(['pointerover', 'pointerout'])
+/** :hover selectors x nodes one hover query may cost. A query is linear in both: 200 x 1400
+ *  took 1.5 to 1.75 ms on all three engines, 2000 x 1400 took 13 to 30. Past it the pointer
+ *  repaints whatever it crosses, as it did before the query. */
+const HOVER_BUDGET = 300_000
+/** Cut from a :hover selector, so it matches the box the pseudo-element hangs from. */
+const PSEUDO_ELEMENT = /::?(?:before|after|first-line|first-letter)\b|::[\w-]+(?:\([^)]*\))?/g
 /** A patch larger than this share of the frame costs about what a full frame does. */
 const MAX_PATCH_AREA = 0.5
 /** Self-healing keyframe: anything the heuristics missed lasts at most this long, or 50
@@ -57,8 +67,46 @@ function hasEffect(cs) {
     cs.clipPath !== 'none' || (cs.backdropFilter && cs.backdropFilter !== 'none')
 }
 
+/** A filter that carries a change past the box it happened in. */
+function spreads(cs) {
+  return /blur|drop-shadow|url\(/.test(cs.filter)
+}
+
 function clips(cs) {
   return cs.overflowX !== 'visible' || cs.overflowY !== 'visible'
+}
+
+/** Visible overflow paints outside the box. */
+function overflows(el, cs) {
+  return !clips(cs) && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1)
+}
+
+/** A shadow or outline paints outside the box. */
+function outerInk(cs) {
+  return cs.boxShadow !== 'none' || (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0)
+}
+
+/** Every selector that names :hover; null when a sheet cannot be read (cross origin) or a
+ *  nested `&` rule cannot be queried, and then any hover may restyle. Pseudo-elements are
+ *  cut: `.dot:hover::after` repaints with `.dot`. */
+function hoverSelectors(root) {
+  const list = []
+  const walk = (rules) => {
+    for (const rule of rules) {
+      const sel = rule.selectorText
+      if (sel?.includes(':hover')) {
+        if (sel.includes('&')) throw new Error('nested')
+        list.push(sel.replace(PSEUDO_ELEMENT, ''))
+      }
+      if (rule.cssRules) walk(rule.cssRules)
+      if (rule.styleSheet) walk(rule.styleSheet.cssRules)
+    }
+  }
+  const scope = root.getRootNode()
+  try {
+    for (const sheet of [...scope.styleSheets, ...(scope.adoptedStyleSheets || [])]) walk(sheet.cssRules)
+  } catch { return null }
+  return list
 }
 
 function inside(a, b) {
@@ -139,8 +187,9 @@ async function decode(url) {
  * @param {boolean} [options.patches=true] - false repaints full frames only (the baseline).
  * @param {boolean} [options.animations=true] - false stops following running animations and
  *   transitions: an animated box keeps its last drawn pixels until a patch, a full frame or the
- *   keyframe repaints it. A transparent spinner has no host, so by default every tick is a full
- *   frame (Zumly views at dpr 2, fps 5: 109 ms a frame, against 9-13 ms patches without it).
+ *   keyframe repaints it. A transparent spinner has no host and turns its own box, so by default
+ *   nearly every tick is a full frame (Zumly views at dpr 2, fps 5: 109 ms a frame, against
+ *   9-13 ms patches without it).
  * @returns {{canvas: HTMLCanvasElement, stop: () => void, ready: Promise<void>, stats: object}}
  */
 export function stream(element, options = {}) {
@@ -154,8 +203,14 @@ export function stream(element, options = {}) {
   const rects = new WeakMap() // element -> rect at the last paint that covered it
   const backdrops = new Map() // this frame's hosts that draw over a solid colour
   const movedFrom = new Map() // this frame's out-of-flow hosts that moved -> their old rect
+  const regions = new Set() // this frame's hosts repainted as a window of the root
   const stats = { full: 0, patch: 0, skipped: 0, lastMs: 0 }
   let floaters = []
+  let glass = [] // backdrop-filter boxes: a change under one shows through its blur
+  let hoverList = null // the :hover selectors at the last full frame, null if unreadable
+  let hovered = new Set() // what they matched at the last look
+  let hoverMoved = false
+  let nodes = 0 // in the root at the last full frame, the root included
   let forceFull = true
   let lastKeyframe = 0
   let keyframeDue = false // set from idle time once the keyframe interval has passed
@@ -171,6 +226,13 @@ export function stream(element, options = {}) {
   const observer = new MutationObserver(records => netTargets(records, dirty, restyled))
   observer.observe(element, { subtree: true, childList: true, attributes: true, characterData: true, attributeOldValue: true, characterDataOldValue: true })
   const onEvent = (e) => {
+    // A pointer that crosses boxes no :hover rule matches changes no pixel. Moving over the
+    // gaps of a 48-tile board made its root dirty, and every move a 300 ms full frame (Zumly,
+    // dpr 2). A shadow tree's event arrives at its host, and its sheets were not read.
+    if (hoverList !== null && HOVER_EVENTS.has(e.type) && e.composedPath()[0] === e.target) {
+      hoverMoved = true
+      return
+    }
     dirty.add(e.target)
     if (e.relatedTarget && element.contains(e.relatedTarget)) dirty.add(e.relatedTarget)
   }
@@ -207,12 +269,24 @@ export function stream(element, options = {}) {
   function snapshotLayout() {
     rootRect = element.getBoundingClientRect()
     floaters = []
-    for (const el of element.querySelectorAll('*')) {
+    glass = []
+    const all = element.querySelectorAll('*')
+    nodes = all.length + 1
+    for (const el of all) {
       rects.set(el, rectOf(el))
       const cs = getComputedStyle(el)
       if (cs.position === 'absolute' || cs.position === 'fixed' || cs.position === 'sticky' ||
         (cs.position === 'relative' && cs.zIndex !== 'auto') || cs.transform !== 'none') floaters.push(el)
+      if (cs.backdropFilter && cs.backdropFilter !== 'none') glass.push(el)
     }
+  }
+
+  /** The elements the :hover rules match now, the root included. */
+  function hoverMatches() {
+    if (!hoverList) return new Set()
+    const out = new Set(element.querySelectorAll(hoverList))
+    if (element.matches(hoverList)) out.add(element)
+    return out
   }
 
   /** The box a change to `node` can be repainted through, or null for a full frame. */
@@ -227,8 +301,8 @@ export function stream(element, options = {}) {
     for (let i = start; i < chain.length; i++) {
       const cs = styles[i]
       if (!opaqueColor(cs.backgroundColor)) continue
-      // Visible overflow paints outside the box, over pixels the patch does not repaint.
-      if (!clips(cs) && (chain[i].scrollWidth > chain[i].clientWidth + 1 || chain[i].scrollHeight > chain[i].clientHeight + 1)) continue
+      // Over pixels the patch does not repaint.
+      if (overflows(chain[i], cs)) continue
       // A box a clipping ancestor cuts, past its edges or into a rounded corner, would be
       // drawn whole: a row half out of a 40px scroller painted its hidden half (19200 px
       // off). The host is the box itself, so the test is on its rect, not on the changed
@@ -238,6 +312,24 @@ export function stream(element, options = {}) {
       for (let m = i + 1; m < chain.length; m++) if (clips(styles[m]) && escapesClip(r, rectOf(chain[m]), styles[m])) cut = m
       if (cut < 0) return chain[i]
       i = cut - 1
+    }
+    return null
+  }
+
+  /** The box a change to `node` stayed inside, to repaint as a window of the root, or null.
+   *  The window has everything that paints in it, so the box needs no backdrop and may sit
+   *  under positioned boxes; it must keep its rect, paint nothing new outside itself, and
+   *  have no blur spread the change past it: a blurring ancestor, or a glass box over it. */
+  function regionFor(node) {
+    let el = node?.nodeType === 1 ? node : node?.parentElement
+    for (let a = el; a; a = a === element ? null : a.parentElement) if (spreads(getComputedStyle(a))) return null
+    for (; el && el !== element; el = el.parentElement) {
+      const r = rectOf(el)
+      const cs = getComputedStyle(el)
+      if (!r.width || !r.height || !sameRect(rects.get(el) || {}, r) || overflows(el, cs)) continue
+      if (restyled.has(el) && outerInk(cs)) continue
+      for (const g of glass) if (!g.contains(el) && !el.contains(g) && intersects(rectOf(g), r)) return null
+      return el
     }
     return null
   }
@@ -257,6 +349,10 @@ export function stream(element, options = {}) {
     ox = contentX * k
     oy = contentY * k
     snapshotLayout()
+    // Read again at every full frame, so a sheet added later counts from the next keyframe.
+    const sels = hoverSelectors(element)
+    hoverList = sels && sels.length * nodes <= HOVER_BUDGET ? sels.join(',') : null
+    try { hovered = hoverMatches() } catch { hoverList = null }
     lastKeyframe = performance.now()
     keyframeDue = false
     fullMs = lastKeyframe - t0
@@ -271,8 +367,7 @@ export function stream(element, options = {}) {
    *  other box on the whole-pixel rect around the host, or around `old`, where a moved host
    *  was. */
   function backdropOf(host, old) {
-    const cs = getComputedStyle(host)
-    if (cs.boxShadow !== 'none' || (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) > 0)) return null
+    if (outerInk(getComputedStyle(host))) return null
     let color = null
     for (let a = host.parentElement; a && !color; a = a === element ? null : a.parentElement) {
       const s = getComputedStyle(a)
@@ -325,7 +420,7 @@ export function stream(element, options = {}) {
         lctx.fillRect(0, 0, w, h)
       }
       lctx.drawImage(src, 0, 0, w, h)
-      return { layer, x, y, w, h, backdrop, host, drawnAt: r }
+      return { layer, x, y, w, h, replace: true, host, drawnAt: r }
     }
     // Otherwise keep only the pixels the box covers fully. Inside an opaque box that is
     // everything; what is left are its antialiased edges and rounded corners, which did not
@@ -340,11 +435,33 @@ export function stream(element, options = {}) {
     return { layer, x, y, w, h, host, drawnAt: r }
   }
 
+  /** Capture the root clipped to `host`'s box on whole canvas pixels: the full frame's
+   *  pixels for that window. A value on a glass tile of the Zumly board (48 tiles, dpr 2):
+   *  9 ms against 323 for the full frame, identical to it. A window over the tile's rounded
+   *  corners differed on the antialiased arc, by up to 28 levels on 45 pixels (cause not
+   *  found). Sixteen windows at once cost 101 ms; one window per row of them cost 149, since a
+   *  row keeps every tile in it. */
+  async function renderRegion(host) {
+    const drawnAt = rectOf(host)
+    const r = pixelRect(drawnAt)
+    const res = await capture(element, { ...opts, clip: { x: rootRect.left + scrollX + r.left, y: rootRect.top + scrollY + r.top, width: r.right - r.left, height: r.bottom - r.top } })
+    const { vbW, vbH, contentX = 0, contentY = 0, clip } = res.meta
+    const src = WEBKIT ? await res.toCanvas() : await decode(res.url)
+    const x = Math.round(ox + r.left * k), y = Math.round(oy + r.top * k)
+    const w = Math.round(ox + r.right * k) - x, h = Math.round(oy + r.bottom * k) - y
+    // The image starts contentX before the window, over pixels the clip culled: keep the window.
+    const layer = document.createElement('canvas')
+    layer.width = w
+    layer.height = h
+    layer.getContext('2d').drawImage(src, Math.round(ox + (clip.x - contentX) * k) - x, Math.round(oy + (clip.y - contentY) * k) - y, Math.round(vbW * k), Math.round(vbH * k))
+    return { layer, x, y, w, h, replace: true, host, drawnAt }
+  }
+
   async function patch(hosts) {
     // Captures and decodes overlap; the draws then land in one synchronous pass, so the
     // canvas never shows half a frame. Three hosts a frame (clock, KPI, list row) in
     // demos/stream-webgl.html: 11.9 ms one after another.
-    const layers = await Promise.all(hosts.map(renderPatch))
+    const layers = await Promise.all(hosts.map((h) => regions.has(h) ? renderRegion(h) : renderPatch(h)))
     const out = []
     // The canvas clips draws past its edge; a reported rect must be clipped too, or a box
     // sliding off the stage (the lower third hides to left:-720px) hands texSubImage2D a
@@ -361,9 +478,9 @@ export function stream(element, options = {}) {
       paintBackdrop(backdrops.get(host), x, y, w, h)
       report(x, y, w, h)
     }
-    for (const { layer, x, y, w, h, backdrop } of layers) {
-      // A backdrop layer is the full frame's pixels for its whole rect: replace, not blend.
-      if (backdrop) ctx.clearRect(x, y, w, h)
+    for (const { layer, x, y, w, h, replace } of layers) {
+      // A backdrop or window layer is the full frame's pixels for its whole rect: replace, not blend.
+      if (replace) ctx.clearRect(x, y, w, h)
       ctx.drawImage(layer, x, y)
       report(x, y, w, h)
     }
@@ -387,6 +504,7 @@ export function stream(element, options = {}) {
     if (!sameRect({ left: 0, top: 0, width: now.width, height: now.height }, { left: 0, top: 0, width: rootRect.width, height: rootRect.height })) return 'root resized'
     rootRect = now
     const hosts = new Set()
+    regions.clear()
     for (const node of dirty) {
       if (!node?.isConnected) return 'node removed'
       let host = hostFor(node)
@@ -406,6 +524,7 @@ export function stream(element, options = {}) {
           movedFrom.set(p, old)
         }
       }
+      if (!host && (host = regionFor(node))) regions.add(host)
       if (!host) return `no host for ${describe(node)}`
       hosts.add(host)
     }
@@ -417,14 +536,18 @@ export function stream(element, options = {}) {
     backdrops.clear()
     for (const h of movedFrom.keys()) if (!hosts.has(h)) movedFrom.delete(h)
     for (const h of hosts) {
-      const backdrop = backdropOf(h)
-      if (backdrop) backdrops.set(h, backdrop)
       const after = rectOf(h)
       area += after.width * after.height
-      for (const f of floaters) {
-        if (f === h || h.contains(f) || f.contains(h)) continue
-        if (intersects(rectOf(f), after)) return `${describe(f)} overlaps ${describe(h)}`
+      if (regions.has(h)) continue
+      const over = floaters.find((f) => f !== h && !h.contains(f) && !f.contains(h) && intersects(rectOf(f), after))
+      if (over) {
+        // The window has the positioned box in it too.
+        if (movedFrom.has(h) || regionFor(h) !== h) return `${describe(over)} overlaps ${describe(h)}`
+        regions.add(h)
+        continue
       }
+      const backdrop = backdropOf(h)
+      if (backdrop) backdrops.set(h, backdrop)
     }
     if (area > MAX_PATCH_AREA * rootRect.width * rootRect.height) return 'patch area too large'
     return [...hosts]
@@ -445,6 +568,13 @@ export function stream(element, options = {}) {
       for (const target of running) dirty.add(target)
       for (const target of animating) if (!running.has(target)) dirty.add(target)
       animating = running
+    }
+    if (hoverMoved) {
+      hoverMoved = false
+      const now = hoverMatches()
+      for (const el of now) if (!hovered.has(el)) dirty.add(el)
+      for (const el of hovered) if (!now.has(el) && el.isConnected) dirty.add(el)
+      hovered = now
     }
     netTargets(observer.takeRecords(), dirty, restyled)
     // The keyframe waits for idle time, so it never lands on top of a burst of edits.
