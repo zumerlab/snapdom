@@ -6,7 +6,10 @@ export interface StreamFrame {
   full: boolean
   reason: string | null
   rects: { x: number; y: number; width: number; height: number }[]
+  /** Wall time of the repaint. */
   ms: number
+  /** The part of `ms` the stream's own work held the main thread: the turns between windows and the decodes are out, a full frame's capture counts whole. */
+  busyMs: number
   canvas: HTMLCanvasElement
 }
 

@@ -288,6 +288,47 @@ describe('stream plugin', () => {
     }
   })
 
+  it('captures each window in a task of its own, and reports the time it held', async () => {
+    // A message loop counts tasks; a window that starts in the same task as the one before
+    // reads the same count. Zumly's board ran its 17 windows a second as one task of 95 ms.
+    let ticks = 0
+    let ticking = true
+    const channel = new MessageChannel()
+    channel.port1.onmessage = () => { ticks++; if (ticking) channel.port2.postMessage(0) }
+    channel.port2.postMessage(0)
+    const starts = []
+    const root = grid('background:hsl(200 70% 60% / .16);backdrop-filter:blur(8px)')
+    const s = open(root, { plugins: [{ name: 'window-starts', beforeSnap: (ctx) => { if (ctx.clip) starts.push(ticks) } }] })
+    await s.ready
+    const next = s.next()
+    for (const i of [1, 6, 13, 20]) root.children[i].querySelector('.v').textContent = `glass ${i}`
+    const frame = await next
+    ticking = false
+    expect(frame.full, frame.reason).toBe(false)
+    expect(starts.length).toBe(4)
+    // One task each would be four counts. WebKit under parallel load once ran a window's
+    // message ahead of the loop's (48,48,50,51); in one task the four read the same count.
+    expect(new Set(starts).size, starts.join()).toBeGreaterThanOrEqual(3)
+    // busyMs leaves the turns out of the wall time; Zumly budgets on it.
+    expect(frame.busyMs).toBeGreaterThan(0)
+    expect(frame.busyMs).toBeLessThanOrEqual(frame.ms)
+  })
+
+  it('drops the windows still queued when the stream stops', async () => {
+    // Zumly stops the stream as a zoom starts; the windows left in the queue went on capturing
+    // through the motion. The one capturing when stop() lands finishes, unreported.
+    let s
+    let starts = 0
+    const root = grid('background:hsl(200 70% 60% / .16);backdrop-filter:blur(8px)')
+    s = open(root, { plugins: [{ name: 'stop-in-window', beforeSnap: (ctx) => { if (ctx.clip && ++starts === 1) s.stop() } }] })
+    await s.ready
+    const frames = s.frames.length
+    for (const i of [1, 6, 13, 20]) root.children[i].querySelector('.v').textContent = `glass ${i}`
+    await new Promise(r => setTimeout(r, 300))
+    expect(starts).toBe(1)
+    expect(s.frames.length).toBe(frames)
+  })
+
   it('repaints a box under a positioned element as a window of the root, the element on top', async () => {
     const root = grid()
     root.style.position = 'relative'

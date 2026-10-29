@@ -46,7 +46,7 @@ All [capture options](https://snapdom.dev/) apply (`scale`, `dpr`, `embedFonts`,
 
 | option | default | |
 |---|---|---|
-| `onFrame(frame)` | | called after each repaint: `{ full, reason, rects, ms, canvas }` |
+| `onFrame(frame)` | | called after each repaint: `{ full, reason, rects, ms, busyMs, canvas }`. `ms` is wall time; `busyMs` is the part the stream held the main thread, the one to budget on |
 | `fps` | every animation frame | upper bound on repaints per second |
 | `patches` | `true` | `false` repaints full frames only, for comparison |
 | `animations` | `true` | `false` stops following running animations and transitions: an animated box keeps the pixels it was last drawn with until a patch over it, a full frame or the keyframe. For a still of the page, where a spinner's angle does not matter but its full frames would |

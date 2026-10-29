@@ -170,6 +170,26 @@ function describe(node) {
   return `<${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.classList?.length ? '.' + [...el.classList].join('.') : ''}>`
 }
 
+/** A task of its own, with rendering's turn before it: a message, as the core's time slicing
+ *  yields (scheduler.yield() resumes ahead of rendering, a nested setTimeout clamps to 4 ms). */
+function nextTask() {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel()
+    channel.port1.onmessage = () => resolve()
+    channel.port2.postMessage(0)
+  })
+}
+
+/** How long the [start, end] spans cover, overlaps counted once. */
+function covered(spans) {
+  let sum = 0
+  let end = -Infinity
+  for (const [s, e] of spans.sort((a, b) => a[0] - b[0])) {
+    if (e > end) { sum += e - Math.max(s, end); end = e }
+  }
+  return sum
+}
+
 async function decode(url) {
   const img = new Image()
   img.decoding = 'sync'
@@ -182,7 +202,11 @@ async function decode(url) {
  * Stream an element into a canvas, repainting only the boxes that changed.
  * @param {Element} element
  * @param {object} [options] - capture options (scale, dpr, embedFonts, ...), plus:
- * @param {(frame: {full: boolean, reason: string|null, rects: {x:number,y:number,width:number,height:number}[], ms: number, canvas: HTMLCanvasElement}) => void} [options.onFrame]
+ * @param {(frame: {full: boolean, reason: string|null, rects: {x:number,y:number,width:number,height:number}[], ms: number, busyMs: number, canvas: HTMLCanvasElement}) => void} [options.onFrame]
+ *   `ms` is the frame's wall time; `busyMs` the part its own work held the main thread, without
+ *   the turns between windows or the decodes (a full frame's capture counts whole, its sliced
+ *   pauses included). Zumly's board, 17 windows a second at 4x CPU: 584 to 778 ms of wall
+ *   time, which turned its stream off on a budget of blocked time.
  * @param {number} [options.fps] - cap on frames per second; default every animation frame.
  * @param {boolean} [options.patches=true] - false repaints full frames only (the baseline).
  * @param {boolean} [options.animations=true] - false stops following running animations and
@@ -204,6 +228,8 @@ export function stream(element, options = {}) {
   const backdrops = new Map() // this frame's hosts that draw over a solid colour
   const movedFrom = new Map() // this frame's out-of-flow hosts that moved -> their old rect
   const regions = new Set() // this frame's hosts repainted as a window of the root
+  let windows = Promise.resolve() // the turn of the next window capture
+  let spans = [] // this frame's own work on the main thread, [start, end]
   const stats = { full: 0, patch: 0, skipped: 0, lastMs: 0 }
   let floaters = []
   let glass = [] // backdrop-filter boxes: a change under one shows through its blur
@@ -343,9 +369,10 @@ export function stream(element, options = {}) {
     // A full frame is the one long task of a stream; 'auto' lets a long clone yield (#503).
     // Lab, 1000 cards under constant edits: worst frame gap 67 -> 33 ms. Under edits on
     // every frame a big tree tears and redoes in one task, which only the interval helps.
-    const res = await capture(element, { fast: 'auto', ...opts })
+    const res = await held(() => capture(element, { fast: 'auto', ...opts }), t0)
     const { vbW, vbH, contentX = 0, contentY = 0 } = res.meta
     const src = WEBKIT ? await res.toCanvas() : await decode(res.url)
+    const drawn = performance.now()
     const w = Math.round(vbW * k), h = Math.round(vbH * k)
     if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h }
     ctx.clearRect(0, 0, w, h)
@@ -356,6 +383,7 @@ export function stream(element, options = {}) {
     lastKeyframe = performance.now()
     keyframeDue = false
     fullMs = lastKeyframe - t0
+    spans.push([drawn, lastKeyframe])
     stats.full++
     return [{ x: 0, y: 0, width: w, height: h }]
   }
@@ -403,11 +431,12 @@ export function stream(element, options = {}) {
     const x0 = Math.floor(left + 0.001), y0 = Math.floor(top + 0.001)
     const phase = { x: (left - x0) / k, y: (top - y0) / k }
     // Always passed, even at phase zero: it also lays the root out at its exact width.
-    const res = await capture(host, { ...opts, __subpixel: phase })
+    const res = await held(() => capture(host, { ...opts, __subpixel: phase }))
     const { vbW, vbH, contentX = 0, contentY = 0 } = res.meta
     const x = Math.round(x0 - contentX * k), y = Math.round(y0 - contentY * k)
     const w = Math.round(vbW * k), h = Math.round(vbH * k)
     const src = WEBKIT ? await res.toCanvas() : await decode(res.url)
+    const drawn = performance.now()
     const layer = document.createElement('canvas')
     layer.width = w
     layer.height = h
@@ -420,6 +449,7 @@ export function stream(element, options = {}) {
         lctx.fillRect(0, 0, w, h)
       }
       lctx.drawImage(src, 0, 0, w, h)
+      spans.push([drawn, performance.now()])
       return { layer, x, y, w, h, replace: true, host, drawnAt: r }
     }
     // Otherwise keep only the pixels the box covers fully. Inside an opaque box that is
@@ -432,6 +462,7 @@ export function stream(element, options = {}) {
     const px = img.data
     for (let i = 3; i < px.length; i += 4) if (px[i] < 255) px[i] = 0
     lctx.putImageData(img, 0, 0)
+    spans.push([drawn, performance.now()])
     return { layer, x, y, w, h, host, drawnAt: r }
   }
 
@@ -442,11 +473,24 @@ export function stream(element, options = {}) {
    *  found). Sixteen windows at once cost 101 ms; one window per row of them cost 149, since a
    *  row keeps every tile in it. */
   async function renderRegion(host) {
-    const drawnAt = rectOf(host)
-    const r = pixelRect(drawnAt)
-    const res = await capture(element, { ...opts, clip: { x: rootRect.left + scrollX + r.left, y: rootRect.top + scrollY + r.top, width: r.right - r.left, height: r.bottom - r.top } })
+    // One window per task. Captures of one element run one after another in the core, and
+    // each began in the task the last one ended in: the board's 17 windows a second were one
+    // task of up to 95 ms, and 9.5% of the frames at rest were dropped.
+    const turn = windows.then(async () => {
+      // stop() between turns drops the rest: Zumly stops the stream as a zoom starts, and the
+      // queued windows went on capturing through the motion (2.7 to 5.3% frames dropped).
+      if (stopped) return null
+      const drawnAt = rectOf(host)
+      const r = pixelRect(drawnAt)
+      return { drawnAt, r, res: await held(() => capture(element, { ...opts, clip: { x: rootRect.left + scrollX + r.left, y: rootRect.top + scrollY + r.top, width: r.right - r.left, height: r.bottom - r.top } })) }
+    })
+    windows = turn.then(nextTask, nextTask)
+    const shot = await turn
+    if (!shot) return null
+    const { drawnAt, r, res } = shot
     const { vbW, vbH, contentX = 0, contentY = 0, clip } = res.meta
     const src = WEBKIT ? await res.toCanvas() : await decode(res.url)
+    const drawn = performance.now()
     const x = Math.round(ox + r.left * k), y = Math.round(oy + r.top * k)
     const w = Math.round(ox + r.right * k) - x, h = Math.round(oy + r.bottom * k) - y
     // The image starts contentX before the window, over pixels the clip culled: keep the window.
@@ -454,7 +498,13 @@ export function stream(element, options = {}) {
     layer.width = w
     layer.height = h
     layer.getContext('2d').drawImage(src, Math.round(ox + (clip.x - contentX) * k) - x, Math.round(oy + (clip.y - contentY) * k) - y, Math.round(vbW * k), Math.round(vbH * k))
+    spans.push([drawn, performance.now()])
     return { layer, x, y, w, h, replace: true, host, drawnAt }
+  }
+
+  /** `run()`'s result, the time from `t` to it counted as the frame's own. */
+  async function held(run, t = performance.now()) {
+    try { return await run() } finally { spans.push([t, performance.now()]) }
   }
 
   async function patch(hosts) {
@@ -462,6 +512,8 @@ export function stream(element, options = {}) {
     // canvas never shows half a frame. Three hosts a frame (clock, KPI, list row) in
     // demos/stream-webgl.html: 11.9 ms one after another.
     const layers = await Promise.all(hosts.map((h) => regions.has(h) ? renderRegion(h) : renderPatch(h)))
+    if (stopped) return []
+    const drawn = performance.now()
     const out = []
     // The canvas clips draws past its edge; a reported rect must be clipped too, or a box
     // sliding off the stage (the lower third hides to left:-720px) hands texSubImage2D a
@@ -491,6 +543,7 @@ export function stream(element, options = {}) {
       rects.set(host, drawnAt)
       for (const el of host.querySelectorAll('*')) rects.set(el, rectOf(el))
     }
+    spans.push([drawn, performance.now()])
     stats.patch++
     return out
   }
@@ -587,8 +640,10 @@ export function stream(element, options = {}) {
     if (!dirty.size && !forceFull && !keyframeDue) { stats.skipped++; return }
     busy = true
     lastTick = now
+    spans = []
     try {
       const hosts = plan()
+      spans.push([now, performance.now()])
       dirty.clear()
       restyled.clear()
       const reason = typeof hosts === 'string' ? hosts : null
@@ -597,7 +652,7 @@ export function stream(element, options = {}) {
       // Records produced by our own capture are net-zero; anything else lands next frame.
       netTargets(observer.takeRecords(), dirty, restyled)
       stats.lastMs = performance.now() - now
-      if (out.length) onFrame?.({ full: !!reason, reason, rects: out, ms: stats.lastMs, canvas })
+      if (out.length) onFrame?.({ full: !!reason, reason, rects: out, ms: stats.lastMs, busyMs: covered(spans), canvas })
     } finally {
       busy = false
     }
@@ -612,7 +667,7 @@ export function stream(element, options = {}) {
       // until a keyframe (a 1000-card lab under edits kept stale cards for seconds).
       await full()
       netTargets(observer.takeRecords(), dirty, restyled)
-      onFrame?.({ full: true, reason: 'start', rects: [{ x: 0, y: 0, width: canvas.width, height: canvas.height }], ms: 0, canvas })
+      onFrame?.({ full: true, reason: 'start', rects: [{ x: 0, y: 0, width: canvas.width, height: canvas.height }], ms: 0, busyMs: 0, canvas })
     } finally { busy = false }
     requestAnimationFrame(tick)
   })()
