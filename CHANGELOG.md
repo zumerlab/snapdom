@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.7.0](https://github.com/zumerlab/snapdom/compare/v3.6.0...v3.7.0)
+
+> 29 October 2026
+
+**Features**
+
+- **stream:** capture windows one task at a time, report busyMs, drop them on stop() [`edbc556`](https://github.com/zumerlab/snapdom/commit/edbc556ca2f73157f5487d13b8e1c15db8dcdd6e)
+
+**Fixes**
+
+- **stream:** repaint hostless changes as a clip window, ignore unhovered pointer moves [`5e97874`](https://github.com/zumerlab/snapdom/commit/5e9787476555c9ceda54a843d5601a5ccaa811df)
+- **clone:** keep the layout of a scrolled grid or flex container [`cb77f4b`](https://github.com/zumerlab/snapdom/commit/cb77f4b5e5137d4f15e2e9dd71e5e4794f4d2c35)
+- **clone:** keep a culled box's margin to its block neighbour, and a folded run beside floats [`73281e8`](https://github.com/zumerlab/snapdom/commit/73281e8f76871cfdfa7ebfd59f1c76fef83d2642)
+- **clone:** measure a culled box's margin only against a layout rect [`487395e`](https://github.com/zumerlab/snapdom/commit/487395ef96f8a1977caf9e857b69fd6054f92b14)
+- **stream:** read the :hover rules before the first capture [`1ea0f3b`](https://github.com/zumerlab/snapdom/commit/1ea0f3bae10fb59377bedc6ec86a8cfa0264feba)
+
+**Performance**
+
+- **capture:** hand the page a task once queued captures spend a slice [`e9ca43a`](https://github.com/zumerlab/snapdom/commit/e9ca43acb2463867c1af49170e03e267cf204aed)
+- **clone:** dress a plain culled box from its placement alone [`1cdc6f4`](https://github.com/zumerlab/snapdom/commit/1cdc6f406998e1a61886d8315238c1bdd2ddcd93)
+
+**Docs**
+
+- **labs:** add the into-the-dock lab [`36bdfa6`](https://github.com/zumerlab/snapdom/commit/36bdfa697d40ed4ca06ee26f567a063565e428ba)
+- **engine:** stop promising a native look for every form control [`8358768`](https://github.com/zumerlab/snapdom/commit/835876833daa06bc20c918b72293f3d2745818d6)
+
+**Chores**
+
+- **scripts:** add publish:plugins:dev [`e31c921`](https://github.com/zumerlab/snapdom/commit/e31c921881ce069cebb8b11a49ca7e4a8b498626)
+
 #### [v3.6.0](https://github.com/zumerlab/snapdom/compare/v3.5.0...v3.6.0)
 
 > 28 October 2026
