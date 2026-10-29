@@ -429,15 +429,20 @@ function nextInFlow(a, b) {
 
 /** The live distance from a box to its previous (dir -1) or next (dir 1) in-flow sibling,
  *  which is the margin block flow collapsed between them; null when there is none, the
- *  margins overlap, or the sibling's rect is not its layout box. A display:contents wrapper
- *  (all zeros) or a stuck sticky panel read as the next box gave a culled toolbar a 463px
- *  margin on a page scrolled 549px, and the window showed content from above it. */
+ *  margins overlap, a line box sits between (text or an inline-level box), or the sibling's
+ *  rect is not its layout box. A display:contents wrapper (all zeros) or a stuck sticky
+ *  panel read as the next box gave a culled toolbar a 463px margin on a page scrolled 549px,
+ *  and the window showed content from above it. Read across a line, the gap was the line's
+ *  height, and the line moved down by it. */
 function siblingGap(el, r, dir) {
-  let sib = dir < 0 ? el.previousElementSibling : el.nextElementSibling
-  while (sib) {
+  let sib = dir < 0 ? el.previousSibling : el.nextSibling
+  for (; sib; sib = dir < 0 ? sib.previousSibling : sib.nextSibling) {
+    if (sib.nodeType === 3 && !/^[ \t\n\r\f]*$/.test(sib.data)) return null
+    if (sib.nodeType !== 1) continue
     const cs = getStyle(sib)
-    if (cs.display !== 'none' && cs.position !== 'absolute' && cs.position !== 'fixed') break
-    sib = dir < 0 ? sib.previousElementSibling : sib.nextElementSibling
+    if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed' || cs.float !== 'none') continue
+    if (cs.display.startsWith('inline')) return null
+    break
   }
   if (!sib) return null
   const s = sib.getBoundingClientRect()
@@ -448,7 +453,9 @@ function siblingGap(el, r, dir) {
 
 /**
  * Fold the runs of culled block siblings under one clone parent. The first husk of a run
- * becomes a spacer as tall as the live run. The rest are dropped, or kept as empty
+ * becomes a spacer as tall as the live run, a plain block whatever author rule still matches
+ * its element: made a block formatting context by `overflow:hidden`, it could not overlap a
+ * float, and the window landed one float lower. The rest are dropped, or kept as empty
  * display:none shells when author styles travel with the clone, so their sibling selectors
  * match the same elements. Whitespace and comments between them go too, since the span
  * already holds whatever they laid out.
@@ -493,7 +500,7 @@ function foldClipRuns(parent, husks, shells, standIns) {
       members[0].style.cssText = 'display:block;position:static;float:none;box-sizing:border-box;padding:0;border:0;' +
         `width:${width}px;min-width:${width}px;max-width:${width}px;` +
         `height:${height}px;min-height:${height}px;max-height:${height}px;` +
-        `margin:${top}px 0 ${bottom}px;visibility:hidden`
+        `margin:${top}px 0 ${bottom}px;overflow:visible;contain:none;clear:none;visibility:hidden`
       for (let k = 1; k < members.length; k++) {
         if (shells) members[k].style.cssText = 'display:none!important'
         else members[k].remove()
@@ -565,12 +572,14 @@ function dressClipHusk(husk, node, sessionCache, options) {
   // collapsed THROUGH the original's edges (Wikipedia loses 16px per husked <section>
   // — the whole flow drifts). Assign the LIVE measured gap to both husk edges: since
   // adjoining margins collapse to their max and the live gap already IS that max,
-  // husk↔husk and husk↔content spacing land exactly on the live layout. Block flow
-  // only — flex/grid/table parents don't collapse margins, and there the computed
+  // husk↔husk and husk↔content spacing land exactly on the live layout. In-flow block
+  // boxes in block flow only. Flex/grid/table parents don't collapse margins, a float's
+  // margins never collapse, an inline-level box sits in a line, and there the computed
   // margins already inlined are correct.
   const parentDisplay = node.parentElement ? getStyle(node.parentElement).display : ''
-  const ownPos = getStyle(node).position
-  if (!/flex|grid|table/.test(parentDisplay) && (ownPos === 'static' || ownPos === 'relative')) {
+  const cs = getStyle(node)
+  if (!/flex|grid|table/.test(parentDisplay) && !cs.display.startsWith('inline') && cs.float === 'none' &&
+      (cs.position === 'static' || cs.position === 'relative')) {
     const r = node.getBoundingClientRect()
     const top = siblingGap(node, r, -1)
     if (top !== null) husk.style.marginTop = `${top}px`

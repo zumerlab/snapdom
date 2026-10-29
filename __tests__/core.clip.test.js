@@ -422,6 +422,41 @@ describe('clip option (region capture)', () => {
     expect(px[2] > 200 && px[0] < 60).toBe(false)
   })
 
+  // The spacer is the run's first element, so a travelling author rule still matches it.
+  // overflow:hidden made it a block formatting context, which cannot overlap the float, and
+  // the window below came out one float lower.
+  it('a folded run next to a float stays beside it when an author rule makes its head a BFC', async () => {
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'width:400px;'
+    wrap.innerHTML = '<div style="float:left;width:100px;height:300px"></div>' +
+      '<div class="fold-bfc" style="height:40px"></div>' + '<div style="height:40px"></div>'.repeat(3) +
+      '<div style="height:600px"></div><div class="fold-target" style="height:40px;background:rgb(255,0,0)"></div>'
+    const style = mount(document.createElement('style'))
+    style.textContent = '.fold-bfc{overflow:hidden}'
+    const r = wrap.querySelector('.fold-target').getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    for (const y of [1, 38]) expect([...ctx.getImageData(200, y, 1, 1).data.slice(0, 3)]).toEqual([255, 0, 0])
+  })
+
+  // A culled box measured its margin to the next element across a line of text or an
+  // inline-block, and the line moved down by its own height.
+  it.each([
+    ['an inline-block', '<span style="display:inline-block;width:10px;height:10px"></span>'],
+    ['a line of text', 'text']
+  ])('a culled block next to %s keeps its own margin', async (_, line) => {
+    const wrap = mount(document.createElement('div'))
+    wrap.style.cssText = 'width:400px;font-size:60px;line-height:80px'
+    wrap.innerHTML = '<div style="height:40px"></div>' + line + '<div style="height:600px"></div>' +
+      '<div class="line-target" style="height:40px;background:rgb(255,0,0)"></div>'
+    const r = wrap.querySelector('.line-target').getBoundingClientRect()
+    const clip = { x: r.left + window.scrollX, y: r.top + window.scrollY, width: r.width, height: r.height }
+    const canvas = await snapdom.toCanvas(document.body, { clip, dpr: 1 })
+    const ctx = canvas.getContext('2d')
+    for (const y of [1, 38]) expect([...ctx.getImageData(200, y, 1, 1).data.slice(0, 3)]).toEqual([255, 0, 0])
+  })
+
   // playwright-lite #302: at an output grid finer than the layout grid (dpr 2 under device
   // emulation, here scale 2) the half pixel of the origin was snapped away: 80,60 for 79,59.
   // WebKit keeps the snap: an ancestor translate does not move its layered boxes.
