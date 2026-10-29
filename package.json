@@ -55,7 +55,8 @@
     "bump:plugins:dry": "npm run bump:dry --workspace=@zumer/snapdom-plugins",
     "bump:plugins": "npm run bump --workspace=@zumer/snapdom-plugins",
     "release:plugins": "git add packages/plugins/package.json packages/plugins/CHANGELOG.md package-lock.json && git commit -m \"Bumped plugins version\" && git push",
-    "publish:plugins": "npm run test:pdf && npm run test:vector && npm publish --workspace=@zumer/snapdom-plugins --access public"
+    "publish:plugins": "npm run test:pdf && npm run test:vector && npm publish --workspace=@zumer/snapdom-plugins --access public",
+    "publish:plugins:dev": "node scripts/publish-dev.mjs --plugins"
   },
   "repository": {
     "type": "git",
