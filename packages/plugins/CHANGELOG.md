@@ -1,5 +1,23 @@
 # Plugin changes
 
+## 4.4.1
+
+> 29 October 2026
+
+**Features**
+
+- **stream:** capture windows one task at a time, report busyMs, drop them on stop() [`edbc556`](https://github.com/zumerlab/snapdom/commit/edbc556ca2f73157f5487d13b8e1c15db8dcdd6e)
+- **engine:** ship html-in-canvas in the default build, with a guide [`8294802`](https://github.com/zumerlab/snapdom/commit/8294802cedd1d850573d57b369e2130667d9e490)
+
+**Fixes**
+
+- **stream:** repaint hostless changes as a clip window, ignore unhovered pointer moves [`5e97874`](https://github.com/zumerlab/snapdom/commit/5e9787476555c9ceda54a843d5601a5ccaa811df)
+- **stream:** read the :hover rules before the first capture [`1ea0f3b`](https://github.com/zumerlab/snapdom/commit/1ea0f3bae10fb59377bedc6ec86a8cfa0264feba)
+
+**Docs**
+
+- add a plugins version badge to the READMEs [`3bf9489`](https://github.com/zumerlab/snapdom/commit/3bf9489774c89e771cd58dc624e2af35ddbe38ae)
+
 ## 4.4.0
 
 > 27 October 2026
