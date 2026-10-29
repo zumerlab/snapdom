@@ -11,7 +11,7 @@
 import { captureDOM } from '../core/capture.js'
 import { isBlankCanvas } from '../core/clone.js'
 import { createContext } from '../core/context.js'
-import { isSafari, nextFrame } from '../utils/browser.js'
+import { isSafari, nextFrame, yieldWhenTaskSpent } from '../utils/browser.js'
 import { debugWarn } from '../utils/debug.js'
 import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRenderPlugins } from '../core/plugins.js'
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
@@ -163,6 +163,8 @@ async function main(element, userOptions) {
       (url) => buildResult(url, context)
     )
   }
+  // The burst queue asks the same before each capture it runs.
+  await yieldWhenTaskSpent()
   return snapdom.capture(element, context, INTERNAL_TOKEN)
 }
 

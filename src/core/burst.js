@@ -69,6 +69,7 @@ import {
 } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
+import { yieldWhenTaskSpent } from '../utils/browser.js'
 
 /** Per-element state lookup; the bounded LRU below retains and disposes live memos. */
 const burstStates = new WeakMap()
@@ -789,6 +790,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
   const sig = optionsSignature(userOptions, context.plugins)
 
   const run = async () => {
+    await yieldWhenTaskSpent()
     // This call may have queued just before another element evicted its old memo. Capture it
     // fresh, but never let the detached state resurrect itself in the LRU.
     if (state.disposed) return runCapture()

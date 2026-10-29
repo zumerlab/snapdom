@@ -1,6 +1,7 @@
 /**
  * Engine detection by user agent, the one frame wait the canvas readback needs, the font-set
- * wait every font path shares, and the time slicing behind `fast: false | 'auto'`.
+ * wait every font path shares, the time slicing behind `fast: false | 'auto'`, and the task
+ * turn between captures that would otherwise run as one task.
  *
  * Every caller keys a workaround on the rendering ENGINE, not the browser brand: svg-as-image
  * paint timing, native form controls, the download path. So `isSafari` answers true for any
@@ -88,22 +89,49 @@ export function createSlicer(fast) {
     yielded: false,
     due: () => performance.now() >= until,
     // One shared wait: every walk that finds the slice spent resumes in the order it paused.
-    pause: () => wait || (wait = new Promise((resolve) => {
-      const resume = () => {
-        wait = null
-        slicer.yielded = true
-        until = performance.now() + SLICE_MS
-        resolve()
-      }
-      // A message is a plain task: rendering takes its turn in between. scheduler.yield()
-      // resumes AHEAD of rendering, and on the #503 table the page went 83-117 ms between
-      // frames with it against 17-33 ms with a message. A nested setTimeout clamps to 4 ms.
-      const channel = new MessageChannel()
-      channel.port1.onmessage = resume
-      channel.port2.postMessage(0)
+    pause: () => wait || (wait = nextTask().then(() => {
+      wait = null
+      slicer.yielded = true
+      until = performance.now() + SLICE_MS
     })),
   }
   return slicer
+}
+
+/** Resolve in a new task. A message is a plain task, so rendering takes its turn in between.
+ *  scheduler.yield() resumes AHEAD of rendering, and on the #503 table the page went 83-117 ms
+ *  between frames with it against 17-33 ms with a message. A nested setTimeout clamps to 4 ms. */
+function nextTask() {
+  return new Promise((resolve) => {
+    const channel = new MessageChannel()
+    channel.port1.onmessage = () => resolve()
+    channel.port2.postMessage(0)
+  })
+}
+
+/** When the running task first asked yieldWhenTaskSpent, or -1 once a task boundary passed.
+ *  Module scope on purpose: the task belongs to the page, and every capture shares it. */
+let taskStart = -1
+
+/**
+ * Hand the event loop one task when the running task has already spent a slice on captures.
+ *
+ * The same-element queue in burst.js starts each capture in a microtask of the one before, and
+ * an awaited loop does the same from the caller, so captures that settle without a task of
+ * their own (no decode, no fetch) ran as one task. Sixteen clip windows of the Zumly board
+ * were one 90 ms task, queued at once or awaited in a loop. Asked before each capture, this
+ * keeps the longest task at 20 to 26 ms there (a slice and the capture that crossed it), for
+ * the same total. A task before every capture held it at 7 to 11 ms, but each one cost
+ * Playwright's WebKit 1 to 4 ms, and 200 memo hits went from 6 to 170-308 ms.
+ * Pinned by __tests__/core.burst.taskTurn.test.js.
+ * @returns {Promise<void>}
+ */
+export async function yieldWhenTaskSpent() {
+  if (taskStart >= 0 && performance.now() - taskStart > SLICE_MS) await nextTask()
+  if (taskStart < 0) {
+    taskStart = performance.now()
+    nextTask().then(() => { taskStart = -1 })
+  }
 }
 
 /**
