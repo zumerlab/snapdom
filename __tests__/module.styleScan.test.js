@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { scanAuthorStyles, ALWAYS_PROPS } from '../src/modules/styleScan.js'
+import { rewriteShadowCSS } from '../src/utils/clone.helpers.js'
 import { snapdom } from '../src/api/snapdom.js'
 
 const computePropertyUniverse = (doc) => scanAuthorStyles(doc).universe
@@ -125,5 +126,88 @@ describe('pruned snapshots keep fidelity', () => {
     const res = await snapdom(el, { cache: 'disabled' })
     const svg = decodeURIComponent(res.url.split(',')[1])
     expect(svg).toContain('column-count')
+  })
+})
+
+// Tailwind serializes `md:after:h-0.5` as `.md\:after\:h-0\.5::after`: the escaped `\:after`
+// inside the class name is not a pseudo-element (math280h/diagrams#146: one bad part in the
+// joined SVG geometry gate threw per SVG element, and the pseudo gates fell to null).
+describe('escaped pseudo tokens in class names', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('style[data-scan-test]').forEach((s) => s.remove())
+    document.body.innerHTML = ''
+  })
+
+  const scanWith = (css) => {
+    const style = document.createElement('style')
+    style.setAttribute('data-scan-test', '')
+    style.textContent = css
+    document.head.appendChild(style)
+    return scanAuthorStyles(document)
+  }
+
+  it('keeps the svg geometry gate and the pseudo gates usable', () => {
+    const { svgGeometrySel, pseudoGates } = scanWith(String.raw`
+      .md\:after\:h-0\.5::after { height: 2px; }
+      .hover\:before\:x::before { content: ''; }
+      .group-data-horizontal\/tabs\:after\:h-0\.5:after { height: 1px; }
+      .dark\:first-letter\:big::first-letter { font-size: 2em; }
+      circle { r: 5px; }
+    `)
+    document.body.innerHTML = '<svg><circle cx="5" cy="5"></circle><rect></rect></svg>'
+    const circle = document.querySelector('circle')
+    expect(typeof svgGeometrySel).toBe('string')
+    expect(() => circle.matches(svgGeometrySel)).not.toThrow()
+    expect(circle.matches(svgGeometrySel)).toBe(true)
+    expect(document.querySelector('rect').matches(svgGeometrySel)).toBe(false)
+
+    expect(typeof pseudoGates.after).toBe('string')
+    expect(typeof pseudoGates.before).toBe('string')
+    expect(typeof pseudoGates.firstLetter).toBe('string')
+    const after = document.createElement('div')
+    after.className = 'md:after:h-0.5'
+    expect(after.matches(pseudoGates.after)).toBe(true)
+    expect(after.matches(pseudoGates.before)).toBe(false)
+    const legacy = document.createElement('div')
+    legacy.className = 'group-data-horizontal/tabs:after:h-0.5'
+    expect(legacy.matches(pseudoGates.after)).toBe(true)
+    const before = document.createElement('div')
+    before.className = 'hover:before:x'
+    expect(before.matches(pseudoGates.before)).toBe(true)
+    expect(before.matches(pseudoGates.after)).toBe(false)
+    const letter = document.createElement('p')
+    letter.className = 'dark:first-letter:big'
+    expect(letter.matches(pseudoGates.firstLetter)).toBe(true)
+  })
+
+  it('still strips real pseudo-elements, double- and single-colon', () => {
+    const { pseudoGates } = scanWith(`
+      .zz-a::after { content: 'a'; }
+      .zz-b:before { content: 'b'; }
+      li::marker { color: red; }
+      p::first-letter { color: blue; }
+    `)
+    for (const kind of ['after', 'before', 'marker', 'firstLetter']) {
+      expect(typeof pseudoGates[kind]).toBe('string')
+      expect(pseudoGates[kind]).not.toMatch(/:(?:before|after|marker|first-letter)/)
+    }
+    const a = document.createElement('div')
+    a.className = 'zz-a'
+    expect(a.matches(pseudoGates.after)).toBe(true)
+    const b = document.createElement('div')
+    b.className = 'zz-b'
+    expect(b.matches(pseudoGates.before)).toBe(true)
+    expect(document.createElement('li').matches(pseudoGates.marker)).toBe(true)
+    expect(document.createElement('p').matches(pseudoGates.firstLetter)).toBe(true)
+    expect(document.createElement('span').matches(pseudoGates.firstLetter)).toBe(false)
+  })
+
+  it('shadow scoping drops a trailing real pseudo rule and leaves an escaped class alone', () => {
+    const scope = '[data-sd="s9"]'
+    expect(rewriteShadowCSS('.k::after{color:red}', scope, 's9')).toContain(':not(*){')
+    expect(rewriteShadowCSS('.k:after{color:red}', scope, 's9')).toContain(':not(*){')
+    const kept = rewriteShadowCSS(String.raw`.md\:after{color:red}`, scope, 's9')
+    expect(kept).not.toContain(':not(*)')
+    expect(kept).toContain(String.raw`:where([data-sd="s9"] .md\:after:not([data-sd-slotted~="s9"])){`)
   })
 })
