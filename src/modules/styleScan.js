@@ -107,7 +107,13 @@ const INHERITED_PROPS = [
 // contain them — snapdom's own injected class CSS in a test page did — and two captures of
 // the same pseudo keyed differently.
 const PSEUDO_BOX_PROPS = ['display', 'width', 'height', 'min-width', 'min-height']
-const PSEUDO_ELEMENT_SEL_RE = /::?(?:before|after|first-letter|first-line|marker)/
+// Every pseudo regex below refuses a colon escaped with a backslash: Tailwind serializes
+// `md:after:h-0.5` as `.md\:after\:h-0\.5::after`, and the `\:after` inside the class name
+// read as a pseudo. Stripped, it left `.md\\:h-0\.5`, an invalid selector that poisoned the
+// whole joined gate: the pseudo gates fell to null (every node probed) and svgGeometrySel
+// threw per SVG element (59k errors, +3.9 s on a 3,094-node diagram, math280h/diagrams#146).
+// Pinned by __tests__/module.styleScan.test.js.
+const PSEUDO_ELEMENT_SEL_RE = /(?<!\\)::?(?:before|after|first-letter|first-line|marker)/
 
 /** Rule budget for one scan. Past it the scan answers unreliable, and every reader falls
  *  back to full reads. */
@@ -126,12 +132,12 @@ const UNSTABLE_LAYOUT_VALUE_RE = /%|\bauto\b|calc\(|var\(/i
  *  pseudo — so the probe can be gated by one `el.matches()` instead of three
  *  getComputedStyle resolutions per node. */
 const PSEUDO_KINDS = {
-  before: /::?before\b/, after: /::?after\b/, firstLetter: /::?first-letter\b/,
+  before: /(?<!\\)::?before\b/, after: /(?<!\\)::?after\b/, firstLetter: /(?<!\\)::?first-letter\b/,
   // marker/firstLine aren't probed per node — matching elements get a scoped CSS rule
   // (markers re-render natively in the foreignObject; first-line re-fragments there).
-  marker: /::marker\b/, firstLine: /::?first-line\b/,
+  marker: /(?<!\\)::marker\b/, firstLine: /(?<!\\)::?first-line\b/,
 }
-const PSEUDO_STRIP = /::?(?:before|after|first-letter|first-line|marker)\b/g
+const PSEUDO_STRIP = /(?<!\\)::?(?:before|after|first-letter|first-line|marker)\b/g
 
 /** Strips pseudo-element tokens from a selector list so it can feed `el.matches()`.
  *  A part that was ONLY the pseudo (`::before {}`) becomes `*` (pseudo-elements are not
@@ -355,8 +361,7 @@ function joinGate(probe, parts) {
 /** Joins collected per-kind selectors into one matches()-ready string, validating the
  *  combined result once (an unparsable selector → null → callers probe every node).
  *  `q` is always included for before/after: UA open/close-quote pseudos have no author rule. */
-function composePseudoGates(doc, pseudoSels) {
-  const probe = doc.createElement('div')
+function composePseudoGates(probe, pseudoSels) {
   const gates = {}
   for (const kind in pseudoSels) {
     const parts = pseudoSels[kind]
@@ -427,11 +432,14 @@ export function scanAuthorStyles(doc, crossOriginRules) {
       }
     }
     if (state.svgKeyframes) for (const one of state.svgAnimSels) state.svgGeometrySels.add(one)
-    const svgGeometrySel = state.svgGeometryAll ? null : Array.from(state.svgGeometrySels).join(',')
+    const probe = doc.createElement('div')
+    // Validated once here: a raw join handed svgGeometryReaches one SyntaxError per SVG
+    // element when a single part could not parse, and its catch answered true for all of them.
+    const svgGeometrySel = state.svgGeometryAll ? null : joinGate(probe, Array.from(state.svgGeometrySels))
     // shareGate: null = a splitting selector the engine cannot match against (share off),
     // else the indexed list styleShareSafe filters by subtree presence and queries with.
     const shareSels = Array.from(state.shareUnsafeSels)
-    const shareGate = joinGate(doc.createElement('div'), shareSels) === null
+    const shareGate = joinGate(probe, shareSels) === null
       ? null
       : shareSels.map((sel) => ({ sel, key: subjectKeyOf(sel) }))
     const pseudoUniverse = new Set(PSEUDO_BOX_PROPS)
@@ -442,7 +450,7 @@ export function scanAuthorStyles(doc, crossOriginRules) {
     // Without it the pseudo took the base `0px 0px` and scaled toward its corner (#509).
     if (state.pseudoProps.has('transform') || state.pseudoProps.has('rotate') || state.pseudoProps.has('scale')) pseudoUniverse.add('transform-origin')
     if (state.pseudoProps.has('perspective')) pseudoUniverse.add('perspective-origin')
-    return { universe, pseudoUniverse, svgGeometry: state.svgGeometry, svgGeometrySel, pseudoGates: composePseudoGates(doc, pseudoSels), usesHas: state.usesHas, leaksAcrossSubtrees: state.leaksAcrossSubtrees, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
+    return { universe, pseudoUniverse, svgGeometry: state.svgGeometry, svgGeometrySel, pseudoGates: composePseudoGates(probe, pseudoSels), usesHas: state.usesHas, leaksAcrossSubtrees: state.leaksAcrossSubtrees, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
   } catch {
     return unreliable
   }

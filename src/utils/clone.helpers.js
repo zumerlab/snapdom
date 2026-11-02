@@ -29,8 +29,10 @@ function addNotSlottedRightmost(sel, scopeId) {
   return `${sel}:not(${marker})`
 }
 
-// A trailing pseudo-element (double-colon, or the four legacy single-colon ones).
-const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|:(?:before|after|first-letter|first-line)$/
+// A trailing pseudo-element (double-colon, or the four legacy single-colon ones). A colon
+// escaped with a backslash is part of a class name (Tailwind's `.md\:after`), not a pseudo.
+// Pinned by __tests__/module.styleScan.test.js.
+const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|(?<!\\):(?:before|after|first-letter|first-line)$/
 // The pseudo pass inlines these as spans from the live element's computed style; a native
 // copy in the scoped CSS would paint them twice.
 const SPAN_PSEUDO_RE = /^::?(?:before|after|first-letter)$/
