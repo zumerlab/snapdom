@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.7.1](https://github.com/zumerlab/snapdom/compare/v3.7.0...v3.7.1)
+
+> 3 November 2026
+
+**Fixes**
+
+- svg file layout zoom [`#553`](https://github.com/zumerlab/snapdom/pull/553)
+- escaped pseudo tokens in class names are not pseudo-elements [`#551`](https://github.com/zumerlab/snapdom/pull/551)
+
+**Tests**
+
+- load the exported svg as a data URL, blob URLs taint the canvas on Chromium [`120cea7`](https://github.com/zumerlab/snapdom/commit/120cea7f1a4668a13fe20b2f21b7a8a6bbc428a5)
+
 #### [v3.7.0](https://github.com/zumerlab/snapdom/compare/v3.6.0...v3.7.0)
 
 > 29 October 2026
