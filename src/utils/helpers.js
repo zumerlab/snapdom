@@ -115,6 +115,28 @@ export function stripTranslate(transform) {
   return cleaned.trim().replace(/\s{2,}/g, ' ')
 }
 
+/**
+ * Swap the layout-zoom wrapper of a capture svg for the 1x one, for an svg that leaves as a
+ * file (#552). The svg engine records both wrappers in `options.__fileSvg`: the svg header
+ * with the foreignObject tag, the container tag right after the engine's <style>, and the
+ * footer. Any other shape (no zoom, or a plugin rewrote the markup after render) comes back
+ * unchanged. Pinned by __tests__/engine.svg.layoutZoom.test.js.
+ * @param {string} svgText - decoded capture svg
+ * @param {{ zoomed: string[], flat: string[] } | null | undefined} fileSvg
+ * @returns {string}
+ */
+export function fileSvgText(svgText, fileSvg) {
+  if (!fileSvg) return svgText
+  const [head, container, foot] = fileSvg.zoomed
+  const styleEnd = svgText.indexOf('</style>') + 8
+  if (styleEnd < 8 || !svgText.startsWith(head) || !svgText.startsWith(container, styleEnd) || !svgText.endsWith(foot)) {
+    return svgText
+  }
+  const [flatHead, flatContainer, flatFoot] = fileSvg.flat
+  return flatHead + svgText.slice(head.length, styleEnd) + flatContainer +
+    svgText.slice(styleEnd + container.length, svgText.length - foot.length) + flatFoot
+}
+
 /** encodeURI, unless the string already carries a %XX escape: encoding it again doubles it. */
 export function safeEncodeURI(uri) {
   if (/%[0-9A-Fa-f]{2}/.test(uri)) return uri // prevent reencode
