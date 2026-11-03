@@ -152,14 +152,15 @@ describe('svg files drop the layout zoom (#552)', () => {
     expectUnzoomed(file)
     // A browser draws the zoomed file correctly too, so this pins the geometry of the swapped
     // wrapper (clip translate, foreignObject x/y, padding), not the viewer bug itself.
+    // A data: URL, as toCanvas loads it: Chromium taints the canvas when a foreignObject svg
+    // comes in through a blob: URL, and getImageData then throws.
     const img = new Image()
-    img.src = URL.createObjectURL(new Blob([file], { type: 'image/svg+xml' }))
+    img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(file)}`
     await img.decode()
     const canvas = document.createElement('canvas')
     canvas.width = img.naturalWidth
     canvas.height = img.naturalHeight
     canvas.getContext('2d').drawImage(img, 0, 0)
-    URL.revokeObjectURL(img.src)
     const fromFile = canvasRedBox(canvas)
     expect([fromFile.w, fromFile.h]).toEqual([flat.w, flat.h])
     for (let k = 0; k < 4; k++) expect(Math.abs(fromFile.box[k] - flat.box[k])).toBeLessThanOrEqual(1)
