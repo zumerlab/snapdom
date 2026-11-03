@@ -780,6 +780,35 @@ export async function composeAndSerialize(state, ex) {
   const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">${group ? `<g transform="${group}">` : ''}`
   const svgFooter = group ? '</g></svg>' : '</svg>'
   svgString = svgHeader + internInlineStyles(foString, fo) + svgFooter
+  // #552: the layout zoom only pays off when the browser itself rasterizes this svg (canvas,
+  // png, jpeg, webp, an <img>). An svg that leaves as a file is opened by other renderers, and
+  // macOS Preview / Quick Look drew an inline <svg> under the container's `zoom` at twice its
+  // size while the text around it stayed put. File exports (toBlob svg, download svg,
+  // svgString) therefore swap the zoomed wrapper for the one Safari and 1x screens get. Only
+  // the wrapper differs: positions are the same CSS pixels, so the clone markup between the
+  // wrapper tags is shared and only these few short tags are kept. Shallow clones serialize
+  // the tags the way the full pass did. Cleared at zoom 1 so a reused options bag never
+  // carries a previous capture's tags. Pinned by __tests__/engine.svg.layoutZoom.test.js.
+  options.__fileSvg = null
+  if (layoutZoom !== 1) {
+    const openTag = (el) => {
+      const s = serializer.serializeToString(el.cloneNode(false))
+      return s.slice(0, s.indexOf('>') + 1).replace(/\/>$/, '>')
+    }
+    const flatFo = fo.cloneNode(false)
+    flatFo.setAttribute('x', String(foX))
+    flatFo.setAttribute('y', String(foY))
+    flatFo.setAttribute('width', String(foW))
+    flatFo.setAttribute('height', String(foH))
+    const flatContainer = container.cloneNode(false)
+    flatContainer.style.removeProperty('zoom')
+    const flatGroup = shiftX || shiftY ? `translate(${shiftX} ${shiftY})` : ''
+    const flatHeader = svgHeader.slice(0, svgHeader.indexOf('>') + 1) + (flatGroup ? `<g transform="${flatGroup}">` : '')
+    options.__fileSvg = {
+      zoomed: [svgHeader + openTag(fo), openTag(container), svgFooter],
+      flat: [flatHeader + openTag(flatFo), openTag(flatContainer), flatGroup ? '</g></svg>' : '</svg>'],
+    }
+  }
   dataURL = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgString)}`
   state.svgString = svgString
   state.dataURL = dataURL

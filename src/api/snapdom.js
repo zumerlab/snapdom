@@ -20,6 +20,7 @@ import { invalidateStyleCaches } from '../modules/styles.js'
 import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
 import { markInternalNode } from '../utils/ownership.js'
+import { fileSvgText } from '../utils/helpers.js'
 import { restoreCompressedAssets } from '../modules/compress.js'
 
 /**
@@ -318,7 +319,8 @@ async function buildResult(url, context) {
     // the serialized SVG would hand back base64 garbage with an svg label on it.
     if (engineCanvas) throw new Error('[SnapDOM] html-in-canvas makes a raster capture; there is no SVG string.')
     const i = url.indexOf(',')
-    return i >= 0 ? decodeURIComponent(url.slice(i + 1)) : ''
+    // The svg as text leaves the browser's raster path, so it drops the layout zoom (#552).
+    return i >= 0 ? fileSvgText(decodeURIComponent(url.slice(i + 1)), context.__fileSvg) : ''
   }
 
   /**

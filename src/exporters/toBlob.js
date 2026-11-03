@@ -5,6 +5,7 @@
  */
 import { toCanvas } from './toCanvas.js'
 import { toLargeImage } from './toLargeImage.js'
+import { fileSvgText } from '../utils/helpers.js'
 
 /**
  * Converts the rendered output to a Blob.
@@ -25,7 +26,9 @@ export async function toBlob(url, options) {
     if (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) {
       throw new Error('[SnapDOM] html-in-canvas makes a raster capture, not an SVG; ask for png, jpeg or webp.')
     }
-    const svgText = decodeURIComponent(url.split(',')[1])
+    // A file, not a browser raster: without the layout-zoom wrapper (#552). download('svg')
+    // comes through here too.
+    const svgText = fileSvgText(decodeURIComponent(url.split(',')[1]), options.__fileSvg)
     return new Blob([svgText], { type: 'image/svg+xml' })
   }
 

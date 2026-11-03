@@ -36,7 +36,11 @@ const decode = (url) => decodeURIComponent(url.slice(url.indexOf(',') + 1))
 
 /** Bounding box of the pure-red pixels, in output pixels. */
 async function redBox(el, opts = {}) {
-  const canvas = await (await snapdom(el, { dpr: 1, scale: 1, cache: 'disabled', burst: false, ...opts })).toCanvas()
+  return canvasRedBox(await (await snapdom(el, { dpr: 1, scale: 1, cache: 'disabled', burst: false, ...opts })).toCanvas())
+}
+
+/** Bounding box of the pure-red pixels of a canvas. */
+function canvasRedBox(canvas) {
   const { data, width, height } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
   let x0 = Infinity, y0 = Infinity, x1 = -1, y1 = -1
   for (let y = 0; y < height; y++) {
@@ -96,6 +100,76 @@ describe('svg engine layout zoom (#508)', () => {
     expect(flat.box).toEqual([30, 20, 53, 37])
     expect([zoomed.w, zoomed.h]).toEqual([flat.w, flat.h])
     for (let k = 0; k < 4; k++) expect(Math.abs(zoomed.box[k] - flat.box[k])).toBeLessThanOrEqual(1)
+  })
+})
+
+// #552: the zoom only pays off when the browser rasterizes the svg. A file is opened by other
+// renderers too (macOS Preview drew an inline <svg> under the container's zoom at twice its
+// size), so toBlob svg, download svg and svgString hand out the 1x wrapper, while url and
+// every raster export keep the zoomed one.
+describe('svg files drop the layout zoom (#552)', () => {
+  const RED = '<div style="width:50px;height:30px;background:#f00"></div>'
+  const expectUnzoomed = (svg) => {
+    expect(svg).not.toMatch(/zoom: [\d.]+ !important/)
+    expect(svg).not.toContain('scale(')
+  }
+
+  it.skipIf(!ZOOMS)('toBlob svg is the 1x wrapper; url keeps the zoom', async () => {
+    const el = mount(RED)
+    stubHiDPI(2.625)
+    const res = await snapdom(el, { cache: 'disabled', burst: false })
+    const file = await (await res.toBlob({ format: 'svg' })).text()
+    expectUnzoomed(file)
+    expect(file).toMatch(/viewBox="0 0 50 30" font-size="[\d.]+px"><foreignObject[^>]* width="50" height="30"/)
+    expect(decode(res.url)).toMatch(/zoom: 2\.625 !important/)
+  })
+
+  it.skipIf(!ZOOMS)('the static shortcut gets the same file', async () => {
+    const el = mount(RED)
+    stubHiDPI(2)
+    expectUnzoomed(await (await snapdom.toBlob(el, { format: 'svg', cache: 'disabled', burst: false })).text())
+  })
+
+  it.skipIf(!ZOOMS)('svgString for plugins is the 1x wrapper', async () => {
+    const el = mount(RED)
+    stubHiDPI(2)
+    let svgString = null
+    const probe = { name: 'svg-string-probe', beforeExport(ctx) { svgString = ctx.export.svgString() } }
+    await (await snapdom(el, { plugins: [probe], cache: 'disabled', burst: false })).toCanvas()
+    expectUnzoomed(svgString)
+    expect(svgString).toMatch(/<foreignObject[^>]* width="50" height="30"/)
+  })
+
+  it.skipIf(!ZOOMS)('draws what the page shows at 1x, clip window included', async () => {
+    const el = mount(
+      '<div style="position:relative;width:300px;height:200px;background:#fff">' +
+      '<i style="position:absolute;left:150px;top:110px;width:24px;height:18px;background:#f00"></i></div>')
+    const r = el.getBoundingClientRect()
+    const clip = { x: r.left + scrollX + 120, y: r.top + scrollY + 90, width: 100, height: 60 }
+    const flat = await redBox(el, { clip })
+    stubHiDPI(2.625)
+    const file = await (await snapdom.toBlob(el, { format: 'svg', clip, cache: 'disabled', burst: false })).text()
+    expectUnzoomed(file)
+    // A browser draws the zoomed file correctly too, so this pins the geometry of the swapped
+    // wrapper (clip translate, foreignObject x/y, padding), not the viewer bug itself.
+    const img = new Image()
+    img.src = URL.createObjectURL(new Blob([file], { type: 'image/svg+xml' }))
+    await img.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    canvas.getContext('2d').drawImage(img, 0, 0)
+    URL.revokeObjectURL(img.src)
+    const fromFile = canvasRedBox(canvas)
+    expect([fromFile.w, fromFile.h]).toEqual([flat.w, flat.h])
+    for (let k = 0; k < 4; k++) expect(Math.abs(fromFile.box[k] - flat.box[k])).toBeLessThanOrEqual(1)
+  })
+
+  it('leaves a 1x capture untouched', async () => {
+    const el = mount(RED)
+    stubDPR(1)
+    const res = await snapdom(el, { cache: 'disabled', burst: false })
+    expect(await (await res.toBlob({ format: 'svg' })).text()).toBe(decode(res.url))
   })
 })
 
