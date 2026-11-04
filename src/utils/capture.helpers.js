@@ -12,7 +12,6 @@
 
 import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl, isShadowRoot } from './index.js'
 import { cache } from '../core/cache.js'
-import { universeFor } from '../modules/styles.js'
 import { markInternalNode } from './ownership.js'
 import {
   bboxWithOriginFull,
@@ -1071,14 +1070,15 @@ export function collectScrollbarCSS(doc) {
  *
  * @param {object} state - capture state carrying `clone` and `element`
  * @param {string} fontsCSS - embedded @font-face payload for this capture
+ * @param {Set<string>|null} universe - the property set the clone's snapshots were pruned by
+ *   (prepareClone, or diff.js for a splice); null for full reads
  * @returns {{baseCSS: string, scrollbarCSS: string, fontsCSS: string}}
  */
-export function assembleCaptureCSS(state, fontsCSS) {
+export function assembleCaptureCSS(state, fontsCSS, universe) {
   const usedTags = collectUsedTagNames(state.clone).sort()
   const tagKey = usedTags.join(',')
   // The reset is pruned by the universe, so a memo keyed on the tags alone served a reset
   // built before CSS naming `appearance` arrived, and the control painted native (#502).
-  const universe = universeFor(state.element)
   const memo = cache.baseStyle.get(tagKey)
   let baseCSS
   if (memo && memo.universe === universe) {

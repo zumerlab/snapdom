@@ -225,11 +225,11 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
  * way out it writes `options.meta` (the public geometry) and `options.__artifacts` (the CSS
  * strings export plugins read), then drops the clone and maps from the context.
  * @param {object} state - capture context, or diff's wrapper around one
- * @param {{clipWindow: object|null, outerTransforms: boolean, outerShadows: boolean|'subtree', rootTransform2D: object|null, fontsCSS: string}} ex
+ * @param {{clipWindow: object|null, outerTransforms: boolean, outerShadows: boolean|'subtree', rootTransform2D: object|null, fontsCSS: string, universe: Set<string>|null}} ex
  * @returns {Promise<string>} SVG data URL
  */
 export async function composeAndSerialize(state, ex) {
-  const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS } = ex
+  const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe } = ex
   const options = state.options
   // ONE context: burst's differential recapture hands a wrapper carrying the rebuilt clone,
   // so fold it onto the capture context and keep every hook below on that single object.
@@ -246,7 +246,7 @@ export async function composeAndSerialize(state, ex) {
   let dataURL
   let svgString
   // Stamps baseCSS / scrollbarCSS / fontsCSS onto state; everything below reads them there.
-  assembleCaptureCSS(state, fontsCSS)
+  assembleCaptureCSS(state, fontsCSS, universe)
   await runHook('beforeRender', state)
 
   const csEl = getStyle(state.element)

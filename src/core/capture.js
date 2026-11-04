@@ -84,7 +84,7 @@ export async function captureDOM(element, options) {
   state.element = element
   Object.defineProperty(state, 'options', { value: state, configurable: true })
 
-  let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns
+  let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe
   let fontsCSS = ''
   // Root transform (scale/skew), kept when outerTransforms is on
   let rootTransform2D = null
@@ -147,7 +147,7 @@ export async function captureDOM(element, options) {
     try {
       // Keep this capture's own clone→source map — every later pass must use this
       // reference (sessions are per-capture; there is no shared session global).
-      ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns } = await prepareClone(state.element, state.options))
+      ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe } = await prepareClone(state.element, state.options))
 
       if (reconcileRisk > 0 && !options.reconcile) {
         sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
@@ -316,7 +316,7 @@ export async function captureDOM(element, options) {
     (typeof plugin.beforeRender === 'function' || typeof plugin.afterRender === 'function'))
   if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks) {
     const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
-    assembleCaptureCSS(state, fontsCSS)
+    assembleCaptureCSS(state, fontsCSS, universe)
     const canvas = await tryCanvasEngine(state, state.options)
     // The painted bitmap itself, not a data URL: encoding it eagerly costs 15-22x what the
     // pixel exports need (toDataURL+decode vs direct draw: 62 vs 4 ms on a card, 4.2 s vs
@@ -329,7 +329,7 @@ export async function captureDOM(element, options) {
   if (slicer?.due()) await slicer.pause()
   const renderedClone = state.clone
   numberCompressedAssets(renderedClone, options.__compressedAssets)
-  const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS })
+  const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe })
   options.__compressedSnapshot = snapshotCompressedAssets(renderedClone, options.__compressedAssets)
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential
   // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty

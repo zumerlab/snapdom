@@ -589,10 +589,8 @@ export function snapshotFor(source) {
 }
 
 /** Per-document memo of the scanned property universe, keyed on __epoch (see the rule-epoch
- *  note above getStyleEnvEpoch for why not something narrower).
- *  Exported so the base reset prunes itself with the SAME universe the snapshots use:
- *  a reset-stamped prop the class diff can no longer override (e.g. the resolved-black
- *  `-webkit-text-fill-color` overriding a white `color`) must not be emitted either. */
+ *  note above getStyleEnvEpoch for why not something narrower). A capture reads it through
+ *  scanOf, never directly. */
 const universeCache = new WeakMap()
 /** href -> the rules of a parsed copy, or null while it loads or when it cannot be read. */
 const crossOriginCopies = new Map()
@@ -638,6 +636,27 @@ function scanFor(doc) {
     universeCache.set(doc, rec)
   }
   return rec
+}
+
+/** The document scan one capture reads, pinned on its clone session at the first read with
+ *  the env epoch it belongs to (getSnapshot stores that epoch, so a snapshot read under a pin
+ *  the page has since moved past is stale for the next capture). The base reset is pruned
+ *  with the universe the snapshots were pruned by, and both directions of a mismatch paint
+ *  wrong: a reset prop no snapshot read overrides the class value (the resolved black
+ *  `-webkit-text-fill-color` over a white `color`), and a snapshot prop the reset does not
+ *  restate is inherited (#554: a black child took its pink parent's resolved fill). The scan
+ *  can change mid-capture: a Google Fonts copy (crossOriginRules) landed during the fonts
+ *  phase of the first capture, between the snapshots and the reset.
+ *  Pinned by __tests__/regression.resetUniverse.test.js.
+ *  @param {Document} doc
+ *  @param {object|null} [session] - the capture's sessionCache; none reads the current scan */
+function scanOf(doc, session) {
+  if (!session) return scanFor(doc)
+  if (!session.__scan) {
+    session.__scan = scanFor(doc)
+    session.__scanEnv = __envEpoch
+  }
+  return session.__scan
 }
 /** Whether author CSS can restyle outside a dirty subtree. Shares the property-universe
  *  scan, including imports, fetched cross-origin rules, and the same epoch invalidation.
@@ -705,7 +724,7 @@ export function importantPropsFor(el) {
  * unreadable scan, which means full reads. The base reset and diff.js read it too, so
  * everything prunes with the same set the snapshots use. Shadow-root content gets the
  * capture's own union (shadowUniverseOf) when the caller passes its session, and full reads
- * without one.
+ * without one. With a session, document content reads the scan pinned on it (scanOf).
  * @param {Element} el
  * @param {object} [session] - the capture's sessionCache
  * @returns {Set<string>|null}
@@ -713,7 +732,7 @@ export function importantPropsFor(el) {
 export function universeFor(el, session) {
   const doc = el.ownerDocument || document
   const root = el.getRootNode ? el.getRootNode() : doc
-  if (root === doc) return scanFor(doc).universe
+  if (root === doc) return scanOf(doc, session).universe
   return session && isShadowRoot(root) ? shadowUniverseOf(el, root, doc, session) : null
 }
 
@@ -744,7 +763,7 @@ function shadowUniverseOf(el, root, doc, session) {
   let st = session.__shadowUniverse
   if (st === null) return null
   if (!st) {
-    const base = scanFor(doc).universe
+    const base = scanOf(doc, session).universe
     if (!base) return (session.__shadowUniverse = null)
     st = session.__shadowUniverse = { universe: new Set(base), roots: new Set() }
   }
@@ -768,11 +787,14 @@ function shadowUniverseOf(el, root, doc, session) {
 }
 
 /** The property set a pseudo-element's snapshot reads (styleScan's pseudoUniverse); null
- *  (full read) for shadow content and an unreadable scan, like universeFor. */
-export function pseudoUniverseFor(el) {
+ *  (full read) for shadow content and an unreadable scan, like universeFor, and from the
+ *  same pinned scan when given the session.
+ *  @param {Element} el
+ *  @param {object} [session] - the capture's sessionCache */
+export function pseudoUniverseFor(el, session) {
   const doc = el.ownerDocument || document
   if (el.getRootNode && el.getRootNode() !== doc) return null
-  return scanFor(doc).pseudoUniverse
+  return scanOf(doc, session).pseudoUniverse
 }
 
 /** The SVG geometry/transform properties (styleScan's SVG_GEOMETRY_PROPS) some document rule
@@ -1424,7 +1446,7 @@ export function pseudoSnapshotFor(source, pseudo, style, session, options) {
   const st = options && options.__styleShare ? session && session.__styleShare : null
   const id = st ? st.ids.get(source) : undefined
   // Same shadow-host and slotted escape as the element share (`:host(:nth-child(2))::before`).
-  if (id === undefined || id === -1 || source.shadowRoot || source.assignedSlot) return snapshotComputedStyle(style, pseudoUniverseFor(source))
+  if (id === undefined || id === -1 || source.shadowRoot || source.assignedSlot) return snapshotComputedStyle(style, pseudoUniverseFor(source, session))
   const key = id + pseudo
   const snaps = st.pseudo || (st.pseudo = new Map())
   const rec = snaps.get(key)
@@ -1438,7 +1460,7 @@ export function pseudoSnapshotFor(source, pseudo, style, session, options) {
     }
     return snap
   }
-  const snap = snapshotComputedStyle(style, pseudoUniverseFor(source))
+  const snap = snapshotComputedStyle(style, pseudoUniverseFor(source, session))
   // By reference, copied on the first twin (shareLists), like the element share: a copy per
   // pseudo was paid on the deep tree for 1,936 identities that never had a twin. The one
   // write the pass makes afterwards (a flex-item min-width floor) depends on the host's
@@ -1543,7 +1565,7 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
       ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004'))
   }
   const hosts = shadowHostsOf(el)
-  snapshotCache.set(el, { env: __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
+  snapshotCache.set(el, { env: session?.__scanEnv ?? __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
   return snap
 }
 

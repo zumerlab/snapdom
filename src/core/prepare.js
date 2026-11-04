@@ -16,7 +16,7 @@ import { deepClone, finishClipHusks } from './clone.js'
 import { sessionWarn } from '../utils/debug.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { paintClippedText } from '../modules/bgClipText.js'
-import { flushStyleInvalidations, invalidateHoverChanges } from '../modules/styles.js'
+import { flushStyleInvalidations, invalidateHoverChanges, universeFor } from '../modules/styles.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree, resolveMediaQueries, freezeInflatedFontSizes } from '../utils/clone.helpers.js'
 import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
@@ -437,6 +437,12 @@ export async function prepareClone(element, options = {}) {
     reconcileRisk: sessionCache.reconcileRisk || 0,
     clipWindow,
     standIns,
+    // What the snapshots were pruned by, for the base reset (assembleCaptureCSS): the scan
+    // pinned on this session, or the capture's shadow union when the root lives in a shadow
+    // root. When the reset read the document's scan by itself, it could read a later scan
+    // than the snapshots did (#554), and under a shadow root it read every property, so its
+    // resolved black text fill painted every glyph black from 3.1.0 on.
+    universe: universeFor(element, sessionCache),
   }
 }
 

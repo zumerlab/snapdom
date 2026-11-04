@@ -331,6 +331,10 @@ async function diffCapture(element, state, context) {
   const classCSS = (R.classPrefixCSS || '') +
     Array.from(keyToClass.entries()).map(([key, cn]) => `.${cn}{${key}}`).join('')
 
+  // The splice awaited: a scan that moved meanwhile pruned some delta snapshots with another
+  // universe than `universe`, which the reset is built from (#554).
+  if (universeFor(element) !== universe) return null
+
   numberCompressedAssets(R.clone, context.__compressedAssets)
   const url = await composeAndSerialize(
     {
@@ -347,7 +351,8 @@ async function diffCapture(element, state, context) {
       outerTransforms: R.outerTransforms,
       outerShadows: R.outerShadows,
       rootTransform2D: R.rootTransform2D,
-      fontsCSS: R.fontsCSS || ''
+      fontsCSS: R.fontsCSS || '',
+      universe
     }
   )
   context.__compressedSnapshot = snapshotCompressedAssets(R.clone, context.__compressedAssets)
