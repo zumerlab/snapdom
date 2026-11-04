@@ -36,7 +36,7 @@
     "test": "npm run check && REQUIRE_VISUAL=1 node scripts/vitest.mjs run --browser.headless --reporter=verbose",
     "test:firefox": "npm run check && REQUIRE_VISUAL=1 BROWSER=firefox node scripts/vitest.mjs run --browser.headless --reporter=verbose",
     "test:webkit": "npm run check && REQUIRE_VISUAL=1 BROWSER=webkit node scripts/vitest.mjs run --browser.headless --reporter=verbose",
-    "test:full": "npm run check && REQUIRE_VISUAL=1 BROWSER=all node scripts/vitest.mjs run --browser.headless --reporter=dot",
+    "test:full": "npm run check && for b in chromium firefox webkit; do REQUIRE_VISUAL=1 BROWSER=$b node scripts/vitest.mjs run --browser.headless --reporter=dot || exit 1; done",
     "test:parity": "npm run compile && node scripts/live-parity.mjs",
     "test:visual": "REQUIRE_VISUAL=1 BROWSER=all node scripts/vitest.mjs run __tests__/visual.demos. --browser.headless --reporter=verbose",
     "test:pdf": "node packages/plugins/pdf/test/verify.mjs && node packages/plugins/pdf/test/megacheck.mjs && node packages/plugins/pdf/test/encryptcheck.mjs",

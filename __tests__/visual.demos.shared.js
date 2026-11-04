@@ -82,8 +82,11 @@ const SETTLE_BUDGET_MS = NETWORK.mode === 'parallel' ? 2500 * ENGINES : 8000
 const LANE_WAIT_MS = 15000
 vi.setConfig({
   // In serial mode the demo already has the link to itself, so the engine count does not
-  // multiply on top of serialTimeoutMs the way it does for the parallel budget.
-  testTimeout: NETWORK.mode === 'parallel' ? 10000 * ENGINES : NETWORK.serialTimeoutMs,
+  // multiply on top of serialTimeoutMs the way it does for the parallel budget. Never below
+  // serialTimeoutMs: the budget is baked in from the pre-run probe, and the run can turn the
+  // gate serial after it. One engine on a 73 KB/s link (2026-11-04) timed d506 out at 10 s
+  // twice, its retry included, when it takes 3 to 7.5 s alone; BROWSER=all had 30 s.
+  testTimeout: NETWORK.mode === 'parallel' ? Math.max(10000 * ENGINES, NETWORK.serialTimeoutMs) : NETWORK.serialTimeoutMs,
   hookTimeout: 35000,
   // One retry whenever the gate is live, not only when the PRE-RUN probe already found the
   // link degraded. The reading that sizes this file is taken on an idle line, and the run
