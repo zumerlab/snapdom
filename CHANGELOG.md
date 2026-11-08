@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.7.2](https://github.com/zumerlab/snapdom/compare/v3.7.1...v3.7.2)
+
+> 8 November 2026
+
+**Fixes**
+
+- **styles:** prune the base reset with the snapshots' universe [`#554`](https://github.com/zumerlab/snapdom/pull/554)
+
+**Tests**
+
+- run test:full one engine at a time [`3477c2d`](https://github.com/zumerlab/snapdom/commit/3477c2da4ccef114d44638d4cde0911a986b2338)
+
 #### [v3.7.1](https://github.com/zumerlab/snapdom/compare/v3.7.0...v3.7.1)
 
 > 3 November 2026
