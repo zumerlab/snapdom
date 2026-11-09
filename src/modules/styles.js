@@ -2082,7 +2082,9 @@ function freezeOneLine(source, clone, snap, flexItem, session) {
  * Whether every text run under `el` sits on one line box. False on whatever it cannot vouch
  * for: a <br>, a textarea, a shadow root, more than 64 runs, no text, or a content box taller
  * than two runs, which holds something the runs do not show (a second line of images, an
- * authored height).
+ * authored height). Under a rotation only a box holding one bare text node can vouch: the
+ * node returns one rect per line it spans at any angle (the rotated chip of the site's
+ * compare scene wrapped at zero slack).
  * @param {Element} el
  * @param {Record<string,string>} snap
  * @param {object} session - the capture's sessionCache
@@ -2103,6 +2105,7 @@ function textOnOneLine(el, snap, session) {
   let first = null
   let tall = 0
   let runs = 0
+  let rects = 0
   for (let n = walker.nextNode(); n; n = walker.nextNode()) {
     if (n.nodeType === 1) {
       if (n.shadowRoot || n.localName === 'br' || n.localName === 'textarea') return false
@@ -2113,6 +2116,7 @@ function textOnOneLine(el, snap, session) {
     range.selectNodeContents(n)
     for (const r of range.getClientRects()) {
       if (!r.height) continue
+      rects++
       first ||= r
       // Runs on one line (mixed sizes, sub/sup) overlap by more than half; stacked lines do not.
       if (Math.min(first.bottom, r.bottom) - Math.max(first.top, r.top) < Math.min(first.height, r.height) / 2) return false
@@ -2121,7 +2125,7 @@ function textOnOneLine(el, snap, session) {
   }
   if (!first) return false
   const axes = axesOf(el, session.__axes ||= new WeakMap())
-  if (!axes) return false
+  if (axes === SKEWED) return runs === 1 && rects === 1 && !el.childElementCount
   // Runs are measured in page pixels, the content box in layout pixels.
   const scale = axes === SCALED && el.offsetHeight ? el.getBoundingClientRect().height / el.offsetHeight : 1
   return content * scale <= 2 * tall

@@ -223,6 +223,14 @@ describe('#516 a box on one line live stays on one line in the capture', () => {
     const shadow = await mountDrifted(el, 0)
     expect(pinned(shadow.querySelector('.t'))).toBe(false)
   })
+
+  it('keeps a rotated one-line chip on one line', async () => {
+    // The compare pages' "transform + shadow" chip, which wrapped at zero slack in the capture.
+    const el = mount('<div style="padding:20px;background:#fff;font:14px sans-serif"><div class="t" style="display:inline-block;padding:4px 8px;background:#eef;transform:rotate(-3deg)">transform + shadow</div></div>')
+    const shadow = await mountDrifted(el)
+    expect(pinned(shadow.querySelector('.t'))).toBe(true)
+    expect(lines(shadow.querySelector('.t'))).toBe(1)
+  })
 })
 
 describe('#516 a dpr 1 export of a capture laid out on a finer grid', () => {
