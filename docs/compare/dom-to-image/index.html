@@ -38,46 +38,7 @@
     "mainEntityOfPage": "https://snapdom.dev/compare/dom-to-image/"
   }
   </script>
-  <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Is dom-to-image still maintained?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Check the dom-to-image repository for its release history and open issues. Before migrating, compare your captured output and the return-type and option differences above."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "How do I migrate from dom-to-image to SnapDOM?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Import @zumer/snapdom and start with snapdom.toPng(element). Read .src on the returned image if the caller expects a PNG data URL. Rename bgcolor to backgroundColor, invert inclusion predicates for exclude, and review output sizing."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Does SnapDOM support custom fonts?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. In v3, embedFonts: 'auto' embeds used web fonts by default. Font files must be accessible; localFonts and excludeFonts add control."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "What about Shadow DOM?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "SnapDOM walks and clones open Shadow DOM trees, so Web Components capture correctly. dom-to-image does not natively support this."
-      }
-    }
-  ]
-}
-</script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

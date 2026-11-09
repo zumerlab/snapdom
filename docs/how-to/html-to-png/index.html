@@ -41,38 +41,7 @@
     "isPartOf": { "@id": "https://snapdom.dev/#website" }
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "How do I convert HTML to a PNG image in JavaScript?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Install SnapDOM (@zumer/snapdom) and call snapdom.toPng(element). The promise resolves to an HTMLImageElement which you can append, download, or convert to a Blob to upload."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can I convert HTML to PNG without a server?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. SnapDOM runs in the browser and does not need a screenshot server. Its SVG foreignObject pipeline uses the browser's renderer; fonts and images may still require network requests."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What about high-DPI / retina output?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "SnapDOM auto-detects the device pixel ratio via the dpr option, so retina screens already render sharp. To force a specific density, pass dpr: 2 (or any value). The scale option enlarges output when no explicit width or height is set."
-        }
-      }
-    ]
-  }
-  </script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

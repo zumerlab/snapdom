@@ -41,46 +41,7 @@
     "mainEntityOfPage": "https://snapdom.dev/compare/html2canvas/"
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Why does html2canvas not render my Shadow DOM?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "It depends on the implementation. SnapDOM walks open Shadow roots, copies resolved styles and renders the clone through SVG <foreignObject>. Closed roots are not reachable through the standard DOM API."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "html2canvas doesn't render web fonts correctly, what do I use?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "First make sure fonts load before capture. SnapDOM 3 uses embedFonts: 'auto' by default to embed used web fonts in the SVG. Font files must be accessible to the page; test the image in your target browser."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "html2canvas is slow on large DOMs, is there a faster alternative?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "SnapDOM uses a different rendering path and v3 can reuse eligible captures. The gain depends on the DOM, assets and capture pattern. Compare your own elements in the live benchmark above."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Is html2canvas still maintained in 2026?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "This page compares html2canvas 1.4.1. For current status, check its releases and issue tracker. A release date alone does not say whether a library meets your needs."
-        }
-      }
-    ]
-  }
-  </script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

@@ -38,46 +38,7 @@
     "mainEntityOfPage": "https://snapdom.dev/compare/html-to-image/"
   }
   </script>
-  <script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "What is the difference between html-to-image and SnapDOM?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Both clone the DOM and render via foreignObject. SnapDOM adds capture lifecycle hooks, automatic reuse of eligible repeat captures, and official plugins for PDF, HTML, vector, GIF, video and agent context. Return types and options are in the migration table."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Does SnapDOM render web fonts better than html-to-image?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Both can embed @font-face declarations. SnapDOM 3 defaults to embedFonts: 'auto' for used web fonts and also has localFonts and excludeFonts. Check the exported text with your own font files and browser."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Can I add a watermark or filter without forking the library?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Yes. Use the colorTint, filter or timestampOverlay plugins, or write your own with two callbacks (afterClone / beforeExport). The plugins page has the full list."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "How do I export to PDF?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Use the MIT pdf plugin. toPdf() returns a PDF Blob with selectable text, pagination and links. It ships on npm as @zumer/snapdom-pdf; the PDF reference covers installation and examples."
-      }
-    }
-  ]
-}
-</script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

@@ -17,8 +17,7 @@ OWN_LINKS = {'stream': [('showcase/#stream-demo', 'Showcase demo'), ('labs/video
                         ('labs/webrtc-overlay/', 'WebRTC overlay lab'), ('labs/ascii-mirror/', 'ASCII mirror lab')]}
 
 # Groups by the job a plugin does. Each plugin: slug, name, h1, one line for the index, the
-# demo settings panes.js reads, its demo's id on the showcase, and the meta description
-# (150 to 160 characters: Bing Webmaster Tools flags shorter ones as too short).
+# demo settings panes.js reads, its demo's id on the showcase, and a concise meta description.
 TOOLBOX = [
  ('Prepare', 'prepare', 'Change what the capture shows. The live page is never touched.', [
   ('redact-inputs', 'Redact inputs', 'Redact fields before sharing.', 'Mask field values, hide blocks, drop attributes',
@@ -59,7 +58,7 @@ TOOLBOX = [
    'SnapDOM plugin that adds toAgentMap(): a Set-of-Mark image with numbered badges on interactive elements plus a JSON map of their names, roles, bounds and state.'),
   ('context-export', 'Context export', 'Export the UI as text for agents.', 'An outline or JSON tree of structure, text and state',
    {'demo': 'capture', 'transform': 'context', 'sample': 'form', 'demo-label': 'toContext()', 'note': 'The outline keeps roles, visible text and state; typed values are masked.'}, 'context-demo',
-   'SnapDOM plugin that adds toContext(): the captured UI as a text outline or JSON tree of structure, roles, text, state and optional bounds, for coding agents.'),
+   'Export captured DOM as a text outline or JSON tree for coding agents, with roles, text, state and optional bounds. Add toContext() with SnapDOM.'),
  ]),
 ]
 
@@ -172,7 +171,8 @@ def plugin_page(glabel, sec, slug, name, h1, demo, showcase_id, description):
              (rel(path, f'showcase/#{showcase_id}'), 'Showcase demo')]
     inner = doc_head(['Plugins', glabel, name], '@zumer/snapdom-plugins · MIT', E(h1), md_inline(intro[1]), links)
     inner += '<div class="pane-content pane-prose">' + code(INSTALL) + md_html(rest) + '</div>'
-    standalone(path, 'Plugins', meta(f'{name} plugin for SnapDOM', description, f'plugins/{slug}/', 'TechArticle'),
+    title = 'Export DOM as text or JSON for agents — SnapDOM' if slug == 'context-export' else f'{name} plugin for SnapDOM'
+    standalone(path, 'Plugins', meta(title, description, f'plugins/{slug}/', 'TechArticle'),
                plugin_nav(path), 'Filter plugins', 'Plugins', sec, name, inner, demo, plugin_pager(path), 'plugin-page')
 
 def community_table():

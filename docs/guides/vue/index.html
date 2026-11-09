@@ -39,30 +39,7 @@
     "proficiencyLevel": "Beginner"
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "How do I capture a Vue component as a PNG?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Bind a template ref to the element you want to capture, then call snapdom.toPng(myRef.value) inside an event handler. SnapDOM returns an HTMLImageElement you can append, download or set as src."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does SnapDOM work with the Options API?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Use ref=\"myRef\" in your template and access this.$refs.myRef in a method. SnapDOM is framework-agnostic and only needs a real DOM element."
-        }
-      }
-    ]
-  }
-  </script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

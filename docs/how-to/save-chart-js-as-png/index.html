@@ -41,38 +41,7 @@
     "isPartOf": { "@id": "https://snapdom.dev/#website" }
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "How do I save a Chart.js chart as an image?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Chart.js exposes chart.toBase64Image() which returns the bare canvas as a PNG data URL. If you also want the title, HTML legend and container styling around the canvas, wrap the chart in an element and capture that element with SnapDOM: await snapdom.toPng(wrapper)."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Why is my exported Chart.js image blank or half-drawn?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "The chart is captured before its entry animation finishes. Either disable animation with options.animation = false, or run the capture inside the chart's onComplete animation callback so the canvas is fully painted first."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "When should I use Chart.js toBase64Image instead of SnapDOM?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "chart.toBase64Image() exports the bare plotting canvas only. Capturing the chart's wrapper with SnapDOM is the same one-liner and also includes the HTML title, custom legend, annotations and container background as one composited PNG."
-        }
-      }
-    ]
-  }
-  </script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

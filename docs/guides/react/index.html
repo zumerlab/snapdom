@@ -39,38 +39,7 @@
     "proficiencyLevel": "Beginner"
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "How do I capture a React component as a PNG?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Attach a useRef to the element you want to capture, then call snapdom.toPng(ref.current) inside an event handler. SnapDOM returns an HTMLImageElement you can append, download, or set as the src of an <img>."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Why is my captured image blank?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "The most common reason is calling snapdom before the ref is attached. Always trigger the capture from a user event (button click) or inside useEffect after the component has mounted."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does SnapDOM work with React 18 strict mode?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. SnapDOM doesn't subscribe to React lifecycle, so the double-invocation in development strict mode doesn't affect captures triggered from event handlers."
-        }
-      }
-    ]
-  }
-  </script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">
@@ -92,14 +61,14 @@
 <link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "React Guide", "title": "Capture HTML to PNG in <span class=\"accent\">React</span>", "lead": "Capture a rendered React component with a ref, download the image, or show a preview with object URL cleanup.", "links": []} -->
+  <!-- pane:start --><!-- hero {"badge": "React Guide", "title": "Capture HTML to PNG in <span class=\"accent\">React</span>", "lead": "Integrate SnapDOM with React refs, display image previews with object URL cleanup, and reuse the capture logic across components.", "links": []} -->
 <a class="site-skip" href="#page-content" tabindex="0">Skip to content</a>
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><details class="pane-menu" open><summary>How-to <span aria-hidden="true">/</span> React</summary><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter navigation" aria-label="Filter navigation titles"></label><p class="pane-filter-status" role="status" hidden>No matching links. Use Search docs to search page contents.</p><nav class="pane-nav" aria-label="How-to"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../../how-to/">How to capture the DOM</a></div></div><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Basics</button><div class="pane-nav-items"><a href="../../how-to/screenshot-a-div/">Screenshot a div</a><a href="../../how-to/html-to-png/">Convert HTML to PNG</a><a href="../../how-to/html-to-svg/">Convert HTML to SVG</a><a href="../../how-to/html-to-canvas/">Render HTML to Canvas</a><a href="../../how-to/high-resolution-element/">Capture in high resolution</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Real content</button><div class="pane-nav-items"><a href="../../how-to/export-dashboard-as-image/">Export a dashboard</a><a href="../../how-to/export-react-component-as-image/">Export a React component</a><a href="../../how-to/export-invoice-as-image/">Export an invoice</a><a href="../../how-to/generate-social-card-from-html/">Generate a social card</a><a href="../../how-to/capture-before-pdf/">Capture before a PDF</a><a href="../../how-to/pdf-cross-origin-images/">PDF with cross-origin images</a><a href="../../how-to/export-chart-as-svg/">Export a chart as SVG</a><a href="../../how-to/save-chart-js-as-png/">Save a Chart.js chart</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Special cases</button><div class="pane-nav-items"><a href="../../how-to/capture-element-without-puppeteer/">Capture without Puppeteer</a><a href="../../how-to/capture-shadow-dom/">Capture Shadow DOM</a><a href="../../how-to/capture-full-page/">Capture a full page</a><a href="../../how-to/capture-iframe/">Capture an iframe</a><a href="../../how-to/capture-cross-origin-images/">Capture images without CORS</a><a href="../../how-to/html-in-canvas/">Capture with html-in-canvas <span class="nav-new">New</span></a><a href="../../how-to/visual-regression-screenshot/">Visual regression</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Migrate</button><div class="pane-nav-items"><a href="../../how-to/migrate-from-html2canvas/">Migrate from html2canvas</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Frameworks</button><div class="pane-nav-items"><a href="./" aria-current="page">React</a><a href="../vue/">Vue</a><a href="../nextjs/">Next.js</a><a href="../svelte/">Svelte</a><a href="../angular/">Angular</a><a href="../lit/">Lit</a></div></div></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#install" class="">1. Install</a><a href="#component" class="">2. Minimal capture component</a><a href="#live-demo" class="">Try it live</a><a href="#hello-snapdom" class="is-subsection">Hello SnapDOM</a><a href="#download" class="">3. Download instead of appending</a><a href="#state" class="">4. Keep the captured image in state</a><a href="#custom-hook" class="">5. Reusable React hook</a><a href="#component-recipes" class="">Export a real component</a><a href="#faq" class="">Common gotchas</a></nav></details></aside>
 
 <article class="pane-read sec-options" data-title="React" id="page-content" tabindex="-1">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../../how-to/">How-to</a><span aria-hidden="true">/</span><span>Frameworks</span><span aria-hidden="true">/</span><span aria-current="page">React</span></nav><span class="doc-meta">React Guide</span></div><h1>Capture HTML to PNG in <span class="accent">React</span></h1><p class="doc-lead">Capture a rendered React component with a ref, download the image, or show a preview with object URL cleanup.</p></header>
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../../how-to/">How-to</a><span aria-hidden="true">/</span><span>Frameworks</span><span aria-hidden="true">/</span><span aria-current="page">React</span></nav><span class="doc-meta">React Guide</span></div><h1>Capture HTML to PNG in <span class="accent">React</span></h1><p class="doc-lead">Integrate SnapDOM with React refs, display image previews with object URL cleanup, and reuse the capture logic across components.</p></header>
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
@@ -228,7 +197,7 @@ export function CapturePreview() {
 );</pre>
     </section>
 
-<section class="prose"><h2 id="component-recipes">Export a real component</h2><p>Use the <a href="../../how-to/export-react-component-as-image/">React component export recipe</a> when choosing the capture root and keeping controls outside it. For several widgets together, use the <a href="../../how-to/export-dashboard-as-image/">dashboard recipe</a>. For a file to upload, adapt the <a href="../../how-to/html-to-png/#upload">PNG Blob and FormData example</a> after the ref’s content has finished rendering.</p></section>
+<section class="prose"><h2 id="component-recipes">Export a real component</h2><p>For a minimal PNG download handler, use the <a href="../../how-to/export-react-component-as-image/">React card download recipe</a>. For several widgets together, use the <a href="../../how-to/export-dashboard-as-image/">dashboard recipe</a>. For a file to upload, adapt the <a href="../../how-to/html-to-png/#upload">PNG Blob and FormData example</a> after the ref’s content has finished rendering.</p></section>
     <section class="prose faq">
       <h2 id="faq">Common gotchas</h2>
 

@@ -39,38 +39,7 @@
     "proficiencyLevel": "Beginner"
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Why does SnapDOM crash on the Next.js server?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "SnapDOM relies on browser-only APIs (DOM, SVG, Image). It must run on the client. Use a 'use client' directive at the top of your component or import SnapDOM dynamically with ssr: false."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can I use SnapDOM in a server action?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "No. Server actions run in a Node.js environment without a real DOM. Use Puppeteer or Playwright server-side, and SnapDOM client-side."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does SnapDOM work with the pages router too?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. The same client component pattern works in both routers — just call SnapDOM inside a useEffect or event handler so it never executes during getServerSideProps or getStaticProps."
-        }
-      }
-    ]
-  }
-  </script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

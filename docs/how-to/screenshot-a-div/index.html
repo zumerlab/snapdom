@@ -41,38 +41,7 @@
     "isPartOf": { "@id": "https://snapdom.dev/#website" }
   }
   </script>
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "What is the easiest way to screenshot a div in JavaScript?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Install @zumer/snapdom and call snapdom.toPng(element). It returns an HTMLImageElement you can append, download, or convert to a Blob — all in one line of code."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Can JavaScript take a screenshot of a webpage?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "JavaScript cannot natively screenshot the entire viewport, but it can serialise any DOM element into an image using a library like SnapDOM, html2canvas, or html-to-image. SnapDOM clones the element, inlines its styles and renders it through SVG foreignObject."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Does it work cross-browser?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. SnapDOM works in all modern Chromium, Firefox and Safari browsers. It uses standard Web APIs (SVG foreignObject, Canvas) with no polyfills required."
-        }
-      }
-    ]
-  }
-  </script>
+
 
   <link rel="preconnect" href="https://img.shields.io">
   <link rel="stylesheet" href="../../shared.css">

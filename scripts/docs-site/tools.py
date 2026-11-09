@@ -6,6 +6,7 @@
 TOOLS = [
  {'slug': 'snapdiff', 'name': 'SnapDiff', 'npm': '@zumer/snapdiff', 'version': '0.3.1', 'repo': 'https://github.com/zumerlab/snapdiff', 'site': 'https://zumerlab.com/snapdiff/',
   'tagline': 'Visual regression testing that runs in the browser.',
+  'description': 'Test DOM components against saved visual baselines with SnapDiff. Review pixel differences in the browser or run regression tests with Vitest.',
   'lead': 'SnapDiff captures DOM elements with SnapDOM, compares them to saved baselines, and shows what changed. Capture, diff, storage and review happen in the page; the Vitest suite adds disk baselines and tests that fail when visuals drift.',
   'does': ['A script tag with <code>data-snap</code> attributes: baselines in IndexedDB, a badge to review changes.',
            '<code>snapdiff-stale</code> flags baselines older than their source files, with no rendering.',
@@ -20,6 +21,7 @@ TOOLS = [
   'demo': {'demo': 'diff', 'sample': 'form', 'demo-label': 'Baseline and compare', 'note': 'This sample uses SnapDOM with a simple pixel diff. Take a baseline, edit the title and compare. SnapDiff adds saved baselines and test failures.'}},
  {'slug': 'snapeye', 'name': 'SnapEye', 'npm': '@zumer/snapeye', 'version': '0.4.0', 'repo': 'https://github.com/zumerlab/snapeye',
   'tagline': 'Capture, compare and record for coding agents.',
+  'description': 'Capture DOM elements, compare visual baselines and record UI changes with SnapEye. A CLI for coding agents that reports results as JSON.',
   'lead': 'SnapEye is a visual toolbelt built on SnapDOM for coding agents. The agent runs one command, gets a JSON answer, and only opens an image when the JSON says it should.',
   'does': ['<code>capture</code> records a baseline PNG of one target under <code>.snapeye/baselines</code>.',
            '<code>diff</code> compares the current render against it and reports changed regions as JSON.',
@@ -36,6 +38,7 @@ TOOLS = [
   'demo': {'demo': 'pair', 'sample': 'form', 'demo-label': 'Before and after', 'note': 'This sample shows two SnapDOM captures. Take a baseline, edit the card and compare. The SnapEye CLI also saves the results and reports changes as JSON.'}},
  {'slug': 'snapsurf', 'name': 'SnapSurf', 'npm': '@zumer/snapsurf', 'version': '0.1.2', 'repo': 'https://github.com/zumerlab/snapsurf', 'experimental': True,
   'tagline': 'Web navigation and verification for agents.',
+  'description': 'Navigate and verify web pages with SnapSurf, a local MCP server and CLI for agents. Get semantic page digests, typed action diffs and assertions.',
   'lead': 'SnapSurf tells an agent what its last action changed: a compact semantic digest of the page, a typed diff after each action, and assertions over that exact diff. It runs locally as an MCP server or CLI with its own Chromium session.',
   'does': ['<code>browser_open</code> returns a compact semantic digest of the page with element ids.',
            '<code>browser_verify</code> returns a typed diff after each action: content, state, layout, clickability.',
@@ -77,7 +80,7 @@ def tool_page(t):
     if t.get('badge'): inner += f'<p>{t["badge"]}</p>'
     inner += '</div>'
     ld = {'applicationCategory': 'DeveloperApplication', 'operatingSystem': 'Web', 'softwareVersion': t['version'], 'sameAs': [t['repo']] + ([t['site']] if t.get('site') else [])}
-    standalone(path, 'Ecosystem', meta(f'{t["name"]}: {t["tagline"].rstrip(".")}', t['lead'][:157].rsplit(' ', 1)[0] + '…' if len(t['lead']) > 160 else t['lead'], f'tools/{t["slug"]}/', 'SoftwareApplication', ld),
+    standalone(path, 'Ecosystem', meta(f'{t["name"]}: {t["tagline"].rstrip(".")}', t['description'], f'tools/{t["slug"]}/', 'SoftwareApplication', ld),
                tool_nav(path), 'Filter tools', 'Tools', 'ecosystem', t['name'], inner, t.get('demo'), pages)
 
 for t in TOOLS: tool_page(t)
