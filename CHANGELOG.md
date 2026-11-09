@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.7.4](https://github.com/zumerlab/snapdom/compare/v3.7.3...v3.7.4)
+
+> 9 November 2026
+
+**Fixes**
+
+- keep a rotated one-line box on one line in the capture [`8b8ea14`](https://github.com/zumerlab/snapdom/commit/8b8ea143a560c729c6de10610f7e9802cf6cfc6f)
+
 #### [v3.7.3](https://github.com/zumerlab/snapdom/compare/v3.7.2...v3.7.3)
 
 > 9 November 2026
