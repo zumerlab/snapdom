@@ -3,14 +3,14 @@
 <head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ASCII Mirror — a live element as text — SnapDOM Labs</title>
+  <title>ASCII Mirror: a live element as text | SnapDOM Labs</title>
   <meta name="description" content="Type in a card and watch it redrawn as ASCII art in real time. The stream plugin keeps a canvas in step with the element; asciiFromCanvas turns each frame into characters." />
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://snapdom.dev/labs/ascii-mirror/" />
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
   <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
   <meta property="og:type" content="article" />
-  <meta property="og:title" content="ASCII Mirror — a live element as text" />
+  <meta property="og:title" content="ASCII Mirror: a live element as text" />
   <meta property="og:description" content="Type in a card and watch it redrawn as ASCII art in real time, with SnapDOM's stream plugin and asciiFromCanvas." />
   <meta property="og:url" content="https://snapdom.dev/labs/ascii-mirror/" />
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
@@ -56,7 +56,7 @@
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "A live element, <span class=\"accent\">as text</span>", "lead": "A card with text and a spinning CSS cube. The right side is the same element redrawn as ASCII art on every frame, through the stream plugin.", "links": []} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Showcase</button><div class="pane-nav-items"><a href="../../showcase/">Live demos</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="../video-overlay/">Video overlay <span class="nav-new">New</span></a><a href="../webrtc-overlay/">WebRTC overlay <span class="nav-new">New</span></a><a href="../stop-motion/">Stop motion</a><a href="../paint-canvas/">Paint on a capture</a><a href="../capture-stages/">Capture stages</a><a href="../target-range/">Target range</a><a href="../webgl-live-mirror/">Live mirror</a><a href="./" aria-current="page">ASCII mirror <span class="nav-new">New</span></a><a href="../webgl-seamless-dom/">Seamless DOM</a><a href="../webgl-shatter/">Shattered capture</a><a href="../html-in-canvas/">html-in-canvas <span class="nav-new">New</span></a><a href="../into-the-dock/">Into the dock <span class="nav-new">New</span></a></div></div></nav></aside>
 
@@ -64,7 +64,7 @@
 <header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Showcase</span><span aria-hidden="true">/</span><span>Labs</span><span aria-hidden="true">/</span><span>ASCII mirror</span></nav><span class="doc-meta">Labs Experiment</span></div><h1>A live element, <span class="accent">as text</span></h1><p class="doc-lead">A card with text and a spinning CSS cube. The right side is the same element redrawn as ASCII art on every frame, through the stream plugin.</p></header>
 <div class="pane-content"><!-- content -->
 
-    <div class="tldr"><div class="tldr-label">TL;DR</div><p>One call: <code>asciiStream(el, { onText })</code>. Under it, <code>stream()</code> keeps a canvas in step with the card, and <code>asciiFromCanvas()</code>, the function behind the <code>ascii-export</code> plugin, turns each frame into characters. No capture result in between: the canvas goes straight from one to the other.</p></div>
+    <div class="tldr"><div class="tldr-label">TL;DR</div><p>Two calls. <code>stream()</code> keeps a canvas in step with the card, and <code>asciiFromCanvas()</code>, the function behind the <code>ascii-export</code> plugin, turns each frame into characters. No capture result in between: the canvas goes straight from one to the other.</p></div>
 
     <section class="prose">
       <h2 id="what-you-re-looking-at">What you're looking at</h2>
@@ -99,7 +99,7 @@
             </div>
           </div>
           <div class="lam-pane">
-            <div class="lam-pane-label"><span>ASCII output</span><strong>asciiStream()</strong></div>
+            <div class="lam-pane-label"><span>ASCII output</span><strong>stream() + asciiFromCanvas()</strong></div>
             <div class="lam-surface"><pre id="lamOut" data-code-output>starting…</pre></div>
           </div>
         </div>
@@ -110,31 +110,31 @@
     <section class="prose">
       <h2 id="how-it-works">How it works</h2>
       <ol class="steps">
-        <li><h4 aria-level="3"><code>stream()</code> watches the card</h4><p>The first frame is a full SnapDOM capture. After that, a keystroke is traced to the nearest box with a solid background and only that subtree is captured and drawn into its rectangle. The cube is different: a 3D transform leaves the flow, so while it spins every frame is a full capture, capped here at 15 fps. Stop the cube (pause it from devtools, or delete it) and the stats switch to patches.</p></li>
+        <li><h4 aria-level="3"><code>stream()</code> watches the card</h4><p>The first frame is a full SnapDOM capture. After that, a keystroke is traced to the nearest box with a solid background and only that subtree is captured and drawn into its rectangle. The cube spins under a 3D transform, which no box of its own can hold, so each turn repaints the white card around it: still a patch, capped here at 15 fps, and the stats count it as one.</p></li>
         <li><h4 aria-level="3"><code>asciiFromCanvas()</code> does the pixel work</h4><p>On each repaint it downsamples the canvas to one pixel per character, maps luminance to the charset and returns a string, or colored HTML when <code>format: 'html'</code>. It is the same code the <code>toAscii()</code> export uses, exported on its own so it runs on any drawable: a stream frame, a video, your own canvas.</p></li>
-        <li><h4 aria-level="3"><code>asciiStream()</code> is the two together</h4><p>It takes the ascii options and the stream options in one object and calls <code>onText(text, frame)</code> after every repaint. The handle it returns is the stream's: <code>ready</code>, <code>stats</code>, <code>stop()</code>.</p></li>
+        <li><h4 aria-level="3">One handler joins them</h4><p><code>onFrame</code> receives every repaint with its canvas; the handler runs <code>asciiFromCanvas()</code> on it and writes the string. The handle <code>stream()</code> returns is all there is: <code>ready</code>, <code>stats</code>, <code>stop()</code>.</p></li>
         <li><h4 aria-level="3">The <code>&lt;pre&gt;</code> is replaced</h4><p><code>textContent</code> for plain text, <code>innerHTML</code> for the colored version. Nothing else on the page is touched.</p></li>
       </ol>
     </section>
 
     <section class="prose">
       <h2 id="copy-paste-example">Copy-paste example</h2>
-<pre><code class="language-javascript">import { asciiStream } from '@zumer/snapdom-plugins/ascii-export'
+<pre><code class="language-javascript">import { stream } from '@zumer/snapdom-plugins/stream'
+import { asciiFromCanvas } from '@zumer/snapdom-plugins/ascii-export'
 
 const out = document.querySelector('pre')
-const live = asciiStream(document.querySelector('#card'), {
-  width: 90,
+const live = stream(document.querySelector('#card'), {
   fps: 15,
-  onText: text => { out.textContent = text }
+  onFrame: frame => { out.textContent = asciiFromCanvas(frame.canvas, { width: 90 }) }
 })
 await live.ready
 // later: live.stop()</code></pre>
-      <p>Without the sugar it is two calls: <code>stream(el, { onFrame: f => out.textContent = asciiFromCanvas(f.canvas, { width: 90 }) })</code>. The same shape works for any pixel-level step on a frame, or for a video element instead of a stream.</p>
+      <p>The same shape works for any pixel-level step on a frame, or for a video element instead of a stream: <code>asciiFromCanvas()</code> takes anything <code>drawImage</code> accepts.</p>
     </section>
 
     <section class="prose">
       <h2 id="limits-and-things-to-watch">Limits and things to watch</h2>
-      <p>Patches need a solid background somewhere above the change; on a gradient card every frame is a full capture. Width above 140 columns makes the conversion visible in the frame budget on slow machines. Color mode produces one <code>&lt;span&gt;</code> per character, so keep it under 100 columns.</p>
+      <p>On a gradient card a change has no solid box to patch, so the plugin repaints a window of the card instead; a full frame comes only when the card itself changes size. Width above 140 columns makes the conversion visible in the frame budget on slow machines. Color mode produces one <code>&lt;span&gt;</code> per character, so keep it under 100 columns.</p>
     </section>
 
     <section class="related">
@@ -151,18 +151,19 @@ await live.ready
 <nav class="pager" aria-label="Pages"><a href="../webgl-live-mirror/"><span>Previous</span><strong>Live mirror</strong></a><a class="is-next" href="../webgl-seamless-dom/"><span>Next</span><strong>Seamless DOM</strong></a></nav>
 </article>
 </main>
-<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../plugins/">Plugins</a><a href="../../plugins/pdf/">PDF</a><a href="../../plugins/vector/">Vector</a><a href="../../plugins/stream/">Stream</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../tools/snapdiff/">SnapDiff</a><a href="../../tools/snapeye/">SnapEye</a><a href="../../tools/snapsurf/">SnapSurf</a><a href="../../made-with/">Made with</a><a href="../../plugins/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
 <!-- pane:end -->
 
   <script type="module">
     // Raw ES modules from unpkg: esm.sh builds a package on first request and can time out on a fresh release.
-    import { asciiStream } from 'https://unpkg.com/@zumer/snapdom-plugins@4/ascii-export.js'
+    import { stream } from 'https://unpkg.com/@zumer/snapdom-plugins@4/stream.js'
+    import { asciiFromCanvas } from 'https://unpkg.com/@zumer/snapdom-plugins@4/ascii-export.js'
 
     const card = document.getElementById('lamCard'), out = document.getElementById('lamOut'), stats = document.getElementById('lamStats')
     const charset = document.getElementById('lamCharset'), width = document.getElementById('lamWidth'), widthOut = document.getElementById('lamWidthOut')
     const color = document.getElementById('lamColor'), invert = document.getElementById('lamInvert')
 
-    let live = null, frames = 0, patched = 0, times = [], t0 = 0
+    let live = null, frames = 0, patched = 0, times = []
     function report() {
       const med = times.length ? times.slice().sort((a, b) => a - b)[times.length >> 1] : 0
       stats.textContent = `${frames} frames · ${patched} patched · ascii ${med.toFixed(2)} ms per frame`
@@ -170,10 +171,13 @@ await live.ready
     async function start() {
       live?.stop()
       try {
-        live = asciiStream(card, {
-          fps: 15, width: Number(width.value), charset: charset.value, format: color.checked ? 'html' : 'text', invert: invert.checked,
-          onFrame(frame) { frames++; if (!frame.full) patched++; t0 = performance.now() },
-          onText(text) {
+        const options = { width: Number(width.value), charset: charset.value, format: color.checked ? 'html' : 'text', invert: invert.checked }
+        live = stream(card, {
+          fps: 15,
+          onFrame(frame) {
+            frames++; if (!frame.full) patched++
+            const t0 = performance.now()
+            const text = asciiFromCanvas(frame.canvas, options)
             // Colored output comes wrapped in its own <pre>; the spans go into ours.
             if (color.checked) out.innerHTML = text.replace(/^<pre[^>]*>/, '').replace(/<\/pre>$/, ''); else out.textContent = text
             times.push(performance.now() - t0); if (times.length > 60) times.shift()

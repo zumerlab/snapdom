@@ -1,9 +1,9 @@
-# Converts the existing content pages into the 3-pane template, in place.
+# Converts the existing content pages into the pane template, in place.
 # A page keeps its URL, <head> and content. What changes:
 #   - the old site header (or the new one, on a rerun) becomes the grouped header;
 #   - the hero becomes a DocHeader: breadcrumb, section-coloured title, lead, text links;
 #   - the content moves into the reading column, after the sidebar (every page of the
-#     section, with only group and page levels) and, where set, a live demo;
+#     section, with only group and page levels); where set, a live demo follows the column;
 #   - a Previous / Next pager and the footer directory close the page.
 # Markers (<!-- pane:start --> … <!-- pane:end -->) let a rerun find what it wrote.
 
@@ -84,11 +84,6 @@ TARGETS = {'shadow': SAMPLE_SHADOW, 'tricky': TRICKY}
 
 def strip_tags(s):
     return html.unescape(re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', s)).strip())
-
-def rel(frm, to):
-    """Relative href from page `frm` to page `to` (both docs-relative file paths)."""
-    href = os.path.relpath(to, os.path.dirname(frm) or '.').replace(os.sep, '/')
-    return href[:-len('index.html')] or './' if href.endswith('index.html') else href
 
 def no_arrows(s):
     # The design drops arrow glyphs from link text; code samples keep theirs.
@@ -215,9 +210,13 @@ def convert(section, gi, path, title, demo, flat):
     demo_html = demo_panel(TARGETS.get(demo.get('target'))) if demo else ''
 
     hero_json = json.dumps(hero).replace('--', '-\\u002d')  # "--" would end the comment
+    # A page with a demo closes with the demo and then the pager. Without one the pager stays
+    # inside the article and the markup is byte-identical to the previous build, so metadata.py
+    # does not stamp a new dateModified on a page whose content did not change.
+    tail = f'</article>\n{demo_html}\n{pager}\n</main>\n' if demo else f'{pager}\n</article>\n</main>\n'
     block = (f'{START}<!-- hero {hero_json} -->\n{header(section["menu"], root)}{between}\n'
-             f'<main id="main" class="pane{"" if demo else " no-demo"}" data-pane>\n{sidebar_html}\n{demo_html}\n'
-             f'<article class="pane-read sec-{sec}"{attrs}>\n{doc_header}\n<div class="pane-content"><!-- content -->{content}<!-- /content --></div>\n{pager}\n</article>\n</main>\n'
+             f'<main id="main" class="pane{"" if demo else " no-demo"}" data-pane>\n{sidebar_html}\n\n'
+             f'<article class="pane-read sec-{sec}"{attrs}>\n{doc_header}\n<div class="pane-content"><!-- content -->{content}<!-- /content --></div>\n{tail}'
              f'{footer(root)}\n{END}')
     out = before + block + after
     # The old header's star counter had its own small fetch script; site.js fills

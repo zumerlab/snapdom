@@ -153,7 +153,7 @@
     @keyframes sd-flash { 0% { opacity: 1; } 100% { opacity: 0; } }
     @keyframes sd-print-in { 0% { opacity: 0; translate: 0 -22px; } 100% { opacity: 1; translate: 0 0; } }
 
-    /* ═══ Hero — the capture instrument ═══ */
+    /* ═══ Hero: the capture instrument ═══ */
     .hero-block { width: 100%; max-width: 1200px; padding: 20px 32px 0; margin-bottom: 8px; position: relative; text-align: left; }
     .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 18px; border-bottom: 1px solid var(--sd-hairline); margin-bottom: 56px; }
     .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; }
@@ -480,7 +480,7 @@
     }
   </style>
   <style>
-    /* NEW badge — demo menu & section headings */
+    /* NEW badge: demo menu and section headings */
     .new-badge {
       display: inline-flex;
       align-items: center;
@@ -507,7 +507,7 @@
 <body>
   <script defer src="../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Showcase", "title": "Showcase: live capture and export demos", "lead": "Start with Basic capture to export an element as an image. The Plugins section adds optional outputs; Labs contains custom experiments built on captures.", "links": [], "toc": [["benchmark", "Benchmark", "Capture"], ["basic", "Basic", "Capture"], ["opts-demo", "Shadows", "Capture"], ["transition", "Transition", "Capture"], ["orbit", "Orbit", "Capture"], ["video", "Video frame", "Capture"], ["fonts-demo", "Fonts", "Capture"], ["shadow", "Shadow DOM", "Capture"], ["canvas", "Canvas", "Capture"], ["export", "Export", "Capture"], ["pseudo", "Pseudo", "Capture"], ["clip", "Clip-Path", "Capture"], ["blend", "Blend", "Capture"], ["iframe", "Iframe", "Capture"], ["forms", "Inputs", "Capture"], ["mask", "Masking", "Capture"], ["cors", "CORS", "Capture"], ["fullbody", "Full page", "Capture"], ["plugins", "Overview", "Plugins"], ["redact-demo", "Hide private fields", "Plugins"], ["timestamp-demo", "Timestamp", "Plugins"], ["replace-demo", "Replace text", "Plugins"], ["filter-demo", "Filters and tint", "Plugins"], ["pdf-demo", "PDF", "Plugins"], ["vector-demo", "Editable SVG", "Plugins"], ["html-export-demo", "HTML export", "Plugins"], ["ascii-demo", "ASCII art", "Plugins"], ["gif-export-demo", "GIF recording", "Plugins"], ["video-export-demo", "Video recording", "Plugins"], ["stream-demo", "Live stream", "Plugins"], ["context-demo", "Text context", "Plugins"], ["agent-map-demo", "Element map", "Plugins"], ["labs", "Overview", "Labs"], ["lab-video-overlay", "Video overlay", "Labs"], ["lab-webrtc-overlay", "WebRTC overlay", "Labs"], ["lab-stop-motion", "Stop motion", "Labs"], ["lab-paint-canvas", "Paint on a capture", "Labs"], ["lab-target-range", "Target range", "Labs"], ["lab-capture-stages", "Capture stages", "Labs"], ["lab-webgl-live-mirror", "Live mirror", "Labs"], ["lab-ascii-mirror", "ASCII mirror", "Labs"], ["lab-webgl-seamless-dom", "Seamless DOM", "Labs"], ["lab-webgl-shatter", "Shattered capture", "Labs"], ["lab-into-the-dock", "Into the dock", "Labs"], ["demo-session", "Repeat captures", "Labs"], ["demo-htmlcanvas", "html-in-canvas", "Labs"]]} -->
-<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
 <aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter demos" aria-label="Filter demos"></label><nav class="pane-nav" aria-label="Showcase"><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Capture</button><div class="pane-nav-items"><a href="#benchmark">Benchmark</a><a href="#basic">Basic</a><a href="#opts-demo">Shadows</a><a href="#transition">Transition</a><a href="#orbit">Orbit</a><a href="#video">Video frame</a><a href="#fonts-demo">Fonts</a><a href="#shadow">Shadow DOM</a><a href="#canvas">Canvas</a><a href="#export">Export</a><a href="#pseudo">Pseudo</a><a href="#clip">Clip-Path</a><a href="#blend">Blend</a><a href="#iframe">Iframe</a><a href="#forms">Inputs</a><a href="#mask">Masking</a><a href="#cors">CORS</a><a href="#fullbody">Full page</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="#plugins">Overview</a><a href="#redact-demo">Hide private fields</a><a href="#timestamp-demo">Timestamp</a><a href="#replace-demo">Replace text</a><a href="#filter-demo">Filters and tint</a><a href="#pdf-demo">PDF</a><a href="#vector-demo">Editable SVG</a><a href="#html-export-demo">HTML export</a><a href="#ascii-demo">ASCII art</a><a href="#gif-export-demo">GIF recording</a><a href="#video-export-demo">Video recording</a><a href="#stream-demo">Live stream <span class="nav-new">New</span></a><a href="#context-demo">Text context</a><a href="#agent-map-demo">Element map</a></div></div><div class="sec-labs"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Labs</button><div class="pane-nav-items"><a href="#labs">Overview</a><a href="#lab-video-overlay">Video overlay <span class="nav-new">New</span></a><a href="#lab-webrtc-overlay">WebRTC overlay <span class="nav-new">New</span></a><a href="#lab-stop-motion">Stop motion</a><a href="#lab-paint-canvas">Paint on a capture</a><a href="#lab-target-range">Target range</a><a href="#lab-capture-stages">Capture stages</a><a href="#lab-webgl-live-mirror">Live mirror</a><a href="#lab-ascii-mirror">ASCII mirror <span class="nav-new">New</span></a><a href="#lab-webgl-seamless-dom">Seamless DOM</a><a href="#lab-webgl-shatter">Shattered capture</a><a href="#lab-into-the-dock">Into the dock <span class="nav-new">New</span></a><a href="#demo-session">Repeat captures</a><a href="#demo-htmlcanvas">html-in-canvas</a></div></div></nav></aside>
 
@@ -955,7 +955,7 @@
     <!-- Plugins: what they make, how to install, one live demo each, community and your own -->
     <section id="plugins">
       <h2 id="plugin-demos">Plugins</h2>
-      <p class="demo-explanation">Official plugins from <code>@zumer/snapdom-plugins</code> turn the same capture into a PDF, editable SVG, HTML, ASCII, a GIF, video or live canvas, or context for an agent, or change it before it renders. Each demo runs one plugin.</p>
+      <p class="demo-explanation">Official plugins from <code>@zumer/snapdom-plugins</code> turn the same capture into a PDF, editable SVG, HTML, ASCII, a GIF, video or live canvas, or context for an agent, or change it before it renders. Each demo runs one plugin. Every plugin also has <a href="../plugins/">its own page</a> with options and a live demo.</p>
     </section>
 
 
@@ -988,7 +988,7 @@
 
     <section id="redact-demo">
       <h2 id="redact-inputs-plugin">Hide private fields <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>redact-inputs</code> masks emails and phone numbers in the capture. The live form keeps its values.</p>
+      <p class="demo-explanation"><code>redact-inputs</code> masks emails and phone numbers in the capture. The live form keeps its values. <a href="../plugins/redact-inputs/">Options and docs</a>.</p>
       <div class="card pl-card" id="pl-redact-src">
         <h3>Your profile</h3>
         <label>Name<input type="text" value="Ana Ruiz"></label>
@@ -1001,7 +1001,7 @@
 
     <section id="timestamp-demo">
       <h2 id="timestamp-overlay-plugin">Timestamp <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>timestamp-overlay</code> stamps the capture time in a corner, useful for receipts and bug reports.</p>
+      <p class="demo-explanation"><code>timestamp-overlay</code> stamps the capture time in a corner, useful for receipts and bug reports. <a href="../plugins/timestamp-overlay/">Options and docs</a>.</p>
       <div class="card pl-card" id="pl-timestamp-src">
         <h3>Invoice INV-1042</h3>
         <table><tr><td>Interface design</td><td>$840</td></tr><tr><td>Implementation</td><td>$560</td></tr><tr><th>Total</th><th>$1,400</th></tr></table>
@@ -1012,7 +1012,7 @@
 
     <section id="replace-demo">
       <h2 id="replace-text-plugin">Replace text <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>replace-text</code> swaps strings or regular expressions in the capture only. Here <em>DRAFT</em> becomes <em>APPROVED</em> and the date is hidden.</p>
+      <p class="demo-explanation"><code>replace-text</code> swaps strings or regular expressions in the capture only. Here <em>DRAFT</em> becomes <em>APPROVED</em> and the date is hidden. <a href="../plugins/replace-text/">Options and docs</a>.</p>
       <div class="card pl-card" id="pl-replace-src">
         <h3>Contract review</h3>
         <p>Status: <span class="pl-status">DRAFT</span></p>
@@ -1024,7 +1024,7 @@
 
     <section id="filter-demo">
       <h2 id="filter-plugin">Filters and tint <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>filter</code> applies a CSS filter preset to the capture; <code>color-tint</code> lays a colour over it. The page itself does not change.</p>
+      <p class="demo-explanation"><code>filter</code> applies a CSS filter preset to the capture; <code>color-tint</code> lays a colour over it. The page itself does not change. <a href="../plugins/filter/">Options and docs</a>, and the <a href="../plugins/color-tint/">Color tint</a> page.</p>
       <div class="card pl-card pl-art" id="pl-filter-src">
         <div class="pl-big">Snap ✨</div>
         <p style="margin-top:10px">Warm gradient, white text, one emoji.</p>
@@ -1037,7 +1037,7 @@
 
     <section id="pdf-demo">
       <h2 id="pdf-plugin">PDF with selectable text <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>pdf</code> adds <code>toPdf()</code>: a real PDF whose text you can select and search, with working links. <a href="../plugins/pdf/">More PDF options</a>.</p>
+      <p class="demo-explanation"><code>pdf</code> adds <code>toPdf()</code>: a real PDF whose text you can select and search, with working links. <a href="../plugins/pdf/">Product page</a>.</p>
       <div class="card pl-card" id="pl-pdf-src">
         <h3>Delivery report</h3>
         <p>Three interface screens shipped and ready for implementation.</p>
@@ -1050,7 +1050,7 @@
 
     <section id="vector-demo">
       <h2 id="vector-plugin">Editable SVG <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>vector</code> adds <code>toVector()</code>: an SVG with real text and shapes you can edit in Figma or Illustrator. <a href="../plugins/vector/">More vector options</a>.</p>
+      <p class="demo-explanation"><code>vector</code> adds <code>toVector()</code>: an SVG with real text and shapes you can edit in Figma or Illustrator. <a href="../plugins/vector/">Product page</a>.</p>
       <div class="card pl-card" id="pl-vector-src">
         <h3>Orbit / 03</h3>
         <svg viewBox="0 0 300 140" width="300" height="140" role="img" aria-label="Blue orbit illustration"><circle cx="150" cy="70" r="50" fill="#E8EEFF"/><ellipse cx="150" cy="70" rx="115" ry="28" fill="none" stroke="#2D5BFF" stroke-width="3" transform="rotate(-20 150 70)"/><circle cx="150" cy="70" r="20" fill="#0F1E4D"/></svg>
@@ -1061,7 +1061,7 @@
 
     <section id="html-export-demo">
       <h2 id="html-export-plugin">HTML export <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation">The <code>html-export</code> plugin returns a self-contained HTML snapshot with styles, fonts and images inlined. The preview opens that document in a sandboxed <code>&lt;iframe&gt;</code>.</p>
+      <p class="demo-explanation">The <code>html-export</code> plugin returns a self-contained HTML snapshot with styles, fonts and images inlined. The preview opens that document in a sandboxed <code>&lt;iframe&gt;</code>. <a href="../plugins/html-export/">Options and docs</a>.</p>
       <div class="card xp-card" id="xp-html-src">
         <h3>Provisioning manifest</h3>
         <p style="margin:0 0 12px; opacity:.85">A surface with <strong style="color:#ffd166">varied</strong> controls and a pseudo-element dot.</p>
@@ -1073,7 +1073,7 @@
 
     <section id="ascii-demo">
       <h2 id="ascii-export-plugin">ASCII art <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>ascii-export</code> adds <code>toAscii()</code>, which redraws the capture as plain text characters: dark areas become dense characters, light areas stay blank. The cube is CSS, spinning; the export freezes whatever angle it has when you click.</p>
+      <p class="demo-explanation"><code>ascii-export</code> adds <code>toAscii()</code>, which redraws the capture as plain text characters: dark areas become dense characters, light areas stay blank. The cube is CSS, spinning; the export freezes whatever angle it has when you click. <a href="../plugins/ascii-export/">Options and docs</a>.</p>
       <div class="card pl-card pl-ascii-card" id="pl-ascii-src">
         <div class="pl-cube-scene"><div class="pl-cube"><i>S</i><i>N</i><i>A</i><i>P</i><i>D</i><i>O</i></div></div>
         <div class="pl-ascii-text"><b contenteditable="true" spellcheck="false">3D</b><span contenteditable="true" spellcheck="false">Spinning, as text</span></div>
@@ -1086,7 +1086,7 @@
 
     <section id="gif-export-demo">
       <h2 id="gif-recording-plugin">GIF recording <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation">The <code>gif-export</code> plugin records the live element frame by frame and returns an animated GIF. Recording starts when you call <code>toGif()</code>.</p>
+      <p class="demo-explanation">The <code>gif-export</code> plugin records the live element frame by frame and returns an animated GIF. Recording starts when you call <code>toGif()</code>. <a href="../plugins/gif-export/">Options and docs</a>.</p>
       <div class="card xp-anim" id="xp-gif-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-gif-count">00</span>
       </div>
@@ -1096,7 +1096,7 @@
 
     <section id="video-export-demo">
       <h2 id="video-recording-plugin">Video recording <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation">The <code>video-export</code> plugin records the live element using <code>MediaRecorder</code>. The browser selects a supported MP4 or WebM format; check <code>Blob.type</code> for the result.</p>
+      <p class="demo-explanation">The <code>video-export</code> plugin records the live element using <code>MediaRecorder</code>. The browser selects a supported MP4 or WebM format; check <code>Blob.type</code> for the result. <a href="../plugins/video-export/">Options and docs</a>.</p>
       <div class="card xp-anim" id="xp-vid-src">
         <div class="xp-ring"></div><span class="xp-count" id="xp-vid-count">00</span>
       </div>
@@ -1106,7 +1106,7 @@
 
     <section id="stream-demo">
       <h2 id="stream-plugin">Live stream <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation">The <code>stream</code> plugin keeps a canvas in step with a live element and repaints only the boxes that changed. The first frame is a full capture; after that, a changed card costs a few milliseconds instead of a full frame. Type in the card and watch the canvas follow.</p>
+      <p class="demo-explanation">The <code>stream</code> plugin keeps a canvas in step with a live element and repaints only the boxes that changed. The first frame is a full capture; after that, a changed card costs a few milliseconds instead of a full frame. Type in the card and watch the canvas follow. <a href="../plugins/stream/">Product page</a>.</p>
       <div class="card" id="xp-stream-src" style="max-width:340px;background:#0F1E4D;color:#f3f1ea;display:grid;gap:8px">
         <h3 contenteditable="true" spellcheck="false" style="margin:0;padding:8px 10px;background:#1b2f73;border-radius:6px">Type here, the canvas follows</h3>
         <p contenteditable="true" spellcheck="false" style="margin:0;padding:8px 10px;background:#1b2f73;border-radius:6px">Each box repaints on its own when it changes.</p>
@@ -1126,7 +1126,7 @@ document.body.append(live.canvas)
 
     <section id="context-demo">
       <h2 id="context-export-plugin">Text context for LLMs <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>context-export</code> adds <code>toContext()</code>: the captured UI as a short text outline with roles, text and state.</p>
+      <p class="demo-explanation"><code>context-export</code> adds <code>toContext()</code>: the captured UI as a short text outline with roles, text and state. <a href="../plugins/context-export/">Options and docs</a>.</p>
       <div class="card pl-card" id="pl-context-src">
         <h3>Checkout</h3>
         <table><tr><td>Plan</td><td>Team, yearly</td></tr><tr><td>Seats</td><td>3</td></tr><tr><th>Total</th><th>$288</th></tr></table>
@@ -1139,7 +1139,7 @@ document.body.append(live.canvas)
 
     <section id="agent-map-demo">
       <h2 id="agent-map-plugin">Element map for agents <span class="new-badge">Plugin</span></h2>
-      <p class="demo-explanation"><code>agent-map</code> numbers every interactive element on the image and returns a JSON map with each one's name, role and position.</p>
+      <p class="demo-explanation"><code>agent-map</code> numbers every interactive element on the image and returns a JSON map with each one's name, role and position. <a href="../plugins/agent-map/">Options and docs</a>.</p>
       <div class="card pl-card" id="pl-agent-src">
         <h3>Sign in</h3>
         <label>Email<input type="email" value="ana@example.com"></label>
@@ -1284,14 +1284,14 @@ document.body.append(live.canvas)
         <div class="output-col">
           <label>Forced full captures</label>
           <div class="tick-row" id="ticks-plain"></div>
-          <div class="output-box" id="box-plain"><span class="ph">—</span></div>
-          <div class="col-readout" id="out-session-plain">—</div>
+          <div class="output-box" id="box-plain"><span class="ph">Nothing captured yet</span></div>
+          <div class="col-readout" id="out-session-plain">pending</div>
         </div>
         <div class="output-col">
           <label>Memoization enabled</label>
           <div class="tick-row" id="ticks-session"></div>
-          <div class="output-box" id="box-session"><span class="ph">—</span></div>
-          <div class="col-readout" id="out-session-session">—</div>
+          <div class="output-box" id="box-session"><span class="ph">Nothing captured yet</span></div>
+          <div class="col-readout" id="out-session-session">pending</div>
         </div>
       </div>
       <div class="legend-mini">
@@ -1320,11 +1320,11 @@ document.body.append(live.canvas)
       <div class="output-row">
         <div class="output-col">
           <label>Default (SVG)</label>
-          <div class="output-box" id="out-htmlcanvas-default">—</div>
+          <div class="output-box" id="out-htmlcanvas-default">Nothing captured yet</div>
         </div>
         <div class="output-col">
           <label>html-in-canvas</label>
-          <div class="output-box" id="out-htmlcanvas-api">—</div>
+          <div class="output-box" id="out-htmlcanvas-api">Nothing captured yet</div>
           <div class="status-msg" id="status-htmlcanvas"></div>
         </div>
       </div>
@@ -1336,7 +1336,7 @@ document.body.append(live.canvas)
       <p class="section-kicker">Ecosystem</p>
       <h2 id="tools-built-on-snapdom">Tools built on SnapDOM</h2>
       <div class="card">
-        <p>SnapEye gives coding agents visual evidence. SnapSurf navigates and verifies web pages. SnapDIFF runs visual regression tests against saved baselines.</p>
+        <p><a href="../tools/snapeye/">SnapEye</a> gives coding agents visual evidence. <a href="../tools/snapsurf/">SnapSurf</a> navigates and verifies web pages. <a href="../tools/snapdiff/">SnapDiff</a> runs visual regression tests against saved baselines.</p>
         <p><a href="../ecosystem/" data-umami-event="Showcase ecosystem">Compare the tools and see how they work together</a></p>
       </div>
     </section>
@@ -1345,7 +1345,7 @@ document.body.append(live.canvas)
 <nav class="pager" aria-label="Pages"><a class="is-next" href="../labs/video-overlay/"><span>Next</span><strong>Video overlay</strong></a></nav>
 </article>
 </main>
-<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../docs/">Documentation</a><a href="../docs/#quick-start">Quick start</a><a href="../how-to/">How-to recipes</a><a href="../how-to/#frameworks">Framework guides</a><a href="../compare/">Compare</a></div><div><h2>Explore</h2><a href="../showcase/">Showcase</a><a href="../showcase/#plugins">Plugins</a><a href="../docs/plugins/#build">Writing plugins</a><a href="../showcase/#labs">Labs</a><a href="../blog/">Blog</a></div><div><h2>Community</h2><a href="../ecosystem/">Ecosystem</a><a href="../made-with/">Made with</a><a href="../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../docs/">Documentation</a><a href="../docs/#quick-start">Quick start</a><a href="../how-to/">How-to recipes</a><a href="../how-to/#frameworks">Framework guides</a><a href="../compare/">Compare</a></div><div><h2>Explore</h2><a href="../showcase/">Showcase</a><a href="../plugins/">Plugins</a><a href="../plugins/pdf/">PDF</a><a href="../plugins/vector/">Vector</a><a href="../plugins/stream/">Stream</a><a href="../docs/plugins/#build">Writing plugins</a><a href="../showcase/#labs">Labs</a><a href="../blog/">Blog</a></div><div><h2>Community</h2><a href="../ecosystem/">Ecosystem</a><a href="../tools/snapdiff/">SnapDiff</a><a href="../tools/snapeye/">SnapEye</a><a href="../tools/snapsurf/">SnapSurf</a><a href="../made-with/">Made with</a><a href="../plugins/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
 <!-- pane:end -->
   <!-- Labs demos -->
 
@@ -1424,7 +1424,7 @@ document.body.append(live.canvas)
 
     // One visible "life event" per mutation poll: card color flips, HP drops,
     // caught count rises. The class change lands on the observed root, the text
-    // changes on child nodes — both are real subtree mutations for burst.
+    // changes on child nodes. Both are real subtree mutations for burst.
     const THEMES = ['', 't1', 't2', 't3'];
     function mutateCard(step) {
       card.classList.remove('t1', 't2', 't3');
@@ -1504,8 +1504,8 @@ document.body.append(live.canvas)
       modeRow.querySelectorAll('button').forEach(b => { b.disabled = true; });
       outPlain.classList.remove('win');
       outSession.classList.remove('win');
-      outPlain.textContent = '—';
-      outSession.textContent = '—';
+      outPlain.textContent = 'pending';
+      outSession.textContent = 'pending';
       status.textContent = '';
       const plainTicks = buildTicks(ticksPlainEl);
       const burstTicks = buildTicks(ticksSessionEl);
@@ -2170,7 +2170,7 @@ document.body.append(live.canvas)
           await forceRender();
           const t0 = performance.now();
           // html2canvas clones the whole document into a sandbox iframe and waits for its
-          // load — cross-origin images wedge that wait on WebKit (why the made-with
+          // load. Cross-origin images wedge that wait on WebKit (why the made-with
           // avatars are self-hosted). The race is a backstop so any future hang degrades
           // to an honest "did not finish" instead of a dead button.
           h2cCanvas = await Promise.race([

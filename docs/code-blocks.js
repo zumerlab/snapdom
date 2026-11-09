@@ -35,7 +35,7 @@
     content.innerHTML = Prism.highlight(text, Prism.languages[lang], lang)
     content.dataset.language = lang
     block.classList.add('site-code-block')
-    const wrap = block.closest('.pane-code,.code-block-wrap,.modal-code-wrap')
+    const wrap = block.closest('.code-block-wrap,.modal-code-wrap')
     let button = wrap?.querySelector('button[data-copy],button[data-copy-text],button.copy-btn,#capture-copy')
     if (button?.id === 'capture-copy') return // The Playground already handles its clipboard and errors.
     if (button) button.remove()

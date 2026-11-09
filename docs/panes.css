@@ -1,8 +1,9 @@
 /* ═══════════════════════════════════════════════
-   panes.css — The 3-pane template: sidebar · live demo · reading column.
-   Used by Capabilities and Ecosystem. Overview topics drop the demo
-   column (.pane.no-demo). Colours come from the .sec-* classes in
-   navigation.css; behaviour from panes.js.
+   panes.css: the pane template. Sidebar on the left, reading column on the
+   right, and on the pages that have one the live demo below the reading
+   column, never beside it (.pane.no-demo hides the panel). Below 1080px
+   everything stacks and the demo comes last. Colours come from the .sec-*
+   classes in navigation.css; behaviour from panes.js.
    ═══════════════════════════════════════════════ */
 
 .pane {
@@ -10,27 +11,26 @@
   margin: 0 auto;
   padding: 32px 0 96px;
   display: grid;
-  grid-template-columns: 248px minmax(340px, 420px) minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
   gap: 40px;
   align-items: start;
 }
-.pane.no-demo { grid-template-columns: 248px minmax(0, 1fr); }
 .pane.no-demo .pane-demo { display: none; }
-.pane-side, .pane-demo { position: sticky; top: 88px; }
-.pane-side { display: grid; gap: 16px; align-content: start; max-height: calc(100vh - 104px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.pane-read { min-width: 0; max-width: 760px; }
-.pane.no-demo .pane-read { max-width: 900px; }
+.pane-side { position: sticky; top: 88px; display: grid; gap: 16px; align-content: start; max-height: calc(100vh - 104px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+/* The sidebar spans the reading and demo rows, and the pager row when a page with a demo
+   closes with a pager, so it stays sticky while they scroll by. */
+.pane:not(.no-demo) .pane-side { grid-row: span 2; }
+.pane:has(> .pager) .pane-side { grid-row: span 3; }
+.pane-read, .pane-demo, .pane > .pager { grid-column: 2; min-width: 0; max-width: 900px; }
+.pane > .pager { margin-top: 0; }
 
 @media (max-width: 1240px) {
-  .pane, .pane.no-demo { grid-template-columns: 220px minmax(0, 1fr); }
-  .pane-side { grid-row: span 2; }
-  .pane-demo { position: static; grid-column: 2; }
-  .pane-read { grid-column: 2; }
+  .pane { grid-template-columns: 220px minmax(0, 1fr); }
 }
 @media (max-width: 1080px) {
-  .pane, .pane.no-demo { grid-template-columns: minmax(0, 1fr); gap: 28px; }
-  .pane-side { position: static; grid-row: auto; max-height: none; overflow: visible; }
-  .pane-demo, .pane-read { grid-column: 1; }
+  .pane { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .pane-side, .pane:not(.no-demo) .pane-side { position: static; grid-row: auto; max-height: none; overflow: visible; }
+  .pane-read, .pane-demo, .pane > .pager { grid-column: 1; }
 }
 @media (max-width: 600px) {
   .pane { width: calc(100% - 28px); padding-top: 20px; }
@@ -95,7 +95,9 @@
   padding: 0 12px 0 20px;
   border-bottom: 1px solid rgba(15,30,77,0.14);
 }
-.demo-panel-title { margin-right: auto; color: var(--c); font: 500 13px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
+.demo-panel-title { margin-right: auto; color: var(--c); font: 700 13px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
+.demo-panel-sub { margin-left: 10px; color: #59647D; font-weight: 400; }
+.demo-panel-sub:empty { display: none; }
 .demo-act {
   min-height: 32px;
   padding: 0 12px;
@@ -135,7 +137,7 @@
   box-shadow: 0 12px 26px -16px rgba(15,30,77,0.45);
   animation: demo-print-in .5s cubic-bezier(.2,.9,.3,1);
 }
-.demo-print img, .demo-print canvas, .demo-print svg { display: block; max-width: 100%; height: auto; }
+.demo-print img, .demo-print canvas, .demo-print svg, .demo-print video { display: block; max-width: 100%; height: auto; }
 .demo-print pre { margin: 0; max-height: 240px; overflow: auto; color: #0F1E4D; font: 12px/1.15 var(--font-code); white-space: pre; }
 .demo-print figcaption { margin-top: 6px; color: #59647D; font: 400 12px Arial, Helvetica, sans-serif; }
 .demo-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -176,12 +178,6 @@
 .sample-card-actions a { color: #2D5BFF; font-size: 13px; }
 
 /* ── Reading column ── */
-.pane-topic[hidden] { display: none; }
-/* Until panes.js runs, show only the topic it will pick (the hash target, else the first),
-   so hiding the others does not shift the page. Without JavaScript every topic stays visible. */
-.panes-pending .pane-read > .pane-topic:not(:target) { display: none; }
-.panes-pending .pane:not(:has(.pane-topic:target)) .pane-nav > div:not(:first-child) .pane-nav-items { display: none; }
-.panes-pending .pane-read:not(:has(> .pane-topic:target)) > .pane-topic:first-of-type { display: block; }
 .doc-head { margin-bottom: 28px; }
 .doc-head-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 20px; }
 .doc-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--c); font: 400 13px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
@@ -190,10 +186,15 @@
 .doc-head h1, .doc-head h2.doc-title { margin: 0; color: var(--c); font: 700 clamp(40px, 4.4vw, 60px)/1.04 Arial, Helvetica, sans-serif; letter-spacing: -.04em; overflow-wrap: anywhere; }
 .doc-lead { max-width: 64ch; margin-top: 20px; font: 400 19px/1.65 Arial, Helvetica, sans-serif; text-wrap: pretty; }
 .pane-read h2 { margin: 48px 0 14px; font: 700 26px/1.2 Arial, Helvetica, sans-serif; letter-spacing: -.025em; }
-.pane-read > .pane-topic > p, .pane-para { max-width: 68ch; margin: 0 0 16px; font: 400 16px/1.7 Arial, Helvetica, sans-serif; }
+/* A heading reached by its anchor (plugins/#community-plugins) must clear the 65px sticky header. */
+.pane-read [id] { scroll-margin-top: 80px; }
+/* Generated pages write bare paragraphs; converted pages bring their own prose classes. */
+.pane-prose > p, .pane-para { max-width: 68ch; margin: 0 0 16px; font: 400 16px/1.7 Arial, Helvetica, sans-serif; }
 .pane-read p a, .pane-read td a { color: #1D3FD8; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .pane-read p a:hover, .pane-read td a:hover { color: #2D5BFF; text-decoration-thickness: 2px; }
 .pane-read code { padding: 2px 6px; background: rgba(45,91,255,0.08); color: #1D3FD8; font: 14px var(--font-code); }
+.pane-read img { max-width: 100%; height: auto; }
+.plugin-page .pane-content > h3 { margin: 32px 0 10px; font: 700 20px/1.3 Arial, Helvetica, sans-serif; letter-spacing: -.02em; }
 .provided-by { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .provided-by > span:first-child:not(.topic-sub) { color: #59647D; font: 400 12px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
 .topic-sub { color: #59647D; font: 400 15px Arial, Helvetica, sans-serif; }
@@ -202,12 +203,7 @@
 .tag-core { color: #2D5BFF; background: #EEF3FF; border-color: rgba(45,91,255,0.35); }
 .tag-plugin { color: #8A4F00; background: rgba(245,166,35,0.18); border-color: rgba(245,166,35,0.55); }
 .tag-experimental { color: #E63946; background: rgba(230,57,70,0.12); border-color: rgba(230,57,70,0.4); }
-
-.pane-code { min-width: 0; background: #0F1E4D; }
-.pane-code-bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 16px; border-bottom: 1px solid rgba(217,226,247,0.16); color: #B9C5E4; font: 700 12px Arial, Helvetica, sans-serif; }
-.pane-code-bar button { padding: 0; border: 0; background: none; color: #9EB3FF; cursor: pointer; font: inherit; }
-.pane-code pre { margin: 0; padding: 18px 20px; overflow-x: auto; color: #D9E2F7; font: 13.5px/1.7 var(--font-code); }
-.pane-read .pane-code code { padding: 0; background: none; color: inherit; font: inherit; }
+.tag-project { color: var(--sec-ecosystem); background: var(--sec-ecosystem-tint); border-color: var(--sec-ecosystem-dot); }
 
 .callout { margin-top: 24px; padding: 20px 24px; background: #EEF3FF; border: 1px solid rgba(15,30,77,0.14); font: 400 15.5px/1.65 Arial, Helvetica, sans-serif; }
 .callout-label { margin-bottom: 8px; color: #2D5BFF; font: 800 12px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
@@ -287,5 +283,5 @@
 .pane-content .cta-section { margin-top: 48px; }
 .pane-read pre code { padding: 0; background: none; color: inherit; font: inherit; }
 /* Same box as pre.site-code-block (code.css), so code-blocks.js adding that class does not shift the page. */
-.pane-content pre:not([class]):not(.code-block pre):not(.pane-code pre) { margin: 18px 0; padding: 48px 20px 20px; overflow-x: auto; background: #0F1E4D; color: #D9E2F7; border: 1px solid #0F1E4D; white-space: pre; font: 13px/1.7 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
-@media (max-width: 600px) { .pane-content pre:not([class]):not(.code-block pre):not(.pane-code pre) { padding: 48px 14px 16px; font-size: 12px; } }
+.pane-content pre:not([class]):not(.code-block pre) { margin: 18px 0; padding: 48px 20px 20px; overflow-x: auto; background: #0F1E4D; color: #D9E2F7; border: 1px solid #0F1E4D; white-space: pre; font: 13px/1.7 ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+@media (max-width: 600px) { .pane-content pre:not([class]):not(.code-block pre) { padding: 48px 14px 16px; font-size: 12px; } }

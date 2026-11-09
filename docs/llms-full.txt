@@ -1,6 +1,6 @@
 # SnapDOM: v3 reference
 
-Last updated: 2026-10-28.
+Last updated: 2026-11-09.
 
 SnapDOM (`@zumer/snapdom`) is a high-performance DOM engine that captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into PDF, HTML, editable vector, GIF, video or context for agents. Zero runtime dependencies; about one release a week.
 
@@ -77,6 +77,7 @@ SnapDOM captures an existing browser interface as pixels, document content, edit
 | Relate interactive elements to their captured appearance | `agentMap()` → `toAgentMap()` | Element map with bounding boxes and optional annotated image |
 | Preserve captured markup, styles and assets | `htmlExport()` → `toHtml()` | HTML document or fragment; captured markup, not restored application behavior |
 | Record changes over time | `gifExport()` / `videoExport()` → `toGif()` / `toMp4()` | Recording Blob from new live frames at export time |
+| Keep a live canvas of an element, for a WebGL texture or a video overlay | `stream(element)`, or `streamExport()` → `toStream()` | Canvas updated in place, repainting only the boxes that changed |
 | Render terminal-style artwork | `asciiExport()` → `toAscii()` | Text |
 
 Core `toSvg()` preserves browser appearance through HTML in SVG `foreignObject`; use Vector when the destination needs editable native SVG shapes and text. For content extraction, start with context JSON or an outline; add an image when appearance matters, and an agent map when element locations matter. Context and maps are bounded capture representations, not complete DOM dumps or browser interaction tools.
@@ -390,8 +391,13 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `agentMap()` | `toAgentMap()` → object | image annotated, fields minimal, semantic false, maxImageWidth 1024 |
 | `gifExport()` | `toGif()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
 | `videoExport()` | `toMp4()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
+| `stream()`, `streamExport()` | `stream(element, options)` → `{ canvas, ready, stats, stop() }`, a live canvas that repaints only the boxes that changed; `streamExport()` adds `toStream()` to a capture result | onFrame(frame), fps (default: every animation frame), patches true, animations true; every capture option applies |
 
 PDF and Vector are MIT source in packages/plugins. PDF and Vector are available on npm in @zumer/snapdom-plugins 4.x and require SnapDOM 3.x. PDF returns a Blob; downloading is an explicit export option.
+
+Stream ships in the same package at the `/stream` subpath (packages/stream); its patches are pixel-exact on SnapDOM 3.4.0 or newer. `streamTexture(gl)` uploads only the changed rectangles to a WebGL2 texture and `recordCanvas(canvas)` records a stream. See the Stream section below; the reference is its README: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
+
+Every official plugin has its own page under https://snapdom.dev/plugins/. PDF, Vector and Stream are the three products of the plugin line, with landing pages at https://snapdom.dev/plugins/pdf/, https://snapdom.dev/plugins/vector/ and https://snapdom.dev/plugins/stream/. The other eleven are the toolbox, grouped on the index by job (https://snapdom.dev/plugins/#prepare, https://snapdom.dev/plugins/#export, https://snapdom.dev/plugins/#record and https://snapdom.dev/plugins/#context), with one page per plugin that lists its options and runs a live demo: https://snapdom.dev/plugins/redact-inputs/, https://snapdom.dev/plugins/timestamp-overlay/, https://snapdom.dev/plugins/replace-text/, https://snapdom.dev/plugins/filter/, https://snapdom.dev/plugins/color-tint/, https://snapdom.dev/plugins/html-export/, https://snapdom.dev/plugins/ascii-export/, https://snapdom.dev/plugins/gif-export/, https://snapdom.dev/plugins/video-export/, https://snapdom.dev/plugins/context-export/ and https://snapdom.dev/plugins/agent-map/. The community plugins table is at https://snapdom.dev/plugins/#community-plugins; the guide for writing a plugin is https://snapdom.dev/docs/plugins/.
 
 ### Redaction across outputs
 
@@ -425,7 +431,7 @@ The live page stays unchanged. Field selection uses `types` (default email/tel),
 
 HTML uses the sanitized clone. `agentMap` and `contextExport` share the field, block and attribute policy for source-derived data, regardless of official plugin order. Existing default field masks still apply when you add block or attribute rules.
 
-Custom masks and nonempty `selector`, `blocks` or `attributes` rules disable unchanged-capture memoization, so they run on every capture. Nonempty block or attribute rules add a final `beforeRender` pass; `engine: 'html-in-canvas'` then falls back to SVG. Field-only redaction does not add that pass. Full plugin options: https://github.com/zumerlab/snapdom/blob/main/packages/plugins/README.md#redact-inputs.
+Custom masks and nonempty `selector`, `blocks` or `attributes` rules disable unchanged-capture memoization, so they run on every capture. Nonempty block or attribute rules add a final `beforeRender` pass; `engine: 'html-in-canvas'` then falls back to SVG. Field-only redaction does not add that pass. Full plugin options: https://github.com/zumerlab/snapdom/blob/main/packages/plugins/README.md#redact-inputs. Page: https://snapdom.dev/plugins/redact-inputs/.
 
 ### HTML and structured context
 
@@ -619,7 +625,7 @@ const tree = await capture.toContext({ format: 'json' });
 
 Pass the image and map together so labels refer to the same captured state. `fields` and `semantic` are factory settings, not per-export overrides. For a map without image rendering, create a separate capture with `agentMap({ needs: 'clone', image: false })`.
 
-Map label IDs are capture-local references, not browser handles. Use browser automation to navigate or interact, capture again after the action, and verify the intended postcondition with that automation tool. SnapDOM does not establish that a click landed or that only the intended content changed. See the Ecosystem section for SnapSurf, SnapEye and SnapDIFF roles.
+Map label IDs are capture-local references, not browser handles. Use browser automation to navigate or interact, capture again after the action, and verify the intended postcondition with that automation tool. SnapDOM does not establish that a click landed or that only the intended content changed. See the Ecosystem section for SnapSurf, SnapEye and SnapDiff roles.
 
 ### Produce a PDF, preview, HTML and JSON from one capture
 
@@ -682,19 +688,19 @@ If output differs, read `capture.warnings` after export, use `debug: true`, and 
 
 ## Ecosystem
 
-[SnapDOM Ecosystem](https://snapdom.dev/ecosystem/) compares tools built on SnapDOM:
+[SnapDOM Ecosystem](https://snapdom.dev/ecosystem/) is the hub for plugins and tools built on SnapDOM: the plugin line (https://snapdom.dev/plugins/), community plugins and three tools, each with its own page:
 
-- SnapEye provides capture, visual diff and recording operations for coding agents, with JSON results and artifacts. It uses SnapDIFF's diff engine and does not navigate or click.
-- SnapSurf provides browser navigation, compact page observations, typed changes and assertions through MCP or CLI. Its semantic verification is different from comparing pixels against a saved visual baseline.
-- SnapDIFF provides repeatable visual regression tests, saved baselines and review tools in the page or a Vitest browser suite in CI.
+- SnapEye (https://snapdom.dev/tools/snapeye/): capture, compare and record a local app for coding agents through a CLI and a page API. It provides capture, visual diff and recording operations with JSON results and artifacts. It uses SnapDiff's diff engine and does not navigate or click.
+- SnapSurf (https://snapdom.dev/tools/snapsurf/): web navigation and verification for agents as an MCP server and CLI; experimental. It provides browser navigation, compact page observations, typed changes and assertions. Its semantic verification is different from comparing pixels against a saved visual baseline.
+- SnapDiff (https://snapdom.dev/tools/snapdiff/): visual regression testing in the browser with baselines, diff views and a Vitest suite. It provides repeatable visual regression tests, saved baselines and review tools in the page or a Vitest browser suite in CI.
 
-An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect an edit, and SnapDIFF to maintain regression coverage. These steps require explicit setup; baselines are managed separately. SnapEye's URL trigger reloads the page; use its in-page API for states already reached through interaction.
+An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect an edit, and SnapDiff to maintain regression coverage. These steps require explicit setup; baselines are managed separately. SnapEye's URL trigger reloads the page; use its in-page API for states already reached through interaction.
 
 ## Further reading
 
 - API: https://snapdom.dev/docs/api/
 - Options: https://snapdom.dev/docs/options/
-- Plugins: https://snapdom.dev/docs/plugins/
+- Build a plugin: https://snapdom.dev/docs/plugins/
 - Cache and preCapture: https://snapdom.dev/docs/cache/
 - How-to: https://snapdom.dev/how-to/
 - Framework guides: https://snapdom.dev/how-to/#frameworks
@@ -703,12 +709,20 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 - SnapDOM v3 release: https://snapdom.dev/blog/snapdom-v3/
 - DOM capture boundaries: https://snapdom.dev/blog/dom-capture-boundaries/
 - Tiled rasterization: https://snapdom.dev/blog/huge-page-mosaic/
-- Plugin gallery: https://snapdom.dev/showcase/#plugins
+- Plugins: https://snapdom.dev/plugins/
+- PDF: https://snapdom.dev/plugins/pdf/ (reference: https://snapdom.dev/plugins/pdf/docs.html)
+- Vector: https://snapdom.dev/plugins/vector/ (reference: https://snapdom.dev/plugins/vector/docs.html)
+- Stream: https://snapdom.dev/plugins/stream/ (reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md)
+- Ecosystem: https://snapdom.dev/ecosystem/
+- SnapDiff: https://snapdom.dev/tools/snapdiff/
+- SnapEye: https://snapdom.dev/tools/snapeye/
+- SnapSurf: https://snapdom.dev/tools/snapsurf/
+- Plugin demos: https://snapdom.dev/showcase/#plugins
 - Plugin contract: https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md
 
 ## PDF and Vector exports
 
-Both exporters live inside the official plugin workspace: packages/plugins/pdf and packages/plugins/vector. Vector includes its internal SVD dependency in packages/plugins/vector/svd. @zumer/snapdom-plugins 4.0.0 is published on npm and available through npm-backed CDNs.
+Both exporters live in the SnapDOM monorepo: packages/pdf and packages/vector. Vector includes its internal SVD dependency in packages/vector/svd. @zumer/snapdom-plugins 4.0.0 is published on npm and available through npm-backed CDNs.
 
 PDF usage:
 
@@ -776,5 +790,32 @@ Vector reconstructs supported text and shapes as vector elements; it is distinct
 
 Live PDF documentation: https://snapdom.dev/plugins/pdf/. Full API: https://snapdom.dev/plugins/pdf/docs.html.
 Live Vector documentation: https://snapdom.dev/plugins/vector/. Full API: https://snapdom.dev/plugins/vector/docs.html.
+Live Stream documentation: https://snapdom.dev/plugins/stream/. Reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
 Plugin demos: https://snapdom.dev/showcase/#plugins. Source directory: https://github.com/zumerlab/snapdom/tree/main/packages/plugins.
 Old /pro/ URLs redirect to /plugins/. Current PDF/Vector demos generate outputs in the browser from editable samples rather than serving pre-release files.
+
+## Stream
+
+Stream (`@zumer/snapdom-plugins/stream`) keeps a live element as a canvas that repaints only what changed, for WebGL textures, video overlays and anything else that needs the DOM as pixels many times a second. Landing page: https://snapdom.dev/plugins/stream/. Reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
+
+```js
+import { stream } from '@zumer/snapdom-plugins/stream';
+
+const live = stream(panel, {
+  scale: 2,
+  onFrame(frame) {
+    // frame.canvas is updated in place; frame.rects lists what changed, in canvas pixels.
+  }
+});
+await live.ready;
+// ...
+live.stop();
+```
+
+The first frame is a full capture. After that, every change (mutations, typing, focus, hover, running animations) is traced to the nearest box that can be repainted on its own, and only that subtree is captured and drawn into its rect. A frame that cannot be patched exactly is a full frame, and `frame.reason` says why. A keyframe in idle time heals anything the change tracking could not see, at most every 2 s and never more than 2% of the main thread. Every patched frame is meant to match a full capture of the same DOM state pixel for pixel.
+
+Every capture option applies (`scale`, `dpr`, `embedFonts`, `exclude` and the rest), plus `onFrame(frame)`, called after each repaint with `{ full, reason, rects, ms, busyMs, canvas }` (`ms` is wall time; `busyMs` is the part the stream held the main thread), `fps` (an upper bound on repaints per second; the default is every animation frame), `patches` (`false` repaints full frames only) and `animations` (`false` stops following running animations and transitions). `stream()` returns `{ canvas, ready, stats, stop() }`.
+
+`streamTexture(gl)` keeps a WebGL texture in step with the stream and, on WebGL2, uploads only the changed rects. `recordCanvas(canvas, { fps, duration })` returns a recorder whose `done` resolves to an MP4 or WebM Blob, whichever the browser records. `streamExport()` adds `toStream()` to a capture result, next to `toMp4()` and `toGif()`. The subpath also ships overlay templates (`overlayStage`, `scoreboard`, `lowerThird`, `ticker`, `liveBadge`) as plain DOM with a small controller each.
+
+Limits: a change with no box that can be repainted standalone repaints a window of the enclosing box that kept its rect; it is a full frame only when nothing kept its rect (the root resized), a node was removed, a blur, drop-shadow or `url()` filter above the change spreads it, a `backdrop-filter` box overlaps it, a positioned box overlaps a host that cannot be a window, or the patches would cover more than half of the canvas. Programmatic CSSOM edits (`insertRule`, `rule.style`) produce no signal; the keyframe heals them. Pixel-exact patches at fractional positions need SnapDOM 3.4.0 or newer; on an older core the stream still runs.

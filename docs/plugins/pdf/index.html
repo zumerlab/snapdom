@@ -1,12 +1,12 @@
-<!doctype html><html lang="en"><head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow"><title>SnapDOM PDF — open-source pdf export</title><meta name="description" content="Capture a live element, add selectable text and links, and paginate it into a PDF in your browser."><link rel="canonical" href="https://snapdom.dev/plugins/pdf/">
+<!doctype html><html lang="en"><head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="index,follow"><title>SnapDOM PDF: open-source PDF export</title><meta name="description" content="Open-source PDF export for SnapDOM: capture a live element, add a selectable text layer and clickable links, then paginate it into a PDF file in the browser."><link rel="canonical" href="https://snapdom.dev/plugins/pdf/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SnapDOM PDF — open-source pdf export">
-  <meta property="og:description" content="Capture a live element, add selectable text and links, and paginate it into a PDF in your browser.">
+  <meta property="og:title" content="SnapDOM PDF: open-source PDF export">
+  <meta property="og:description" content="Open-source PDF export for SnapDOM: capture a live element, add a selectable text layer and clickable links, then paginate it into a PDF file in the browser.">
   <meta property="og:url" content="https://snapdom.dev/plugins/pdf/">
   <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="SnapDOM PDF — open-source pdf export">
-  <meta name="twitter:description" content="Capture a live element, add selectable text and links, and paginate it into a PDF in your browser.">
+  <meta name="twitter:title" content="SnapDOM PDF: open-source PDF export">
+  <meta name="twitter:description" content="Open-source PDF export for SnapDOM: capture a live element, add a selectable text layer and clickable links, then paginate it into a PDF file in the browser.">
   <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg"><meta name="theme-color" content="#F7F9FC"><link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css"><link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css"><link rel="stylesheet" href="../../plugin-demos.css"><link rel="stylesheet" href="../../pdf-text-layer.css"><script defer src="../../site.js"></script><script type="module" src="../../plugin-demos.js"></script><link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -52,7 +52,7 @@
       "@type": "ListItem",
       "position": 2,
       "name": "Plugins",
-      "item": "https://snapdom.dev/showcase/#plugins"
+      "item": "https://snapdom.dev/plugins/"
     },
     {
       "@type": "ListItem",
@@ -63,10 +63,10 @@
   ]
 }
 </script>
-<script defer src="../../code-blocks.js"></script></head><body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="../../showcase/#plugins" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><nav class="pane-nav" aria-label="Official export plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Export plugins</button><div class="pane-nav-items"><a href="../pdf/" aria-current="page">PDF</a><a href="../vector/">Vector</a><a href="../../showcase/#plugins">All plugins</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>PDF reference</button><div class="pane-nav-items"><a href="docs.html">Full API reference</a><a href="https://github.com/zumerlab/snapdom">Source · MIT</a><a href="../../showcase/#plugins">All plugin demos</a></div></div></nav></aside><div class="pane-demo sec-export"><section class="demo-panel" data-export-demo="pdf"><header class="demo-panel-head"><span class="demo-panel-title">Live PDF export</span></header><div class="demo-panel-body" tabindex="0" role="region" aria-label="Live export controls and preview"><form data-export-settings class="plugin-demo-settings"><label>Live sample<select name="sample"><option value="report">Report</option><option value="ledger">A4 ledger</option><option value="scripts">Multilingual text</option><option value="controls">Form controls</option><option value="transparent">Transparent artwork</option></select></label><label>Page size<select name="page"><option value="fit">Fit to content</option><option value="a4">A4</option><option value="letter">Letter</option></select></label><label><input type="checkbox" name="text" checked> Selectable text</label><label><input type="checkbox" name="fields" checked> Fillable fields</label><button type="submit" class="demo-act is-primary">Generate PDF</button></form><p class="demo-label">Editable source</p><div class="plugin-demo-source" tabindex="0" role="region" aria-label="Scrollable live sample"><div data-export-source></div></div><p class="demo-label">Generated output</p><div data-pdf-output class="plugin-demo-output"><p>Nothing generated yet.</p></div><nav data-pdf-pages aria-label="PDF preview pages" hidden><button type="button" data-pdf-prev>Previous</button><span data-pdf-page></span><button type="button" data-pdf-next>Next</button></nav><p data-export-file></p><p data-export-status role="status" aria-live="polite">Edit the source, then generate a PDF.</p><details><summary>Code for this demo</summary><pre><code data-export-code></code></pre></details></div></section></div><article class="pane-read sec-export"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Build</span><span aria-hidden="true">/</span><span>Plugins</span><span aria-hidden="true">/</span><span>PDF</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Export a searchable PDF.</h1><p class="doc-lead">Capture a live element, add selectable text and links, and paginate it into a PDF in your browser.</p></header><aside class="callout"><div class="callout-label">Open source</div><p>PDF is MIT-licensed source inside <code>packages/plugins/pdf</code>. Available in <code>@zumer/snapdom-plugins@4</code> for SnapDOM 3.x. These demos use the official plugin; <code>npm run site</code> uses your local build.</p></aside><div class="pane-content pdf-reference"><section>
+<script defer src="../../code-blocks.js"></script></head><body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><nav class="pane-nav" aria-label="Plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Products</button><div class="pane-nav-items"><a href="../pdf/" aria-current="page">PDF</a><a href="../vector/">Vector</a><a href="../stream/">Stream</a><a href="../">All plugins</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>PDF reference</button><div class="pane-nav-items"><a href="docs.html">Full API reference</a><a href="https://github.com/zumerlab/snapdom">Source · MIT</a><a href="../../showcase/#plugins">All plugin demos</a></div></div></nav></aside><article class="pane-read sec-export"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Plugins</span><span aria-hidden="true">/</span><span>PDF</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Export a searchable PDF.</h1><p class="doc-lead">Capture a live element, add selectable text and links, and paginate it into a PDF in your browser.</p></header><aside class="callout"><div class="callout-label">Open source</div><p>PDF is MIT-licensed source inside <code>packages/pdf</code>. Available in <code>@zumer/snapdom-plugins@4</code> for SnapDOM 3.x. These demos use the official plugin; <code>npm run site</code> uses your local build.</p></aside><div class="pane-content pdf-reference"><section>
   <span class="eyebrow">How it works</span>
   <h2 id="the-page-image-plus-a-pdf-text-layer">The page image plus a PDF text layer</h2>
-  <p class="sub">The page image is SnapDOM's capture. The plugin places a second, invisible text
+  <p>The page image is SnapDOM's capture. The plugin places a second, invisible text
   layer over it using positions derived from SnapDOM's final serialized clone. No headless browser
   or separate layout engine rebuilds the page.</p>
 
@@ -180,29 +180,29 @@
 <section>
   <span class="eyebrow">Quick start</span>
   <h2 id="add-pdf-export-to-snapdom">Add PDF export to SnapDOM</h2>
-  <p class="sub">Register the plugin once and every capture gains <code>toPdf()</code> alongside
+  <p>Register the plugin once and every capture gains <code>toPdf()</code> alongside
   <code>toPng()</code> and <code>toCanvas()</code>. It reuses the existing capture rather than
   running a second capture engine.</p>
 
-  <pre class="code"><code><span class="k">import</span> { snapdom } <span class="k">from</span> <span class="s">'@zumer/snapdom'</span>
-<span class="k">import</span> pdf <span class="k">from</span> <span class="s">'@zumer/snapdom-plugins/pdf'</span>
+  <pre><code>import { snapdom } from '@zumer/snapdom'
+import pdf from '@zumer/snapdom-plugins/pdf'
 
 snapdom.plugins(pdf())
 
-<span class="k">const</span> shot = <span class="k">await</span> snapdom(document.querySelector(<span class="s">'#report'</span>), {
-  scale: <span class="n">2</span>, dpr: <span class="n">1</span>
+const shot = await snapdom(document.querySelector('#report'), {
+  scale: 2, dpr: 1
 })
 
-<span class="k">const</span> blob = <span class="k">await</span> shot.toPdf({
-  page: <span class="s">'a4'</span>,                              <span class="c">// 'fit' | 'a4' | 'a5' | 'letter' | …</span>
-  margin: <span class="n">36</span>,                              <span class="c">// points</span>
-  header: { left: <span class="s">'ACME'</span>, right: <span class="s">'Q3 ledger'</span> },   <span class="c">// real text, or pass an element</span>
-  pageNumbers: <span class="k">true</span>,                        <span class="c">// or { format, align, size, color }</span>
-  codec: <span class="s">'auto'</span>,                            <span class="c">// smaller JPEG or lossless Flate</span>
-  tagged: <span class="k">true</span>,                            <span class="c">// structure, not a PDF/UA badge</span>
-  download: <span class="s">'report.pdf'</span>                   <span class="c">// also downloads it</span>
+const blob = await shot.toPdf({
+  page: 'a4',                              // 'fit' | 'a4' | 'a5' | 'letter' | …
+  margin: 36,                              // points
+  header: { left: 'ACME', right: 'Q3 ledger' },   // real text, or pass an element
+  pageNumbers: true,                        // or { format, align, size, color }
+  codec: 'auto',                            // smaller JPEG or lossless Flate
+  tagged: true,                            // structure, not a PDF/UA badge
+  download: 'report.pdf'                   // also downloads it
 })</code></pre>
-  <p class="sub">On first PDF export, the plugin reads SnapDOM's final serialized clone, not the
+  <p>On first PDF export, the plugin reads SnapDOM's final serialized clone, not the
   original live DOM, so real node removal/replacement stays aligned. Page regions are rasterized
   lazily and cached for later exports. Geometry-preserving final-artifact replacements stay aligned;
   aspect-preserving width/height scaling is allowed, while incompatible viewBox, root paint/layout or
@@ -211,7 +211,7 @@ snapdom.plugins(pdf())
   options (<code>formValues</code>, <code>shadow</code>, <code>breakAvoid</code>, <code>outline</code>)
   belong in <code>pdf({ ... })</code>.</p>
 
-  <dl class="spec opts">
+  <dl class="spec">
     <div><dt>page</dt><dd><code>'fit'</code> · one page the size of the element, or
       <code>a3</code> / <code>a4</code> / <code>a5</code> / <code>a6</code> / <code>b4</code> /
       <code>b5</code> / <code>letter</code> / <code>legal</code> / <code>tabloid</code> /
@@ -273,13 +273,13 @@ snapdom.plugins(pdf())
     <div><dt>backgroundColor</dt><dd>Flatten at capture, plugin-default or export time. Resolution
       remains a <code>snapdom(...)</code> concern.</dd></div>
   </dl>
-  <p class="sub"><a href="docs.html"><b>Read the complete option, warning and limits reference </b></a></p>
+  <p><a href="docs.html"><b>Read the complete option, warning and limits reference </b></a></p>
 </section>
 
 <section id="license">
   <span class="eyebrow">Open source</span>
   <h2 id="included-in-the-snapdom-monorepo">Included in the SnapDOM monorepo</h2>
-  <p class="sub">The PDF plugin is available as MIT-licensed source in <code>packages/plugins/pdf</code>.
+  <p>The PDF plugin is available as MIT-licensed source in <code>packages/pdf</code>.
   PDF and Vector are available on npm in <code>@zumer/snapdom-plugins</code> 4.x and require SnapDOM 3.x.</p>
   <p><a href="docs.html">Read the reference </a> · <a href="https://github.com/zumerlab/snapdom">SnapDOM on GitHub</a></p>
 </section>
@@ -306,7 +306,7 @@ snapdom.plugins(pdf())
     </div>
     <div>
       <h3>Can I read the code?</h3>
-      <p>Yes. Its source, reference and browser test suites live in <code>packages/plugins/pdf</code> in the SnapDOM monorepo.</p>
+      <p>Yes. Its source, reference and browser test suites live in <code>packages/pdf</code> in the SnapDOM monorepo.</p>
     </div>
     <div>
       <h3>Does it need a server?</h3>
@@ -344,4 +344,4 @@ snapdom.plugins(pdf())
   </div>
 </section>
 
-</div></article></main><footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../showcase/#plugins">Plugins</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../made-with/">Made with</a><a href="../../ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer></body></html>
+</div></article><div class="pane-demo sec-export"><section class="demo-panel" data-export-demo="pdf"><header class="demo-panel-head"><span class="demo-panel-title">Try it here<span class="demo-panel-sub">Live PDF export</span></span></header><div class="demo-panel-body" tabindex="0" role="region" aria-label="Live export controls and preview"><form data-export-settings class="plugin-demo-settings"><label>Live sample<select name="sample"><option value="report">Report</option><option value="ledger">A4 ledger</option><option value="scripts">Multilingual text</option><option value="controls">Form controls</option><option value="transparent">Transparent artwork</option></select></label><label>Page size<select name="page"><option value="fit">Fit to content</option><option value="a4">A4</option><option value="letter">Letter</option></select></label><label><input type="checkbox" name="text" checked> Selectable text</label><label><input type="checkbox" name="fields" checked> Fillable fields</label><button type="submit" class="demo-act is-primary">Generate PDF</button></form><p class="demo-label">Editable source</p><div class="plugin-demo-source" tabindex="0" role="region" aria-label="Scrollable live sample"><div data-export-source></div></div><p class="demo-label">Generated output</p><div data-pdf-output class="plugin-demo-output"><p>Nothing generated yet.</p></div><nav data-pdf-pages aria-label="PDF preview pages" hidden><button type="button" data-pdf-prev>Previous</button><span data-pdf-page></span><button type="button" data-pdf-next>Next</button></nav><p data-export-file></p><p data-export-status role="status" aria-live="polite">Edit the source, then generate a PDF.</p><details><summary>Code for this demo</summary><pre><code data-export-code></code></pre></details></div></section></div></main><footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../plugins/">Plugins</a><a href="../../plugins/pdf/">PDF</a><a href="../../plugins/vector/">Vector</a><a href="../../plugins/stream/">Stream</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../tools/snapdiff/">SnapDiff</a><a href="../../tools/snapeye/">SnapEye</a><a href="../../tools/snapsurf/">SnapSurf</a><a href="../../made-with/">Made with</a><a href="../../plugins/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer></body></html>

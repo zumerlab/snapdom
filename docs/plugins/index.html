@@ -1,10 +1,149 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<title>Moved — SnapDOM</title>
-<link rel="canonical" href="https://snapdom.dev/showcase/">
-<meta http-equiv="refresh" content="0; url=../showcase/#plugins">
-</head>
-<body><p>This page moved to <a href="../showcase/#plugins">Plugins</a>. Plugin pages: <a href="pdf/">PDF</a>, <a href="vector/">Vector</a>, <a href="../docs/plugins/">plugin docs</a>.</p></body>
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapDOM plugins: PDF, Vector, Stream and the toolbox</title>
+  <meta name="description" content="Fourteen official plugins for SnapDOM: PDF, Vector and Stream, and a toolbox that prepares, exports, records and maps captures. MIT, one package.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://snapdom.dev/plugins/">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="SnapDOM plugins: PDF, Vector, Stream and the toolbox">
+  <meta property="og:description" content="Fourteen official plugins for SnapDOM: PDF, Vector and Stream, and a toolbox that prepares, exports, records and maps captures. MIT, one package.">
+  <meta property="og:url" content="https://snapdom.dev/plugins/">
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  "name": "SnapDOM plugins: PDF, Vector, Stream and the toolbox",
+  "description": "Fourteen official plugins for SnapDOM: PDF, Vector and Stream, and a toolbox that prepares, exports, records and maps captures. MIT, one package.",
+  "url": "https://snapdom.dev/plugins/",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "SnapDOM",
+    "url": "https://snapdom.dev/"
+  },
+  "mainEntity": {
+    "@type": "ItemList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "PDF",
+        "url": "https://snapdom.dev/plugins/pdf/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Vector",
+        "url": "https://snapdom.dev/plugins/vector/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": "Stream",
+        "url": "https://snapdom.dev/plugins/stream/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 4,
+        "name": "Redact inputs",
+        "url": "https://snapdom.dev/plugins/redact-inputs/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 5,
+        "name": "Replace text",
+        "url": "https://snapdom.dev/plugins/replace-text/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 6,
+        "name": "Filter",
+        "url": "https://snapdom.dev/plugins/filter/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 7,
+        "name": "Color tint",
+        "url": "https://snapdom.dev/plugins/color-tint/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 8,
+        "name": "Timestamp overlay",
+        "url": "https://snapdom.dev/plugins/timestamp-overlay/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 9,
+        "name": "HTML export",
+        "url": "https://snapdom.dev/plugins/html-export/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 10,
+        "name": "ASCII export",
+        "url": "https://snapdom.dev/plugins/ascii-export/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 11,
+        "name": "GIF export",
+        "url": "https://snapdom.dev/plugins/gif-export/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 12,
+        "name": "Video export",
+        "url": "https://snapdom.dev/plugins/video-export/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 13,
+        "name": "Agent map",
+        "url": "https://snapdom.dev/plugins/agent-map/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 14,
+        "name": "Context export",
+        "url": "https://snapdom.dev/plugins/context-export/"
+      }
+    ]
+  }
+}
+  </script>
+  <link rel="icon" type="image/png" href="../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F7F9FC">
+  <link rel="stylesheet" href="../shared.css">
+  <link rel="stylesheet" href="../page.css">
+  <link rel="stylesheet" href="../navigation.css">
+  <link rel="stylesheet" href="../panes.css">
+  <script defer src="../site.js"></script>
+  <script type="module" src="../panes.js"></script>
+<link rel="stylesheet" href="../code.css"><script defer data-manual src="../assets/prism/prism.min.js"></script><script defer src="../code-blocks.js"></script></head>
+<body>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../plugins/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo plugin-page" data-pane>
+<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter plugins" aria-label="Filter plugins"></label><nav class="pane-nav" aria-label="Plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Products</button><div class="pane-nav-items"><a href="pdf/">PDF</a><a href="vector/">Vector</a><a href="stream/">Stream</a><a href="./" aria-current="page">All plugins</a></div></div><div class="sec-prepare"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Prepare</button><div class="pane-nav-items"><a href="redact-inputs/">Redact inputs</a><a href="replace-text/">Replace text</a><a href="filter/">Filter</a><a href="color-tint/">Color tint</a><a href="timestamp-overlay/">Timestamp overlay</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Export</button><div class="pane-nav-items"><a href="html-export/">HTML export</a><a href="ascii-export/">ASCII export</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Record</button><div class="pane-nav-items"><a href="gif-export/">GIF export</a><a href="video-export/">Video export</a></div></div><div class="sec-context"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Context</button><div class="pane-nav-items"><a href="agent-map/">Agent map</a><a href="context-export/">Context export</a></div></div></nav></aside>
+
+<article class="pane-read sec-export" data-title="Plugins">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Plugins</span></nav><span class="doc-meta">14 official plugins · MIT</span></div><h1>Plugins for SnapDOM.</h1><p class="doc-lead">Three products with a landing of their own, and a toolbox of smaller plugins grouped by the job they do. Every page has the options and a live demo. All of them are MIT and ship in one package.</p><p class="pane-links doc-links"><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins">Source</a><a href="https://www.npmjs.com/package/@zumer/snapdom-plugins">npm</a><a href="../showcase/#plugins">Plugin demos</a></p></header><div class="pane-content pane-prose"><h2 id="products">Products</h2><div class="index-grid"><a class="sec-export" href="pdf/"><span class="sec-dot"></span><span class="index-grid-label">PDF</span><span class="index-grid-meta">Documents with selectable text, links and pages</span></a><a class="sec-export" href="vector/"><span class="sec-dot"></span><span class="index-grid-label">Vector</span><span class="index-grid-meta">Editable SVG and the Figma clipboard</span></a><a class="sec-record" href="stream/"><span class="sec-dot"></span><span class="index-grid-label">Stream</span><span class="index-grid-meta">A live element as a canvas that repaints what changed</span></a></div><h2 id="install">Install</h2><pre><code>npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest</code></pre><p>Import a plugin from its subpath and pass it in <code>plugins</code>. Plugins 4.x need SnapDOM 3.4.0 or newer within 3.x.</p><pre><code>import { snapdom } from &#x27;@zumer/snapdom&#x27;
+import { redactInputs } from &#x27;@zumer/snapdom-plugins/redact-inputs&#x27;
+import { pdf } from &#x27;@zumer/snapdom-plugins/pdf&#x27;
+
+const result = await snapdom(el, { plugins: [redactInputs(), pdf()] })
+const blob = await result.toPdf({ page: &#x27;a4&#x27; })</code></pre><h2 id="toolbox">The toolbox</h2><p>Eleven plugins, each with one job. Prepare plugins change the clone before it renders; the others add an export method to the result.</p><h3 id="prepare">Prepare</h3><p>Change what the capture shows. The live page is never touched.</p><div class="index-grid"><a class="sec-prepare" href="redact-inputs/"><span class="sec-dot"></span><span class="index-grid-label">Redact inputs</span><span class="index-grid-meta">Mask field values, hide blocks, drop attributes</span></a><a class="sec-prepare" href="replace-text/"><span class="sec-dot"></span><span class="index-grid-label">Replace text</span><span class="index-grid-meta">Strings or regular expressions, in the clone only</span></a><a class="sec-prepare" href="filter/"><span class="sec-dot"></span><span class="index-grid-label">Filter</span><span class="index-grid-meta">Grayscale, sepia, blur or any filter string</span></a><a class="sec-prepare" href="color-tint/"><span class="sec-dot"></span><span class="index-grid-label">Color tint</span><span class="index-grid-meta">A blend-mode overlay with its own opacity</span></a><a class="sec-prepare" href="timestamp-overlay/"><span class="sec-dot"></span><span class="index-grid-label">Timestamp overlay</span><span class="index-grid-meta">Date, time or a custom formatter in a corner</span></a></div><h3 id="export">Export</h3><p>Other outputs from the same capture.</p><div class="index-grid"><a class="sec-export" href="html-export/"><span class="sec-dot"></span><span class="index-grid-label">HTML export</span><span class="index-grid-meta">The clone with its styles and fonts as a document</span></a><a class="sec-export" href="ascii-export/"><span class="sec-dot"></span><span class="index-grid-label">ASCII export</span><span class="index-grid-meta">Text or colored HTML, also frame by frame</span></a></div><h3 id="record">Record</h3><p>Record the live element over time.</p><div class="index-grid"><a class="sec-record" href="gif-export/"><span class="sec-dot"></span><span class="index-grid-label">GIF export</span><span class="index-grid-meta">A built-in GIF89a encoder, no dependency</span></a><a class="sec-record" href="video-export/"><span class="sec-dot"></span><span class="index-grid-label">Video export</span><span class="index-grid-meta">MP4 or WebM through MediaRecorder</span></a></div><h3 id="context">Context</h3><p>Structured output for coding agents and visual QA.</p><div class="index-grid"><a class="sec-context" href="agent-map/"><span class="sec-dot"></span><span class="index-grid-label">Agent map</span><span class="index-grid-meta">Badges on the image plus a JSON element map</span></a><a class="sec-context" href="context-export/"><span class="sec-dot"></span><span class="index-grid-label">Context export</span><span class="index-grid-meta">An outline or JSON tree of structure, text and state</span></a></div><h2 id="community-plugins">Community plugins</h2><p>Maintained by their authors. Check the supported SnapDOM versions before using one with 3.x. To add yours, open a pull request with a row in <a href="https://github.com/zumerlab/snapdom/blob/main/docs/community-plugins.md">community-plugins.md</a>; <a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md">CONTRIBUTING_PLUGINS.md</a> says what a row needs.</p><div class="compare-table"><table><thead><tr><th scope="col">Plugin</th><th scope="col">What it does</th><th scope="col">Category</th><th scope="col">npm</th><th scope="col">Author</th></tr></thead><tbody><tr><td><a href="https://github.com/jswhisperer/snapdom-plugin-html2pdf">snapdom-html2pdf-plugin</a></td><td>Exports a webpage to PDF through html2pdf.js</td><td>export</td><td><a href="https://www.npmjs.com/package/snapdom-html2pdf-plugin">snapdom-html2pdf-plugin</a></td><td>jswhisperer</td></tr><tr><td><a href="https://github.com/tianmuji/figma-restoration-mcp-vue-tools">figma-restoration-mcp-vue-tools</a></td><td>Figma component restoration MCP kit with SnapDOM-powered screenshots and diff analysis</td><td>integration</td><td></td><td>Yujie Wu</td></tr></tbody></table></div><h2 id="build">Build your own</h2><p>A plugin is an object with hooks. <a href="../docs/plugins/#build">The plugin guide</a> walks through one, and <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md">PLUGIN_SPEC.md</a> is the contract: hook order, what each hook receives, and what it may change.</p></div>
+<nav class="pager" aria-label="Pages"><a class="is-next" href="pdf/"><span>Next</span><strong>PDF</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../docs/">Documentation</a><a href="../docs/#quick-start">Quick start</a><a href="../how-to/">How-to recipes</a><a href="../how-to/#frameworks">Framework guides</a><a href="../compare/">Compare</a></div><div><h2>Explore</h2><a href="../showcase/">Showcase</a><a href="../plugins/">Plugins</a><a href="../plugins/pdf/">PDF</a><a href="../plugins/vector/">Vector</a><a href="../plugins/stream/">Stream</a><a href="../docs/plugins/#build">Writing plugins</a><a href="../showcase/#labs">Labs</a><a href="../blog/">Blog</a></div><div><h2>Community</h2><a href="../ecosystem/">Ecosystem</a><a href="../tools/snapdiff/">SnapDiff</a><a href="../tools/snapeye/">SnapEye</a><a href="../tools/snapsurf/">SnapSurf</a><a href="../made-with/">Made with</a><a href="../plugins/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+</body>
 </html>

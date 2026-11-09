@@ -19,7 +19,7 @@
 .pdf-reference h2 { margin:12px 0 20px; font-size:26px; line-height:1.25; }
 .pdf-reference p { margin:12px 0; line-height:1.65; }
 .pdf-reference .spec { display:grid; gap:16px; margin:24px 0; }
-.pdf-reference .spec > div { padding:16px 0; border-top:1px solid #d6deef; }
+.pdf-reference .spec > div { min-width:0; padding:16px 0; border-top:1px solid #d6deef; }
 .pdf-reference dt { font-weight:700; margin-bottom:8px; }
 .pdf-reference dd { margin:0; line-height:1.6; }
 .pdf-reference .faq > div { padding:20px 0; border-bottom:1px solid #d6deef; }

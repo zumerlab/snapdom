@@ -15,6 +15,10 @@ if (DOCS/'sitemap.xml').exists():
 changed=set(subprocess.check_output(['git','diff','--name-only','HEAD','--','docs'],cwd=ROOT,text=True).splitlines())
 changed.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard','docs'],cwd=ROOT,text=True).splitlines())
 today=date.today().isoformat()
+# The header, the footer and the date stamp itself change on every page when the menu does;
+# a page whose own content equals HEAD keeps its date instead of moving the whole site to today.
+CHROME=re.compile(r'<header class="site-head">.*?</header>|<footer class="site-foot">.*?</footer>|"dateModified"\s*:\s*"[^"]+"',re.S)
+def own(source):return CHROME.sub('',source)
 entries={}
 for file in sorted(DOCS.rglob('*.html')):
     source=file.read_text()
@@ -28,7 +32,8 @@ for file in sorted(DOCS.rglob('*.html')):
     if parsed.netloc!='snapdom.dev' or parsed.query or parsed.fragment:continue
     local=str(file.relative_to(ROOT))
     if local in changed:
-        modified=today
+        previous=subprocess.run(['git','show',f'HEAD:{local}'],cwd=ROOT,text=True,capture_output=True)
+        modified=min(old.get(url,today),today) if previous.returncode==0 and own(previous.stdout)==own(source) else today
         # Keep the article's modification date aligned with its sitemap entry.
         # Publication dates and untouched pages retain their existing dates.
         updated=re.sub(r'("dateModified"\s*:\s*")[^"]+("\s*)',

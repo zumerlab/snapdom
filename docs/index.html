@@ -188,6 +188,11 @@
     .index-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .index-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .why-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .outputs-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .outputs-grid .output-card h3 { font-size: 20px; }
+    .output-card-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+    .grid-more { margin: 24px 0 0; font-size: 15px; font-weight: 700; }
+    .grid-more a { color: var(--blue); text-underline-offset: 4px; }
     .hero-code { margin: 0; padding: 12px 16px; overflow-x: auto; white-space: nowrap; border-top: 1px solid rgba(217,226,247,.16); color: #dce4ff; background: var(--ink); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
     .showcase-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
     .showcase-visual { position: relative; min-height: 360px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: #fff; }
@@ -204,6 +209,7 @@
       .hero-grid, .section-heading, .showcase-callout { grid-template-columns: 1fr; }
       .hero .demo-panel { max-width: 620px; }
       .output-grid, .index-grid-4, .index-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .tools-grid > .output-card:last-child:nth-child(odd) { grid-column: span 2; }
       .hero-tray { gap: 8px; }
       .print { width: 104px; min-width: 80px; flex: 0 1 104px; gap: 4px; padding: 5px; }
       .print-cap, .print-plug { font-size: 7px; letter-spacing: .3px; }
@@ -227,6 +233,7 @@
       .section { padding: 64px 0; }
       .showcase-visual { min-height: 280px; }
       .output-grid, .index-grid-4, .index-grid-3 { grid-template-columns: minmax(0, 1fr); }
+      .tools-grid > .output-card:last-child:nth-child(odd) { grid-column: auto; }
     }
   </style>
   <link rel="stylesheet" href="./navigation.css">
@@ -234,7 +241,7 @@
   <script defer src="./site.js"></script>
 <link rel="stylesheet" href="code.css"><script defer data-manual src="assets/prism/prism.min.js"></script><script defer src="code-blocks.js"></script></head>
 <body>
-  <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-ecosystem" href="showcase/#plugins"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, HTML, vector, GIF, video, agent context</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDIFF, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+  <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 
   <main>
     <section class="hero">
@@ -334,9 +341,9 @@
       <div class="wrap">
         <div class="section-heading">
           <h2>Pick your output.</h2>
-          <p>The core exports images. Each plugin below links to a live demo.</p>
+          <p>The core exports images. Each plugin card opens the plugin's page, with its options and a live demo to try.</p>
         </div>
-        <div class="output-grid">
+        <div class="output-grid outputs-grid">
           <article class="output-card sec-capture">
             <div class="output-card-head"><h3><span class="sec-dot"></span>Images &amp; canvas</h3><span class="tag tag-core">Core</span></div>
             <span class="output-card-formats">PNG · JPEG · WebP · canvas · Blob</span>
@@ -345,35 +352,77 @@
           </article>
           <article class="output-card sec-export">
             <div class="output-card-head"><h3><span class="sec-dot"></span>PDF documents</h3><span class="tag tag-plugin">Plugin</span></div>
-            <span class="output-card-formats">PDF with text, links &amp; pages</span>
-            <p>Turn an HTML report or invoice into a searchable document with page breaks and bookmarks.</p>
+            <span class="output-card-formats">Searchable, paginated PDF</span>
+            <p>Turn a report or invoice into a PDF with selectable text, links, page breaks and optional form fields.</p>
             <div class="output-card-links"><a href="./plugins/pdf/">Try PDF</a></div>
+          </article>
+          <article class="output-card sec-export">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>Vector artwork</h3><span class="tag tag-plugin">Plugin</span></div>
+            <span class="output-card-formats">Editable SVG · Figma clipboard</span>
+            <p>Turn captured text and shapes into editable SVG, or copy them to the clipboard for Figma.</p>
+            <div class="output-card-links"><a href="./plugins/vector/">Try Vector</a></div>
           </article>
           <article class="output-card sec-export">
             <div class="output-card-head"><h3><span class="sec-dot"></span>HTML snapshots</h3><span class="tag tag-plugin">Plugin</span></div>
             <span class="output-card-formats">A self-contained HTML file</span>
             <p>Save the rendered markup with its styles and resources. Reopen it without rebuilding your app.</p>
-            <div class="output-card-links"><a href="./showcase/#html-export-demo">Try HTML</a></div>
+            <div class="output-card-links"><a href="./plugins/html-export/">Try HTML</a></div>
           </article>
           <article class="output-card sec-record">
-            <div class="output-card-head"><h3><span class="sec-dot"></span>GIF, video &amp; live stream</h3><span class="tag tag-plugin">Plugins</span></div>
-            <span class="output-card-formats">GIF · MP4 or WebM · live canvas</span>
-            <p>Record the live element for short clips, or stream it into a canvas that repaints only what changed, for video overlays and WebGL.</p>
-            <div class="output-card-links"><a href="./showcase/#gif-export-demo">Try GIF</a><a class="is-sub" href="./showcase/#stream-demo">Or stream it live</a></div>
+            <div class="output-card-head"><h3><span class="sec-dot"></span>GIF &amp; video</h3><span class="tag tag-plugin">Plugins</span></div>
+            <span class="output-card-formats">GIF · MP4 or WebM</span>
+            <p>Record the live element and save the clip as a GIF, or as an MP4 or WebM video.</p>
+            <div class="output-card-links"><a href="./plugins/gif-export/">Try GIF</a><a class="is-sub" href="./plugins/video-export/">Or record a video</a></div>
+          </article>
+          <article class="output-card sec-record">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>Live stream</h3><span class="tag tag-plugin">Plugin</span></div>
+            <span class="output-card-formats">A live canvas</span>
+            <p>Keep a live element in a canvas that repaints only what changed. Use it as a WebGL texture or a video overlay.</p>
+            <div class="output-card-links"><a href="./plugins/stream/">Try Stream</a></div>
           </article>
           <article class="output-card sec-context">
             <div class="output-card-head"><h3><span class="sec-dot"></span>Context for agents</h3><span class="tag tag-plugin">Plugins</span></div>
             <span class="output-card-formats">Text · JSON · annotated image</span>
             <p>Give an agent the captured text, form state and locations of interactive elements.</p>
-            <div class="output-card-links"><a href="./showcase/#agent-map-demo">Try an element map</a><a class="is-sub" href="./showcase/#context-demo">Or get a text / JSON tree</a></div>
+            <div class="output-card-links"><a href="./plugins/agent-map/">Try an element map</a><a class="is-sub" href="./plugins/context-export/">Or get a text / JSON tree</a></div>
           </article>
-          <article class="output-card sec-export">
-            <div class="output-card-head"><h3><span class="sec-dot"></span>Vector artwork</h3><span class="tag tag-plugin">Plugin</span></div>
-            <span class="output-card-formats">SVG shapes · Figma</span>
-            <p>Turn captured text and supported shapes into editable SVG artwork or Figma content.</p>
-            <div class="output-card-links"><a href="./plugins/vector/">Explore Vector</a></div>
+          <article class="output-card sec-prepare">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>Prepare the capture</h3><span class="tag tag-plugin">Plugins</span></div>
+            <span class="output-card-formats">Redact · replace · filter · tint</span>
+            <p>Change what the capture shows before it renders: hide field values, swap text, apply a filter or a tint, add a timestamp.</p>
+            <div class="output-card-links"><a href="./plugins/redact-inputs/">Try redacting fields</a><a class="is-sub" href="./plugins/#prepare">Or see all prepare plugins</a></div>
           </article>
         </div>
+      </div>
+    </section>
+
+    <section class="section section-white" id="tools">
+      <div class="wrap">
+        <div class="section-heading">
+          <h2>Tools built on SnapDOM.</h2>
+          <p>Three separate projects that use SnapDOM captures for visual testing and for agents.</p>
+        </div>
+        <div class="output-grid tools-grid">
+          <article class="output-card sec-ecosystem">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>SnapDiff</h3><span class="tag tag-project">Separate project</span></div>
+            <span class="output-card-formats">Baselines · diff views · Vitest suite</span>
+            <p>Visual regression testing in the browser. Compare captures against baselines, review the diff views and run the checks as a Vitest suite.</p>
+            <div class="output-card-links"><a href="./tools/snapdiff/">See SnapDiff</a></div>
+          </article>
+          <article class="output-card sec-ecosystem">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>SnapEye</h3><span class="tag tag-project">Separate project</span></div>
+            <span class="output-card-formats">CLI · page API</span>
+            <p>Capture, compare and record a local app for coding agents, through a CLI and a page API.</p>
+            <div class="output-card-links"><a href="./tools/snapeye/">See SnapEye</a></div>
+          </article>
+          <article class="output-card sec-ecosystem">
+            <div class="output-card-head"><h3><span class="sec-dot"></span>SnapSurf</h3><span class="output-card-tags"><span class="tag tag-project">Separate project</span><span class="tag tag-experimental">Experimental</span></span></div>
+            <span class="output-card-formats">MCP server · CLI</span>
+            <p>Web navigation and verification for agents: open a page, act on it and verify what changed.</p>
+            <div class="output-card-links"><a href="./tools/snapsurf/">See SnapSurf</a></div>
+          </article>
+        </div>
+        <p class="grid-more"><a href="./ecosystem/">See how they fit together</a></p>
       </div>
     </section>
 
@@ -395,7 +444,7 @@
           <h2>Start here.</h2>
           <p>Quick start in two minutes, then the API, options and recipes. Blog, labs and projects live in the footer.</p>
         </div>
-        <div class="index-grid index-grid-3"><a class="sec-start" href="./docs/#quick-start"><span class="sec-dot"></span><span class="index-grid-label">Quick start</span><span class="index-grid-meta">docs</span></a><a class="sec-capture" href="./docs/api/"><span class="sec-dot"></span><span class="index-grid-label">Capture API</span><span class="index-grid-meta">api</span></a><a class="sec-options" href="./docs/options/"><span class="sec-dot"></span><span class="index-grid-label">Options</span><span class="index-grid-meta">settings</span></a><a class="sec-start" href="./how-to/"><span class="sec-dot"></span><span class="index-grid-label">How-to recipes</span><span class="index-grid-meta">17 recipes</span></a><a class="sec-ecosystem" href="./showcase/#plugins"><span class="sec-dot"></span><span class="index-grid-label">Plugins</span><span class="index-grid-meta">12</span></a><a class="sec-ecosystem" href="./compare/"><span class="sec-dot"></span><span class="index-grid-label">Compare</span><span class="index-grid-meta">7 comparisons</span></a></div>
+        <div class="index-grid index-grid-3"><a class="sec-start" href="./docs/#quick-start"><span class="sec-dot"></span><span class="index-grid-label">Quick start</span><span class="index-grid-meta">docs</span></a><a class="sec-capture" href="./docs/api/"><span class="sec-dot"></span><span class="index-grid-label">Capture API</span><span class="index-grid-meta">api</span></a><a class="sec-options" href="./docs/options/"><span class="sec-dot"></span><span class="index-grid-label">Options</span><span class="index-grid-meta">settings</span></a><a class="sec-start" href="./how-to/"><span class="sec-dot"></span><span class="index-grid-label">How-to recipes</span><span class="index-grid-meta">20 recipes</span></a><a class="sec-ecosystem" href="./plugins/"><span class="sec-dot"></span><span class="index-grid-label">Plugins</span><span class="index-grid-meta">14 plugins</span></a><a class="sec-ecosystem" href="./compare/"><span class="sec-dot"></span><span class="index-grid-label">Compare</span><span class="index-grid-meta">7 comparisons</span></a></div>
       </div>
     </section>
 
@@ -410,7 +459,7 @@
     </section>
   </main>
 
-  <footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="docs/">Documentation</a><a href="docs/#quick-start">Quick start</a><a href="how-to/">How-to recipes</a><a href="how-to/#frameworks">Framework guides</a><a href="compare/">Compare</a></div><div><h2>Explore</h2><a href="showcase/">Showcase</a><a href="showcase/#plugins">Plugins</a><a href="docs/plugins/#build">Writing plugins</a><a href="showcase/#labs">Labs</a><a href="blog/">Blog</a></div><div><h2>Community</h2><a href="ecosystem/">Ecosystem</a><a href="made-with/">Made with</a><a href="ecosystem/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+  <footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="docs/">Documentation</a><a href="docs/#quick-start">Quick start</a><a href="how-to/">How-to recipes</a><a href="how-to/#frameworks">Framework guides</a><a href="compare/">Compare</a></div><div><h2>Explore</h2><a href="showcase/">Showcase</a><a href="plugins/">Plugins</a><a href="plugins/pdf/">PDF</a><a href="plugins/vector/">Vector</a><a href="plugins/stream/">Stream</a><a href="docs/plugins/#build">Writing plugins</a><a href="showcase/#labs">Labs</a><a href="blog/">Blog</a></div><div><h2>Community</h2><a href="ecosystem/">Ecosystem</a><a href="tools/snapdiff/">SnapDiff</a><a href="tools/snapeye/">SnapEye</a><a href="tools/snapsurf/">SnapSurf</a><a href="made-with/">Made with</a><a href="plugins/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
 
   <script>
     // Preserve links to demos that used to live on the home page.
