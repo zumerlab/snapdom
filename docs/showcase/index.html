@@ -1827,7 +1827,7 @@ document.body.append(live.canvas)
     // Plugins are lazy-loaded from npm (via esm.sh) on first click, so an
     // unpublished/offline CDN only breaks its own demo, never the whole page.
     // PDF, Vector and Stream are packages of their own; the toolbox plugins are subpaths of @zumer/snapdom-plugins.
-    const PLUGIN_CDN = { pdf: 'https://esm.sh/@zumer/snapdom-pdf@1', vector: 'https://esm.sh/@zumer/snapdom-vector@1', stream: 'https://esm.sh/@zumer/snapdom-stream@1' };
+    const PLUGIN_CDN = { pdf: 'https://esm.sh/@zumer/snapdom-pdf@^1.0.1', vector: 'https://esm.sh/@zumer/snapdom-vector@1', stream: 'https://esm.sh/@zumer/snapdom-stream@1' };
     const pluginURL = (mod) => `${PLUGIN_CDN[mod] || `https://esm.sh/@zumer/snapdom-plugins@5/${mod}`}?external=@zumer/snapdom`;
     const pluginSpecifier = (mod) => PLUGIN_CDN[mod] ? `@zumer/snapdom-${mod}` : `@zumer/snapdom-plugins/${mod}`;
     // Tick only while a counter is on screen: a running counter is a DOM mutation every 80 ms,

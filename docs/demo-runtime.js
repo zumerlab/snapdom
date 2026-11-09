@@ -3,7 +3,7 @@ export const loadSnapdom = () => import('https://unpkg.com/@zumer/snapdom@latest
 const modules = new Map()
 const retries = new Map()
 // PDF, Vector and Stream are packages of their own; the toolbox plugins are subpaths of @zumer/snapdom-plugins.
-const CDN = { pdf: 'https://esm.sh/@zumer/snapdom-pdf@1', vector: 'https://esm.sh/@zumer/snapdom-vector@1', stream: 'https://esm.sh/@zumer/snapdom-stream@1' }
+const CDN = { pdf: 'https://esm.sh/@zumer/snapdom-pdf@^1.0.1', vector: 'https://esm.sh/@zumer/snapdom-vector@1', stream: 'https://esm.sh/@zumer/snapdom-stream@1' }
 export async function loadPlugin(name) {
   const url = CDN[name] || `https://esm.sh/@zumer/snapdom-plugins@5/${name}`
   if (!modules.has(name)) modules.set(name, import(`${url}?external=@zumer/snapdom${retries.has(name) ? '&retry=' + retries.get(name) : ''}`).catch(error => {
