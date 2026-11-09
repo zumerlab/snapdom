@@ -1003,7 +1003,6 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
     }
   }
   let coverageFallbacks = 0
-  const systemStacks = new Set()
 
   /**
    * One short string of the PLUGIN's own text — a page number, a running head, a
@@ -1662,17 +1661,6 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
     report("cover, back and toc need a paginated page size — they do nothing on page:'fit'.")
   }
   const paginated = page !== 'fit'
-
-  /** One finished page from a list of ops — the same stream handling the body gets. */
-  const addPage = async (ops, { annots = [], fonts, xobjects = [] }) => {
-    const body = ops.join('\n')
-    const deflated = wantDeflate && canDeflate && !debugText
-    const contentId = doc.addStream(
-      deflated ? '/Filter /FlateDecode' : '',
-      deflated ? await deflate(body) : body
-    )
-    return doc.add(pageDict({ contentId, annots, fonts, xobjects }))
-  }
 
   /**
    * A cover or a colophon: your own element, captured, one to a page — and given
