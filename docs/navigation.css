@@ -218,6 +218,10 @@
 
 /* Functional controls share the handoff's square, ruled visual language. */
 [hidden] { display:none !important; }
+.site-skip { position:fixed; top:8px; left:14px; z-index:100; padding:12px 16px; transform:translateY(-150%); background:#FFFFFF; color:#1D43D7; border:2px solid #2D5BFF; font:500 14px Roboto,Arial,sans-serif; }
+.site-skip:focus { transform:none; }
+#page-content,#doc-content { scroll-margin-top:80px; }
+#page-content:focus,#doc-content:focus { outline:none; }
 .site-search-button { background:transparent; color:#0F1E4D; border:1px solid #c6d2e8; padding:8px 12px; font:13px Roboto, Arial; cursor:pointer; }
 .site-search-button kbd { margin-left:12px; color:#586887; }
 /* Keep the search surface anchored while its results change. */
@@ -241,6 +245,8 @@
 .site-search-results { display:block; flex:1; min-height:0; overflow:auto; overscroll-behavior:contain; margin:0; padding:0 12px 12px; }
 .site-search-results a { display:block; margin:0; padding:14px 12px; border:0; border-bottom:1px solid #d6deef; color:#0F1E4D; font:600 15px/1.5 Roboto, Arial,sans-serif; text-decoration:none; overflow-wrap:anywhere; }
 .site-search-results a:is(:hover,:focus-visible) { color:#1D43D7; background:#EEF3FF; }
+.site-search-results .site-search-more { display:block; width:calc(100% - 24px); margin:16px 12px 4px; border-color:#b7c4df; color:#1D43D7; }
+.site-search-results .site-search-more:hover { background:#EEF3FF; border-color:#2D5BFF; }
 .site-search-shortcuts { display:flex; flex:none; justify-content:space-between; gap:12px; margin:0; padding:12px 24px; border-top:1px solid #d6deef; color:#586887; font:12px/1.5 Roboto, Arial,sans-serif; }
 .site-search-shortcuts kbd { margin-right:6px; color:#0F1E4D; font:inherit; }
 .site-search-results small { display:block; color:#586887; font:12px/1.5 Roboto, Arial,sans-serif; margin-top:4px; }

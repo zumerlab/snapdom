@@ -63,7 +63,27 @@
   ]
 }
 </script>
-<link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head><body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><nav class="pane-nav" aria-label="Plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="../">All plugins</a></div></div><div class="sec-prepare"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Prepare</button><div class="pane-nav-items"><a href="../redact-inputs/">Redact inputs</a><a href="../replace-text/">Replace text</a><a href="../filter/">Filter</a><a href="../color-tint/">Color tint</a><a href="../timestamp-overlay/">Timestamp overlay</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Export</button><div class="pane-nav-items"><a href="../pdf/">PDF</a><a href="./" aria-current="page">Vector</a><a href="../html-export/">HTML export</a><a href="../ascii-export/">ASCII export</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Record</button><div class="pane-nav-items"><a href="../stream/">Stream</a><a href="../gif-export/">GIF export</a><a href="../video-export/">Video export</a></div></div><div class="sec-context"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Context</button><div class="pane-nav-items"><a href="../agent-map/">Agent map</a><a href="../context-export/">Context export</a></div></div><div class="sec-context"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>On this page</button><div class="pane-nav-items"><a href="#see-what-changes-in-each-format">See what changes in each format</a><a href="#built-from-the-browser-s-resolved-layout">Built from the browser&#x27;s resolved layout</a><a href="#start">Getting started</a><a href="#api">Registering</a><a href="#exclude">exclude</a><a href="#tovector">toVector()</a><a href="#tofigma">toFigma()</a><a href="#diagnostics">Diagnostics</a><a href="#reaches">What reaches the output, and what does not</a><a href="#limits">Limits</a><a href="#questions">Questions</a></div></div></nav></aside><article class="pane-read sec-export"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Plugins</span><span aria-hidden="true">/</span><span>Vector</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Export editable vector artwork.</h1><p class="doc-lead">Reconstruct supported text and shapes as SVG artwork or copy the captured result into Figma.</p></header><aside class="callout"><div class="callout-label">Open source</div><p>Vector is MIT-licensed source inside <code>packages/vector</code>, published as <code>@zumer/snapdom-vector</code> for SnapDOM 3.4.0 or newer. These demos use the published package; <code>npm run site</code> uses your local build.</p></aside><div class="pane-content pdf-reference">
+<link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head><body><a class="site-skip" href="#page-content" tabindex="0">Skip to content</a>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><details class="pane-menu" open><summary>Plugins <span aria-hidden="true">/</span> Vector</summary><nav class="pane-nav" aria-label="Plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="../">All plugins</a></div></div><div class="sec-prepare"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Prepare</button><div class="pane-nav-items"><a href="../redact-inputs/">Redact inputs</a><a href="../replace-text/">Replace text</a><a href="../filter/">Filter</a><a href="../color-tint/">Color tint</a><a href="../timestamp-overlay/">Timestamp overlay</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Export</button><div class="pane-nav-items"><a href="../pdf/">PDF</a><a href="./" aria-current="page">Vector</a><a href="../html-export/">HTML export</a><a href="../ascii-export/">ASCII export</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Record</button><div class="pane-nav-items"><a href="../stream/">Stream</a><a href="../gif-export/">GIF export</a><a href="../video-export/">Video export</a></div></div><div class="sec-context"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Context</button><div class="pane-nav-items"><a href="../agent-map/">Agent map</a><a href="../context-export/">Context export</a></div></div><div class="sec-context"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>On this page</button><div class="pane-nav-items"><a href="#start">Getting started</a><a href="#see-what-changes-in-each-format">See what changes in each format</a><a href="#built-from-the-browser-s-resolved-layout">Built from the browser&#x27;s resolved layout</a><a href="#api">Registering</a><a href="#exclude">exclude</a><a href="#tovector">toVector()</a><a href="#tofigma">toFigma()</a><a href="#diagnostics">Diagnostics</a><a href="#reaches">What reaches the output, and what does not</a><a href="#limits">Limits</a><a href="#questions">Questions</a></div></div></nav></details></aside><article class="pane-read sec-export" id="page-content" tabindex="-1"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../">Plugins</a><span aria-hidden="true">/</span><span aria-current="page">Vector</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Export editable vector artwork.</h1><p class="doc-lead">Reconstruct supported text and shapes as SVG artwork or copy the captured result into Figma.</p></header><div class="pane-content pdf-reference">
+<section>
+  <h2 id="start">Getting started</h2>
+  <p>Requires SnapDOM 3.4.0 or newer within 3.x. <a href="https://github.com/zumerlab/snapdom/tree/main/packages/vector">Source and MIT license</a>.</p>
+  <pre><code>npm install @zumer/snapdom @zumer/snapdom-vector</code></pre>
+  <pre><code>import { snapdom } from '@zumer/snapdom'
+import vector from '@zumer/snapdom-vector'
+
+const shot = await snapdom(document.querySelector('#plan-card'), {
+  plugins: [vector()]
+})
+
+const svg = await shot.toVector()   // a standalone SVG string
+
+const copyButton = document.querySelector('#copy-to-figma')
+copyButton.addEventListener('click', () =&gt; shot.toFigma()) // HTTPS or localhost</code></pre>
+  <p>The exporter builds the artwork in the browser. It does not upload the capture;
+  SnapDOM may fetch images and fonts used by the page.</p>
+</section>
+
 
 <section>
   <span class="eyebrow">Fidelity</span>
@@ -100,47 +120,24 @@
       page, including grid, flexbox, pseudo-elements and open shadow DOM.</dd></div>
     <div><dt>Private by design</dt><dd>The plugin runs in the browser, including authenticated and
       staging pages. Captures are not uploaded to a server.</dd></div>
-    <div><dt>Tested output</dt><dd><b>729 checks over 19 fixtures.</b> Fixtures are emitted,
-      rendered and compared against screenshots of the live elements.</dd></div>
+    <div><dt>Tested output</dt><dd>Fixtures are rendered and compared against captures of the live elements in Chromium.</dd></div>
   </dl>
 </section>
 
-<section>
-  <h2 id="start">Getting started</h2>
-  <p>The Vector plugin and its internal SVD format live in <code>packages/vector</code> under the MIT license. It is published on npm as @zumer/snapdom-vector and requires SnapDOM 3.4.0 or newer. SnapDOM is a peer dependency; it is not bundled in.</p>
-  <pre><code>import { snapdom } from '@zumer/snapdom'
-import vector from '@zumer/snapdom-vector'
 
-const shot = await snapdom(document.querySelector('#plan-card'), {
-  plugins: [vector()]
-})
-
-const svg = await shot.toVector()   // a standalone SVG string
-await shot.toFigma()                // on the clipboard: paste it into Figma</code></pre>
-  <p>Nothing runs on a server and nothing is uploaded. Everything happens in the page you are
-  already looking at, which is the point: the component worth capturing is usually behind a
-  login.</p>
-</section>
 
 <section>
   <h2 id="api">Registering</h2>
-  <p>Register it <b>per capture</b>. Registering it globally costs you something, so here are
-  both forms and the reason to prefer the first:</p>
-  <pre><code>// this capture only, and the one to use
+  <p>Register it per capture to avoid running the vector hook on unrelated image exports:</p>
+  <pre><code>// This capture only
 await snapdom(el, { plugins: [vector()] })
 
 // every capture in the page
 snapdom.plugins(vector())</code></pre>
-  <p>A plugin with render hooks suspends SnapDOM's <b>burst</b> optimisation on the captures it
-  runs on, because burst answers with a memoized URL without re-entering the capture pipeline,
-  and then there is no clone for this engine to read. Registered per capture, that cost lands on
-  the captures that asked for it. Registered globally, it lands on all of them, including the
-  <code>toPng()</code> in your hot path.</p>
-  <p>Both methods throw if the captured element has no layout box (an element with
-  <code>display: none</code> has nothing to measure), and if the capture carries no clone, which
-  happens when <code>burst: true</code> was forced on the <code>snapdom()</code> call. Leave
-  <code>burst</code> unset. The captured element must still be connected, with its styles
-  available, when you export.</p>
+  <p>The vector hook suspends automatic capture memoization because it needs the resolved clone.
+  Global registration applies that work to every capture, including PNG exports.</p>
+  <p>Keep the source element connected and laid out until export finishes.
+  An element with <code>display: none</code> has no layout box to measure and causes an error.</p>
   <aside class="callout"><p><b>Everything about the capture stays on the <code>snapdom()</code>
   call.</b> <code>scale</code>, <code>dpr</code>, <code>backgroundColor</code> and the rest are
   read before the plugin runs, so there is no second set of names for them here.</p></aside>
@@ -169,11 +166,9 @@ const svg = await shot.toVector({ exclude: ['.no-print', (node) =&gt; node.datas
 <section>
   <h2 id="tovector">toVector()</h2>
   <pre><code>shot.toVector(options?) → Promise&lt;string&gt;</code></pre>
-  <p>A standalone SVG string. <b>No <code>foreignObject</code>, anywhere.</b> An SVG with a
-  <code>foreignObject</code> in it is an HTML document wearing an SVG hat, and every vector tool
-  opens it empty. Here a rectangle is a <code>&lt;rect&gt;</code> and a line of text is a
-  <code>&lt;text&gt;</code>. The file opens in Illustrator, Inkscape, Penpot, Figma and any
-  browser.</p>
+  <p>Returns SVG shapes and text without <code>foreignObject</code>: a rectangle becomes a
+  <code>&lt;rect&gt;</code> and a line of text becomes a <code>&lt;text&gt;</code>. Open the file
+  in Illustrator, Inkscape, Penpot, Figma or a browser. Unsupported effects are listed in the diagnostics.</p>
   <ul class="pane-list">
     <li><b>The browser breaks the lines and the SVG only draws them.</b> A block that occupies more
       than one line becomes one <code>&lt;text&gt;</code> per visual line, each at its measured
@@ -187,8 +182,7 @@ const svg = await shot.toVector({ exclude: ['.no-print', (node) =&gt; node.datas
     <li><b>Native form controls are reconstructed</b> at Chromium's measured proportions from their
       kind, state and accent colour, and each one is declared as a reconstruction.</li>
   </ul>
-  <p>The file is <b>self-describing</b>: the approximations are written into an XML comment under
-  the <code>&lt;svg&gt;</code> tag, so a file that travels without its report cannot exist.</p>
+  <p>The SVG includes its approximation report in an XML comment beneath the <code>&lt;svg&gt;</code> tag.</p>
 </section>
 
 <section>
@@ -265,18 +259,15 @@ const svg = await shot.toVector({ exclude: ['.no-print', (node) =&gt; node.datas
 
 <section>
   <h2 id="limits">Limits</h2>
-  <p>Written down because you will meet them, and meeting them here is better than meeting them in
-  front of a client.</p>
+  <p>Review these limits before handing an export to another editor:</p>
   <ul class="pane-list">
     <li><b>Chromium.</b> Everything is measured there and the pixel baselines were recorded there.
       Other engines are not tested, and we do not claim them.</li>
-    <li><b>No font binary travels.</b> The output names the family and the face; it does not embed
-      the file. So a viewer without your font substitutes one.</li>
+    <li><b>Fonts.</b> The SVG embeds readable webfont files when it can. System and locally installed fonts have no file the page can provide; missing or uncovered faces are diagnosed. Editable text in Figma needs a font available there.</li>
     <li><b>A system font keyword is not a font name.</b> Text painted by
       <code>-apple-system</code> or <code>system-ui</code> cannot tell any destination which face
       to load.</li>
-    <li><b>Auto Layout is not inferred.</b> Everything lands positioned. A frame you can move is
-      not a frame that reflows, and guessing wrong at the layout is worse than not guessing.</li>
+    <li><b>Auto Layout is not inferred.</b> Exported frames keep measured positions; they do not reflow when you resize them.</li>
     <li><b><code>backdrop-filter</code> does not survive.</b> Frosted glass is a blur of whatever
       sits behind the panel, and neither SVG nor Figma can say that about an arbitrary backdrop.
       The panel arrives as a flat colour, and the diagnostics name it.</li>
@@ -294,43 +285,35 @@ const svg = await shot.toVector({ exclude: ['.no-print', (node) =&gt; node.datas
 </section>
 
 <section>
-  <span class="eyebrow">Before you ask</span>
   <h2 id="questions">Questions</h2>
 
   <div class="faq">
     <div>
-      <h3>Is this a tracer? Does it vectorise the pixels?</h3>
+      <h3 id="is-this-a-tracer-does-it-vectorise-the-pixels">Is this a tracer? Does it vectorise the pixels?</h3>
       <p>No. Nothing is traced and nothing is recognised. Every box, line and baseline is read
       from the live layout, and every fill is parsed from the CSS that produced it. A tracer
       cannot tell you the second stop of a gradient; this hands you its colour and position.</p>
     </div>
     <div>
-      <h3>Will my page come into Figma perfect?</h3>
-      <p>No, and any tool that says otherwise is one you will stop trusting on the third capture.
-      Some things have no Figma equivalent at all: a colour-matrix filter, OpenType feature
-      settings, per-range baseline shift. The difference here is that you get the list, per node,
-      before you paste.</p>
+      <h3 id="will-my-page-come-into-figma-perfect">Will my page come into Figma perfect?</h3>
+      <p>Some CSS effects have no Figma equivalent, including colour-matrix filters, some OpenType settings and per-range baseline shifts. Review the diagnostics and the pasted result.</p>
     </div>
     <div>
-      <h3>Do I need a Figma plugin?</h3>
-      <p>No. <code>toFigma()</code> copies the capture and you paste it into Figma. The flat SVG
-      opens in Illustrator, Inkscape, Penpot and any browser too, which is why this is not a Figma
-      product with a lock-in problem.</p>
+      <h3 id="do-i-need-a-figma-plugin">Do I need a Figma plugin?</h3>
+      <p>No. Call <code>toFigma()</code> from a button, then paste into Figma. Use <code>toVector()</code> when you need an SVG file for another editor.</p>
     </div>
     <div>
-      <h3>Does anything leave the machine?</h3>
-      <p>No. The engine runs in your page, and the copy for Figma goes through your own clipboard.
-      For a lot of teams that is a legal requirement.</p>
+      <h3 id="does-anything-leave-the-machine">Does anything leave the machine?</h3>
+      <p>The exporter runs in your page and writes to your clipboard. It does not upload the capture. SnapDOM may fetch page assets; pasting into Figma shares the artwork with that application.</p>
     </div>
     <div>
-      <h3>Which browsers?</h3>
+      <h3 id="which-browsers">Which browsers?</h3>
       <p>Chromium today. Everything is measured there and the pixel baselines were recorded
       there. We have not run it against Firefox or WebKit, so we are not claiming them.</p>
     </div>
     <div>
-      <h3>What if it does not work for my page?</h3>
-      <p>Send us the page. A reproducible case helps improve fidelity, and the
-      samples above are there so you can check the output on pages like yours first.</p>
+      <h3 id="what-if-it-does-not-work-for-my-page">What if it does not work for my page?</h3>
+      <p><a href="https://github.com/zumerlab/snapdom/issues">Report a minimal example</a> with the browser, export method and diagnostics.</p>
     </div>
   </div>
 </section>

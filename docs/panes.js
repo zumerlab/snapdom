@@ -23,7 +23,6 @@ customElements.define('sd-shadow-card', class extends HTMLElement {
 })
 
 const pane = document.querySelector('[data-pane]')
-const navLinks = [...pane.querySelectorAll('.pane-nav-items a')]
 const navGroups = [...pane.querySelectorAll('.pane-nav > div')]
 const panel = pane.querySelector('.demo-panel')
 const secOf = el => [...el.classList].find(c => c.startsWith('sec-'))
@@ -35,7 +34,7 @@ navGroups.forEach(g => {
   head.addEventListener('click', () => head.setAttribute('aria-expanded', String(head.getAttribute('aria-expanded') !== 'true')))
 })
 
-pane.querySelector('.pane-filter input').addEventListener('input', event => {
+pane.querySelector('.pane-filter input')?.addEventListener('input', event => {
   const q = event.target.value.trim().toLowerCase()
   navGroups.forEach(g => {
     const links = [...g.querySelectorAll('.pane-nav-items > a')]
@@ -43,6 +42,7 @@ pane.querySelector('.pane-filter input').addEventListener('input', event => {
     g.hidden = links.every(a => a.hidden)
     if (q) g.querySelector('.pane-nav-head').setAttribute('aria-expanded', 'true')
   })
+  pane.querySelector('.pane-filter-status').hidden = navGroups.some(g => !g.hidden)
 })
 
 // ── Demo panel ──
@@ -310,30 +310,6 @@ if (panel) {
 }
 
 configureDemo()
-
-// A page of anchored sections (the showcase) marks the section in view in the sidebar
-// and keeps that link visible inside the sidebar's own scroll.
-{
-  const links = navLinks.filter(a => a.hash && a.pathname === location.pathname && document.getElementById(a.hash.slice(1)))
-  const targets = links.map(a => document.getElementById(a.hash.slice(1)))
-  const side = document.querySelector('.pane-side')
-  let queued = false
-  const mark = () => {
-    queued = false
-    // The section in view is the last one whose heading sits in the upper half of the viewport.
-    let i = targets.findLastIndex(el => el.querySelector('h2, h3')?.getBoundingClientRect().top <= innerHeight / 2)
-    if (i < 0) i = 0
-    links.forEach((a, j) => {
-      if (j !== i) return a.removeAttribute('aria-current')
-      if (a.getAttribute('aria-current') === 'page') return
-      a.setAttribute('aria-current', 'page')
-      const top = a.getBoundingClientRect().top - side.getBoundingClientRect().top + side.scrollTop
-      if (top < side.scrollTop || top > side.scrollTop + side.clientHeight - 40) side.scrollTo({ top: top - side.clientHeight / 3 })
-    })
-  }
-  addEventListener('scroll', () => { if (!queued) { queued = true; requestAnimationFrame(mark) } }, { passive: true })
-  mark()
-}
 
 // ?embed shows only a lab's live demo, for the showcase to frame. Siblings on the way up
 // are hidden rather than the demo moved, so the lab's own selectors and scripts still match.

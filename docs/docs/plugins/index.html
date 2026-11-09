@@ -61,24 +61,35 @@
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM <span class=\"accent\">Plugins</span>", "lead": "Plugins turn a capture into HTML, structured context, element maps, PDFs or recordings. Write hooks when you need to change the captured content or add an output.", "links": [["#build", "Build a plugin"], ["../../plugins/", "Browse plugins"]]} -->
+<a class="site-skip" href="#doc-content" tabindex="0">Skip to content</a>
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter docs" aria-label="Filter docs"></label><nav class="pane-nav" aria-label="Docs"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Getting started</button><div class="pane-nav-items"><a href="../">Overview</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Capture API</button><div class="pane-nav-items"><a href="../api/">API reference</a><a href="../cache/">Cache and preCapture</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Options</button><div class="pane-nav-items"><a href="../options/">Options</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="./" aria-current="page">Plugin API</a></div></div></nav></aside>
+<aside class="pane-side"><details class="pane-menu" open><summary>Docs <span aria-hidden="true">/</span> Plugin API</summary><nav class="docs-pages" aria-label="Docs"><a class="sec-start" href="../"><span class="sec-dot"></span>Overview</a><a class="sec-capture" href="../api/"><span class="sec-dot"></span>API reference</a><a class="sec-capture" href="../cache/"><span class="sec-dot"></span>Cache and preCapture</a><a class="sec-options" href="../options/"><span class="sec-dot"></span>Options</a><a class="sec-export" href="./" aria-current="page"><span class="sec-dot"></span>Plugin API</a></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#official" class="">Official plugins</a><a href="#redaction" class="">Redact fields, blocks and attributes</a><a href="#build" class="">Build a plugin</a><a href="#register" class="">Registering plugins</a><a href="#hooks" class="">Lifecycle hooks</a><a href="#context" class="">Context object</a><a href="#needs" class="">Pipeline depth and memoization</a><a href="#custom-exports" class="">Custom exports via plugins</a><a href="#example" class="">Example: overlay filter plugin</a><a href="#template" class="">Full plugin template</a></nav></details></aside>
 
-<article class="pane-read sec-export" data-title="Plugin API">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Docs</span><span aria-hidden="true">/</span><span>Plugins</span><span aria-hidden="true">/</span><span>Plugin API</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Plugins</span></h1><p class="doc-lead">Plugins turn a capture into HTML, structured context, element maps, PDFs or recordings. Write hooks when you need to change the captured content or add an output.</p><p class="pane-links doc-links"><a href="#build">Build a plugin</a><a href="../../plugins/">Browse plugins</a></p></header>
+<article class="pane-read sec-export" id="doc-content" tabindex="-1" data-title="Plugin API">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../">Docs</a><span aria-hidden="true">/</span><span aria-current="page">Plugin API</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Plugins</span></h1><p class="doc-lead">Plugins turn a capture into HTML, structured context, element maps, PDFs or recordings. Write hooks when you need to change the captured content or add an output.</p><p class="pane-links doc-links"><a href="#build">Build a plugin</a><a href="../../plugins/">Browse plugins</a></p></header>
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">What is a SnapDOM plugin</div>
-      <p>A plugin is a plain object with a unique <code>name</code> and lifecycle hooks. Capture hooks can change the cloned content; <code>defineExports</code> adds methods to the result. Hooks may be synchronous or <code>async</code>. The core exports images, canvas and blobs; the <a href="../../plugins/">plugin package</a> adds the other outputs.</p>
+      <p>A plugin is a plain object with a unique <code>name</code> and lifecycle hooks. Capture hooks can change the cloned content; <code>defineExports</code> adds methods to the result. Hooks may be synchronous or <code>async</code>. The core exports images, canvas and blobs; see the <a href="../../plugins/">plugin catalogue</a> for other outputs.</p>
     </div>
 
     <section class="prose">
       <h2 id="official">Official plugins</h2>
-      <p>Every official plugin has its own page with install, options and a live demo. <a href="../../plugins/">All plugins</a> lists them. Three are packages of their own, and their page is also the full reference: <a href="../../plugins/pdf/">PDF</a>, a searchable, paginated PDF export with selectable text, links and optional form fields; <a href="../../plugins/vector/">Vector</a>, editable SVG and Figma clipboard export; <a href="../../plugins/stream/">Stream</a>, a live element as a canvas that repaints only what changed, for WebGL textures and video overlays. The other eleven are the toolbox. Plugins by other authors are listed under <a href="../../plugins/#community-plugins">community plugins</a>. The toolbox ships in one package, and PDF, Vector and Stream are packages of their own: <code>@zumer/snapdom-pdf</code>, <code>@zumer/snapdom-vector</code> and <code>@zumer/snapdom-stream</code>. Install the toolbox next to SnapDOM 3.4.0 or newer (plugins 5.x):</p>
+      <table class="cmp-table">
+        <thead><tr><th>Package</th><th>Outputs</th><th>Reference and demos</th></tr></thead>
+        <tbody>
+          <tr><td class="num">@zumer/snapdom-plugins</td><td>HTML, structured context, element maps, effects and recordings.</td><td><a href="../../plugins/">Plugin toolbox</a></td></tr>
+          <tr><td class="num">@zumer/snapdom-pdf</td><td>Searchable, paginated PDF with selectable text, links and optional form fields.</td><td><a href="../../plugins/pdf/">PDF</a></td></tr>
+          <tr><td class="num">@zumer/snapdom-vector</td><td>Editable SVG and Figma clipboard export.</td><td><a href="../../plugins/vector/">Vector</a></td></tr>
+          <tr><td class="num">@zumer/snapdom-stream</td><td>A live element as a canvas, for WebGL textures and video overlays.</td><td><a href="../../plugins/stream/">Stream</a></td></tr>
+        </tbody>
+      </table>
+      <p>Install the toolbox alongside SnapDOM 3.4.0 or newer (plugins 5.x):</p>
       <pre class="code-block">npm install @zumer/snapdom-plugins@latest</pre>
       <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';
 import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pre>
+      <p>PDF, Vector and Stream are separate packages. See <a href="../../plugins/#community-plugins">community plugins</a> for packages by other authors.</p>
     </section>
 
     <section class="prose">
@@ -88,13 +99,26 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pr
 
     <section class="prose">
       <h2 id="build">Build a plugin</h2>
-      <p>Start with the template and keep only the hooks your plugin uses:</p>
-      <ol>
-        <li><strong>Clone the template:</strong> <code>npx degit zumerlab/snapdom/packages/plugin-template my-plugin</code></li>
-        <li><strong>Write your hook logic:</strong> <code>export function myPlugin() {}</code></li>
-        <li><strong>Get listed:</strong> open a PR adding one line to <code>community-plugins.md</code></li>
-      </ol>
-      <p>See <code>PLUGIN_SPEC.md</code> for the full specification and <code>CONTRIBUTING_PLUGINS.md</code> for submission guidelines.</p>
+      <p>This plugin changes the heading in the captured copy. The live heading stays the same:</p>
+      <pre class="code-block">import { snapdom } from '@zumer/snapdom';
+
+const card = document.createElement('article');
+card.innerHTML = '&lt;h2&gt;Original title&lt;/h2&gt;';
+document.body.appendChild(card);
+
+const titlePlugin = {
+  name: 'capture-title',
+  afterClone({ clone }) {
+    clone.querySelector('h2').textContent = 'Shared copy';
+  }
+};
+
+const result = await snapdom(card, { plugins: [titlePlugin] });
+document.body.appendChild(await result.toPng());</pre>
+      <p>For a packaged plugin, start from the project template:</p>
+      <pre class="code-block">npx degit zumerlab/snapdom/packages/plugin-template my-plugin</pre>
+      <p>Read the <a href="https://github.com/zumerlab/snapdom/blob/main/PLUGIN_SPEC.md">plugin specification</a> for hook contracts and the <a href="https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md">contribution guide</a> for packaging and tests.</p>
+      <p><strong>Get listed:</strong> once your plugin is published, submit a PR adding it to <a href="https://github.com/zumerlab/snapdom/blob/main/docs/community-plugins.md">community-plugins.md</a>.</p>
     </section>
 
     <section class="prose">
@@ -102,11 +126,11 @@ import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pr
       <p><strong>Global registration</strong> (applies to all captures):</p>
       <pre class="code-block">import { snapdom } from '@zumer/snapdom';
 
-// You can register instances, factories, or [factory, options]
+// Pass plugin objects, calling factories with their options.
 snapdom.plugins(
   myPluginInstance,
-  [myPluginFactory, { optionA: true }],
-  { plugin: anotherFactory, options: { level: 2 } }
+  myPluginFactory({ optionA: true }),
+  anotherFactory({ level: 2 })
 );</pre>
       <p><strong>Per-capture registration</strong> (that call only):</p>
       <pre class="code-block">const out = await snapdom(element, {
@@ -231,7 +255,7 @@ export function overlayFilterPlugin(options = {}) {
       <pre class="code-block">import { snapdom } from '@zumer/snapdom';
 
 // Global registration
-snapdom.plugins([overlayFilterPlugin, { color: 'rgba(0,0,0,0.3)', blur: 2 }]);
+snapdom.plugins(overlayFilterPlugin({ color: 'rgba(0,0,0,0.3)', blur: 2 }));
 
 // Per-capture
 const out = await snapdom(document.querySelector('#card'), {
@@ -303,7 +327,7 @@ document.body.appendChild(png);</pre>
       </ul>
     </section>
 
-    <section class="related">
+    <section class="related" id="ready-to-build">
       <div class="section-label">Related</div>
       <div class="related-grid">
         <a class="related-card" href="../api/" data-umami-event="Docs plugins card api">API reference: methods &amp; exporters</a>
@@ -313,14 +337,6 @@ document.body.appendChild(png);</pre>
       </div>
     </section>
 
-    <section class="cta-section">
-      <div class="cta-card">
-        <h2 id="ready-to-build">Start building</h2>
-        <p>Use an existing plugin or start with the template and the hook reference.</p>
-        <a href="../../plugins/" class="btn btn-primary" data-umami-event="Docs plugins cta browse">Browse plugins</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs plugins cta npm">Install from npm</a>
-      </div>
-    </section>
   <!-- /content --></div>
 <nav class="pager" aria-label="Pages"><a href="../options/"><span>Previous</span><strong>Options</strong></a></nav>
 </article>

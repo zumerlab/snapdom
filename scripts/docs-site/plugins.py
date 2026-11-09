@@ -39,7 +39,7 @@ TOOLBOX = [
  ]),
  ('Export', 'export', 'Other outputs from the same capture.', [
   ('html-export', 'HTML export', 'Export the frozen HTML.', 'The clone with its styles and fonts as a document',
-   {'demo': 'capture', 'transform': 'html', 'demo-label': 'toHtml()', 'note': 'The result is the captured document as text. Save it as a file and it reopens with the same layout.'}, 'html-export-demo',
+   {'demo': 'capture', 'transform': 'html', 'demo-label': 'toHtml()', 'note': 'The result is the captured HTML document as text, with styles and fonts. It does not preserve application behaviour.'}, 'html-export-demo',
    'SnapDOM plugin that adds toHtml(): the frozen clone with its captured styles and fonts as an HTML document you can save and reopen with the same layout.'),
   ('ascii-export', 'ASCII export', 'Export the capture as ASCII art.', 'Text or colored HTML, also frame by frame',
    {'demo': 'capture', 'transform': 'ascii', 'sample': 'svg', 'demo-label': 'toAscii() at 46 columns'}, 'ascii-demo',
@@ -159,13 +159,19 @@ def plugin_page(glabel, sec, slug, name, h1, demo, showcase_id, description):
         k = next((i for i, b in enumerate(rest) if b[0] == 'table'), None)
         if k is not None: rest.insert(k, ('h2', 'Options'))
     k = next((i for i, b in enumerate(rest) if b[0] == 'code'), None)
-    if k is not None: rest.insert(k, ('h2', 'Usage'))
+    if k is not None:
+        _, lang, source = rest[k]
+        source = "import { snapdom } from '@zumer/snapdom';\n" + source
+        source = source.replace('\n\n', "\n\nconst el = document.querySelector('#target');\n", 1)
+        if slug in ('filter', 'color-tint', 'timestamp-overlay', 'replace-text'):
+            source = source.replace('snapdom(el,', 'const result = await snapdom(el,', 1)
+            source += '\nconst image = await result.toPng();\ndocument.body.append(image);'
+        rest[k] = ('code', lang, source)
+        rest.insert(k, ('h2', 'Usage'))
     links = [(GITHUB + f'packages/plugins/{slug}.js', 'Source · MIT'), (GITHUB + 'packages/plugins/CHANGELOG.md', 'Changelog'),
              (rel(path, f'showcase/#{showcase_id}'), 'Showcase demo')]
     inner = doc_head(['Plugins', glabel, name], '@zumer/snapdom-plugins · MIT', E(h1), md_inline(intro[1]), links)
-    inner += ('<div class="pane-content pane-prose">' + code(INSTALL) + md_html(rest)
-              + f'<h2>Something missing?</h2><p>Options are added for captures someone needed, not in advance. '
-              f'<a href="https://github.com/zumerlab/snapdom/issues/new?title={slug}%3A%20">Open an issue</a> with the element and the output you need.</p></div>')
+    inner += '<div class="pane-content pane-prose">' + code(INSTALL) + md_html(rest) + '</div>'
     standalone(path, 'Plugins', meta(f'{name} plugin for SnapDOM', description, f'plugins/{slug}/', 'TechArticle'),
                plugin_nav(path), 'Filter plugins', 'Plugins', sec, name, inner, demo, plugin_pager(path), 'plugin-page')
 
@@ -183,13 +189,13 @@ def plugins_index():
     path = 'plugins/index.html'
     count = len(OWN_PAGE) + sum(len(g[3]) for g in TOOLBOX)
     inner = doc_head(['Plugins'], f'{count} official plugins · MIT', 'Plugins for SnapDOM.',
-                     'Fourteen official plugins, grouped by the job they do. Every page has the options and a live demo. '
-                     'All of them are MIT. PDF, Vector and Stream are each a package of their own; the other eleven ship together as the toolbox.',
+                     'Choose a plugin by its output or by what it changes in the capture. PDF, Vector and Stream have their own packages; the other eleven ship as the toolbox. All are MIT-licensed.',
                      [(GITHUB + 'packages', 'Source'), ('https://www.npmjs.com/package/@zumer/snapdom-plugins', 'npm'), (rel(path, 'showcase/#plugins'), 'Plugin demos')])
     inner += '<div class="pane-content pane-prose">'
-    inner += '<h2 id="install">Install</h2>' + code(INSTALL + '\nnpm install @zumer/snapdom-pdf @zumer/snapdom-vector @zumer/snapdom-stream')
-    inner += ('<p>The first line is SnapDOM and the toolbox; the second, PDF, Vector and Stream, each a package of its own. Import those three from their package and a toolbox plugin from its subpath, and pass them in <code>plugins</code>. All of them need SnapDOM 3.4.0 or newer within 3.x.</p>'
-              + code("import { snapdom } from '@zumer/snapdom'\nimport { redactInputs } from '@zumer/snapdom-plugins/redact-inputs'\nimport { pdf } from '@zumer/snapdom-pdf'\n\nconst result = await snapdom(el, { plugins: [redactInputs(), pdf()] })\nconst blob = await result.toPdf({ page: 'a4' })"))
+    inner += '<h2 id="install">Install</h2>' + code(INSTALL)
+    inner += ('<p>This installs SnapDOM and the toolbox. For PDF, Vector or Stream, install its package instead of the toolbox; its page has the command. All official plugins need SnapDOM 3.4.0 or newer within 3.x.</p><p>For example, install <code>@zumer/snapdom-pdf</code> alongside the toolbox to redact a report before exporting it:</p>'
+              + code('npm install @zumer/snapdom-pdf')
+              + code("import { snapdom } from '@zumer/snapdom'\nimport { redactInputs } from '@zumer/snapdom-plugins/redact-inputs'\nimport { pdf } from '@zumer/snapdom-pdf'\n\nconst el = document.querySelector('#report')\nconst result = await snapdom(el, { plugins: [redactInputs(), pdf()] })\nconst blob = await result.toPdf({ page: 'a4' })"))
     inner += '<h2 id="toolbox">Plugins by job</h2><p>Prepare plugins change the clone before it renders; the others add an export method to the result, and Stream keeps a canvas in step with the element.</p>'
     for glabel, sec, blurb, items in TOOLBOX:
         inner += f'<h3 id="{sec}">{E(glabel)}</h3><p>{E(blurb)}</p>' + index_grid([(n, sec, m, rel(path, f'plugins/{s}/')) for s, n, m in by_job(sec, items)])

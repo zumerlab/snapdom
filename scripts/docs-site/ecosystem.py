@@ -18,7 +18,7 @@ STEPS = [('1 · Reach the state', 'SnapSurf opens the page and clicks Settings. 
          ('3 · Keep it checked', 'SnapDiff adds the panel to a repeatable visual suite. Review the baseline and check future changes against it.')]
 
 inner = doc_head(['Ecosystem'], 'Plugins · Tools', 'Plugins and tools built on SnapDOM.',
-                 'Extend a capture with the official plugins, or use the tools built on SnapDOM for visual testing and for agents. Every piece has a page of its own; this one shows how they fit together.')
+                 'Plugins add outputs and transforms to a capture. SnapDiff, SnapEye and SnapSurf use SnapDOM for visual testing and browser agents.')
 inner += '<div class="pane-content pane-prose">' + index_grid(CELLS)
 inner += ('<h2>Choose by the job</h2><div class="compare-table"><table><thead><tr><th scope="col">Job</th><th scope="col">Use</th></tr></thead><tbody>'
           + ''.join(f'<tr><td>{a}</td><td><a href="{h}">{b}</a></td></tr>' for a, b, h in JOBS) + '</tbody></table></div>')

@@ -100,12 +100,13 @@
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Library Comparison", "title": "SnapDOM vs <span class=\"accent\">dom-to-image</span>", "lead": "The original dom-to-image API against SnapDOM: rendering approach, plugin exports and the return types that change in a migration.", "links": [["#matrix", "Feature matrix"], ["#migrate", "Migration snippet"]]} -->
+<a class="site-skip" href="#page-content" tabindex="0">Skip to content</a>
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter comparisons" aria-label="Filter comparisons"></label><nav class="pane-nav" aria-label="Compare"><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">HTML-to-image libraries</a><a href="../live/">Live benchmark</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Head to head</button><div class="pane-nav-items"><a href="../html2canvas/">vs html2canvas</a><a href="../html-to-image/">vs html-to-image</a><a href="./" aria-current="page">vs dom-to-image</a><a href="../modern-screenshot/">vs modern-screenshot</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Architecture</button><div class="pane-nav-items"><a href="../puppeteer/">vs Puppeteer</a><a href="../playwright/">vs Playwright</a></div></div></nav></aside>
+<aside class="pane-side"><details class="pane-menu" open><summary>Compare <span aria-hidden="true">/</span> vs dom-to-image</summary><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter navigation" aria-label="Filter navigation titles"></label><p class="pane-filter-status" role="status" hidden>No matching links. Use Search docs to search page contents.</p><nav class="pane-nav" aria-label="Compare"><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">HTML-to-image libraries</a><a href="../live/">Live benchmark</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Head to head</button><div class="pane-nav-items"><a href="../html2canvas/">vs html2canvas</a><a href="../html-to-image/">vs html-to-image</a><a href="./" aria-current="page">vs dom-to-image</a><a href="../modern-screenshot/">vs modern-screenshot</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Architecture</button><div class="pane-nav-items"><a href="../puppeteer/">vs Puppeteer</a><a href="../playwright/">vs Playwright</a></div></div></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#snapdom-vs-dom-to-image-head-to-head" class="">SnapDOM vs dom-to-image, head to head</a><a href="#overview" class="">A quick overview</a><a href="#matrix" class="">Feature matrix</a><a href="#when" class="">When to use which</a><a href="#code" class="">Same task, side by side</a><a href="#migrate" class="">Migration snippet</a><a href="#faq" class="">Frequently asked questions</a></nav></details></aside>
 
-<article class="pane-read sec-ecosystem" data-title="vs dom-to-image" data-demo="compare" data-lib="dom-to-image" data-note="Judge the pixels yourself; one run is not a benchmark." data-demo-label="SnapDOM · dom-to-image">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Compare</span><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span>vs dom-to-image</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">dom-to-image</span></h1><p class="doc-lead">The original dom-to-image API against SnapDOM: rendering approach, plugin exports and the return types that change in a migration.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
+<article class="pane-read sec-ecosystem" data-title="vs dom-to-image" data-demo="compare" data-lib="dom-to-image" data-note="Judge the pixels yourself; one run is not a benchmark." data-demo-label="SnapDOM · dom-to-image" id="page-content" tabindex="-1">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../">Compare</a><span aria-hidden="true">/</span><span>Head to head</span><span aria-hidden="true">/</span><span aria-current="page">vs dom-to-image</span></nav><span class="doc-meta">Library Comparison</span></div><h1>SnapDOM vs <span class="accent">dom-to-image</span></h1><p class="doc-lead">The original dom-to-image API against SnapDOM: rendering approach, plugin exports and the return types that change in a migration.</p><p class="pane-links doc-links"><a href="#matrix">Feature matrix</a><a href="#migrate">Migration snippet</a></p></header>
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
@@ -115,7 +116,7 @@
     <section class="bench-section" id="benchmark">
       <div class="section-label">Live benchmark: runs in your browser</div>
       <h2 id="snapdom-vs-dom-to-image-head-to-head">SnapDOM vs dom-to-image, head to head</h2>
-      <p class="bench-lead">Each library exports the same element to PNG five times. Averages are shown, the faster one highlighted. The gap depends on your hardware and content.</p>
+      <p class="bench-lead">Each library exports the same element to PNG five times. The average includes fresh and repeated calls; SnapDOM can reuse the unchanged capture. The gap depends on your hardware, content and capture pattern.</p>
       <div class="bench-target-row">
         <div class="bench-target" id="bench-target">Test element to be captured by both libraries.</div>
       </div>
@@ -178,9 +179,8 @@
           <h4 aria-level="3">Choose SnapDOM when…</h4>
           <ul>
             <li>You need fast captures, including repeats of the same element (<a href="../live/">live benchmark</a>).</li>
-            <li>Output must match the browser's rendering, pixel for pixel.</li>
+            <li>Your output depends on browser-rendered CSS, fonts or open Shadow DOM; test those elements in your target browsers.</li>
             <li>You need PDF, editable vector, HTML or agent context, through <a href="../../plugins/">plugins</a> or your own.</li>
-            <li>You want a library with a release about every week.</li>
           </ul>
         </div>
         <div class="verdict-card other">
@@ -228,7 +228,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
           <tr><td class="num">domtoimage.toSvg(el)</td><td class="num">snapdom.toRaw(el)</td></tr>
           <tr><td class="num">{ bgcolor: '#fff' }</td><td class="num">{ backgroundColor: '#fff' }</td></tr>
           <tr><td class="num">{ width, height }</td><td class="num">{ width, height } (output size)</td></tr>
-          <tr><td class="num">{ filter: keep }</td><td class="num">{ exclude: node =&gt; !keep(node) }</td></tr>
+          <tr><td class="num">{ filter: keep }</td><td class="num">{ exclude: node =&gt; !keep(node), excludeMode: 'remove' }</td></tr>
           <tr><td class="num">— (not supported)</td><td class="num">{ embedFonts: 'auto' } (default)</td></tr>
           <tr><td class="num">— (not supported)</td><td class="num">{ plugins: [...] }</td></tr>
         </tbody>
@@ -267,7 +267,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
       </details>
     </section>
 
-    <section class="related">
+    <section class="related" id="ready-to-switch">
       <div class="section-label">Related</div>
       <div class="related-grid">
         <a class="related-card" href="../html2canvas/">SnapDOM vs html2canvas</a>
@@ -277,14 +277,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
       </div>
     </section>
 
-    <section class="cta-section">
-      <div class="cta-card">
-        <h2 id="ready-to-switch">Make the switch</h2>
-        <p>Drop SnapDOM into your project and capture your first element.</p>
-        <a href="../../showcase/" class="btn btn-primary" data-umami-event="Cmp d2i cta home">Open the demo</a>
-        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Cmp d2i cta npm">Installation</a>
-      </div>
-    </section>
+
   <!-- /content --></div>
 </article>
 <div class="pane-demo"><section class="demo-panel sec-capture" aria-label="Live demo">

@@ -84,13 +84,14 @@
 <link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Vue 3 Guide", "title": "Capture HTML to PNG in <span class=\"accent\">Vue 3</span>", "lead": "A copy-paste single-file component using the Composition API, plus the gotchas to watch out for.", "links": []} -->
+  <!-- pane:start --><!-- hero {"badge": "Vue 3 Guide", "title": "Capture HTML to PNG in <span class=\"accent\">Vue 3</span>", "lead": "Use a Vue template ref and nextTick() to capture the current DOM, then download the image or display a preview.", "links": []} -->
+<a class="site-skip" href="#page-content" tabindex="0">Skip to content</a>
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter recipes and guides" aria-label="Filter recipes and guides"></label><nav class="pane-nav" aria-label="How-to"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../../how-to/">How to capture the DOM</a></div></div><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Basics</button><div class="pane-nav-items"><a href="../../how-to/screenshot-a-div/">Screenshot a div</a><a href="../../how-to/html-to-png/">Convert HTML to PNG</a><a href="../../how-to/html-to-svg/">Convert HTML to SVG</a><a href="../../how-to/html-to-canvas/">Render HTML to Canvas</a><a href="../../how-to/high-resolution-element/">Capture in high resolution</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Real content</button><div class="pane-nav-items"><a href="../../how-to/export-dashboard-as-image/">Export a dashboard</a><a href="../../how-to/export-react-component-as-image/">Export a React component</a><a href="../../how-to/export-invoice-as-image/">Export an invoice</a><a href="../../how-to/generate-social-card-from-html/">Generate a social card</a><a href="../../how-to/capture-before-pdf/">Capture before a PDF</a><a href="../../how-to/pdf-cross-origin-images/">PDF with cross-origin images</a><a href="../../how-to/export-chart-as-svg/">Export a chart as SVG</a><a href="../../how-to/save-chart-js-as-png/">Save a Chart.js chart</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Special cases</button><div class="pane-nav-items"><a href="../../how-to/capture-element-without-puppeteer/">Capture without Puppeteer</a><a href="../../how-to/capture-shadow-dom/">Capture Shadow DOM</a><a href="../../how-to/capture-full-page/">Capture a full page</a><a href="../../how-to/capture-iframe/">Capture an iframe</a><a href="../../how-to/capture-cross-origin-images/">Capture images without CORS</a><a href="../../how-to/html-in-canvas/">Capture with html-in-canvas <span class="nav-new">New</span></a><a href="../../how-to/visual-regression-screenshot/">Visual regression</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Migrate</button><div class="pane-nav-items"><a href="../../how-to/migrate-from-html2canvas/">Migrate from html2canvas</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Frameworks</button><div class="pane-nav-items"><a href="../react/">React</a><a href="./" aria-current="page">Vue</a><a href="../nextjs/">Next.js</a><a href="../svelte/">Svelte</a><a href="../angular/">Angular</a><a href="../lit/">Lit</a></div></div></nav></aside>
+<aside class="pane-side"><details class="pane-menu" open><summary>How-to <span aria-hidden="true">/</span> Vue</summary><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter navigation" aria-label="Filter navigation titles"></label><p class="pane-filter-status" role="status" hidden>No matching links. Use Search docs to search page contents.</p><nav class="pane-nav" aria-label="How-to"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../../how-to/">How to capture the DOM</a></div></div><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Basics</button><div class="pane-nav-items"><a href="../../how-to/screenshot-a-div/">Screenshot a div</a><a href="../../how-to/html-to-png/">Convert HTML to PNG</a><a href="../../how-to/html-to-svg/">Convert HTML to SVG</a><a href="../../how-to/html-to-canvas/">Render HTML to Canvas</a><a href="../../how-to/high-resolution-element/">Capture in high resolution</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Real content</button><div class="pane-nav-items"><a href="../../how-to/export-dashboard-as-image/">Export a dashboard</a><a href="../../how-to/export-react-component-as-image/">Export a React component</a><a href="../../how-to/export-invoice-as-image/">Export an invoice</a><a href="../../how-to/generate-social-card-from-html/">Generate a social card</a><a href="../../how-to/capture-before-pdf/">Capture before a PDF</a><a href="../../how-to/pdf-cross-origin-images/">PDF with cross-origin images</a><a href="../../how-to/export-chart-as-svg/">Export a chart as SVG</a><a href="../../how-to/save-chart-js-as-png/">Save a Chart.js chart</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Special cases</button><div class="pane-nav-items"><a href="../../how-to/capture-element-without-puppeteer/">Capture without Puppeteer</a><a href="../../how-to/capture-shadow-dom/">Capture Shadow DOM</a><a href="../../how-to/capture-full-page/">Capture a full page</a><a href="../../how-to/capture-iframe/">Capture an iframe</a><a href="../../how-to/capture-cross-origin-images/">Capture images without CORS</a><a href="../../how-to/html-in-canvas/">Capture with html-in-canvas <span class="nav-new">New</span></a><a href="../../how-to/visual-regression-screenshot/">Visual regression</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Migrate</button><div class="pane-nav-items"><a href="../../how-to/migrate-from-html2canvas/">Migrate from html2canvas</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Frameworks</button><div class="pane-nav-items"><a href="../react/">React</a><a href="./" aria-current="page">Vue</a><a href="../nextjs/">Next.js</a><a href="../svelte/">Svelte</a><a href="../angular/">Angular</a><a href="../lit/">Lit</a></div></div></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#install" class="">1. Install</a><a href="#component" class="">2. Minimal capture component (Composition API)</a><a href="#live-demo" class="">Try it live</a><a href="#hello-snapdom" class="is-subsection">Hello SnapDOM</a><a href="#download" class="">3. Download instead of appending</a><a href="#preview" class="">4. Render a live preview</a><a href="#composable" class="">5. Reusable composable</a><a href="#component-recipes" class="">Choose the Vue export target</a><a href="#faq" class="">Common gotchas</a></nav></details></aside>
 
-<article class="pane-read sec-options" data-title="Vue">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>How-to</span><span aria-hidden="true">/</span><span>Frameworks</span><span aria-hidden="true">/</span><span>Vue</span></nav><span class="doc-meta">Vue 3 Guide</span></div><h1>Capture HTML to PNG in <span class="accent">Vue 3</span></h1><p class="doc-lead">A copy-paste single-file component using the Composition API, plus the gotchas to watch out for.</p></header>
+<article class="pane-read sec-options" data-title="Vue" id="page-content" tabindex="-1">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../../how-to/">How-to</a><span aria-hidden="true">/</span><span>Frameworks</span><span aria-hidden="true">/</span><span aria-current="page">Vue</span></nav><span class="doc-meta">Vue 3 Guide</span></div><h1>Capture HTML to PNG in <span class="accent">Vue 3</span></h1><p class="doc-lead">Use a Vue template ref and nextTick() to capture the current DOM, then download the image or display a preview.</p></header>
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
@@ -105,38 +106,39 @@
 
     <section class="prose">
       <h2 id="component">2. Minimal capture component (Composition API)</h2>
-      <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> <span class="fn">setup</span><span class="op">&gt;</span>
-<span class="kw">import</span> { ref } <span class="kw">from</span> <span class="str">'vue'</span>;
-<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+      <pre class="code-block">&lt;script setup&gt;
+import { nextTick, ref } from 'vue';
+import { snapdom } from '@zumer/snapdom';
 
-<span class="kw">const</span> cardRef = <span class="fn">ref</span>(<span class="kw">null</span>);
+const cardRef = ref(null);
 
-<span class="kw">async function</span> <span class="fn">capture</span>() {
-  <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
-  <span class="kw">const</span> img = <span class="kw">await</span> snapdom.<span class="fn">toPng</span>(cardRef.value, { scale: <span class="num">2</span> });
-  document.body.<span class="fn">appendChild</span>(img);
+async function capture() {
+  await nextTick();
+  if (!cardRef.value) return;
+  const img = await snapdom.toPng(cardRef.value, { scale: 2 });
+  document.body.appendChild(img);
 }
-<span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
+&lt;/script&gt;
 
-<span class="op">&lt;</span><span class="kw">template</span><span class="op">&gt;</span>
-  <span class="op">&lt;</span><span class="fn">div</span><span class="op">&gt;</span>
-    <span class="op">&lt;</span><span class="fn">div</span> ref=<span class="str">"cardRef"</span> class=<span class="str">"card"</span><span class="op">&gt;</span>
-      <span class="op">&lt;</span><span class="fn">h3</span><span class="op">&gt;</span>Hello SnapDOM<span class="op">&lt;/</span><span class="fn">h3</span><span class="op">&gt;</span>
-      <span class="op">&lt;</span><span class="fn">p</span><span class="op">&gt;</span>This whole div will be captured.<span class="op">&lt;/</span><span class="fn">p</span><span class="op">&gt;</span>
-    <span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
-    <span class="op">&lt;</span><span class="fn">button</span> @click=<span class="str">"capture"</span><span class="op">&gt;</span>Capture<span class="op">&lt;/</span><span class="fn">button</span><span class="op">&gt;</span>
-  <span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
-<span class="op">&lt;/</span><span class="kw">template</span><span class="op">&gt;</span></pre>
-      <p>That's the entire component. The template ref name (<code>cardRef</code>) must match the variable declared in the script setup.</p>
+&lt;template&gt;
+  &lt;div&gt;
+    &lt;div ref="cardRef" class="card"&gt;
+      &lt;h3&gt;Hello SnapDOM&lt;/h3&gt;
+      &lt;p&gt;This whole div will be captured.&lt;/p&gt;
+    &lt;/div&gt;
+    &lt;button @click="capture"&gt;Capture&lt;/button&gt;
+  &lt;/div&gt;
+&lt;/template&gt;</pre>
+      <p>The template ref name (<code>cardRef</code>) must match the variable declared in <code>script setup</code>. <code>nextTick()</code> waits for pending Vue DOM updates; wait separately for application data and layout-changing assets.</p>
     </section>
 
     <section class="prose">
       <h2 id="live-demo">Try it live</h2>
-      <p>This is the component above, running on this page. The button fires <code>snapdom.toPng(cardRef.value)</code> and the captured PNG appears below. SnapDOM only sees the DOM node, so the call is identical whether Vue, React or plain HTML rendered it.</p>
+      <p>This plain HTML demo captures a rendered card. In Vue, <code>cardRef.value</code> supplies the element to the same SnapDOM call.</p>
       <div class="demo-box">
         <div class="demo-stage">
           <div class="card" id="demo-card" style="max-width:320px;">
-            <h3>Hello SnapDOM</h3>
+            <h3 id="hello-snapdom">Hello SnapDOM</h3>
             <p>This whole div will be captured.</p>
           </div>
         </div>
@@ -150,54 +152,62 @@
 
     <section class="prose">
       <h2 id="download">3. Download instead of appending</h2>
-      <pre class="code-block"><span class="kw">async function</span> <span class="fn">download</span>() {
-  <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
-  <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(cardRef.value);
-  <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });
+      <pre class="code-block">async function download() {
+  await nextTick();
+  if (!cardRef.value) return;
+  const result = await snapdom(cardRef.value);
+  await result.download({ format: 'png', filename: 'card' });
 }</pre>
     </section>
 
     <section class="prose">
       <h2 id="preview">4. Render a live preview</h2>
       <p>Capture to a Blob and create an object URL to use as the preview <code>&lt;img&gt;</code> source:</p>
-      <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> <span class="fn">setup</span><span class="op">&gt;</span>
-<span class="kw">import</span> { ref } <span class="kw">from</span> <span class="str">'vue'</span>;
-<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+      <pre class="code-block">&lt;script setup&gt;
+import { nextTick, onUnmounted, ref } from 'vue';
+import { snapdom } from '@zumer/snapdom';
 
-<span class="kw">const</span> cardRef = <span class="fn">ref</span>(<span class="kw">null</span>);
-<span class="kw">const</span> previewUrl = <span class="fn">ref</span>(<span class="str">''</span>);
+const cardRef = ref(null);
+const previewUrl = ref('');
 
-<span class="kw">async function</span> <span class="fn">capture</span>() {
-  <span class="kw">if</span> (!cardRef.value) <span class="kw">return</span>;
-  <span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(cardRef.value, { format: <span class="str">'png'</span> });
-  previewUrl.value = URL.<span class="fn">createObjectURL</span>(blob);
+onUnmounted(() => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+});
+
+async function capture() {
+  await nextTick();
+  if (!cardRef.value) return;
+  const blob = await snapdom.toBlob(cardRef.value, { format: 'png' });
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value);
+  previewUrl.value = URL.createObjectURL(blob);
 }
-<span class="op">&lt;/</span><span class="kw">script</span><span class="op">&gt;</span>
+&lt;/script&gt;
 
-<span class="op">&lt;</span><span class="kw">template</span><span class="op">&gt;</span>
-  <span class="op">&lt;</span><span class="fn">div</span> ref=<span class="str">"cardRef"</span><span class="op">&gt;</span>…<span class="op">&lt;/</span><span class="fn">div</span><span class="op">&gt;</span>
-  <span class="op">&lt;</span><span class="fn">button</span> @click=<span class="str">"capture"</span><span class="op">&gt;</span>Capture<span class="op">&lt;/</span><span class="fn">button</span><span class="op">&gt;</span>
-  <span class="op">&lt;</span><span class="fn">img</span> v-if=<span class="str">"previewUrl"</span> :src=<span class="str">"previewUrl"</span> alt=<span class="str">"preview"</span> /<span class="op">&gt;</span>
-<span class="op">&lt;/</span><span class="kw">template</span><span class="op">&gt;</span></pre>
-      <p class="muted">Revoke the object URL with <code>URL.revokeObjectURL(previewUrl.value)</code> when you're done with it to avoid leaks.</p>
+&lt;template&gt;
+  &lt;div ref="cardRef"&gt;…&lt;/div&gt;
+  &lt;button @click="capture"&gt;Capture&lt;/button&gt;
+  &lt;img v-if="previewUrl" :src="previewUrl" alt="preview" /&gt;
+&lt;/template&gt;</pre>
+      <p class="muted">The handler releases the previous preview URL; <code>onUnmounted</code> releases the final one.</p>
     </section>
 
     <section class="prose">
       <h2 id="composable">5. Reusable composable</h2>
-      <pre class="code-block"><span class="cm">// useSnapdom.js</span>
-<span class="kw">import</span> { ref } <span class="kw">from</span> <span class="str">'vue'</span>;
-<span class="kw">import</span> { snapdom } <span class="kw">from</span> <span class="str">'@zumer/snapdom'</span>;
+      <pre class="code-block">// useSnapdom.js
+import { nextTick, ref } from 'vue';
+import { snapdom } from '@zumer/snapdom';
 
-<span class="kw">export function</span> <span class="fn">useSnapdom</span>(options = {}) {
-  <span class="kw">const</span> target = <span class="fn">ref</span>(<span class="kw">null</span>);
+export function useSnapdom(options = {}) {
+  const target = ref(null);
 
-  <span class="kw">async function</span> <span class="fn">capture</span>(format = <span class="str">'png'</span>) {
-    <span class="kw">if</span> (!target.value) <span class="kw">return null</span>;
-    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(target.value, options);
-    <span class="kw">return</span> result.<span class="fn">to</span>(format);
+  async function capture(format = 'png') {
+    await nextTick();
+    if (!target.value) return null;
+    const result = await snapdom(target.value, options);
+    return result.to(format);
   }
 
-  <span class="kw">return</span> { target, capture };
+  return { target, capture };
 }</pre>
 
       <pre class="code-block"><span class="op">&lt;</span><span class="kw">script</span> <span class="fn">setup</span><span class="op">&gt;</span>
@@ -235,7 +245,7 @@
 
       <details>
         <summary>Does SnapDOM work with Nuxt?</summary>
-        <p>Yes — but only on the client side. Wrap your capture component in <code>&lt;ClientOnly&gt;</code> or import SnapDOM dynamically inside <code>onMounted</code> so it never runs on the server.</p>
+        <p>Capture in a browser event handler. In Nuxt, load SnapDOM with a dynamic import inside that handler or inside <code>onMounted</code>; <code>&lt;ClientOnly&gt;</code> can keep the capture UI out of server rendering.</p>
       </details>
 
       <details>
@@ -244,7 +254,7 @@
       </details>
     </section>
 
-    <section class="related">
+    <section class="related" id="try-it-in-your-project">
       <div class="section-label">Related</div>
       <div class="related-grid">
         <a class="related-card" href="../react/">SnapDOM in React</a>
@@ -254,14 +264,7 @@
       </div>
     </section>
 
-    <section class="cta-section">
-      <div class="cta-card">
-        <h2 id="try-it-in-your-project">Try it in your project</h2>
-        <p>Drop SnapDOM into your Vue app and capture your first component from a click handler.</p>
-        <a href="../../showcase/" class="btn btn-primary" data-umami-event="Guide vue cta home">Open the demo</a>
-        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Guide vue cta npm">Installation</a>
-      </div>
-    </section>
+
   <!-- /content --></div>
 <nav class="pager" aria-label="Pages"><a href="../react/"><span>Previous</span><strong>React</strong></a><a class="is-next" href="../nextjs/"><span>Next</span><strong>Next.js</strong></a></nav>
 </article>

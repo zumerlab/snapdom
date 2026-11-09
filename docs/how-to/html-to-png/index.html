@@ -94,17 +94,18 @@
 <link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "How-To Recipe", "title": "How to convert <span class=\"accent\">HTML to PNG</span> in JavaScript", "lead": "Three patterns: append the image to the page, download it as a file, or get a Blob to upload. Pick the one that fits your use case and copy the snippet.", "links": []} -->
+  <!-- pane:start --><!-- hero {"badge": "How-To Recipe", "title": "How to convert <span class=\"accent\">HTML to PNG</span> in JavaScript", "lead": "Append a PNG preview, download a file, or create a PNG Blob for upload. Each pattern starts from a rendered DOM element.", "links": []} -->
+<a class="site-skip" href="#page-content" tabindex="0">Skip to content</a>
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter recipes and guides" aria-label="Filter recipes and guides"></label><nav class="pane-nav" aria-label="How-to"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">How to capture the DOM</a></div></div><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Basics</button><div class="pane-nav-items"><a href="../screenshot-a-div/">Screenshot a div</a><a href="./" aria-current="page">Convert HTML to PNG</a><a href="../html-to-svg/">Convert HTML to SVG</a><a href="../html-to-canvas/">Render HTML to Canvas</a><a href="../high-resolution-element/">Capture in high resolution</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Real content</button><div class="pane-nav-items"><a href="../export-dashboard-as-image/">Export a dashboard</a><a href="../export-react-component-as-image/">Export a React component</a><a href="../export-invoice-as-image/">Export an invoice</a><a href="../generate-social-card-from-html/">Generate a social card</a><a href="../capture-before-pdf/">Capture before a PDF</a><a href="../pdf-cross-origin-images/">PDF with cross-origin images</a><a href="../export-chart-as-svg/">Export a chart as SVG</a><a href="../save-chart-js-as-png/">Save a Chart.js chart</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Special cases</button><div class="pane-nav-items"><a href="../capture-element-without-puppeteer/">Capture without Puppeteer</a><a href="../capture-shadow-dom/">Capture Shadow DOM</a><a href="../capture-full-page/">Capture a full page</a><a href="../capture-iframe/">Capture an iframe</a><a href="../capture-cross-origin-images/">Capture images without CORS</a><a href="../html-in-canvas/">Capture with html-in-canvas <span class="nav-new">New</span></a><a href="../visual-regression-screenshot/">Visual regression</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Migrate</button><div class="pane-nav-items"><a href="../migrate-from-html2canvas/">Migrate from html2canvas</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Frameworks</button><div class="pane-nav-items"><a href="../../guides/react/">React</a><a href="../../guides/vue/">Vue</a><a href="../../guides/nextjs/">Next.js</a><a href="../../guides/svelte/">Svelte</a><a href="../../guides/angular/">Angular</a><a href="../../guides/lit/">Lit</a></div></div></nav></aside>
+<aside class="pane-side"><details class="pane-menu" open><summary>How-to <span aria-hidden="true">/</span> Convert HTML to PNG</summary><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter navigation" aria-label="Filter navigation titles"></label><p class="pane-filter-status" role="status" hidden>No matching links. Use Search docs to search page contents.</p><nav class="pane-nav" aria-label="How-to"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Overview</button><div class="pane-nav-items"><a href="../">How to capture the DOM</a></div></div><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Basics</button><div class="pane-nav-items"><a href="../screenshot-a-div/">Screenshot a div</a><a href="./" aria-current="page">Convert HTML to PNG</a><a href="../html-to-svg/">Convert HTML to SVG</a><a href="../html-to-canvas/">Render HTML to Canvas</a><a href="../high-resolution-element/">Capture in high resolution</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Real content</button><div class="pane-nav-items"><a href="../export-dashboard-as-image/">Export a dashboard</a><a href="../export-react-component-as-image/">Export a React component</a><a href="../export-invoice-as-image/">Export an invoice</a><a href="../generate-social-card-from-html/">Generate a social card</a><a href="../capture-before-pdf/">Capture before a PDF</a><a href="../pdf-cross-origin-images/">PDF with cross-origin images</a><a href="../export-chart-as-svg/">Export a chart as SVG</a><a href="../save-chart-js-as-png/">Save a Chart.js chart</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Special cases</button><div class="pane-nav-items"><a href="../capture-element-without-puppeteer/">Capture without Puppeteer</a><a href="../capture-shadow-dom/">Capture Shadow DOM</a><a href="../capture-full-page/">Capture a full page</a><a href="../capture-iframe/">Capture an iframe</a><a href="../capture-cross-origin-images/">Capture images without CORS</a><a href="../html-in-canvas/">Capture with html-in-canvas <span class="nav-new">New</span></a><a href="../visual-regression-screenshot/">Visual regression</a></div></div><div class="sec-ecosystem"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Migrate</button><div class="pane-nav-items"><a href="../migrate-from-html2canvas/">Migrate from html2canvas</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Frameworks</button><div class="pane-nav-items"><a href="../../guides/react/">React</a><a href="../../guides/vue/">Vue</a><a href="../../guides/nextjs/">Next.js</a><a href="../../guides/svelte/">Svelte</a><a href="../../guides/angular/">Angular</a><a href="../../guides/lit/">Lit</a></div></div></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#install" class="">Step 1: Install</a><a href="#append" class="">Pattern 1: Append the PNG to the page</a><a href="#download" class="">Pattern 2: Download the PNG as a file</a><a href="#upload" class="">Pattern 3: Upload the PNG to a server</a><a href="#live-demo" class="">Try the three patterns live</a><a href="#gradients-borders-shadows" class="is-subsection">Gradients, borders &amp; shadows</a><a href="#base64" class="">Bonus: Get a Base64 / data URL</a><a href="#hi-dpi" class="">High-DPI / retina output</a><a href="#faq" class="">Frequently asked questions</a></nav></details></aside>
 
-<article class="pane-read sec-start" data-title="Convert HTML to PNG">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>How-to</span><span aria-hidden="true">/</span><span>Basics</span><span aria-hidden="true">/</span><span>Convert HTML to PNG</span></nav><span class="doc-meta">How-To Recipe</span></div><h1>How to convert <span class="accent">HTML to PNG</span> in JavaScript</h1><p class="doc-lead">Three patterns: append the image to the page, download it as a file, or get a Blob to upload. Pick the one that fits your use case and copy the snippet.</p></header>
+<article class="pane-read sec-start" data-title="Convert HTML to PNG" id="page-content" tabindex="-1">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../">How-to</a><span aria-hidden="true">/</span><span>Basics</span><span aria-hidden="true">/</span><span aria-current="page">Convert HTML to PNG</span></nav><span class="doc-meta">How-To Recipe</span></div><h1>How to convert <span class="accent">HTML to PNG</span> in JavaScript</h1><p class="doc-lead">Append a PNG preview, download a file, or create a PNG Blob for upload. Each pattern starts from a rendered DOM element.</p></header>
 <div class="pane-content"><!-- content -->
     <div class="tldr">
       <div class="tldr-label">TL;DR</div>
-      <p><code>const img = await snapdom.toPng(element);</code> — that returns an <code>HTMLImageElement</code>. Append it, download it, or convert to a Blob with <code>snapdom.toBlob(element, { format: 'png' })</code> if you need a PNG Blob to upload.</p>
+      <p>Use <code>toPng()</code> for a preview image, <code>download()</code> for a file, or <code>toBlob(element, { format: 'png' })</code> for an upload.</p>
     </div>
 
     <section class="prose">
@@ -127,36 +128,28 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 
     <section class="prose">
       <h2 id="download">Pattern 2: Download the PNG as a file</h2>
-      <p>SnapDOM ships with a one-liner that triggers the browser's download flow:</p>
+      <p>Use the built-in download method:</p>
       <pre class="code-block"><span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">snapdom</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>));
 <span class="kw">await</span> result.<span class="fn">download</span>({ format: <span class="str">'png'</span>, filename: <span class="str">'card'</span> });</pre>
-      <p>If you need more control, build the download yourself with a Blob and an anchor tag:</p>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { format: <span class="str">'png'</span> });
-<span class="kw">const</span> url = URL.<span class="fn">createObjectURL</span>(blob);
 
-<span class="kw">const</span> a = document.<span class="fn">createElement</span>(<span class="str">'a'</span>);
-a.href = url;
-a.download = <span class="str">'card.png'</span>;
-a.<span class="fn">click</span>();
-
-URL.<span class="fn">revokeObjectURL</span>(url);</pre>
     </section>
 
     <section class="prose">
       <h2 id="upload">Pattern 3: Upload the PNG to a server</h2>
       <p>Capture the element to a Blob, wrap it in <code>FormData</code>, and POST it to your endpoint:</p>
-      <pre class="code-block"><span class="kw">const</span> blob = <span class="kw">await</span> snapdom.<span class="fn">toBlob</span>(document.<span class="fn">querySelector</span>(<span class="str">'#card'</span>), { format: <span class="str">'png'</span> });
+      <pre class="code-block">const blob = await snapdom.toBlob(document.querySelector('#card'), { format: 'png' });
 
-<span class="kw">const</span> form = <span class="kw">new</span> <span class="fn">FormData</span>();
-form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span class="str">'card.png'</span>);
+const form = new FormData();
+form.append('file', blob, 'card.png');
 
-<span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'/api/upload'</span>, {
-  method: <span class="str">'POST'</span>,
+const response = await fetch('/api/upload', {
+  method: 'POST',
   body: form,
 });
 
-<span class="kw">const</span> { url } = <span class="kw">await</span> response.<span class="fn">json</span>();
-<span class="fn">console</span>.<span class="fn">log</span>(<span class="str">'Uploaded to'</span>, url);</pre>
+if (!response.ok) throw new Error('Image upload failed');
+const { url } = await response.json();
+console.log('Uploaded to', url);</pre>
       <p>This is the same pattern you'd use to generate dynamic <code>og:image</code> share cards — capture the rendered card client-side, upload to a CDN, return the URL.</p>
     </section>
 
@@ -167,7 +160,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
         <div class="demo-stage">
           <div id="demo-card" style="max-width:320px;padding:22px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6 55%,#ec4899);border:2px dashed rgba(255,255,255,0.5);color:#fff;">
             <span style="display:inline-block;padding:4px 12px;border-radius:999px;background:rgba(255,255,255,0.22);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">HTML PNG</span>
-            <h3 style="margin:12px 0 6px;font-size:20px;color:#fff;">Gradients, borders &amp; shadows</h3>
+            <h3 id="gradients-borders-shadows" style="margin:12px 0 6px;font-size:20px;color:#fff;">Gradients, borders &amp; shadows</h3>
             <p style="margin:0 0 14px;font-size:14px;color:rgba(255,255,255,0.9);">Rounded corners, a dashed border, a gradient, ready to capture together.</p>
             <span style="display:inline-block;padding:8px 14px;border-radius:8px;background:#fff;color:#4f46e5;font-size:13px;font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,0.35);">⚡ Even this shadow</span>
           </div>
@@ -234,7 +227,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
       </details>
     </section>
 
-    <section class="related">
+    <section class="related" id="try-the-live-demo">
       <div class="section-label">Related</div>
       <div class="related-grid">
         <a class="related-card" href="../screenshot-a-div/">How to screenshot a div</a>
@@ -244,14 +237,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
       </div>
     </section>
 
-    <section class="cta-section">
-      <div class="cta-card">
-        <h2 id="try-the-live-demo">Try the live demo</h2>
-        <p>Capture any element on snapdom.dev to see the output before installing.</p>
-        <a href="../../showcase/" class="btn btn-primary" data-umami-event="Howto png cta home">Open the demo</a>
-        <a href="../../docs/" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Howto png cta npm">Installation</a>
-      </div>
-    </section>
+
   <!-- /content --></div>
 <nav class="pager" aria-label="Pages"><a href="../screenshot-a-div/"><span>Previous</span><strong>Screenshot a div</strong></a><a class="is-next" href="../html-to-svg/"><span>Next</span><strong>Convert HTML to SVG</strong></a></nav>
 </article>

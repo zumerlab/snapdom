@@ -61,12 +61,13 @@
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM <span class=\"accent\">Options</span>", "lead": "Set output size, load capture assets, exclude private content and control clipping. These options describe SnapDOM 3.", "links": [["#all-options", "All options"], ["../api/", "API reference"]]} -->
+<a class="site-skip" href="#doc-content" tabindex="0">Skip to content</a>
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter docs" aria-label="Filter docs"></label><nav class="pane-nav" aria-label="Docs"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Getting started</button><div class="pane-nav-items"><a href="../">Overview</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Capture API</button><div class="pane-nav-items"><a href="../api/">API reference</a><a href="../cache/">Cache and preCapture</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Options</button><div class="pane-nav-items"><a href="./" aria-current="page">Options</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="../plugins/">Plugin API</a></div></div></nav></aside>
+<aside class="pane-side"><details class="pane-menu" open><summary>Docs <span aria-hidden="true">/</span> Options</summary><nav class="docs-pages" aria-label="Docs"><a class="sec-start" href="../"><span class="sec-dot"></span>Overview</a><a class="sec-capture" href="../api/"><span class="sec-dot"></span>API reference</a><a class="sec-capture" href="../cache/"><span class="sec-dot"></span>Cache and preCapture</a><a class="sec-options" href="./" aria-current="page"><span class="sec-dot"></span>Options</a><a class="sec-export" href="../plugins/"><span class="sec-dot"></span>Plugin API</a></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#all-options" class="">All options</a><a href="#debug" class="">debug</a><a href="#image-downsampling" class="">Automatic image downsampling</a><a href="#fallback" class="">Fallback image on &lt;img&gt; load failure</a><a href="#dimensions" class="">Dimensions (scale, width, height)</a><a href="#useproxy" class="">Cross-Origin Images &amp; Fonts (useProxy)</a><a href="#fonts" class="">Fonts</a><a href="#embedfonts" class="is-subsection">embedFonts</a><a href="#localfonts" class="is-subsection">localFonts</a><a href="#iconfonts" class="is-subsection">iconFonts</a><a href="#excludefonts" class="is-subsection">excludeFonts</a><a href="#filtering" class="">Selecting content: filter and exclude</a><a href="#v2-options" class="">Other v2 option changes</a><a href="#outertransforms" class="">outerTransforms</a><a href="#outershadows" class="">outerShadows</a><a href="#reconcile" class="">reconcile</a><a href="#fast" class="">fast</a><a href="#memoization" class="">Automatic repeat-capture memoization</a></nav></details></aside>
 
-<article class="pane-read sec-options" data-title="Options">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Docs</span><span aria-hidden="true">/</span><span>Options</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Options</span></h1><p class="doc-lead">Set output size, load capture assets, exclude private content and control clipping. These options describe SnapDOM 3.</p><p class="pane-links doc-links"><a href="#all-options">All options</a><a href="../api/">API reference</a></p></header>
+<article class="pane-read sec-options" id="doc-content" tabindex="-1" data-title="Options">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../">Docs</a><span aria-hidden="true">/</span><span aria-current="page">Options</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Options</span></h1><p class="doc-lead">Set output size, load capture assets, exclude private content and control clipping. These options describe SnapDOM 3.</p><p class="pane-links doc-links"><a href="#all-options">All options</a><a href="../api/">API reference</a></p></header>
 <div class="pane-content"><!-- content -->
     <section class="prose">
       <h2 id="all-options">All options</h2>
@@ -76,39 +77,39 @@
           <tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr>
         </thead>
         <tbody>
-          <tr><td class="num">debug</td><td class="num">boolean</td><td class="num">false</td><td>Log fallbacks and errors to the console. Off, SnapDOM logs nothing.</td></tr>
-          <tr><td class="num">scale</td><td class="num">number</td><td class="num">1</td><td>Output scale, used only when neither width nor height is set.</td></tr>
-          <tr><td class="num">dpr</td><td class="num">number</td><td class="num">devicePixelRatio</td><td>Device pixel ratio for raster output. <code>download()</code> always uses 1; use <code>scale</code> for a sharper file.</td></tr>
-          <tr><td class="num">width / height</td><td class="num">number</td><td class="num">null</td><td>Absolute output size; one dimension preserves aspect ratio.</td></tr>
-          <tr><td class="num">format</td><td class="num">png | jpeg | jpg | webp | svg</td><td class="num">png</td><td>Default for format-selecting exports; named helpers choose their codec. <code>jpg</code> resolves to <code>jpeg</code>.</td></tr>
-          <tr><td class="num">type</td><td class="num">png | jpeg | jpg | webp | svg</td><td class="num">undefined</td><td>Deprecated alias kept synchronized with canonical <code>format</code>; prefer <code>format</code>, though either name is honored.</td></tr>
-          <tr><td class="num">backgroundColor</td><td class="num">string | null</td><td class="num">null</td><td>Background fill; defaults to <code>#ffffff</code> only for JPEG/WebP.</td></tr>
-          <tr><td class="num">quality</td><td class="num">number</td><td class="num">0.92</td><td>JPEG/WebP quality from 0 to 1.</td></tr>
-          <tr><td class="num">filename</td><td class="num">string</td><td class="num">snapDOM</td><td>Download filename base.</td></tr>
-          <tr><td class="num">embedFonts</td><td class="num">boolean | "auto"</td><td class="num">"auto"</td><td>Embed used webfonts; skip the font phase on system-font-only pages. <code>true</code> forces discovery; <code>false</code> skips text-font embedding.</td></tr>
-          <tr><td class="num">localFonts</td><td class="num">array</td><td class="num">[]</td><td>Local fonts <code>{ family, src, weight?, style?, stretchPct? }</code>.</td></tr>
-          <tr><td class="num">iconFonts</td><td class="num">string | RegExp | Array</td><td class="num">[]</td><td>Extra icon-font matchers.</td></tr>
-          <tr><td class="num">excludeFonts</td><td class="num">object</td><td class="num">undefined</td><td>Exclude font families, domains or subsets.</td></tr>
-          <tr><td class="num">fontStylesheetDomains</td><td class="num">string[]</td><td class="num">[]</td><td>Extra domains allowed for cross-origin font CSS.</td></tr>
-          <tr><td class="num">exclude</td><td class="num">string | function | Array</td><td class="num">[]</td><td>Selectors and/or predicates; returning true excludes the node.</td></tr>
-          <tr><td class="num">excludeMode</td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>Keep an invisible spacer or remove the node.</td></tr>
-          <tr><td class="num">filter</td><td class="num">function</td><td class="num">null</td><td>Inclusion predicate; true keeps a node, false filters it out. Can be used together with <code>exclude</code>.</td></tr>
-          <tr><td class="num">filterMode</td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>Independent layout mode for nodes rejected by <code>filter</code>.</td></tr>
-          <tr><td class="num">clip</td><td class="num">"viewport" | rect</td><td class="num">null</td><td>Capture only a viewport or page-coordinate rectangle.</td></tr>
-          <tr><td class="num">useProxy</td><td class="num">string</td><td class="num">''</td><td>CORS proxy template/base.</td></tr>
-          <tr><td class="num">fallbackURL</td><td class="num">string | function</td><td class="num">undefined</td><td>Fallback for a broken <code>&lt;img&gt;</code>. A function reads current state when a new capture needs a fallback.</td></tr>
-          <tr><td class="num">placeholders</td><td class="num">boolean</td><td class="num">true</td><td>Show placeholders for failed resources/CORS iframes.</td></tr>
-          <tr><td class="num">outerTransforms</td><td class="num">boolean</td><td class="num">true</td><td>Keep the root's rotation and scale/skew. <code>false</code> removes rotation while preserving scale/skew; root translation is normalized.</td></tr>
-          <tr><td class="num">outerShadows</td><td class="num">boolean | "subtree"</td><td class="num">false</td><td>Strip or bound root effects; <code>"subtree"</code> also bounds descendant shadow ink. Blur bleed is included unless <code>clip</code> fixes the edges.</td></tr>
-          <tr><td class="num">reconcile</td><td class="num">boolean</td><td class="num">false</td><td>Measure and pin clone boxes that diverge from the live DOM.</td></tr>
-          <tr><td class="num">fast</td><td class="num">boolean | 'auto'</td><td class="num">true</td><td>Whether a long capture may pause so the page keeps painting and taking input. <code>'auto'</code> is experimental.</td></tr>
-          <tr><td class="num">invalidate</td><td class="num">boolean</td><td class="num">false</td><td>Force one fresh capture that is not served from the existing memo and clear style snapshots after unobservable application changes. A stable fresh result may become the new memo.</td></tr>
-          <tr><td class="num">captureSelection</td><td class="num">boolean</td><td class="num">false</td><td>Render the live text or field selection.</td></tr>
-          <tr><td class="num">canvas</td><td class="num">HTMLCanvasElement</td><td class="num">null</td><td>Reuse an existing raster target.</td></tr>
-          <tr><td class="num">excludeStyleProps</td><td class="num">RegExp | function</td><td class="num">null</td><td>Skip matching computed-style properties. A function is evaluated afresh for each new capture.</td></tr>
-          <tr><td class="num">cache</td><td class="num">"soft" | "disabled" | "auto" | "full" | false</td><td class="num">"soft"</td><td>Controls persistent resource/style caches only. <code>disabled</code>/<code>false</code> clears and bypasses them; legacy values map to <code>soft</code>. Repeat memoization is separate.</td></tr>
-          <tr><td class="num">plugins</td><td class="num">array</td><td class="num">undefined</td><td>Per-capture plugin definitions.</td></tr>
-          <tr><td class="num">engine</td><td class="num">"svg" | "html-in-canvas"</td><td class="num">"svg"</td><td>Select one of SnapDOM's two render engines. <code>svg</code> serializes the finished clone; <code>html-in-canvas</code> paints that same clone through the browser's native API (Chrome 157 and newer), with SVG fallback everywhere else.</td></tr>
+          <tr id="option-debug"><td class="num"><a href="#debug">debug</a></td><td class="num">boolean</td><td class="num">false</td><td>Log fallbacks and errors to the console. Off, SnapDOM logs nothing.</td></tr>
+          <tr id="option-scale"><td class="num"><a href="#dimensions">scale</a></td><td class="num">number</td><td class="num">1</td><td>Output scale, used only when neither width nor height is set.</td></tr>
+          <tr id="option-dpr"><td class="num"><span>dpr</span></td><td class="num">number</td><td class="num">devicePixelRatio</td><td>Device pixel ratio for raster output. <code>download()</code> always uses 1; use <code>scale</code> for a sharper file.</td></tr>
+          <tr id="option-width"><td class="num"><a href="#dimensions">width</a> / <a id="option-height" href="#dimensions">height</a></td><td class="num">number</td><td class="num">null</td><td>Absolute output size; one dimension preserves aspect ratio.</td></tr>
+          <tr id="option-format"><td class="num"><span>format</span></td><td class="num">png | jpeg | jpg | webp | svg</td><td class="num">png</td><td>Default for format-selecting exports; named helpers choose their codec. <code>jpg</code> resolves to <code>jpeg</code>.</td></tr>
+          <tr id="option-type"><td class="num"><span>type</span></td><td class="num">png | jpeg | jpg | webp | svg</td><td class="num">undefined</td><td>Deprecated alias kept synchronized with canonical <code>format</code>; prefer <code>format</code>, though either name is honored.</td></tr>
+          <tr id="option-backgroundcolor"><td class="num"><span>backgroundColor</span></td><td class="num">string | null</td><td class="num">null</td><td>Background fill; defaults to <code>#ffffff</code> only for JPEG/WebP.</td></tr>
+          <tr id="option-quality"><td class="num"><span>quality</span></td><td class="num">number</td><td class="num">0.92</td><td>JPEG/WebP quality from 0 to 1.</td></tr>
+          <tr id="option-filename"><td class="num"><span>filename</span></td><td class="num">string</td><td class="num">snapDOM</td><td>Download filename base.</td></tr>
+          <tr id="option-embedfonts"><td class="num"><a href="#embedfonts">embedFonts</a></td><td class="num">boolean | "auto"</td><td class="num">"auto"</td><td>Embed used webfonts; skip the font phase on system-font-only pages. <code>true</code> forces discovery; <code>false</code> skips text-font embedding.</td></tr>
+          <tr id="option-localfonts"><td class="num"><a href="#localfonts">localFonts</a></td><td class="num">array</td><td class="num">[]</td><td>Local fonts <code>{ family, src, weight?, style?, stretchPct? }</code>.</td></tr>
+          <tr id="option-iconfonts"><td class="num"><a href="#iconfonts">iconFonts</a></td><td class="num">string | RegExp | Array</td><td class="num">[]</td><td>Extra icon-font matchers.</td></tr>
+          <tr id="option-excludefonts"><td class="num"><a href="#excludefonts">excludeFonts</a></td><td class="num">object</td><td class="num">undefined</td><td>Exclude font families, domains or subsets.</td></tr>
+          <tr id="option-fontstylesheetdomains"><td class="num"><a href="#fonts">fontStylesheetDomains</a></td><td class="num">string[]</td><td class="num">[]</td><td>Extra domains allowed for cross-origin font CSS.</td></tr>
+          <tr id="option-exclude"><td class="num"><a href="#filtering">exclude</a></td><td class="num">string | function | Array</td><td class="num">[]</td><td>Selectors and/or predicates; returning true excludes the node.</td></tr>
+          <tr id="option-excludemode"><td class="num"><a href="#filtering">excludeMode</a></td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>Keep an invisible spacer or remove the node.</td></tr>
+          <tr id="option-filter"><td class="num"><a href="#filtering">filter</a></td><td class="num">function</td><td class="num">null</td><td>Inclusion predicate; true keeps a node, false filters it out. Can be used together with <code>exclude</code>.</td></tr>
+          <tr id="option-filtermode"><td class="num"><a href="#filtering">filterMode</a></td><td class="num">"hide" | "remove"</td><td class="num">"hide"</td><td>Independent layout mode for nodes rejected by <code>filter</code>.</td></tr>
+          <tr id="option-clip"><td class="num"><span>clip</span></td><td class="num">"viewport" | rect</td><td class="num">null</td><td>Capture only a viewport or page-coordinate rectangle.</td></tr>
+          <tr id="option-useproxy"><td class="num"><a href="#useproxy">useProxy</a></td><td class="num">string</td><td class="num">''</td><td>CORS proxy template/base.</td></tr>
+          <tr id="option-fallbackurl"><td class="num"><a href="#fallback">fallbackURL</a></td><td class="num">string | function</td><td class="num">undefined</td><td>Fallback for a broken <code>&lt;img&gt;</code>. A function reads current state when a new capture needs a fallback.</td></tr>
+          <tr id="option-placeholders"><td class="num"><span>placeholders</span></td><td class="num">boolean</td><td class="num">true</td><td>Show placeholders for failed resources/CORS iframes.</td></tr>
+          <tr id="option-outertransforms"><td class="num"><a href="#outertransforms">outerTransforms</a></td><td class="num">boolean</td><td class="num">true</td><td>Keep the root's rotation and scale/skew. <code>false</code> removes rotation while preserving scale/skew; root translation is normalized.</td></tr>
+          <tr id="option-outershadows"><td class="num"><a href="#outershadows">outerShadows</a></td><td class="num">boolean | "subtree"</td><td class="num">false</td><td>Strip or bound root effects; <code>"subtree"</code> also bounds descendant shadow ink. Blur bleed is included unless <code>clip</code> fixes the edges.</td></tr>
+          <tr id="option-reconcile"><td class="num"><a href="#reconcile">reconcile</a></td><td class="num">boolean</td><td class="num">false</td><td>Measure and pin clone boxes that diverge from the live DOM.</td></tr>
+          <tr id="option-fast"><td class="num"><a href="#fast">fast</a></td><td class="num">boolean | 'auto'</td><td class="num">true</td><td><code>true</code> captures in one task; <code>false</code> pauses about every frame to keep the page responsive. <code>'auto'</code> is experimental.</td></tr>
+          <tr id="option-invalidate"><td class="num"><a href="#memoization">invalidate</a></td><td class="num">boolean</td><td class="num">false</td><td>Force one fresh capture that is not served from the existing memo and clear style snapshots after unobservable application changes. A stable fresh result may become the new memo.</td></tr>
+          <tr id="option-captureselection"><td class="num"><span>captureSelection</span></td><td class="num">boolean</td><td class="num">false</td><td>Render the live text or field selection.</td></tr>
+          <tr id="option-canvas"><td class="num"><span>canvas</span></td><td class="num">HTMLCanvasElement</td><td class="num">null</td><td>Reuse an existing raster target.</td></tr>
+          <tr id="option-excludestyleprops"><td class="num"><span>excludeStyleProps</span></td><td class="num">RegExp | function</td><td class="num">null</td><td>Skip matching computed-style properties. A function is evaluated afresh for each new capture.</td></tr>
+          <tr id="option-cache"><td class="num"><span>cache</span></td><td class="num">"soft" | "disabled" | "auto" | "full" | false</td><td class="num">"soft"</td><td>Controls persistent resource/style caches only. <code>disabled</code>/<code>false</code> clears and bypasses them; legacy values map to <code>soft</code>. Repeat memoization is separate.</td></tr>
+          <tr id="option-plugins"><td class="num"><span>plugins</span></td><td class="num">array</td><td class="num">undefined</td><td>Per-capture plugin definitions.</td></tr>
+          <tr id="option-engine"><td class="num"><span>engine</span></td><td class="num">"svg" | "html-in-canvas"</td><td class="num">"svg"</td><td>Select one of SnapDOM's two render engines. <code>svg</code> serializes the finished clone; <code>html-in-canvas</code> paints that same clone through the browser's native API (Chrome 157 and newer), with SVG fallback everywhere else.</td></tr>
         </tbody>
       </table>
       <p><code>html-in-canvas</code> runs where the browser exposes <code>drawElementImage()</code>: Chrome 157 and newer, without a flag. Firefox and Safari have no implementation. There, and on any capture the native engine cannot paint (<code>body</code> and <code>html</code> roots, transformed or zoomed ancestors, <code>clip</code>, <code>width</code>/<code>height</code>, <code>outerShadows</code>, plugins with render hooks), SnapDOM runs the SVG engine on the same clone, so the option is safe to set without a feature check. SVG stays the default because it is faster: the native paint waits for a rendering update. <a href="../../how-to/html-in-canvas/">The guide</a> says when to pick which; <a href="../../labs/html-in-canvas/">the lab</a> compares both engines and lists which plugins run on each.</p>
@@ -176,7 +177,7 @@ await snapdom.toSvg(element, {
   useProxy: 'https://your-proxy.example/?url='
 });</pre>
       <ul>
-        <li>The proxy is only used as a <strong>fallback</strong>; same-origin and CORS-enabled assets skip it.</li>
+        <li>When configured, the proxy handles cross-origin resource requests, including assets that already allow CORS. Same-origin and already-proxied URLs skip it.</li>
       </ul>
     </section>
 
@@ -220,14 +221,14 @@ await snapdom.toSvg(element, {
 
     <section class="prose">
       <h2 id="filtering">Selecting content: <code>filter</code> and <code>exclude</code></h2>
-      <p><code>filter</code> and <code>exclude</code> remain independent, as in v2.x.x, and can be combined in one capture with separate layout modes. V3 adds optional predicates to <code>exclude</code>; <code>filter</code> stays. There is also a separate CSS-effect plugin named <code>filter</code>.</p>
+      <p>Combine <code>filter</code> and <code>exclude</code> with independent layout modes. The CSS-effect <a href="../../plugins/filter/">filter plugin</a> is a separate feature.</p>
       <ul>
-        <li><code>filter</code>: a synchronous predicate. True keeps a node; any falsy return filters it out, as in v2.</li>
+        <li><code>filter</code>: a synchronous predicate. True keeps a node; any falsy return filters it out.</li>
         <li><code>filterMode</code>: <code>hide</code> keeps an invisible spacer for filtered nodes; <code>remove</code> drops them and allows reflow. Defaults to <code>hide</code>.</li>
         <li><code>exclude</code>: a selector, a synchronous boolean predicate, or any mix of both in an array. A node is excluded if <em>any</em> rule matches.</li>
         <li><code>excludeMode</code>: the separate hide/remove mode for exclusions; defaults to <code>hide</code>. Both modes omit the affected node's content.</li>
       </ul>
-      <pre class="code-block">// Supported in v2 and v3: hide private fields, remove the toolbar.
+      <pre class="code-block">// Hide private fields while preserving space; remove the toolbar.
 await snapdom(el, {
   filter: node =&gt; !node.matches('[data-private]'),
   filterMode: 'hide',
@@ -235,38 +236,27 @@ await snapdom(el, {
   excludeMode: 'remove'
 });</pre>
       <p>Per node, <code>data-capture="exclude"</code> is checked first, then <code>exclude</code>, then <code>filter</code>. The first match sets the mode and stops evaluation. The attribute uses <code>excludeMode</code>; a matching <code>exclude</code> wins even if <code>filter</code> would reject the same node with a different mode. A true <code>filter</code> result never overrides an exclusion.</p>
-      <p><strong>Example: leave out elements with <code>display:none</code>:</strong></p>
-      <pre class="code-block">/**
- * @param {Element} el
- * @returns {boolean} true = EXCLUDE this node (`filter` uses the opposite polarity)
- */
-function isHidden(el) {
-  return window.getComputedStyle(el).display === 'none';
-}
-
-await snapdom.toPng(document.body, { exclude: isHidden });</pre>
       <p><strong>Example: mixing selectors and a predicate:</strong></p>
       <pre class="code-block">await snapdom.toPng(el, {
   exclude: ['.cookie-banner', (node) => node.dataset.secret === 'true'],
   excludeMode: 'remove'
 });</pre>
-      <p><strong>Example with <code>exclude</code>:</strong> remove banners or tooltips by selector</p>
+      <p>For selector-only exclusions, <code>hide</code> keeps the original space:</p>
       <pre class="code-block">await snapdom.toPng(el, {
   exclude: ['.cookie-banner', '.tooltip', '[data-test="debug"]']
 });</pre>
-      <p>Function-valued rules run on every new capture, even when the same function reads changing application state. They suspend unchanged-capture memoization, so a changed closure needs no <code>invalidate</code>. A result you already hold keeps its content until you capture again.</p>
+      <p>Function-valued rules run on every new capture; an existing result keeps its content. See <a href="../cache/#cache">callbacks and memoization</a>.</p>
     </section>
 
     <section class="prose">
       <h2 id="v2-options">Other v2 option changes</h2>
-      <p>These v2.x.x settings are gone from the public v3 options. The capabilities behind them remain:</p>
+      <p>When migrating from v2, remove these obsolete settings:</p>
       <ul>
         <li><code>burst</code>: remove this switch. Eligible repeat memoization is automatic. Use <code>invalidate: true</code> for one fresh capture after an otherwise unobservable change.</li>
-        <li><code>fast: false</code> still keeps the page responsive, now by pausing about every frame instead of through idle callbacks. See <a href="#fast">fast</a>.</li>
         <li><code>compress</code>: remove the switch. Bitmap optimization is automatic; there is no public opt-out to embed the original resources verbatim.</li>
         <li><code>resolvePicturePlaceholders</code> and <code>pictureResolver</code>: remove these settings. The clone resolves responsive images and common lazy-loading attributes. There is no replacement tuning object; handle custom loading, concurrency or timeouts in the application before capture.</li>
       </ul>
-      <p>See the <a href="https://github.com/zumerlab/snapdom#migrating-from-v2">migration guide</a> for removed APIs, TypeScript names and plugin-hook changes.</p>
+      <p><code>fast: false</code> remains supported. It now pauses about every frame instead of using idle callbacks; see <a href="#fast">fast</a>. For removed APIs, TypeScript names and plugin-hook changes, see the <a href="https://github.com/zumerlab/snapdom#migrating-from-v2">migration guide</a>.</p>
     </section>
 
     <section class="prose">
@@ -318,28 +308,20 @@ for (let i = 0; i < 10; i++) {
       <p>Frame-driven canvas/video/iframe trees bypass the memo. Programmatic CSSOM edits (<code>stylesheet.insertRule/deleteRule</code>, <code>cssRule.style.*</code> on a rule rather than an element) expose no browser signal, so pass <code>invalidate: true</code> on the next call. That call skips the existing memo and clears style snapshots; a stable fresh result may become the new memo:</p>
       <pre class="code-block">sheet.insertRule('.card { color: rebeccapurple }');
 await snapdom(el, { invalidate: true });</pre>
-      <p>Function-valued <code>filter</code>, <code>exclude</code>, <code>excludeStyleProps</code> or <code>fallbackURL</code> force a new capture and re-run their callbacks; earlier style/fallback decisions are not reused, and a changed closure needs no <code>invalidate</code>. Exporting an existing result still uses its original captured state.</p>
+      <p>Callbacks that read application state bypass this reuse; see <a href="../cache/#cache">the cache guide</a> for the supported policies and an example.</p>
     </section>
 
-    <section class="related">
+    <section class="related" id="ready-to-capture">
       <div class="section-label">Related</div>
       <div class="related-grid">
         <a class="related-card" href="../api/" data-umami-event="Docs options card api">API reference: methods &amp; exporters</a>
         <a class="related-card" href="../cache/" data-umami-event="Docs options card cache">Cache &amp; preCapture: performance</a>
-        <a class="related-card" href="../plugins/" data-umami-event="Docs options card plugins">Plugins: extend the pipeline</a>
+        <a class="related-card" id="export-beyond-images" href="../plugins/" data-umami-event="Docs options card plugins">Plugins: extend the pipeline</a>
         <a class="related-card" href="../../compare/html2canvas/" data-umami-event="Docs options card h2c">SnapDOM vs html2canvas</a>
       </div>
     </section>
 
-    <section class="cta-section">
-      <div class="cta-card">
-        <h2 id="ready-to-capture">Start capturing</h2>
-        <p>Try the browser demo, then pick your output in the API reference.</p>
-        <a href="../../showcase/" class="btn btn-primary" data-umami-event="Docs options cta home">Open the demo</a>
-        <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs options cta npm">Install from npm</a>
-      </div>
-    </section>
-  <section><h2 id="export-beyond-images">Export beyond images</h2><p>For document output, compare <a href="../../blog/snapdom-pdf-vs-html2canvas-jspdf/">SnapDOM PDF with html2canvas and jsPDF</a>, or turn a component into <a href="../../blog/html-to-editable-svg-figma/">editable SVG and Figma artwork</a>.</p></section><!-- /content --></div>
+  <!-- /content --></div>
 <nav class="pager" aria-label="Pages"><a href="../cache/"><span>Previous</span><strong>Cache and preCapture</strong></a><a class="is-next" href="../plugins/"><span>Next</span><strong>Plugin API</strong></a></nav>
 </article>
 </main>

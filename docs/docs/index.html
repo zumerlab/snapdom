@@ -59,18 +59,35 @@
 <link rel="stylesheet" href="../code.css"><script defer data-manual src="../assets/prism/prism.min.js"></script><link rel="preload" href="../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../code-blocks.js"></script></head>
 <body>
   <script defer src="../site.js"></script>
-  <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM <span class=\"accent\">Documentation</span>", "lead": "Capture a DOM element once, then export it as an image, PDF, vector or recording. This reference covers SnapDOM 3.", "links": [["#quick-start", "Quick start"], ["api/", "API reference"]]} -->
+  <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM <span class=\"accent\">Documentation</span>", "lead": "Capture a DOM element as an image. Plugins add PDF, editable vector and recordings. This reference covers SnapDOM 3.", "links": [["#quick-start", "Quick start"], ["api/", "API reference"]]} -->
+<a class="site-skip" href="#doc-content" tabindex="0">Skip to content</a>
 <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 <main id="main" class="pane no-demo" data-pane>
-<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter docs" aria-label="Filter docs"></label><nav class="pane-nav" aria-label="Docs"><div class="sec-start"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Getting started</button><div class="pane-nav-items"><a href="./" aria-current="page">Overview</a></div></div><div class="sec-capture"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Capture API</button><div class="pane-nav-items"><a href="api/">API reference</a><a href="cache/">Cache and preCapture</a></div></div><div class="sec-options"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Options</button><div class="pane-nav-items"><a href="options/">Options</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="plugins/">Plugin API</a></div></div></nav></aside>
+<aside class="pane-side"><details class="pane-menu" open><summary>Docs <span aria-hidden="true">/</span> Overview</summary><nav class="docs-pages" aria-label="Docs"><a class="sec-start" href="./" aria-current="page"><span class="sec-dot"></span>Overview</a><a class="sec-capture" href="api/"><span class="sec-dot"></span>API reference</a><a class="sec-capture" href="cache/"><span class="sec-dot"></span>Cache and preCapture</a><a class="sec-options" href="options/"><span class="sec-dot"></span>Options</a><a class="sec-export" href="plugins/"><span class="sec-dot"></span>Plugin API</a></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#installation" class="">Installation</a><a href="#quick-start" class="">Quick start</a><a href="#sections" class="">Documentation sections</a><a href="#builds" class="">Browser and module builds</a><a href="#cdn" class="is-subsection">CDN</a><a href="#build-outputs" class="is-subsection">Build outputs</a><a href="#capture-flow" class="">Capture flow</a><a href="#choose-a-recipe" class="">Choose a recipe for your output</a><a href="#ready-to-capture" class="">Start capturing</a></nav></details></aside>
 
-<article class="pane-read sec-start" data-title="Overview">
-<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Docs</span><span aria-hidden="true">/</span><span>Getting started</span><span aria-hidden="true">/</span><span>Overview</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Documentation</span></h1><p class="doc-lead">Capture a DOM element once, then export it as an image, PDF, vector or recording. This reference covers SnapDOM 3.</p><p class="pane-links doc-links"><a href="#quick-start">Quick start</a><a href="api/">API reference</a></p></header>
+<article class="pane-read sec-start" id="doc-content" tabindex="-1" data-title="Overview">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="./">Docs</a><span aria-hidden="true">/</span><span aria-current="page">Overview</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM <span class="accent">Documentation</span></h1><p class="doc-lead">Capture a DOM element as an image. Plugins add PDF, editable vector and recordings. This reference covers SnapDOM 3.</p><p class="pane-links doc-links"><a href="#quick-start">Quick start</a><a href="api/">API reference</a></p></header>
 <div class="pane-content"><!-- content -->
-    <div class="tldr">
-      <div class="tldr-label">What is SnapDOM</div>
-      <p><strong>SnapDOM is a high-performance DOM engine that captures a rendered element in the browser.</strong> One capture becomes SVG, PNG, JPG, WebP, canvas or a Blob, with its geometry. <strong>Plugins</strong> add paginated PDF, editable vector, HTML, text or JSON context and element maps from that state, or record new captures as GIF or video.</p>
-    </div>
+    <section class="prose">
+      <h2 id="installation">Installation</h2>
+      <pre class="code-block">npm i @zumer/snapdom@latest</pre>
+      <p>Or use <code>yarn add @zumer/snapdom@latest</code>.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="quick-start">Quick start</h2>
+      <p>Capture an element as a PNG image:</p>
+      <pre class="code-block">import { snapdom } from '@zumer/snapdom';
+
+const img = await snapdom.toPng(document.querySelector('#card'));
+document.body.appendChild(img);</pre>
+
+      <p id="usage">Use <code>snapdom(el)</code> when you need several exports from the same captured state:</p>
+      <pre class="code-block">const result = await snapdom(document.querySelector('#card'));
+await result.toPng();      // → HTMLImageElement
+await result.toSvg();      // → SVG as Image
+await result.download({ format: 'jpg', filename: 'card.jpg' });</pre>
+    </section>
 
     <section class="prose">
       <h2 id="sections">Documentation sections</h2>
@@ -83,38 +100,17 @@
     </section>
 
     <section class="prose">
-      <h2 id="quick-start">Quick start</h2>
-      <p>Capture any DOM element to PNG in one line:</p>
-      <pre class="code-block">import { snapdom } from '@zumer/snapdom';
-
-const img = await snapdom.toPng(document.querySelector('#card'));
-document.body.appendChild(img);</pre>
-
-      <p><strong>Reusable capture</strong> (one clone, multiple exports):</p>
-      <pre class="code-block">const result = await snapdom(document.querySelector('#card'));
-await result.toPng();      // → HTMLImageElement
-await result.toSvg();      // → SVG as Image
-await result.download({ format: 'jpg', filename: 'card.jpg' });</pre>
-    </section>
-
-    <section class="prose">
-      <h2 id="installation">Installation</h2>
-
-      <h3>NPM / Yarn</h3>
-      <pre class="code-block">npm i @zumer/snapdom@latest
-yarn add @zumer/snapdom@latest</pre>
-
-
-      <h3>CDN</h3>
+      <h2 id="builds">Browser and module builds</h2>
+      <h3 id="cdn">CDN</h3>
+      <p>Choose the script tag for a global <code>snapdom</code>, or the module import:</p>
       <pre class="code-block">&lt;!-- Minified build --&gt;
-&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;
-
-&lt;!-- Minified ES Module build --&gt;
+&lt;script src="https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.js"&gt;&lt;/script&gt;</pre>
+      <pre class="code-block">&lt;!-- Minified ES Module build --&gt;
 &lt;script type="module"&gt;
   import { snapdom } from "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs";
 &lt;/script&gt;</pre>
 
-      <h3>Build outputs</h3>
+      <h3 id="build-outputs">Build outputs</h3>
       <table class="cmp-table">
         <thead>
           <tr><th>Variant</th><th>File</th><th>Use case</th></tr>
@@ -130,13 +126,13 @@ yarn add @zumer/snapdom@latest</pre>
 
     <section class="prose">
       <h2 id="capture-flow">Capture flow</h2>
-      <p>A capture freezes the subtree; exports read that state. The steps:</p>
+      <p>A capture freezes the subtree; exports read that state. With the default SVG engine:</p>
       <table class="cmp-table">
         <thead>
           <tr><th>Stage</th><th>What happens</th></tr>
         </thead>
         <tbody>
-          <tr><td class="feature">Clone</td><td>Deep clone with styles, Shadow DOM, iframes. Leave nodes out with <code>exclude</code>.</td></tr>
+          <tr><td class="feature">Clone</td><td>Deep clone with styles, open Shadow DOM and same-origin iframes. Leave nodes out with <code>exclude</code>.</td></tr>
           <tr><td class="feature">Styles &amp; Pseudo</td><td>Inline <code>::before</code>/<code>::after</code> as elements, resolve <code>counter()</code>/<code>counters()</code>.</td></tr>
           <tr><td class="feature">Images &amp; Backgrounds</td><td>Fetch and inline external images/backgrounds as data URLs.</td></tr>
           <tr><td class="feature">Fonts</td><td>Embed the webfonts the capture uses by default. Render icon-font glyphs through the icon path.</td></tr>
@@ -147,21 +143,7 @@ yarn add @zumer/snapdom@latest</pre>
       <p class="muted">Plugins can use the clone without rendering by declaring <code>needs: 'clone'</code>. Image exports require <code>'render'</code>, the default. Hooks and custom outputs: see the <a href="plugins/">plugins guide</a>.</p>
     </section>
 
-    <section class="prose">
-      <h2 id="usage">Usage patterns</h2>
-      <table class="cmp-table">
-        <thead>
-          <tr><th>Pattern</th><th>When to use</th></tr>
-        </thead>
-        <tbody>
-          <tr><td class="num">snapdom(el)</td><td>Reusable — one clone many exports (PNG + JPG + download).</td></tr>
-          <tr><td class="num">snapdom.toPng(el)</td><td>Shortcut — single export, less code.</td></tr>
-        </tbody>
-      </table>
-      <p>Every method is in the <a href="api/">API reference</a>; everything you can pass is in the <a href="options/">options reference</a>.</p>
-    </section>
-
-<section class="prose"><h2 id="choose-a-recipe">Choose a recipe for your output</h2><p>For a PNG preview, a downloaded file or a Blob to upload, use the <a href="../how-to/html-to-png/">HTML to PNG recipe</a>. For a shareable report with several charts, use the <a href="../how-to/export-dashboard-as-image/">dashboard export recipe</a>. Keep the component in place while capturing; the library exports the DOM your users already see.</p><p>For framework state updates, the <a href="../guides/angular/">Angular guide</a> waits for the next render, the <a href="../guides/svelte/">Svelte guide</a> waits for <code>tick()</code>, and the <a href="../guides/lit/">Lit guide</a> selects a card inside its shadow root after <code>updateComplete</code>.</p></section>
+<section class="prose"><h2 id="choose-a-recipe">Choose a recipe for your output</h2><p>For a PNG preview, a downloaded file or a Blob to upload, use the <a href="../how-to/html-to-png/">HTML to PNG recipe</a>. For a shareable report with several charts, use the <a href="../how-to/export-dashboard-as-image/">dashboard export recipe</a>.</p><p>For framework state updates, the <a href="../guides/angular/">Angular guide</a> waits for the next render, the <a href="../guides/svelte/">Svelte guide</a> waits for <code>tick()</code>, and the <a href="../guides/lit/">Lit guide</a> selects a card inside its shadow root after <code>updateComplete</code>.</p></section>
     <section class="related">
       <div class="section-label">Related</div>
       <div class="related-grid">
@@ -175,7 +157,7 @@ yarn add @zumer/snapdom@latest</pre>
     <section class="cta-section">
       <div class="cta-card">
         <h2 id="ready-to-capture">Start capturing</h2>
-        <p>Try the browser demo, then pick your output in the API reference.</p>
+        <p>Run a capture in the browser demo.</p>
         <a href="../showcase/" class="btn btn-primary" data-umami-event="Docs hub cta home">Open the demo</a>
         <a href="https://www.npmjs.com/package/@zumer/snapdom" class="btn btn-ghost" target="_blank" rel="noopener" data-umami-event="Docs hub cta npm">Install from npm</a>
       </div>

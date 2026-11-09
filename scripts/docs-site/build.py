@@ -6,6 +6,7 @@
 # idempotent, so it can run again after a page's content changes. finish.py then refreshes
 # the shared chrome of every page and metadata.py rebuilds the sitemap.
 import html, json, os, re
+from html.parser import HTMLParser
 E = html.escape
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', '..', 'docs')
@@ -61,6 +62,119 @@ def tag(text, tone):
 
 def slug(t):
     return re.sub(r'[^a-z0-9]+', '-', t.lower().replace('&', '')).strip('-')
+
+class ReadingHeadings(HTMLParser):
+    """Locate real headings without touching HTML examples or script templates."""
+    def __init__(self, source):
+        super().__init__(convert_charrefs=True)
+        self.lines = [0]
+        for line in source.splitlines(keepends=True): self.lines.append(self.lines[-1] + len(line))
+        self.headings, self.active, self.ignored, self.stack = [], None, 0, []
+        self.feed(source)
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        ignored = tag in ('script', 'style', 'pre', 'code', 'svg', 'nav', 'aside') or 'data-target' in attrs or 'contenteditable' in attrs or bool(set(attrs.get('class', '').split()) & {'demo-target', 'sample-card', 'pl-card', 'plugin-demo-source', 'mw-card'})
+        if tag not in ('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'):
+            self.stack.append((tag, ignored))
+            self.ignored += ignored
+        if tag in ('h2', 'h3') and not self.ignored:
+            line, col = self.getpos()
+            self.active = {'level': tag[1], 'start': self.lines[line - 1] + col,
+                           'id': attrs.get('id'), 'text': ''}
+
+    def handle_endtag(self, tag):
+        if self.active and tag == 'h' + self.active['level']:
+            line, col = self.getpos()
+            self.active['end'] = self.lines[line - 1] + col + len(tag) + 3
+            self.active['text'] = re.sub(r'\s+', ' ', self.active['text']).strip()
+            self.headings.append(self.active)
+            self.active = None
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i][0] == tag:
+                self.ignored -= sum(ignored for _, ignored in self.stack[i:])
+                del self.stack[i:]
+                break
+
+    def handle_data(self, text):
+        if self.active: self.active['text'] += text
+
+def page_navigation(source, path):
+    """Refresh reading aids without changing metadata, examples or page-specific scripts."""
+    article = re.search(r'<article\b[^>]*\bpane-read\b[^>]*>', source)
+    region = article or re.search(r'<main\b[^>]*>', source)
+    if not region: return source
+    start = region.end()
+    tag = 'article' if article else 'main'
+    depth, end = 1, len(source)
+    for match in re.finditer(r'<' + tag + r'\b|</' + tag + '>', source[start:]):
+        depth += 1 if match[0].startswith('<' + tag) else -1
+        if not depth:
+            end = start + match.start()
+            break
+    content = source[start:end]
+    heads = ReadingHeadings(content).headings
+    used = set(re.findall(r'\bid=["\']([^"\']+)', source))
+    for head in heads:
+        if head['id']: continue
+        hid = slug(head['text'])[:60] or 'section'
+        while hid in used: hid += '-2'
+        head['id'] = hid
+        used.add(hid)
+    for head in reversed(heads):
+        pos = head['start']
+        opening = content[pos:content.index('>', pos) + 1]
+        if not re.search(r'\bid\s*=', opening):
+            content = content[:pos + 3] + f' id="{head["id"]}"' + content[pos + 3:]
+    source = source[:start] + content + source[end:]
+    target = re.search(r'\bid="([^"]+)"', region[0])
+    target = target[1] if target else 'page-content'
+    opening = region[0]
+    if not re.search(r'\bid=', opening): opening = opening[:-1] + f' id="{target}">'
+    if 'tabindex=' not in opening: opening = opening[:-1] + ' tabindex="-1">'
+    source = source.replace(region[0], opening, 1)
+    source = re.sub(r'<a class="(?:docs|site)-skip"[^>]*>Skip to content</a>\s*', '', source)
+    source = source.replace('<header class="site-head">', f'<a class="site-skip" href="#{target}" tabindex="0">Skip to content</a>\n<header class="site-head">', 1)
+
+    side = re.search(r'<aside class="pane-side[^\"]*">(.*?)</aside>', source, re.S)
+    if side:
+        inner = side[1]
+        inner = re.sub(r'^<details class="(?:docs|pane)-menu"[^>]*><summary>.*?</summary>(.*)</details>$', r'\1', inner, flags=re.S)
+        inner = re.sub(r'<nav class="(?:docs|pane)-outline".*?</nav>', '', inner, flags=re.S)
+        inner = re.sub(r'<p class="pane-filter-status"[^>]*>.*?</p>', '', inner, flags=re.S)
+        inner = re.sub(r'<input type="search" placeholder="[^"]+" aria-label="[^"]+">', '<input type="search" placeholder="Filter navigation" aria-label="Filter navigation titles">', inner)
+        if 'class="pane-filter"' in inner:
+            inner = inner.replace('</label>', '</label><p class="pane-filter-status" role="status" hidden>No matching links. Use Search docs to search page contents.</p>', 1)
+        label = re.search(r'<nav[^>]*aria-label="([^"]+)"', inner)[1]
+        current = re.search(r'<a\b[^>]*aria-current="page"[^>]*>(.*?)</a>', inner, re.S)
+        title = re.search(r'\bdata-title="([^"]+)"', region[0])
+        title = title[1] if title else re.sub(r'<[^>]+>', '', current[1]) if current else label
+        summary = E(label) + (f' <span aria-hidden="true">/</span> {E(html.unescape(title))}' if title != label else '')
+        outline = ''
+        links = re.findall(r'<a\b[^>]*href="([^"]+)"', inner)
+        local_nav = links and all(href.startswith('#') for href in links)
+        if heads and not local_nav and not re.search(r'On this page</button>', inner):
+            outline = '<nav class="pane-outline" aria-label="On this page"><p>On this page</p>' + ''.join(
+                f'<a href="#{h["id"]}" class="{"is-subsection" if h["level"] == "3" else ""}">{E(h["text"])}</a>' for h in heads) + '</nav>'
+        source = source.replace(side[0], f'<aside class="pane-side"><details class="pane-menu" open><summary>{summary}</summary>{inner}{outline}</details></aside>', 1)
+
+    destinations = {'Docs': 'docs/', 'How-to': 'how-to/', 'Guides': 'how-to/#frameworks',
+                    'Compare': 'compare/', 'Blog': 'blog/', 'Showcase': 'showcase/',
+                    'Labs': 'showcase/#labs', 'Plugins': 'plugins/', 'Ecosystem': 'ecosystem/',
+                    'Tools': 'ecosystem/', 'Community': 'made-with/'}
+    for crumbs in list(re.finditer(r'<nav class="doc-crumbs"[^>]*>(.*?)</nav>', source, re.S)):
+        trail = crumbs[1]
+        labels = list(re.finditer(r'<span(?![^>]*aria-hidden)[^>]*>(.*?)</span>', trail))
+        for i, item in reversed(list(enumerate(labels))):
+            text = html.unescape(item[1])
+            if i < len(labels) - 1 and text in destinations:
+                replacement = f'<a href="{rel(path, destinations[text])}">{E(text)}</a>'
+            elif i == len(labels) - 1:
+                replacement = f'<span aria-current="page">{item[1]}</span>'
+            else: continue
+            trail = trail[:item.start()] + replacement + trail[item.end():]
+        source = source.replace(crumbs[0], crumbs[0].replace(crumbs[1], trail), 1)
+    return source
 
 def rel(frm, to):
     """Relative href from the page `frm` to `to`, both docs-relative: a folder ('plugins/pdf/'),
@@ -178,7 +292,7 @@ def standalone(path, active, head, groups, placeholder, label, sec, title, inner
 '''
     full = os.path.join(OUT, path)
     os.makedirs(os.path.dirname(full), exist_ok=True)
-    open(full, 'w').write(doc)
+    open(full, 'w').write(page_navigation(doc, path))
 
 for name in ('plugins.py', 'tools.py', 'ecosystem.py', 'sections.py'):
     exec(open(os.path.join(HERE, name)).read())
