@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-pdf",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "PDF export for SnapDOM: searchable, paginated documents with selectable text, links and optional form fields",
   "type": "module",
   "scripts": {
