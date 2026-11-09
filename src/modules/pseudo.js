@@ -39,7 +39,7 @@ import {
   counterPairs
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
-import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, flushStyleInvalidations, invalidateStyleCaches } from './styles.js'
+import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, flushStyleInvalidations, invalidateStyleCaches, ONE_LINE_PROP } from './styles.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
@@ -876,6 +876,9 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // pseudoEl.style.verticalAlign = 'baseline'
       pseudoEl.style.pointerEvents = 'none'
       if (pinNowrap) pseudoEl.style.whiteSpace = 'nowrap'
+      // A host freezeOneLine pinned (styles.js) carries the pin to the span like to any element
+      // under it: the base reset's `span{white-space:normal}` beats what the span inherits.
+      else if (clone.style.getPropertyValue(ONE_LINE_PROP) === 'nowrap') pseudoEl.style.setProperty(ONE_LINE_PROP, 'nowrap')
       const snapshot = pseudoSnapshotFor(source, pseudo, style, sessionCache, options)
       // #452: mirror the styles.js width-softening flags. An empty pseudo box sized by
       // CSS (width/height, content:'') is the #433 "empty box" case — its width must be
