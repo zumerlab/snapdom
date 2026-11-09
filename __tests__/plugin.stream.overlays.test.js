@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/plugins/stream.js'
+import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/stream/index.js'
 
 const stages = []
 const streams = []

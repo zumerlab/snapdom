@@ -5,8 +5,10 @@
 
 Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a high-performance DOM engine
 that exports a rendered element as PNG, SVG or canvas in the browser. Core exports images and
-canvases; this package adds HTML, structured context, element maps, PDF, editable vectors, ASCII,
-visual transforms, live GIF/video recording and live DOM streaming.
+canvases; this package adds HTML, structured context, element maps, ASCII, visual transforms,
+redaction and live GIF/video recording. PDF, Vector and Stream are their own packages:
+[`@zumer/snapdom-pdf`](https://snapdom.dev/plugins/pdf/), [`@zumer/snapdom-vector`](https://snapdom.dev/plugins/vector/)
+and [`@zumer/snapdom-stream`](https://snapdom.dev/plugins/stream/).
 
 Image, HTML and structured exports use captured state; GIF and video start a sequence of
 live captures when their export method is called.
@@ -19,7 +21,7 @@ Install the plugins next to a core supported by their peer dependency:
 npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-Plugins 4.x in this checkout require SnapDOM 3.4.0 or newer within 3.x. The 4.x release replaces pdf-image with the full PDF exporter and adds Vector. Both are MIT-licensed and available on npm in `@zumer/snapdom-plugins` 4.x. The `@latest` command above installs the published release. See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
+Plugins 5.x require SnapDOM 3.4.0 or newer within 3.x and hold the eleven toolbox plugins. PDF, Vector and Stream moved to their own packages in 5.0; see [Migrating from 4.x](#migrating-from-4x). See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
 
 ## Usage
 
@@ -66,7 +68,7 @@ snapdom(el, { plugins: [filter({ preset: 'grayscale' })] });
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `preset` | `string` | — | `'grayscale'` \| `'sepia'` \| `'blur'` \| `'invert'` \| `'vintage'` \| `'dramatic'` |
+| `preset` | `string` | none | `'grayscale'` \| `'sepia'` \| `'blur'` \| `'invert'` \| `'vintage'` \| `'dramatic'` |
 | `filter` | `string` | `''` | Raw CSS filter string, e.g. `'blur(2px) contrast(1.2)'` |
 
 ---
@@ -231,46 +233,17 @@ console.log(art);
 `toAscii({ width, charset, invert, format, contrast })` overrides any of them per call.
 
 The conversion is also exported on its own. `asciiFromCanvas(source, options)` turns any
-drawable (a canvas, an image, a video frame) into ASCII with the same options, and
-`asciiStream(element, options)` runs it on every frame of a [`stream()`](stream/README.md):
+drawable (a canvas, an image, a video frame) into ASCII with the same options. Run it on every
+frame of a [`@zumer/snapdom-stream`](https://snapdom.dev/plugins/stream/) stream for a live ASCII mirror:
 
 ```js
-import { asciiStream } from '@zumer/snapdom-plugins/ascii-export';
+import { stream } from '@zumer/snapdom-stream';
+import { asciiFromCanvas } from '@zumer/snapdom-plugins/ascii-export';
 
-const live = asciiStream(el, { width: 100, fps: 15, onText: (text) => (pre.textContent = text) });
+const live = stream(el, { fps: 15, onFrame: (frame) => (pre.textContent = asciiFromCanvas(frame.canvas, { width: 100 })) });
 await live.ready;
 live.stop();
 ```
-
----
-
-### `pdf`
-
-Adds `toPdf()`, returning a PDF Blob with the capture's appearance, selectable text,
-links and pagination. MIT licensed.
-It replaces `pdf-image`; there is no second image-only PDF implementation.
-
-```js
-import { pdf } from '@zumer/snapdom-plugins/pdf';
-
-const result = await snapdom(el, { plugins: [pdf()] });
-const blob = await result.toPdf({ page: 'a4', margin: 36 });
-await result.toPdf({ page: 'letter', download: 'report.pdf' });
-```
-
-Configure capture-time measurement on `pdf({ forms, outline, breakAvoid, shadow,
-formValues })`. Configure paper size, orientation, margins, tagging, metadata,
-headers, footers, compression or encryption on `toPdf()`. Downloads are opt-in;
-ordinary exports return a Blob. See [the PDF overview](pdf/README.md) and [full reference](pdf/REFERENCE.md).
-
-**Migration:** import `pdf` from `/pdf`, replace `pdfImage()` with `pdf()`, and
-replace `toPdfImage()` with `toPdf({ download: 'capture.pdf' })`. Put orientation
-on the export. The old temporary object-URL return becomes a persistent Blob.
-The default page sizing and pagination differ: choose `page: 'a4'` explicitly.
-
-Tagged output alone is not a PDF/UA conformance guarantee. The exporter reports
-eligibility and blockers. Redact source text structurally; covering pixels does
-not remove text from a searchable document.
 
 ---
 
@@ -423,24 +396,6 @@ The document retains source markup, including event-handler attributes; it is no
 
 ---
 
-### `vector`
-
-Adds `toVector()` for standalone SVG with editable text and supported shapes, and
-`toFigma()` for Figma clipboard export. Its source and internal SVD format live in
-`vector/` under the MIT license. Both exporters are available on npm in `@zumer/snapdom-plugins` 4.x.
-
-```js
-import { vector } from '@zumer/snapdom-plugins/vector';
-const result = await snapdom(el, { plugins: [vector()] });
-const svg = await result.toVector({ exclude: '.private' });
-await result.toFigma(); // HTTPS or localhost, from a user action
-```
-
-Register per capture. Unsupported paint is diagnosed; the connected source and
-its styles must remain available during export. See [Vector](./vector/README.md).
-
----
-
 ### `gif-export`
 
 Adds `toGif()`, which records the live element and returns an `image/gif` Blob. Its built-in
@@ -460,14 +415,14 @@ await result.toGif({ download: 'animation.gif' });
 |--------|------|---------|-------------|
 | `fps` | `number` | `10` | Frames per second |
 | `duration` | `number` | `2000` | Total duration in ms (ignored if `frames` is set) |
-| `frames` | `number` | — | Explicit frame count (overrides `duration`) |
+| `frames` | `number` | none | Explicit frame count (overrides `duration`) |
 | `maxColors` | `number` | `256` | Palette size per frame (2–256) |
 | `background` | `string` | `'#ffffff'` | Color composited under transparent pixels |
 | `scale` | `number` | capture's scale | Capture scale |
 | `repeat` | `number` | `0` | Loop count (`0` = forever, `-1` = play once) |
 | `filename` | `string` | `'capture.gif'` | Download filename |
 
-Per-call `opts` override constructor options and accept `download` (`boolean \| string`).
+Per-call `opts` override constructor options and accept `download` (`boolean | string`).
 Recording starts when `toGif()` runs, including its first frame. It preserves the original
 capture policy, including exclusions and plugins. Frame capture speed limits the sampling rate.
 
@@ -496,35 +451,16 @@ filenames and `download` strings are used as supplied.
 |--------|------|---------|-------------|
 | `fps` | `number` | `10` | Frames per second |
 | `duration` | `number` | `2000` | Total duration in ms (ignored if `frames` is set) |
-| `frames` | `number` | — | Explicit frame count (overrides `duration`) |
+| `frames` | `number` | none | Explicit frame count (overrides `duration`) |
 | `background` | `string` | `'#ffffff'` | Color composited under transparent pixels |
 | `scale` | `number` | capture's scale | Capture scale |
-| `bitrate` | `number` | — | `videoBitsPerSecond` passed to `MediaRecorder` |
-| `filename` | `string` | — | Download filename; the default follows the recorded `.mp4` / `.webm` container |
+| `bitrate` | `number` | none | `videoBitsPerSecond` passed to `MediaRecorder` |
+| `filename` | `string` | none | Download filename; the default follows the recorded `.mp4` / `.webm` container |
 
 Requires `MediaRecorder` and `canvas.captureStream()`, which may be unavailable in headless
 environments. Per-call `opts` override constructor options and accept `download`
-(`boolean \| string`). Recording starts at the call and preserves capture options as GIF
+(`boolean | string`). Recording starts at the call and preserves capture options as GIF
 recording does. MediaRecorder uses a real-time clock, so slow captures can stretch duration.
-
-### `stream`
-
-Streams a live element into a canvas that repaints only the boxes that changed, for WebGL
-textures and video overlays. `stream(el, options)` is the entry; `streamExport()` adds the same
-as `toStream()`. Includes `streamTexture(gl)`, which uploads only the changed rects, and
-`recordCanvas(canvas)`.
-
-```js
-import { stream, streamTexture } from '@zumer/snapdom-plugins/stream';
-
-const tex = streamTexture(gl);
-const live = stream(panel, { scale: 2, onFrame: (frame) => tex.update(frame) });
-```
-
-Each patched frame matches a full capture of the same DOM state. Full documentation, options
-and limits: [stream/README.md](stream/README.md).
-
----
 
 ## Plugin registration
 
@@ -564,7 +500,7 @@ See [PLUGIN_SPEC.md](../../PLUGIN_SPEC.md) for the full hook specification and [
 
 ## Live demos
 
-Run `npm run compile` and `npm run site` from the monorepo root, then open `/showcase/`, `/plugins/pdf/` or `/plugins/vector/`. The demos generate actual files from editable DOM samples.
+Run `npm run compile` and `npm run site` from the monorepo root, then open `/plugins/` (one page per plugin, each with its demo) or `/showcase/` for every demo on one page. The demos generate actual files from editable DOM samples.
 
 ## Releasing from the repository root
 
@@ -576,7 +512,18 @@ npm run release:plugins
 npm run publish:plugins
 ```
 
-`release:plugins` commits the plugin version, the lockfile and the changelog, then pushes. `publish:plugins` runs the PDF and vector checks, then publishes only `@zumer/snapdom-plugins` under `latest`. `bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
+`release:plugins` commits the plugin version, the lockfile and the changelog, then pushes. `publish:plugins` runs the packaging check (`scripts/check-pack.mjs`), then publishes only `@zumer/snapdom-plugins` under `latest`. PDF, Vector and Stream have the same scripts under their own suffix (`bump:pdf`, `release:pdf`, `publish:pdf`, `publish:pdf:dev`). `bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
+
+## Migrating from 4.x
+
+The `/pdf`, `/vector` and `/stream` subpaths are gone. Install the package you use and change the import; options and behavior are unchanged.
+
+| 4.x | 5.x |
+|-----|-----|
+| `import { pdf } from '@zumer/snapdom-plugins/pdf'` | `import { pdf } from '@zumer/snapdom-pdf'` |
+| `import { vector } from '@zumer/snapdom-plugins/vector'` | `import { vector } from '@zumer/snapdom-vector'` |
+| `import { stream } from '@zumer/snapdom-plugins/stream'` | `import { stream } from '@zumer/snapdom-stream'` |
+| `asciiStream(el, options)` | `stream(el, { onFrame: (f) => onText(asciiFromCanvas(f.canvas, options)) })` |
 
 ## License
 

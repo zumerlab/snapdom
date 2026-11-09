@@ -2,7 +2,7 @@
 
 This document describes the internal migrated engine, SVD format and optional Figma consumer in `src/`, `svd/` and `figma-plugin/`. Historical examples below use the engine's internal API; they are not the public npm API.
 
-The public MIT-licensed plugin is `@zumer/snapdom-plugins/vector`: `vector({ exclude })` adds `toVector()` (SVG string) and `toFigma()` (clipboard write, returning `Promise<void>`). Only `exclude` is a public Vector option. See [usage](README.md), [public types](../vector.d.ts) and [the public adapter](src/public.js). Plugins 4.x are available on npm and require core 3.x.
+The public MIT-licensed plugin is `@zumer/snapdom-vector` (up to plugins 4.x, `@zumer/snapdom-plugins/vector`): `vector({ exclude })` adds `toVector()` (SVG string) and `toFigma()` (clipboard write, returning `Promise<void>`). Only `exclude` is a public Vector option. See [usage](README.md), [public types](../vector.d.ts) and [the public adapter](src/public.js). Plugins 4.x are available on npm and require core 3.x.
 
 **And the reverse duty, which is what this paragraph is for: a contract that
 lies is worse than no contract.** When this file described a shape the code no
@@ -864,8 +864,8 @@ of them survives a paste. See the TEXT block under `emit/figma-json.js`.
 
 ## PDF and Vector stay independent
 
-Both exporters are MIT licensed and ship together in `@zumer/snapdom-plugins` 4.x
-(`packages/plugins/pdf` and `packages/plugins/vector`), and **neither may import the
+Both exporters are MIT licensed and ship as their own packages, `@zumer/snapdom-pdf` and `@zumer/snapdom-vector`
+(`packages/pdf` and `packages/vector`), and **neither may import the
 other.** The rule started as a licence boundary, when `@zumer/snapdom-pdf` and
 `@zumer/snapdom-vector` were sold separately, and it stays because each exporter can
 then be shipped and fixed on its own.

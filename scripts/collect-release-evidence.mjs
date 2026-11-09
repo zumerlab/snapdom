@@ -13,8 +13,7 @@ import { skippedVisualDemos } from './visual-policy.mjs'
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const HELP = `Usage: node scripts/collect-release-evidence.mjs --out NEW_DIRECTORY [options]
 
-  --core-tarball FILE        Exact core tarball validated by check-pack
-  --plugins-tarball FILE     Exact plugins tarball validated by check-pack (supply both)
+  --tarball FILE             Exact tarball validated by check-pack: the core or any packages/* package; may repeat
   --baseline-approval TEXT   Reviewer/date or link to the approval of these baselines
   --include-untracked FILE  Include one untracked repository file; may repeat
   --include-visual-input FILE  Include an ignored/local visual fixture; may repeat
@@ -29,9 +28,9 @@ Untracked files are listed but only explicitly selected files are archived.
 `
 
 function parseArgs(args) {
-  const options = { untracked: [], visualInputs: [], logs: [], requireClean: false }
+  const options = { tarballs: [], untracked: [], visualInputs: [], logs: [], requireClean: false }
   const values = new Map([
-    ['--out', 'out'], ['--core-tarball', 'coreTarball'], ['--plugins-tarball', 'pluginsTarball'],
+    ['--out', 'out'], ['--tarball', 'tarballs'],
     ['--baseline-approval', 'baselineApproval'], ['--include-untracked', 'untracked'], ['--log', 'logs'],
     ['--include-visual-input', 'visualInputs'],
   ])
@@ -65,7 +64,6 @@ const regularFile = path => {
 
 export function collectReleaseEvidence(options) {
   if (!options.out) throw new Error('--out is required')
-  if (!!options.coreTarball !== !!options.pluginsTarball) throw new Error('Supply both core and plugins tarballs, or neither')
   const out = resolve(options.out)
   if (existsSync(out)) throw new Error(`Output already exists; refusing to overwrite: ${out}`)
 
@@ -90,7 +88,9 @@ export function collectReleaseEvidence(options) {
   requireVisual(ROOT, { ...process.env, REQUIRE_VISUAL: '1', BROWSER: 'all' })
   if (distNeedsBuild(ROOT)) throw new Error('dist/ is stale or absent; run the approved validation/build first')
   const core = JSON.parse(readFileSync(join(ROOT, 'package.json')))
-  const plugins = JSON.parse(readFileSync(join(ROOT, 'packages/plugins/package.json')))
+  // Every published package: the core at the root, packages/<dir> as @zumer/snapdom-<dir>.
+  const packages = { core: { root: '', manifest: core }, ...Object.fromEntries(['plugins', 'pdf', 'vector', 'stream'].map(dir =>
+    [dir, { root: `packages/${dir}`, manifest: JSON.parse(readFileSync(join(ROOT, `packages/${dir}/package.json`))) }])) }
   const bundlePaths = ['dist/snapdom.mjs', 'dist/snapdom.js']
   const demos = readdirSync(join(ROOT, 'demos')).filter(name => /^d.*\.html$/.test(name))
     .map(name => name.slice(0, -5)).filter(name => !skippedVisualDemos.has(name)).sort()
@@ -121,22 +121,20 @@ export function collectReleaseEvidence(options) {
     const bytes = readFileSync(regularFile(join(ROOT, path)))
     return { path, bytes: bytes.length, sha256: sha256(bytes) }
   })
-  const tarballs = [
-    [options.coreTarball, core, 'core'], [options.pluginsTarball, plugins, 'plugins'],
-  ].filter(([path]) => path).map(([path, expected, role]) => {
+  const tarballs = options.tarballs.map(path => {
     const absolute = regularFile(resolve(path))
     const packed = JSON.parse(run('tar', ['-xOf', absolute, 'package/package.json']))
-    if (packed.name !== expected.name || packed.version !== expected.version) {
-      throw new Error(`${role} tarball does not match checkout name/version`)
-    }
-    if (!isDeepStrictEqual(packed, expected)) throw new Error(`${role} tarball package.json differs from checkout metadata`)
-    // Metadata alone cannot distinguish two builds of the same unpublished beta version.
-    const paths = role === 'core' ? [...bundlePaths, 'types/snapdom.d.ts', 'README.md', 'LICENSE']
-      : readdirSync(join(ROOT, 'packages/plugins')).filter(name => /\.(?:js|ts)$/.test(name) || ['README.md', 'LICENSE'].includes(name))
-    for (const path of paths) {
-      const source = join(ROOT, role === 'core' ? '' : 'packages/plugins', path)
-      if (!readFileSync(source).equals(run('tar', ['-xOf', absolute, `package/${path}`]))) {
-        throw new Error(`${role} tarball has different bytes for ${path}`)
+    const [role, expected] = Object.entries(packages).find(([, { manifest }]) => manifest.name === packed.name) || []
+    if (!role) throw new Error(`Tarball is not a package of this checkout: ${packed.name} (${path})`)
+    if (packed.version !== expected.manifest.version) throw new Error(`${role} tarball does not match checkout version`)
+    if (!isDeepStrictEqual(packed, expected.manifest)) throw new Error(`${role} tarball package.json differs from checkout metadata`)
+    // Metadata alone cannot distinguish two builds of the same unpublished version: every file
+    // the tarball ships must be the checkout's bytes.
+    const shipped = run('tar', ['-tzf', absolute]).toString().split('\n')
+      .filter(name => name.startsWith('package/') && name !== 'package/package.json').map(name => name.slice('package/'.length))
+    for (const file of shipped) {
+      if (!readFileSync(join(ROOT, expected.root, file)).equals(run('tar', ['-xOf', absolute, `package/${file}`]))) {
+        throw new Error(`${role} tarball has different bytes for ${file}`)
       }
     }
     return { absolute, role, name: packed.name, version: packed.version }
@@ -163,7 +161,7 @@ export function collectReleaseEvidence(options) {
     demosPerBrowser: demos.length, includedLocalInputs: selectedVisualInputs, files: visualInputs,
   }, null, 2) + '\n'))
   for (const path of bundlePaths) save(path, readFileSync(join(ROOT, path)))
-  for (const path of ['package.json', 'package-lock.json', 'packages/plugins/package.json', 'vitest.config.js']) {
+  for (const path of ['package.json', 'package-lock.json', ...Object.values(packages).filter(p => p.root).map(p => `${p.root}/package.json`), 'vitest.config.js']) {
     save(`inputs/${path}`, readFileSync(join(ROOT, path)))
   }
   archive('baselines.tar.gz', baselinePaths)
@@ -197,7 +195,7 @@ export function collectReleaseEvidence(options) {
     if (sha256(readFileSync(join(ROOT, path))) !== hash) throw new Error(`Visual input changed during collection: ${path}`)
   }
   const missing = []
-  if (!tarballs.length) missing.push('exact validated core and plugins tarballs')
+  if (!tarballs.length) missing.push('exact validated tarballs of the released packages')
   if (!options.baselineApproval) missing.push('baseline approval reference')
   if (!logs.length) missing.push('validation logs and their browser versions')
   const omittedUntracked = untracked.filter(path => !selected.includes(path))
@@ -207,8 +205,8 @@ export function collectReleaseEvidence(options) {
     publicationPerformed: false, validationPerformedByCollector: false,
     source: { commit: before.head, dirty: !!before.status.length, patchSha256: sha256(before.patch),
       untracked, includedUntracked: selected, omittedUntracked },
-    packages: { core: { name: core.name, version: core.version }, plugins: { name: plugins.name, version: plugins.version,
-      peerDependencies: plugins.peerDependencies } },
+    packages: Object.fromEntries(Object.entries(packages).map(([role, { manifest }]) =>
+      [role, { name: manifest.name, version: manifest.version, peerDependencies: manifest.peerDependencies }])),
     environment: { node: process.version, npm: optionalVersion('npm', ['--version']), platform: platform(),
       architecture: arch(), release: release(), macOS: platform() === 'darwin' ? optionalVersion('sw_vers', []) : null,
       installed, browserVersionEvidence: 'Bundled revisions are in inputs/playwright-browsers.json; actual launches belong in supplied validation logs.',

@@ -1,5 +1,7 @@
 import { snapdom } from '@zumer/snapdom'
-import { vector, pdf, htmlExport, contextExport, agentMap, asciiExport, gifExport, videoExport } from '../packages/plugins/index.js'
+import { pdf } from '../packages/pdf/index.js'
+import { vector } from '../packages/vector/index.js'
+import { htmlExport, contextExport, agentMap, asciiExport, gifExport, videoExport } from '../packages/plugins/index.js'
 import type { AgentMapResult, ContextResult } from '../packages/plugins/index.js'
 
 async function outputs(element: Element) {

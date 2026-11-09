@@ -1,7 +1,7 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "4.4.1",
-  "description": "Official plugins for SnapDOM",
+  "version": "5.0.0",
+  "description": "Official plugin toolbox for SnapDOM: prepare, export and record captures",
   "type": "module",
   "scripts": {
     "bump:dry": "npx @zumerbox/bump -d",
@@ -19,29 +19,14 @@
     "./context-export": "./context-export.js",
     "./html-export": "./html-export.js",
     "./gif-export": "./gif-export.js",
-    "./video-export": "./video-export.js",
-    "./pdf": "./pdf.js",
-    "./vector": "./vector.js",
-    "./stream": "./stream.js"
+    "./video-export": "./video-export.js"
   },
   "files": [
     "*.js",
     "*.d.ts",
     "README.md",
     "LICENSE",
-    "pdf/src/",
-    "pdf/README.md",
-    "pdf/REFERENCE.md",
-    "pdf/LICENSE",
-    "CHANGELOG.md",
-    "vector/src/",
-    "vector/svd/",
-    "vector/CONTRACT.md",
-    "vector/LICENSE",
-    "vector/README.md",
-    "stream/src/",
-    "stream/README.md",
-    "stream/LICENSE"
+    "CHANGELOG.md"
   ],
   "types": "./index.d.ts",
   "keywords": [

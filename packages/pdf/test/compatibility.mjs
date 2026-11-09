@@ -21,7 +21,7 @@ export function resolveSnapdomCore(env = process.env) {
   const overrideDir = directories[0]
   const overrideFile = env.SNAPDOM_FILE && path.resolve(env.SNAPDOM_FILE)
   if (overrideDir && overrideFile) throw new Error('[snapdom-pdf] set a core directory or SNAPDOM_FILE, not both')
-  const defaultDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..')
+  const defaultDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..')
   const file = overrideFile || path.join(overrideDir || defaultDir, 'dist', 'snapdom.mjs')
   if (!fs.existsSync(file)) {
     throw new Error(`[snapdom-pdf] missing ${file}: run npm install, or point SNAPDOM_V3_DIR at a built core`)

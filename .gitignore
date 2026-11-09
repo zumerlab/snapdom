@@ -180,5 +180,5 @@ RELEASE_CHECKLIST.md
 CHINESE_TRANSLATION_GUIDE.md
 
 # PDF verification artifacts
-packages/plugins/pdf/out/
-packages/plugins/vector/out/
+packages/pdf/out/
+packages/vector/out/

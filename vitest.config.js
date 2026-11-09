@@ -124,7 +124,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.js'],
-      // vitest 4 matches the include against nested paths too: packages/plugins/pdf/src/...
+      // vitest 4 matches the include against nested paths too: packages/pdf/src/...
       exclude: ['packages/**'],
     },
   },

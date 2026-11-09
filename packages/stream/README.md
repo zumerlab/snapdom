@@ -1,10 +1,21 @@
-# stream
+# @zumer/snapdom-stream
+
+[![NPM version](https://img.shields.io/npm/v/@zumer/snapdom-stream?style=flat-square&label=Stream)](https://www.npmjs.com/package/@zumer/snapdom-stream)
+[![Core version](https://img.shields.io/npm/v/@zumer/snapdom?style=flat-square&label=SnapDOM)](https://www.npmjs.com/package/@zumer/snapdom)
 
 A live element as a canvas that repaints only what changed. For WebGL textures, video overlays
-and anything else that needs the DOM as pixels, many times a second.
+and anything else that needs the DOM as pixels, many times a second. MIT licensed. Landing page
+and live demos: [snapdom.dev/plugins/stream](https://snapdom.dev/plugins/stream/).
+
+```sh
+npm install @zumer/snapdom@latest @zumer/snapdom-stream@latest
+```
+
+Needs SnapDOM 3.4.0 or newer within 3.x (see Limits). Up to SnapDOM plugins 4.x the same code
+shipped as `@zumer/snapdom-plugins/stream`; only the import changes.
 
 ```js
-import { stream } from '@zumer/snapdom-plugins/stream';
+import { stream } from '@zumer/snapdom-stream';
 
 const live = stream(panel, {
   scale: 2,
@@ -59,7 +70,7 @@ All [capture options](https://snapdom.dev/) apply (`scale`, `dpr`, `embedFonts`,
 changed rects (4% of the texture per frame in the WebGL demo, against 100%).
 
 ```js
-import { stream, streamTexture } from '@zumer/snapdom-plugins/stream';
+import { stream, streamTexture } from '@zumer/snapdom-stream';
 
 const tex = streamTexture(gl);
 stream(panel, { onFrame: (frame) => tex.update(frame) });
@@ -71,7 +82,7 @@ stream(panel, { onFrame: (frame) => tex.update(frame) });
 Composite `live.canvas` over anything with `drawImage`, and record the result:
 
 ```js
-import { recordCanvas } from '@zumer/snapdom-plugins/stream';
+import { recordCanvas } from '@zumer/snapdom-stream';
 
 const rec = recordCanvas(output, { fps: 30, duration: 10000 });
 const blob = await rec.done; // MP4 or WebM, whichever the browser records
@@ -97,7 +108,7 @@ changes is opaque and the lower third slides with `left`, so a score, a clock ti
 costs a patch, not a full frame.
 
 ```js
-import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '@zumer/snapdom-plugins/stream';
+import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '@zumer/snapdom-stream';
 
 const stage = overlayStage({ width: 1920, height: 1080, theme: { accent: '#facc15' } });
 const score = scoreboard({ home: 'HOME', away: 'AWAY' });
@@ -121,7 +132,7 @@ Theme through CSS variables on the stage: `accent`, `panel`, `panel-2`, `text`, 
 `streamExport()` adds `toStream()` to a capture result, next to `toMp4()` and `toGif()`:
 
 ```js
-import { streamExport } from '@zumer/snapdom-plugins/stream';
+import { streamExport } from '@zumer/snapdom-stream';
 
 const result = await snapdom(panel, { plugins: [streamExport()] });
 const live = await result.toStream({ onFrame });
@@ -129,8 +140,11 @@ const live = await result.toStream({ onFrame });
 
 ## Limits
 
-- Patches need a box that can be repainted standalone. A change inside a transparent box with
-  no solid backdrop, under a positioned element, or that moves its siblings is a full frame.
+- A change with no box that can be repainted standalone repaints a window of the enclosing box
+  that kept its rect. It is a full frame only when nothing kept its rect (the root resized), a
+  node was removed, a blur, drop-shadow or `url()` filter above the change spreads it, a
+  `backdrop-filter` box overlaps it, a positioned box overlaps a host that cannot be a window,
+  or the patches would cover more than half of the canvas.
 - Programmatic CSSOM edits (`insertRule`, `rule.style`) produce no signal; the keyframe heals
   them.
 - Text ink that spills past a box edge onto a pixel shared with a neighbour waits for the

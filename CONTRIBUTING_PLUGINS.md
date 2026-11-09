@@ -54,7 +54,7 @@ Then open a PR to list it in the [Plugin Directory](https://snapdom.dev/plugins.
 
 ## How plugins are distributed
 
-Official plugins ship as `@zumer/snapdom-plugins` and live in `packages/plugins/` in this repository.
+The official toolbox ships as `@zumer/snapdom-plugins` from `packages/plugins/` in this repository; PDF, Vector and Stream ship as `@zumer/snapdom-pdf`, `@zumer/snapdom-vector` and `@zumer/snapdom-stream` from `packages/pdf/`, `packages/vector/` and `packages/stream/`.
 
 Community plugins use the npm name `snapdom-plugin-[name]` and are maintained in their own repositories.
 

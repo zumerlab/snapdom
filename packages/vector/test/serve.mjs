@@ -28,17 +28,16 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 //
 // Each directory can be overridden on its own. `SNAPDOM_DIR` is still honoured as
 // an alias for the v2 one.
-// Two levels up, not one: this repository lives inside `snapdom-pro/`, the folder
-// that mirrors the GitHub org, while the engine checkouts sit beside that folder
-// under `zumerlab/`.
+// A checkout of the `v2` branch beside this repository. Only the comparison pages mount
+// it; the suites import the v3 line below.
 const SNAPDOM_V2 = path.resolve(process.env.SNAPDOM_V2_DIR || process.env.SNAPDOM_DIR ||
-  path.resolve(ROOT, '..', '..', 'snapdom'))
+  path.resolve(ROOT, '../../..', 'snapdom-v2'))
 // The v3 line is the exact `@zumer/snapdom` release pinned in devDependencies: the
 // published package a buyer installs. A sibling checkout used to be the default and
 // it moved under the suite; on 5 Aug 2026 its `dist/` was rebuilt from another
 // branch, silently removing the plugin system every capture here depends on.
 const SNAPDOM_V3 = path.resolve(process.env.SNAPDOM_V3_DIR ||
-  path.resolve(ROOT, '../../..'))
+  path.resolve(ROOT, '../..'))
 
 /** The engine lines a page can ask for, by mount prefix. */
 export const ENGINES = {

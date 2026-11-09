@@ -6,7 +6,7 @@
  * @module plugins/stream
  */
 import { stream } from './stream.js'
-import { captureInputs, exportOption } from '../../capture-frames.js'
+import { captureInputs, exportOption } from './capture-inputs.js'
 
 export { stream } from './stream.js'
 export { streamTexture } from './webgl.js'

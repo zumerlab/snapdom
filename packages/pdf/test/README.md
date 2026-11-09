@@ -27,9 +27,9 @@ split is there so that cannot recur silently.
 
 ```
 npm run test:pdf                all three (from the monorepo root)
-node packages/plugins/pdf/test/verify.mjs            the fixture suite alone
-node packages/plugins/pdf/test/verify.mjs prose table   prefix match, several allowed
-node packages/plugins/pdf/test/serve.mjs   serve the fixtures
+node packages/pdf/test/verify.mjs            the fixture suite alone
+node packages/pdf/test/verify.mjs prose table   prefix match, several allowed
+node packages/pdf/test/serve.mjs   serve the fixtures
 ```
 
 Artifacts land in `out/` (gitignored): `<fixture>.pdf`, `<fixture>.png` as pdf.js

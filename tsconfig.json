@@ -20,5 +20,5 @@
       "@zumer/snapdom": ["./types/snapdom.d.ts"]
     }
   },
-  "include": ["types/**/*.ts", "packages/plugins/*.d.ts"]
+  "include": ["types/**/*.ts", "packages/*/*.d.ts"]
 }

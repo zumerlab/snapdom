@@ -43,8 +43,19 @@ if (keepArtifacts) {
   }
 }
 const work = mkdtempSync(join(tmpdir(), 'snapdom-pack-'))
-// Exports of @zumer/snapdom-plugins that are not plugin factories (see the runtime probe).
-const PLUGIN_HELPERS = ['stream', 'streamTexture', 'recordCanvas', 'overlayStage', 'scoreboard', 'lowerThird', 'ticker', 'liveBadge', 'asciiFromCanvas', 'asciiStream']
+// Exports of the plugin packages that are not plugin factories (see the runtime probe).
+const HELPERS = ['stream', 'streamTexture', 'recordCanvas', 'overlayStage', 'scoreboard', 'lowerThird', 'ticker', 'liveBadge', 'asciiFromCanvas']
+// The plugin packages under packages/, with what each tarball ships beyond its manifest, README,
+// LICENSE, CHANGELOG and every export with its declarations. `files` ships whatever sits in a
+// listed folder, so the listing must be exactly this and nothing else.
+const sources = (dir, sub) => readdirSync(join(ROOT, 'packages', dir, sub), { recursive: true })
+  .filter((p) => p.endsWith('.js')).map((p) => `package/${sub}/${p}`)
+const PACKAGES = {
+  plugins: ['package/capture-frames.js', 'package/privacy-policy.js', 'package/redact-clone.js'],
+  pdf: ['package/REFERENCE.md', 'package/src/mega/README.md', ...sources('pdf', 'src')],
+  vector: ['package/CONTRACT.md', ...sources('vector', 'src'), ...sources('vector', 'svd')],
+  stream: sources('stream', 'src'),
+}
 let failures = 0
 
 const log = (...a) => console.log(...a)
@@ -86,43 +97,33 @@ try {
   if (Object.hasOwn(packedPkg.exports || {}, './preCache')) fail('removed /preCache subpath is still exported')
   else pass('removed /preCache subpath is not exported')
   cpSync(join(work, 'package'), join(consumer, 'node_modules', '@zumer', 'snapdom'), { recursive: true })
-  // Official plugins ship separately. Source aliases in vitest/tsconfig cannot prove that
-  // their published subpaths resolve against the packed v3 core.
-  const pluginWork = join(work, 'plugins')
-  mkdirSync(pluginWork)
-  const pluginPack = run('npm', ['pack', '--pack-destination', pluginWork, '--silent'], {
-    cwd: join(ROOT, 'packages', 'plugins'),
+  // The official plugins ship as four packages. Source aliases in vitest/tsconfig cannot prove
+  // that their published entrypoints resolve against the packed v3 core, so each is packed too.
+  const packed = Object.entries(PACKAGES).map(([dir, shipped]) => {
+    const packDir = join(work, dir)
+    mkdirSync(packDir)
+    const out = run('npm', ['pack', '--pack-destination', packDir, '--silent'], { cwd: join(ROOT, 'packages', dir) })
+    const tgz = join(packDir, out.trim().split('\n').pop().trim())
+    run('tar', ['-xzf', tgz, '-C', packDir])
+    const pkg = JSON.parse(readFileSync(join(packDir, 'package', 'package.json'), 'utf8'))
+    const entries = Object.entries(pkg.exports)
+    const required = [
+      'package/package.json', 'package/README.md', 'package/LICENSE', 'package/CHANGELOG.md',
+      ...entries.flatMap(([, path]) => [path, path.replace(/\.js$/, '.d.ts')].map((p) => 'package/' + p.slice(2))),
+      ...shipped,
+    ]
+    const listed = run('tar', ['-tzf', tgz]).split('\n').map((s) => s.trim()).filter(Boolean)
+    const missing = required.filter((f) => !listed.includes(f))
+    const extra = listed.filter((f) => !required.includes(f))
+    if (missing.length) fail(`MISSING from ${pkg.name} tarball: ${missing.join(', ')}`)
+    if (extra.length) fail(`EXTRA files in ${pkg.name} tarball: ${extra.join(', ')}`)
+    if (!missing.length && !extra.length) pass(`${pkg.name}@${pkg.version}: ${listed.length} files, exactly the exports, declarations and listed sources`)
+    return { tgz, pkg, entries }
   })
-  const pluginTgz = join(pluginWork, pluginPack.trim().split('\n').pop().trim())
-  run('tar', ['-xzf', pluginTgz, '-C', pluginWork])
-  const pluginPkg = JSON.parse(readFileSync(join(pluginWork, 'package', 'package.json'), 'utf8'))
-  const pluginEntries = Object.entries(pluginPkg.exports)
-  // Same guard as the core tarball. `files: ["*.js", "*.d.ts"]` ships whatever sits next to the
-  // plugins, so the listing must be exactly every export with its declarations plus the three
-  // modules the plugins share between them, and nothing else.
-  const PLUGIN_REQUIRED = [
-    'package/package.json', 'package/README.md', 'package/LICENSE',
-    ...pluginEntries.flatMap(([, path]) => [path, path.replace(/\.js$/, '.d.ts')].map((p) => 'package/' + p.slice(2))),
-    'package/capture-frames.js', 'package/privacy-policy.js', 'package/redact-clone.js',
-    'package/pdf/README.md', 'package/pdf/REFERENCE.md', 'package/pdf/LICENSE', 'package/pdf/src/mega/README.md', 'package/CHANGELOG.md',
-    ...readdirSync(join(ROOT, 'packages/plugins/pdf/src'), { recursive: true }).filter(p => p.endsWith('.js')).map(p => 'package/pdf/src/' + p),
-    'package/vector/CONTRACT.md', 'package/vector/LICENSE', 'package/vector/README.md',
-    ...['src', 'svd'].flatMap(dir => readdirSync(join(ROOT, 'packages/plugins/vector', dir), { recursive: true }).filter(p => p.endsWith('.js')).map(p => `package/vector/${dir}/${p}`)),
-    'package/stream/LICENSE', 'package/stream/README.md',
-    ...readdirSync(join(ROOT, 'packages/plugins/stream/src')).filter(p => p.endsWith('.js')).map(p => 'package/stream/src/' + p),
-  ]
-  const pluginListed = run('tar', ['-tzf', pluginTgz]).split('\n').map((s) => s.trim()).filter(Boolean)
-  for (const f of PLUGIN_REQUIRED) {
-    if (pluginListed.includes(f)) pass(`plugins ${f}`)
-    else fail(`MISSING from plugins tarball: ${f}`)
-  }
-  const pluginExtra = pluginListed.filter((f) => !PLUGIN_REQUIRED.includes(f))
-  if (pluginExtra.length) fail(`EXTRA files in plugins tarball: ${pluginExtra.join(', ')}`)
-  else pass('nothing in the plugins tarball beyond those')
-  // Install both actual tarballs offline: this also catches incompatible peer dependencies.
+  // Install the actual tarballs offline: this also catches incompatible peer dependencies.
   writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', version: '1.0.0', type: 'module', private: true }))
-  run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', tgz, pluginTgz], { cwd: consumer })
-  pass('official plugins install with the packed v3 core')
+  run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', tgz, ...packed.map((p) => p.tgz)], { cwd: consumer })
+  pass('the four plugin packages install with the packed v3 core')
   // A copied template must install outside the workspace. Relative dev dependencies
   // can pass every monorepo check while pointing at an unrelated consumer directory.
   const template = join(work, 'independent-template')
@@ -143,11 +144,15 @@ try {
   // to launch. Where tsc lives is irrelevant; resolution follows the consumer's tsconfig.
   const TSC = join(ROOT, 'node_modules', '.bin', 'tsc')
 
+  const imports = packed.flatMap(({ pkg, entries }) => entries.map(([subpath], i) => ({
+    id: pkg.name.slice(pkg.name.indexOf('/') + 1).replace(/\W/g, '_') + i,
+    specifier: pkg.name + subpath.slice(1),
+  })))
   writeFileSync(join(consumer, 'index.ts'), `
 import { snapdom } from '@zumer/snapdom'
 import { registerPlugins, clearPlugins, STAGES } from '@zumer/snapdom/plugins'
-${pluginEntries.map(([subpath], i) => `import * as official${i} from '@zumer/snapdom-plugins${subpath.slice(1)}'`).join('\n')}
-${pluginEntries.map((_, i) => `export const plugins${i} = official${i}`).join('\n')}
+${imports.map(({ id, specifier }) => `import * as ${id} from '${specifier}'`).join('\n')}
+${imports.map(({ id }) => `export const use_${id} = ${id}`).join('\n')}
 
 export async function use(el: HTMLElement) {
   const res = await snapdom(el, { scale: 2, embedFonts: true })
@@ -191,27 +196,31 @@ export async function use(el: HTMLElement) {
   const checks = [
     ['import root', `import('@zumer/snapdom').then(m => { if (typeof m.snapdom !== 'function') throw new Error('snapdom missing') })`],
     ['import /plugins', `import('@zumer/snapdom/plugins').then(m => { if (typeof m.registerPlugins !== 'function') throw new Error('registerPlugins missing') })`],
-    // Every subpath export must be the barrel's own object, and every plugin factory must
-    // register. The helpers (a stream, its WebGL texture and recorder, the overlay templates,
-    // the ASCII converters) are not factories: they take an element or a canvas and need a
-    // DOM, so they are listed here and only checked for identity.
+    // Every subpath export must be its package barrel's own object, and every plugin factory
+    // must register. The helpers (a stream, its WebGL texture and recorder, the overlay
+    // templates, the ASCII converter) are not factories: they take an element or a canvas and
+    // need a DOM, so they are only checked for identity. pdf and vector also export default.
     ['official plugins', `(async () => {
-      const HELPERS = new Set(${JSON.stringify(PLUGIN_HELPERS)})
-      const all = await import('@zumer/snapdom-plugins')
+      const HELPERS = new Set(${JSON.stringify(HELPERS)})
       const { registerPlugins, clearPlugins, getGlobalPlugins } = await import('@zumer/snapdom')
-      for (const subpath of ${JSON.stringify(pluginEntries.map(([key]) => key.slice(1)))}) {
-        const mod = await import('@zumer/snapdom-plugins' + subpath)
-        for (const [name, factory] of Object.entries(mod)) {
-          if (!Object.values(all).includes(factory)) throw new Error('different factory for ' + name)
-          if (HELPERS.has(name)) continue
-          const plugin = factory()
-          if (!plugin.name) throw new Error('unnamed official plugin ' + name)
-          registerPlugins(plugin)
+      for (const [name, subpaths] of ${JSON.stringify(packed.map(({ pkg, entries }) => [pkg.name, entries.map(([key]) => key.slice(1))]))}) {
+        const all = await import(name)
+        const factories = new Set(Object.entries(all).filter(([key]) => !HELPERS.has(key) && key !== 'default').map(([, value]) => value))
+        const registered = new Set()
+        for (const subpath of subpaths) {
+          const mod = await import(name + subpath)
+          for (const [key, value] of Object.entries(mod)) {
+            if (!Object.values(all).includes(value)) throw new Error('different export for ' + key + ' in ' + name + subpath)
+            if (!factories.has(value) || registered.has(value)) continue
+            registered.add(value)
+            const plugin = value()
+            if (!plugin.name) throw new Error('unnamed official plugin ' + key)
+            registerPlugins(plugin)
+          }
         }
+        if (getGlobalPlugins().length !== factories.size) throw new Error('plugin registration mismatch in ' + name)
+        clearPlugins()
       }
-      const factories = Object.keys(all).filter(name => !HELPERS.has(name))
-      if (getGlobalPlugins().length !== factories.length) throw new Error('plugin registration mismatch')
-      clearPlugins()
     })()`],
     ['root omits removed APIs', `import('@zumer/snapdom').then(m => {
       if ('preCache' in m || 'prepare' in m) throw new Error('removed named export present')
@@ -261,8 +270,7 @@ if ('preCache' in win.snapdom || 'prepare' in win.snapdom) throw new Error('remo
   // Keep the very bytes consumed above, rather than packing a second candidate afterward.
   if (!failures && keepArtifacts) {
     mkdirSync(keepArtifacts)
-    cpSync(tgz, join(keepArtifacts, readdirSync(work).find(name => name.endsWith('.tgz'))))
-    cpSync(pluginTgz, join(keepArtifacts, readdirSync(pluginWork).find(name => name.endsWith('.tgz'))))
+    for (const file of [tgz, ...packed.map((p) => p.tgz)]) cpSync(file, join(keepArtifacts, file.split('/').pop()))
     log(`validated core and plugin tarballs retained: ${keepArtifacts}`)
   }
 } finally {

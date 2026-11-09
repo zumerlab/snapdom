@@ -85,7 +85,7 @@
 
 <script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
 <script type="module">
-import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/plugins/stream.js'
+import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/stream/index.js'
 const $ = (s) => document.querySelector(s)
 const viewer = new URLSearchParams(location.search).has('viewer')
 document.body.classList.toggle('viewer', viewer)

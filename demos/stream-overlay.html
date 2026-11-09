@@ -84,7 +84,7 @@
 <script type="importmap">{ "imports": { "@zumer/snapdom": "../dist/snapdom.mjs" } }</script>
 <script type="module">
 import { snapdom } from '@zumer/snapdom'
-import { stream, recordCanvas, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/plugins/stream.js'
+import { stream, recordCanvas, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '../packages/stream/index.js'
 const $ = (s) => document.querySelector(s)
 
 // ---- The overlay, built from the templates and driven from the controls.

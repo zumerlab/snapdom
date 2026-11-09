@@ -1,0 +1,51 @@
+{
+  "name": "@zumer/snapdom-stream",
+  "version": "1.0.0",
+  "description": "A live element as a canvas that repaints only what changed: WebGL textures, video overlays and recordings for SnapDOM",
+  "type": "module",
+  "scripts": {
+    "bump:dry": "npx @zumerbox/bump -d",
+    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog"
+  },
+  "exports": {
+    ".": "./index.js"
+  },
+  "types": "./index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "snapdom",
+    "snapdom-plugin",
+    "dom-capture",
+    "stream",
+    "webgl",
+    "overlay"
+  ],
+  "author": "Juan Martin Muda",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zumerlab/snapdom.git",
+    "directory": "packages/stream"
+  },
+  "bugs": {
+    "url": "https://github.com/zumerlab/snapdom/issues"
+  },
+  "homepage": "https://snapdom.dev/plugins/stream/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tinchox5"
+  },
+  "peerDependencies": {
+    "@zumer/snapdom": "^3.4.0"
+  },
+  "devDependencies": {
+    "@zumer/snapdom": "file:../.."
+  },
+  "sideEffects": false
+}

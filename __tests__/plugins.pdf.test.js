@@ -1,7 +1,8 @@
 import { afterEach, expect, it } from 'vitest'
 import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/build/pdf.mjs'
 import { snapdom } from '../src/index.js'
-import { pdf, redactInputs } from '../packages/plugins/index.js'
+import { pdf } from '../packages/pdf/index.js'
+import { redactInputs } from '../packages/plugins/index.js'
 
 GlobalWorkerOptions.workerSrc = new URL('../node_modules/pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
 

@@ -82,12 +82,32 @@ The result keeps that capture even if the source element later changes. Call `sn
 | --- | --- | --- |
 | Share a card, chart, invoice or dashboard | SVG, PNG, JPG, WebP, canvas or Blob | Core |
 | Reuse a capture in a texture, overlay or transition | Canvas plus capture geometry | Core |
-| Save a page fragment for later display | HTML with captured styles and fonts | [`html-export`](packages/plugins/README.md#html-export) plugin |
-| Give an agent or a log a view of page content | Text/JSON context, or an image with an element map | [`context-export`](packages/plugins/README.md#context-export) / [`agent-map`](packages/plugins/README.md#agent-map) plugins |
-| Download a document or record changing content | Searchable, paginated PDF, animated GIF or browser-encoded video | [`pdf`](packages/plugins/pdf/README.md) / [`gif-export`](packages/plugins/README.md#gif-export) / [`video-export`](packages/plugins/README.md#video-export) plugins |
-| Export editable artwork or paste into Figma | Native SVG shapes and text, or a Figma clipboard payload | [`vector`](packages/plugins/vector/README.md) plugin |
+| Prepare the capture before export | Redacted fields, replaced text, CSS filter effects or a timestamp label | [`redact-inputs`, `replace-text`, `filter` and `timestamp-overlay`](https://snapdom.dev/plugins/#prepare) plugins |
+| Save a page fragment for later display | HTML with captured styles and fonts | [`html-export`](https://snapdom.dev/plugins/html-export/) plugin |
+| Give an agent or a log a view of page content | Text/JSON context, or an image with an element map | [`context-export`](https://snapdom.dev/plugins/context-export/) / [`agent-map`](https://snapdom.dev/plugins/agent-map/) plugins |
+| Download a document or record changing content | Searchable, paginated PDF, animated GIF or browser-encoded video | [`pdf`](https://snapdom.dev/plugins/pdf/) / [`gif-export`](https://snapdom.dev/plugins/gif-export/) / [`video-export`](https://snapdom.dev/plugins/video-export/) plugins |
+| Stream a live element into a WebGL texture or a video overlay | Canvas that repaints only what changed | [`stream`](https://snapdom.dev/plugins/stream/) plugin |
+| Export editable artwork or paste into Figma | Native SVG shapes and text, or a Figma clipboard payload | [`vector`](https://snapdom.dev/plugins/vector/) plugin |
 
-Image, HTML and context exports use the captured state. GIF and video plugins record the live element over time.
+Image, HTML and context exports use the captured state. GIF and video plugins record the live element over time; Stream keeps following it.
+
+## Ecosystem
+
+Products, each with its own landing page and reference:
+
+- [PDF](https://snapdom.dev/plugins/pdf/): a searchable, paginated PDF export with selectable text, links and optional form fields.
+- [Vector](https://snapdom.dev/plugins/vector/): editable SVG and Figma clipboard export.
+- [Stream](https://snapdom.dev/plugins/stream/): a live element as a canvas that repaints only what changed, for WebGL textures and video overlays.
+
+Toolbox: the [eleven smaller plugins](https://snapdom.dev/plugins/) are `redact-inputs`, `timestamp-overlay`, `replace-text`, `filter`, `color-tint`, `html-export`, `ascii-export`, `gif-export`, `video-export`, `context-export` and `agent-map`.
+
+Tools built on SnapDOM:
+
+- [SnapDiff](https://snapdom.dev/tools/snapdiff/): visual regression testing in the browser with baselines, diff views and a Vitest suite ([zumerlab/snapdiff](https://github.com/zumerlab/snapdiff)).
+- [SnapEye](https://snapdom.dev/tools/snapeye/): capture, compare and record a local app for coding agents through a CLI and a page API ([zumerlab/snapeye](https://github.com/zumerlab/snapeye)).
+- [SnapSurf](https://snapdom.dev/tools/snapsurf/) (experimental): web navigation and verification for agents as an MCP server and CLI ([zumerlab/snapsurf](https://github.com/zumerlab/snapsurf)).
+
+Community plugins are listed on the [plugins page](https://snapdom.dev/plugins/#community-plugins); [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md) explains how to add yours.
 
 ## Installation
 
@@ -95,9 +115,10 @@ Install the core and, when you need them, the official plugins:
 
 ```sh
 npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
+npm i @zumer/snapdom-pdf@latest   # or @zumer/snapdom-vector, @zumer/snapdom-stream
 ```
 
-Plugins 4.x require SnapDOM 3.3.0 or newer within 3.x. They include the PDF and Vector exporters, MIT licensed like the core. Their sources live in `packages/plugins/`.
+Every plugin package requires SnapDOM 3.4.0 or newer within 3.x. `@zumer/snapdom-plugins` 5.x is the toolbox of eleven smaller plugins; PDF, Vector and Stream are their own packages. All MIT, with sources under `packages/`.
 
 Or load it in a browser:
 
@@ -237,8 +258,8 @@ PDF returns a `Blob` with searchable, selectable text, links, pagination and opt
 
 ```js
 import { snapdom } from '@zumer/snapdom';
-import { pdf } from '@zumer/snapdom-plugins/pdf';
-import { vector } from '@zumer/snapdom-plugins/vector';
+import { pdf } from '@zumer/snapdom-pdf';
+import { vector } from '@zumer/snapdom-vector';
 
 const documentCapture = await snapdom(element, { plugins: [pdf()] });
 const blob = await documentCapture.toPdf({ page: 'a4', margin: 36 });
@@ -248,7 +269,7 @@ const svg = await artwork.toVector();
 copyButton.addEventListener('click', () => artwork.toFigma());
 ```
 
-Pass PDF capture settings to `pdf()` and paper, margin and download settings to `toPdf()`. `toFigma()` returns `Promise<void>` and needs the async clipboard API on HTTPS or localhost, called from a user action. Vector requires a connected source element; unsupported paint is diagnosed by the engine. See the [PDF reference](packages/plugins/pdf/REFERENCE.md) and [Vector contract](packages/plugins/vector/CONTRACT.md).
+Pass PDF capture settings to `pdf()` and paper, margin and download settings to `toPdf()`. `toFigma()` returns `Promise<void>` and needs the async clipboard API on HTTPS or localhost, called from a user action. Vector requires a connected source element; unsupported paint is diagnosed by the engine. See the [PDF reference](packages/pdf/REFERENCE.md) and [Vector contract](packages/vector/CONTRACT.md).
 
 ### Capture HTML strings
 
@@ -371,7 +392,8 @@ For a useful comparison, use the same scene, output format, scale and DPR. Compa
 
 ## Documentation
 
-- [Plugin demos](https://snapdom.dev/showcase/#plugins), [PDF demos](https://snapdom.dev/plugins/pdf/) and [Vector demos](https://snapdom.dev/plugins/vector/)
+- [Plugins](https://snapdom.dev/plugins/): one page per plugin with options and a live demo; [PDF](https://snapdom.dev/plugins/pdf/), [Vector](https://snapdom.dev/plugins/vector/) and [Stream](https://snapdom.dev/plugins/stream/) landings
+- [Ecosystem](https://snapdom.dev/ecosystem/): SnapDiff, SnapEye and SnapSurf
 - [v2 source](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/) and [options](https://snapdom.dev/docs/options/)
 - [Framework guides](https://snapdom.dev/how-to/#frameworks) and [how-to examples](https://snapdom.dev/how-to/)
@@ -453,20 +475,20 @@ Shipping something built with SnapDOM? Add the badge to your README:
 
 Projects using SnapDOM include:
 
-- [LobeHub](https://github.com/lobehub/lobehub) — platform for operating AI agents
-- [Hugging Face Chat UI](https://github.com/huggingface/chat-ui) — HuggingChat interface with artifact preview captures
-- [Sealos](https://github.com/labring/sealos) — AI-native cloud operating system
-- [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor) — low-code page editor
-- [Playroom](https://github.com/seek-oss/playroom) — JSX design tool by SEEK
-- [GPT-Vis](https://github.com/antvis/GPT-Vis) — AI-friendly data viz by Ant Group's AntV
-- [Rabby Wallet](https://github.com/RabbyHub/Rabby) — browser wallet for EVM chains
-- [uMap](https://github.com/umap-project/umap) — OpenStreetMap map builder
-- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server) — music tracker by MetaBrainz
-- [Mind Elixir](https://github.com/SSShooter/mind-elixir-core) — mind-map core; recommends SnapDOM for image export
-- [Kong UI Components](https://github.com/Kong/public-ui-components) — Kong's dashboard renderer exports PDFs with SnapDOM
-- [SnapDIFF](https://zumerlab.com/snapdiff/) — in-browser visual regression testing *(by Zumerlab)*
+- [LobeHub](https://github.com/lobehub/lobehub): platform for operating AI agents
+- [Hugging Face Chat UI](https://github.com/huggingface/chat-ui): HuggingChat interface with artifact preview captures
+- [Sealos](https://github.com/labring/sealos): AI-native cloud operating system
+- [Tencent tmagic-editor](https://github.com/Tencent/tmagic-editor): low-code page editor
+- [Playroom](https://github.com/seek-oss/playroom): JSX design tool by SEEK
+- [GPT-Vis](https://github.com/antvis/GPT-Vis): AI-friendly data viz by Ant Group's AntV
+- [Rabby Wallet](https://github.com/RabbyHub/Rabby): browser wallet for EVM chains
+- [uMap](https://github.com/umap-project/umap): OpenStreetMap map builder
+- [ListenBrainz](https://github.com/metabrainz/listenbrainz-server): music tracker by MetaBrainz
+- [Mind Elixir](https://github.com/SSShooter/mind-elixir-core): mind-map core; recommends SnapDOM for image export
+- [Kong UI Components](https://github.com/Kong/public-ui-components): Kong's dashboard renderer exports PDFs with SnapDOM
+- [SnapDiff](https://zumerlab.com/snapdiff/): in-browser visual regression testing *(by Zumerlab)*
 
-See the full gallery at **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**. Shipping SnapDOM? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project — real, verifiable projects only.
+See the full gallery at **[snapdom.dev/made-with](https://snapdom.dev/made-with/)**. Shipping SnapDOM? [Open a PR](https://github.com/zumerlab/snapdom/pulls) to add your project. Real, verifiable projects only.
 
 ## License
 

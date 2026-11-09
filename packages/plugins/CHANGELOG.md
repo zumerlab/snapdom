@@ -1,5 +1,16 @@
 # Plugin changes
 
+## 5.0.0
+
+> 9 November 2026
+
+**Breaking changes**
+
+- PDF, Vector and Stream are their own packages: [`@zumer/snapdom-pdf`](https://www.npmjs.com/package/@zumer/snapdom-pdf), [`@zumer/snapdom-vector`](https://www.npmjs.com/package/@zumer/snapdom-vector) and [`@zumer/snapdom-stream`](https://www.npmjs.com/package/@zumer/snapdom-stream). The `/pdf`, `/vector` and `/stream` subpaths are gone; change the import and nothing else, the options and behavior are unchanged.
+- `asciiStream` left with the stream. Use the two calls it wrapped: `stream(el, { onFrame: (f) => onText(asciiFromCanvas(f.canvas, options)) })`, with `stream` from `@zumer/snapdom-stream` and `asciiFromCanvas` from `@zumer/snapdom-plugins/ascii-export`. The README's "Migrating from 4.x" table has every import side by side.
+
+The package keeps the eleven toolbox plugins and still requires SnapDOM 3.4.0 or newer within 3.x.
+
 ## 4.4.1
 
 > 29 October 2026

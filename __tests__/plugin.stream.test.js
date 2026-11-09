@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, inject, it } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { snapdom } from '../src/index.js'
-import { stream, streamExport, streamTexture, recordCanvas, overlayStage, lowerThird } from '../packages/plugins/stream.js'
+import { stream, streamExport, streamTexture, recordCanvas, overlayStage, lowerThird } from '../packages/stream/index.js'
 
 // The first real pointer command in a fresh test iframe took 6.6 s on webkit under load (see
 // regression.interaction.staleness.test.js); the engine count is the load.

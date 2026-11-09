@@ -1,7 +1,7 @@
 // Local dev server for the docs site running against the local build instead
-// of the CDN: serves docs/ and rewrites core/plugin CDN imports (only inside
+// of the CDN: serves docs/ and rewrites core and plugin CDN imports (only inside
 // <script> blocks and .js files, so displayed code snippets stay intact) to
-// /__dist/ and /__plugins/. Files are read per request, so
+// /__dist/ and /__pkg/<package>/. Files are read per request, so
 // re-running `npm run compile` in another terminal is picked up on reload.
 // Run with: npm run site
 import { createServer } from 'node:http'
@@ -12,8 +12,9 @@ import { fileURLToPath } from 'node:url'
 const ROOT = fileURLToPath(new URL('..', import.meta.url))
 const DOCS = join(ROOT, 'docs')
 const DIST = join(ROOT, 'dist')
-const PLUGINS = join(ROOT, 'packages/plugins')
-const pluginEntries = JSON.parse(readFileSync(join(PLUGINS, 'package.json'), 'utf8')).exports
+// packages/<dir> publishes @zumer/snapdom-<dir>; its exports map names the public entries.
+const PACKAGES = Object.fromEntries(['plugins', 'pdf', 'vector', 'stream'].map((dir) =>
+  [dir, JSON.parse(readFileSync(join(ROOT, 'packages', dir, 'package.json'), 'utf8')).exports]))
 const PORT = Number(process.env.PORT) || 4180
 
 if (!existsSync(join(DIST, 'snapdom.mjs'))) {
@@ -32,9 +33,9 @@ const MIME = {
 }
 
 const CDN = /https:\/\/unpkg\.com\/@zumer\/snapdom(@[^/]+)?\/dist\//g
-const PLUGIN_CDN = /https:\/\/(?:esm\.sh|unpkg\.com)\/@zumer\/snapdom-plugins(?:@[^/'"`\s?]+)?(?=\/|['"`?]|$)/g
-const rewriteJs = (s) => s.replace(CDN, '/__dist/').replace(PLUGIN_CDN, '/__plugins')
-const rewritePluginJs = (s) => rewriteJs(s).replace(/(['"])@zumer\/snapdom(?:\/plugins)?\1/g, '$1/__dist/snapdom.mjs$1')
+const PKG_CDN = /https:\/\/(?:esm\.sh|unpkg\.com)\/@zumer\/snapdom-(plugins|pdf|vector|stream)(?:@[^/'"`\s?]+)?(?=\/|['"`?]|$)/g
+const rewriteJs = (s) => s.replace(CDN, '/__dist/').replace(PKG_CDN, '/__pkg/$1')
+const rewritePackageJs = (s) => rewriteJs(s).replace(/(['"])@zumer\/snapdom(?:\/plugins)?\1/g, '$1/__dist/snapdom.mjs$1')
 const rewriteHtml = (s) => s.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, rewriteJs)
 
 function localFile(base, path) {
@@ -42,34 +43,39 @@ function localFile(base, path) {
   return file.startsWith(base + sep) ? file : null
 }
 
-function pluginFile(path) {
-  const entry = path.slice('/__plugins/'.length)
-  // Public extensionless entries follow package exports; relative helper imports may
-  // request relative .js modules, including the PDF source tree. Neither route can escape the plugin directory.
-  const exported = pluginEntries[entry ? `./${entry}` : '.']
+function packageFile(path) {
+  const [dir, ...rest] = path.slice('/__pkg/'.length).split('/')
+  const entry = rest.join('/')
+  if (!PACKAGES[dir]) return null
+  // Public extensionless entries follow package exports; relative helper imports may request
+  // relative .js modules, including a source tree. Neither route can escape the package directory.
+  const exported = PACKAGES[dir][entry ? `./${entry}` : '.']
   const name = typeof exported === 'string' ? exported.slice(2) : entry
   if (!name.endsWith('.js')) return null
-  return localFile(PLUGINS, `/${name}`)
+  return localFile(join(ROOT, 'packages', dir), `/${name}`)
 }
 
 createServer((req, res) => {
   try {
     let path = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-    // Keep relative imports in the barrel under /__plugins/ as well.
-    if (path === '/__plugins') {
-      res.writeHead(302, { location: '/__plugins/' }).end()
+    // A bare package (`/__pkg/pdf`) redirects to its root so the barrel's relative imports stay
+    // under it. So do the toolbox's 4.x product subpaths (`/__pkg/plugins/pdf`) until the site
+    // imports the products by their own names, after their first publish.
+    const root = path.match(/^\/__pkg\/(\w+)$/) || path.match(/^\/__pkg\/plugins\/(pdf|vector|stream)(?:\.js)?$/)
+    if (root) {
+      res.writeHead(302, { location: `/__pkg/${root[1]}/` }).end()
       return
     }
-    const plugin = path.startsWith('/__plugins/')
+    const pkg = path.startsWith('/__pkg/')
     const dist = path.startsWith('/__dist/')
-    if (!plugin && path.endsWith('/')) path += 'index.html'
-    const file = plugin ? pluginFile(path)
+    if (!pkg && path.endsWith('/')) path += 'index.html'
+    const file = pkg ? packageFile(path)
       : dist ? localFile(DIST, path.slice('/__dist'.length)) : localFile(DOCS, path)
     if (!file) { res.writeHead(404).end(); return }
     let body = readFileSync(file)
     const ext = extname(file)
     if (ext === '.html') body = rewriteHtml(body.toString())
-    else if (plugin) body = rewritePluginJs(body.toString())
+    else if (pkg) body = rewritePackageJs(body.toString())
     else if (ext === '.js' && !dist) body = rewriteJs(body.toString())
     res.writeHead(200, { 'content-type': MIME[ext] || 'application/octet-stream' })
     res.end(body)

@@ -1,6 +1,6 @@
 /**
  * A dev build of the current commit, for users to test before a release:
- * `npm install @zumer/snapdom@dev`, or `@zumer/snapdom-plugins@dev` with `--plugins`.
+ * `npm install @zumer/snapdom@dev`, or `@zumer/snapdom-<package>@dev` with `--package <dir>`.
  *
  * Publishes the committed tree as `<next patch>-dev.<n>` under the `dev` dist-tag, the scheme
  * the earlier dev builds used. `latest` never moves, CHANGELOG.md is not touched, and nothing is
@@ -11,15 +11,16 @@
  *   npm run publish:dev               3.0.1-dev.0
  *   npm run publish:dev -- 3.1.0      3.1.0-dev.0, when the next release is a minor
  *   npm run publish:dev -- --dry-run  everything except the upload
- *   npm run publish:plugins:dev       the same for packages/plugins (4.4.1-dev.0)
+ *   npm run publish:plugins:dev       the same for packages/plugins (5.0.1-dev.0); publish:pdf:dev,
+ *                                     publish:vector:dev and publish:stream:dev for the other packages
  *
  * The `canvas` dist-tag (3.x-canvas.n, the html-in-canvas engine compiled in behind a flag)
  * is history: the engine ships in every build since Chrome 157 exposes the API unflagged.
  *
  * It refuses uncommitted changes, since the tarball would not be the commit it reports (a dry
  * run skips that check), and it runs scripts/check-pack.mjs first, so a dev build cannot ship a package whose
- * entrypoints or types are broken. That check packs the plugins too; the pdf and vector suites
- * that publish:plugins runs are left to the release.
+ * entrypoints or types are broken. That check packs the four plugin packages too; the pdf and
+ * vector suites that publish:pdf and publish:vector run are left to the release.
  */
 
 import { execFileSync } from 'node:child_process'
@@ -30,8 +31,8 @@ const dryRun = args.includes('--dry-run')
 const baseArg = args.find((a) => /^\d+\.\d+\.\d+$/.test(a))
 // npm version and npm publish take the workspace; the version lands in its manifest and in the
 // root lockfile's entry for it.
-const workspace = args.includes('--plugins') ? ['--workspace=@zumer/snapdom-plugins'] : []
-const manifestPath = workspace.length ? 'packages/plugins/package.json' : 'package.json'
+const packageDir = args.includes('--package') ? args[args.indexOf('--package') + 1] : null
+const manifestPath = packageDir ? `packages/${packageDir}/package.json` : 'package.json'
 
 const run = (cmd, cmdArgs) => execFileSync(cmd, cmdArgs, { stdio: 'inherit' })
 const read = (cmd, cmdArgs) => execFileSync(cmd, cmdArgs, { encoding: 'utf8' }).trim()
@@ -44,13 +45,21 @@ if (!dryRun && read('git', ['status', '--porcelain'])) {
 const manifest = readFileSync(manifestPath, 'utf8')
 const lock = readFileSync('package-lock.json', 'utf8')
 const pkg = JSON.parse(manifest)
+const workspace = packageDir ? [`--workspace=${pkg.name}`] : []
 const [major, minor, patch] = pkg.version.split('-')[0].split('.').map(Number)
 const base = baseArg || `${major}.${minor}.${patch + 1}`
 const tag = 'dev'
 
-// The next free <n> for this base, from what the registry already holds.
+// The next free <n> for this base, from what the registry already holds. A package not yet
+// published answers E404 and starts at 0; one with a single version answers a bare string.
 const devOf = new RegExp(`^${base.replace(/\./g, '\\.')}-${tag}\\.(\\d+)$`)
-const taken = JSON.parse(read('npm', ['view', pkg.name, 'versions', '--json']))
+const published = () => {
+  try { return [].concat(JSON.parse(read('npm', ['view', pkg.name, 'versions', '--json']))) } catch (e) {
+    if (/E404/.test(String(e.stderr))) return []
+    throw e
+  }
+}
+const taken = published()
   .map((v) => v.match(devOf))
   .filter(Boolean)
   .map((m) => Number(m[1]))

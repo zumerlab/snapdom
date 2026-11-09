@@ -1,0 +1,53 @@
+{
+  "name": "@zumer/snapdom-vector",
+  "version": "1.0.0",
+  "description": "Editable SVG and Figma clipboard export for SnapDOM",
+  "type": "module",
+  "scripts": {
+    "bump:dry": "npx @zumerbox/bump -d",
+    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog"
+  },
+  "exports": {
+    ".": "./index.js"
+  },
+  "types": "./index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src/",
+    "svd/",
+    "README.md",
+    "CONTRACT.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "snapdom",
+    "snapdom-plugin",
+    "dom-capture",
+    "svg",
+    "figma",
+    "vector"
+  ],
+  "author": "Juan Martin Muda",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zumerlab/snapdom.git",
+    "directory": "packages/vector"
+  },
+  "bugs": {
+    "url": "https://github.com/zumerlab/snapdom/issues"
+  },
+  "homepage": "https://snapdom.dev/plugins/vector/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tinchox5"
+  },
+  "peerDependencies": {
+    "@zumer/snapdom": "^3.4.0"
+  },
+  "devDependencies": {
+    "@zumer/snapdom": "file:../.."
+  },
+  "sideEffects": false
+}

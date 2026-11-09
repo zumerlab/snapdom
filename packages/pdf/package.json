@@ -1,0 +1,51 @@
+{
+  "name": "@zumer/snapdom-pdf",
+  "version": "1.0.0",
+  "description": "PDF export for SnapDOM: searchable, paginated documents with selectable text, links and optional form fields",
+  "type": "module",
+  "scripts": {
+    "bump:dry": "npx @zumerbox/bump -d",
+    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog"
+  },
+  "exports": {
+    ".": "./index.js"
+  },
+  "types": "./index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "src/",
+    "README.md",
+    "REFERENCE.md",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "snapdom",
+    "snapdom-plugin",
+    "dom-capture",
+    "pdf",
+    "html-to-pdf"
+  ],
+  "author": "Juan Martin Muda",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zumerlab/snapdom.git",
+    "directory": "packages/pdf"
+  },
+  "bugs": {
+    "url": "https://github.com/zumerlab/snapdom/issues"
+  },
+  "homepage": "https://snapdom.dev/plugins/pdf/",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tinchox5"
+  },
+  "peerDependencies": {
+    "@zumer/snapdom": "^3.4.0"
+  },
+  "devDependencies": {
+    "@zumer/snapdom": "file:../.."
+  },
+  "sideEffects": false
+}

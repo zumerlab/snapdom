@@ -85,8 +85,8 @@ await result.download({ format: 'jpg', filename: 'card' });
 | 将捕获结果用于纹理、覆盖层或过渡效果 | Canvas 与捕获几何信息 | 核心引擎 |
 | 保存页面片段，供以后展示 | 包含捕获样式和字体的 HTML | [`html-export`](packages/plugins/README.md#html-export) 插件 |
 | 为智能体或日志提供页面内容 | 文本/JSON 上下文，或附带元素映射的图片 | [`context-export`](packages/plugins/README.md#context-export) / [`agent-map`](packages/plugins/README.md#agent-map) 插件 |
-| 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | [`pdf`](packages/plugins/pdf/README.md) / [`gif-export`](packages/plugins/README.md#gif-export) / [`video-export`](packages/plugins/README.md#video-export) 插件 |
-| 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | [`vector`](packages/plugins/vector/README.md) 插件 |
+| 下载文档或录制变化中的内容 | 可搜索、可分页的 PDF、动画 GIF 或浏览器编码的视频 | [`pdf`](packages/pdf/README.md) / [`gif-export`](packages/plugins/README.md#gif-export) / [`video-export`](packages/plugins/README.md#video-export) 插件 |
+| 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | [`vector`](packages/vector/README.md) 插件 |
 
 图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
 
@@ -98,7 +98,7 @@ await result.download({ format: 'jpg', filename: 'card' });
 npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-插件 4.x 要求 SnapDOM 3.3.0 或更高的 3.x 版本。其中包含 PDF 和 Vector 导出器，与核心一样采用 MIT 许可证。源码位于 `packages/plugins/`。
+所有插件包都要求 SnapDOM 3.4.0 或更高的 3.x 版本。`@zumer/snapdom-plugins` 5.x 是包含十一个小插件的工具箱；PDF、Vector 和 Stream 是独立的包：`@zumer/snapdom-pdf`、`@zumer/snapdom-vector` 和 `@zumer/snapdom-stream`。全部采用 MIT 许可证，源码位于 `packages/`。
 
 也可以在浏览器中加载：
 
@@ -238,8 +238,8 @@ PDF 返回 `Blob`，支持可搜索、可选择的文本、链接、分页和可
 
 ```js
 import { snapdom } from '@zumer/snapdom';
-import { pdf } from '@zumer/snapdom-plugins/pdf';
-import { vector } from '@zumer/snapdom-plugins/vector';
+import { pdf } from '@zumer/snapdom-pdf';
+import { vector } from '@zumer/snapdom-vector';
 
 const documentCapture = await snapdom(element, { plugins: [pdf()] });
 const blob = await documentCapture.toPdf({ page: 'a4', margin: 36 });
@@ -249,7 +249,7 @@ const svg = await artwork.toVector();
 copyButton.addEventListener('click', () => artwork.toFigma());
 ```
 
-PDF 的捕获设置传给 `pdf()`，纸张、边距和下载设置传给 `toPdf()`。`toFigma()` 返回 `Promise<void>`，必须在 HTTPS 或 localhost 页面中由用户操作触发，并需要异步剪贴板 API。Vector 需要源元素保持连接；不支持的绘制效果会由引擎诊断。详见 [PDF 参考](packages/plugins/pdf/REFERENCE.md)和 [Vector 契约](packages/plugins/vector/CONTRACT.md)。
+PDF 的捕获设置传给 `pdf()`，纸张、边距和下载设置传给 `toPdf()`。`toFigma()` 返回 `Promise<void>`，必须在 HTTPS 或 localhost 页面中由用户操作触发，并需要异步剪贴板 API。Vector 需要源元素保持连接；不支持的绘制效果会由引擎诊断。详见 [PDF 参考](packages/pdf/REFERENCE.md)和 [Vector 契约](packages/vector/CONTRACT.md)。
 
 ### 捕获 HTML 字符串
 
