@@ -52,7 +52,7 @@ const sources = (dir, sub) => readdirSync(join(ROOT, 'packages', dir, sub), { re
   .filter((p) => p.endsWith('.js')).map((p) => `package/${sub}/${p}`)
 const PACKAGES = {
   plugins: ['package/capture-frames.js', 'package/privacy-policy.js', 'package/redact-clone.js'],
-  pdf: ['package/REFERENCE.md', 'package/src/mega/README.md', ...sources('pdf', 'src')],
+  pdf: ['package/src/mega/README.md', ...sources('pdf', 'src')],
   vector: ['package/CONTRACT.md', ...sources('vector', 'src'), ...sources('vector', 'svd')],
   stream: sources('stream', 'src'),
 }

@@ -249,7 +249,7 @@ const svg = await artwork.toVector();
 copyButton.addEventListener('click', () => artwork.toFigma());
 ```
 
-PDF 的捕获设置传给 `pdf()`，纸张、边距和下载设置传给 `toPdf()`。`toFigma()` 返回 `Promise<void>`，必须在 HTTPS 或 localhost 页面中由用户操作触发，并需要异步剪贴板 API。Vector 需要源元素保持连接；不支持的绘制效果会由引擎诊断。详见 [PDF 参考](packages/pdf/REFERENCE.md)和 [Vector 契约](packages/vector/CONTRACT.md)。
+PDF 的捕获设置传给 `pdf()`，纸张、边距和下载设置传给 `toPdf()`。`toFigma()` 返回 `Promise<void>`，必须在 HTTPS 或 localhost 页面中由用户操作触发，并需要异步剪贴板 API。Vector 需要源元素保持连接；不支持的绘制效果会由引擎诊断。详见 [PDF 选项](packages/pdf/README.md)和 [Vector 契约](packages/vector/CONTRACT.md)。
 
 ### 捕获 HTML 字符串
 

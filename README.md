@@ -269,7 +269,7 @@ const svg = await artwork.toVector();
 copyButton.addEventListener('click', () => artwork.toFigma());
 ```
 
-Pass PDF capture settings to `pdf()` and paper, margin and download settings to `toPdf()`. `toFigma()` returns `Promise<void>` and needs the async clipboard API on HTTPS or localhost, called from a user action. Vector requires a connected source element; unsupported paint is diagnosed by the engine. See the [PDF reference](packages/pdf/REFERENCE.md) and [Vector contract](packages/vector/CONTRACT.md).
+Pass PDF capture settings to `pdf()` and paper, margin and download settings to `toPdf()`. `toFigma()` returns `Promise<void>` and needs the async clipboard API on HTTPS or localhost, called from a user action. Vector requires a connected source element; unsupported paint is diagnosed by the engine. See the [PDF options](packages/pdf/README.md) and the [Vector contract](packages/vector/CONTRACT.md).
 
 ### Capture HTML strings
 

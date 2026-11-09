@@ -23,7 +23,7 @@ under the same visibility, clip and transform rules as every text run — lives 
 `src/text-layer.js`, because measurement is its job. What is in this folder is
 the part in between: planning and byte-shaping.
 
-Decisions that are settled (see the triage memory and REFERENCE.md):
+Decisions that are settled (see the triage memory and the package README):
 
 - **The `pdfuaid` claim is earned, never configured.** Fonts embed from the
   capture's own `@font-face` (`fonts.js` + `pdf-writer/font.js`), subset to the

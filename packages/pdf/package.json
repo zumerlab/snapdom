@@ -16,7 +16,6 @@
     "index.d.ts",
     "src/",
     "README.md",
-    "REFERENCE.md",
     "CHANGELOG.md"
   ],
   "keywords": [
