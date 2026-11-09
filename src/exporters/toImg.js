@@ -10,7 +10,7 @@
 import { isSafari, debugWarn } from '../utils'
 import { sessionWarn } from '../utils/debug.js'
 import { rasterize } from '../modules/rasterize'
-import { fixSafariShadows, decodeSvgFromDataURL, encodeSvgToDataURL } from './toCanvas.js'
+import { fixSafariShadows, zoomSvgText, decodeSvgFromDataURL, encodeSvgToDataURL } from './toCanvas.js'
 /**
  * Load a capture's data URL into an <img> sized by the shared exporter rule.
  *
@@ -20,7 +20,8 @@ import { fixSafariShadows, decodeSvgFromDataURL, encodeSvgToDataURL } from './to
  * are patched before decode when the header supplies the dimensions. Assigning src restarts
  * decoding, so the final URL must always finish decoding. On Safari any scale or size
  * runs the vector path described above, with PNG rasterize as its error fallback.
- * Pinned by __tests__/exporter.toImg.test.js and __tests__/exporter.safariPaths.test.js.
+ * Pinned by __tests__/exporter.toImg.test.js, __tests__/exporter.safariPaths.test.js and
+ * __tests__/exporter.webkitLayerScale.test.js (the positioned-layer geometry of the vector path).
  * @param {string} url - the capture's data URL
  * @param {object} options
  * @param {number} [options.scale=1]
@@ -52,7 +53,9 @@ export async function toImg(url, options) {
       else if (hasW) { cssW = width; cssH = Math.max(1, Math.round(refH * (width / Math.max(1, refW)))) }
       else if (hasH) { cssH = height; cssW = Math.max(1, Math.round(refW * (height / Math.max(1, refH)))) }
       else { cssW = Math.max(1, Math.round(natW * scale)); cssH = Math.max(1, Math.round(natH * scale)) }
-      const patched = svg
+      // The viewBox goes to the output size and the clone is zoomed (zoomSvgText): a size
+      // over the natural viewBox leaves every positioned layer at 1x (WebKit bug 23113).
+      const patched = zoomSvgText(svg, cssW, cssH) || svg
         .replace(/width="[^"]*"/, `width="${cssW}"`)
         .replace(/height="[^"]*"/, `height="${cssH}"`)
       const img = new Image()

@@ -163,6 +163,57 @@ function shiftRootForeignObject(svg, tag, dx, dy) {
   return tag + next + svg.slice(tag.length + fo.length)
 }
 
+/**
+ * Size an svg to `w` x `h` the way WebKit can draw it: the viewBox at the output size, the
+ * root foreignObject's geometry scaled and `zoom` on its wrapper, instead of a width/height
+ * over the natural viewBox. WebKit draws every box of the foreignObject's HTML that paints
+ * through its own layer (position, opacity, transform) without the viewBox-to-viewport scale
+ * (WebKit bug 23113, open since 2009): a card with a positioned layer exported at 2x came out
+ * at half size in the top-left corner over a full-size backdrop (LodyAI/Lody#2250, whose fix
+ * this is; measured in Playwright WebKit too). The zoom lays the clone out at k times every
+ * length, so layout and layers agree. Uniform scale, the smaller axis, centred, the same box
+ * the plain header's `xMidYMid meet` gave. Null when there is nothing to scale (no viewBox,
+ * no root foreignObject, no wrapper style), where the caller keeps the plain patch.
+ * Pinned by __tests__/exporter.webkitLayerScale.test.js.
+ * @param {string} svg - decoded svg text
+ * @param {number} w - output width in CSS px
+ * @param {number} h - output height in CSS px
+ * @returns {string|null}
+ */
+export function zoomSvgText(svg, w, h) {
+  const head = svg.match(/<svg\b[^>]*>/i)
+  if (!head) return null
+  const tag = head[0]
+  const parts = String((tag.match(/\bviewBox="([^"]+)"/i) || [])[1] || '').trim().split(/[\s,]+/).map(Number)
+  if (parts.length !== 4 || !parts.every(Number.isFinite) || parts[2] <= 0 || parts[3] <= 0) return null
+  const k = Math.min(w / parts[2], h / parts[3])
+  const m = /^\s*<foreignObject\b[^>]*>/i.exec(svg.slice(tag.length, tag.length + 2048))
+  if (!m) return null
+  let fo = m[0]
+  const offset = { x: (w - k * parts[2]) / 2, y: (h - k * parts[3]) / 2 }
+  for (const name of ['x', 'y', 'width', 'height']) {
+    const re = new RegExp(`(\\s${name}=")([^"]*)`)
+    const at = fo.match(re)
+    const v = at ? parseFloat(at[2]) : 0
+    if (!Number.isFinite(v)) return null
+    const next = v * k + (offset[name] || 0)
+    fo = at ? fo.replace(re, (_, attr) => `${attr}${next}`) : fo.replace(/^(\s*<foreignObject\b)/i, (_, open) => `${open} ${name}="${next}"`)
+  }
+  // The wrapper is the first element after the engine's <style>, whose text the serializer
+  // escaped, so the first literal `<div` past it is the wrapper itself.
+  const body = svg.slice(tag.length + m[0].length)
+  const styleEnd = body.indexOf('</style>')
+  const div = /<div\b[^>]*?( style=")([^"]*)"/i.exec(body.slice(styleEnd < 0 ? 0 : styleEnd))
+  if (!div) return null
+  const at = (styleEnd < 0 ? 0 : styleEnd) + div.index
+  const zoomed = body.slice(0, at) + div[0].slice(0, -1) + `;zoom:${k} !important"` + body.slice(at + div[0].length)
+  const sized = tag
+    .replace(/(\bwidth=")[^"]*/i, `$1${w}`)
+    .replace(/(\bheight=")[^"]*/i, `$1${h}`)
+    .replace(/(\bviewBox=")[^"]*/i, `$10 0 ${w} ${h}`)
+  return sized + fo + zoomed
+}
+
 // ——— helpers ———
 function isSvgDataURL(u) {
   return typeof u === 'string' && /^data:image\/svg\+xml/i.test(u)
