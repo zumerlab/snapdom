@@ -16,7 +16,7 @@ const options = () => ({ sample:form.elements.sample.value, page:form.elements.p
 const heading = (kicker, title) => `<div class="sample-card-kicker">${kicker}</div><h2 data-title contenteditable="true" aria-label="Edit document title" style="font:700 21px Arial;margin:10px 0">${title}</h2>`
 function updateCode() {
   const s = options()
-  code.textContent = `import { snapdom } from '@zumer/snapdom';\nimport { ${format} } from '@zumer/snapdom-${format}';\n\nconst result = await snapdom(element, {\n  plugins: [${format}()],\n  dpr: 1\n});\n${format === 'pdf' ? `const blob = await result.toPdf({\n  page: '${s.page}',\n  text: ${s.text},\n  fields: ${s.fields}\n});` : 'const svg = await result.toVector();'}`
+  code.textContent = `import { snapdom } from '@zumer/snapdom';\nimport { ${format} } from '@zumer/snapdom-${format}';\n\nconst result = await snapdom(element, {\n  plugins: [${format}()]${format === 'pdf' ? ',\n  dpr: 2' : ''}\n});\n${format === 'pdf' ? `const blob = await result.toPdf({\n  page: '${s.page}',\n  text: ${s.text},\n  fields: ${s.fields}\n});` : 'const svg = await result.toVector();'}`
 }
 function clearOutput() {
   buttonState(generateButton, 'idle', format === 'pdf' ? 'Generate PDF' : 'Generate Vector')
@@ -100,7 +100,8 @@ form.addEventListener('submit',async event => {
   status.textContent = `Loading ${format} and capturing…`
   try {
     const snapdom = await loadSnapdom(), plugin = (await loadPlugin(format))[format]()
-    const result = await snapdom(card,{ plugins:[plugin], dpr:1, backgroundColor:null })
+    // dpr 2: the PDF page is a raster, and at 1 it reads soft on a retina screen and under zoom. SVG output has no raster to size.
+    const result = await snapdom(card,{ plugins:[plugin], dpr:format === 'pdf' ? 2 : 1, backgroundColor:null })
     lastResult = result
     const value = format === 'pdf' ? await result.toPdf({ page:s.page, text:s.text, fields:s.fields, pageNumbers:s.page !== 'fit' }) : await result.toVector()
     const blob = format === 'pdf' ? value : new Blob([value],{type:'image/svg+xml'})
