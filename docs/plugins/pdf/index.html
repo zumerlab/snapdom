@@ -191,9 +191,7 @@ import pdf from '@zumer/snapdom-pdf'
 
 snapdom.plugins(pdf())
 
-const shot = await snapdom(document.querySelector('#report'), {
-  scale: 2, dpr: 1
-})
+const shot = await snapdom(document.querySelector('#report'))
 
 const blob = await shot.toPdf({
   page: 'a4',                              // 'fit' | 'a4' | 'a5' | 'letter' | …

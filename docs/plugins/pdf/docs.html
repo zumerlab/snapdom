@@ -127,7 +127,7 @@ import { pdf } from '@zumer/snapdom-pdf'
 
 snapdom.plugins(pdf())
 
-const shot = await snapdom(document.querySelector('#report'), { dpr: 2 })
+const shot = await snapdom(document.querySelector('#report'))
 const blob = await shot.toPdf({ page: 'a4', download: 'report.pdf' })</code></pre>
   <p>Register the plugin before you capture. A capture made without it has no
   <code>toPdf()</code>. To use it on one capture only, pass it there:
@@ -178,8 +178,10 @@ const blob = await shot.toPdf({ page: 'a4', download: 'report.pdf' })</code></pr
     </tbody>
   </table>
   <p>Sharpness and size come from the capture: <code>snapdom(el, { scale, dpr })</code>. Both multiply
-  the image's pixels and leave the page layout alone. <code>dpr</code> defaults to the screen of the
-  machine that exports, so set it, for example to <code>2</code>, to get the same file everywhere.</p>
+  the image's pixels and leave the page layout alone. The image keeps that many pixels per CSS pixel
+  at the size it is printed. A capture enlarged to fill the paper is drawn at the enlarged size, so
+  it stays as sharp as on screen. <code>dpr</code> defaults to the screen of the machine that
+  exports, so set it, for example to <code>2</code>, to get the same file everywhere.</p>
 
   <h2 id="text">Text and links</h2>
   <table>
