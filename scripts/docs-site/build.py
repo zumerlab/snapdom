@@ -83,16 +83,17 @@ def index_grid(items):
 
 def nav_groups(groups, placeholder, label):
     """Sidebar of a page of its own: groups of (label, section, [(href, text)]). The current
-    page is the item whose href is './'; its group starts open and the others closed. An index
-    page, which is current in no group, shows every group open."""
+    page is the item whose href is './'; its group starts open and the others closed, except a
+    group of in-page '#' links, which is the open page's own. An index page, which is current
+    in no group, shows every group open. `placeholder` None leaves the filter box out."""
     here = any(h == './' for _, _, items in groups for h, _ in items)
     out = []
     for glabel, sec, items in groups:
         links = ''.join(f'<a href="{h}"{CUR if h == "./" else ""}>{E(t)}</a>' for h, t in items)
-        open_ = not here or any(h == './' for h, _ in items)
+        open_ = not here or any(h == './' or h.startswith('#') for h, _ in items)
         out.append(f'<div class="sec-{sec}"><button type="button" class="pane-nav-head" aria-expanded="{str(open_).lower()}"><span class="sec-dot"></span>{E(glabel)}</button><div class="pane-nav-items">{links}</div></div>')
-    return (f'<aside class="pane-side"><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="{placeholder}" aria-label="{placeholder}"></label>'
-            f'<nav class="pane-nav" aria-label="{label}">{"".join(out)}</nav></aside>')
+    box = f'<label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="{placeholder}" aria-label="{placeholder}"></label>' if placeholder else ''
+    return f'<aside class="pane-side">{box}<nav class="pane-nav" aria-label="{label}">{"".join(out)}</nav></aside>'
 
 def pager(prev, nxt):
     """Previous and Next as (href, label); either may be None."""

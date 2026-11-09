@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-10-24","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"image":"https://snapdom.dev/assets/og-card.jpg"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Tiled rasterization for large DOM captures","description":"SnapDOM windows a huge SVG before browser decode, then rasterizes each tile into its own canvas without allocating a full-page bitmap.","url":"https://snapdom.dev/blog/huge-page-mosaic/","datePublished":"2026-08-11","dateModified":"2026-11-09","author":{"@type":"Person","name":"Juan Martin Muda","url":"https://github.com/tinchox5"},"image":"https://snapdom.dev/assets/og-card.jpg"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Blog","item":"https://snapdom.dev/blog/"},{"@type":"ListItem","position":3,"name":"Tiled Rasterization","item":"https://snapdom.dev/blog/huge-page-mosaic/"}]}</script>
   <style>
     .byline { text-align: center; font-family: var(--font-mono); font-size: 11.5px; letter-spacing: 1px; color: var(--text-muted); margin: -16px 0 40px; text-transform: uppercase; }
@@ -29,7 +29,7 @@
     .mosaic-demo { margin: 20px 0 10px; padding: 22px; border: 1px solid var(--border); background: var(--surface); }
     .mosaic-demo h3 { margin-top: 0; }
     .mosaic-scroll { width: 100%; height: 430px; overflow: auto; padding: 18px; border: 1px solid var(--border); background: #DCE4F5; }
-    .mosaic-source { width: 640px; height: 2400px; overflow: hidden; color: #0F1E4D; background: #F7F9FC; box-shadow: -16px -12px 0 #2D5BFF; font-family: Arial, Helvetica, sans-serif; }
+    .mosaic-source { width: 640px; height: 2400px; overflow: hidden; color: #0F1E4D; background: #F7F9FC; box-shadow: -16px -12px 0 #2D5BFF; font-family: Roboto, Arial, Helvetica, sans-serif; }
     .mosaic-source header { display: flex; height: 300px; flex-direction: column; justify-content: space-between; padding: 42px; color: #FFFFFF; background: #0F1E4D; }
     .mosaic-source header small, .tile-doc-end small { font-size: 12px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; }
     .mosaic-source header h3 { max-width: 480px; margin: 0; color: #FFFFFF; font-size: 44px; font-weight: 700; letter-spacing: -2px; line-height: 0.98; text-transform: none; }
@@ -84,7 +84,7 @@
   </style>
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "SnapDOM Blog", "title": "<span class=\"accent\">Tiled rasterization</span> for large DOM captures", "lead": "Since v2.24, SnapDOM can capture a document once, then rasterize it as a mosaic of small canvases. The important part is when the cut happens: before the browser decodes a single pixel.", "links": []} -->

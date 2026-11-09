@@ -1,7 +1,7 @@
 /* Same source palette as how-to/html-to-png, shared by every current page. */
-pre.site-code-block,div.site-code-block { position:relative; display:block; background:#0F1E4D !important; color:#D9E2F7 !important; border:1px solid #0F1E4D !important; border-radius:0 !important; padding:48px 20px 20px !important; margin:18px 0; overflow:auto; max-width:100%; text-align:left; white-space:pre; font:13px/1.7 ui-monospace,'SF Mono',Menlo,Consolas,monospace !important; }
+pre.site-code-block,div.site-code-block { position:relative; display:block; background:#0F1E4D !important; color:#D9E2F7 !important; border:1px solid #0F1E4D !important; border-radius:0 !important; padding:48px 20px 20px !important; margin:18px 0; overflow:auto; max-width:100%; text-align:left; white-space:pre; font:13px/1.7 Roboto Mono, ui-monospace, 'SF Mono',Menlo,Consolas,monospace !important; }
 .site-code-block > code { display:block; margin:0 !important; padding:0 !important; border:0 !important; background:transparent !important; color:inherit !important; font:inherit !important; white-space:pre !important; overflow-wrap:normal !important; }
-.site-code-block > .code-copy { position:absolute; top:10px; right:10px; padding:8px 12px; min-height:32px; border:1px solid #7282a6; border-radius:0; color:#D9E2F7; background:#0F1E4D; font:12px Arial,sans-serif; cursor:pointer; }
+.site-code-block > .code-copy { position:absolute; top:10px; right:10px; padding:8px 12px; min-height:32px; border:1px solid #7282a6; border-radius:0; color:#D9E2F7; background:#0F1E4D; font:12px Roboto, Arial,sans-serif; cursor:pointer; }
 .site-code-block > .code-copy:hover { border-color:#D9E2F7; }
 .site-code-block > .code-copy:focus-visible { outline:3px solid #8FB5FF; outline-offset:2px; }
 .site-code-block > .code-copy.copied { color:#9FE8C5; }

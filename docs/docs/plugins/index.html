@@ -57,7 +57,7 @@
 
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM <span class=\"accent\">Plugins</span>", "lead": "Plugins turn a capture into HTML, structured context, element maps, PDFs or recordings. Write hooks when you need to change the captured content or add an output.", "links": [["#build", "Build a plugin"], ["../../plugins/", "Browse plugins"]]} -->
@@ -75,7 +75,7 @@
 
     <section class="prose">
       <h2 id="official">Official plugins</h2>
-      <p>Every official plugin has its own page with install, options and a live demo. <a href="../../plugins/">All plugins</a> lists them. Three are products with their own landing page and reference: <a href="../../plugins/pdf/">PDF</a>, a searchable, paginated PDF export with selectable text, links and optional form fields; <a href="../../plugins/vector/">Vector</a>, editable SVG and Figma clipboard export; <a href="../../plugins/stream/">Stream</a>, a live element as a canvas that repaints only what changed, for WebGL textures and video overlays. The other eleven are the toolbox. Plugins by other authors are listed under <a href="../../plugins/#community-plugins">community plugins</a>. The toolbox ships in one package, and PDF, Vector and Stream are packages of their own: <code>@zumer/snapdom-pdf</code>, <code>@zumer/snapdom-vector</code> and <code>@zumer/snapdom-stream</code>. Install the toolbox next to SnapDOM 3.4.0 or newer (plugins 5.x):</p>
+      <p>Every official plugin has its own page with install, options and a live demo. <a href="../../plugins/">All plugins</a> lists them. Three are packages of their own, and their page is also the full reference: <a href="../../plugins/pdf/">PDF</a>, a searchable, paginated PDF export with selectable text, links and optional form fields; <a href="../../plugins/vector/">Vector</a>, editable SVG and Figma clipboard export; <a href="../../plugins/stream/">Stream</a>, a live element as a canvas that repaints only what changed, for WebGL textures and video overlays. The other eleven are the toolbox. Plugins by other authors are listed under <a href="../../plugins/#community-plugins">community plugins</a>. The toolbox ships in one package, and PDF, Vector and Stream are packages of their own: <code>@zumer/snapdom-pdf</code>, <code>@zumer/snapdom-vector</code> and <code>@zumer/snapdom-stream</code>. Install the toolbox next to SnapDOM 3.4.0 or newer (plugins 5.x):</p>
       <pre class="code-block">npm install @zumer/snapdom-plugins@latest</pre>
       <pre class="code-block">import { filter } from '@zumer/snapdom-plugins/filter';
 import { timestampOverlay } from '@zumer/snapdom-plugins/timestamp-overlay';</pre>

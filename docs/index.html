@@ -74,11 +74,11 @@
       --line: rgba(15, 30, 77, .14);
       --soft: #eef3ff;
       --max: 1180px;
-      --font-code: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      --font-code: Roboto Mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
-    body { margin: 0; color: var(--ink); background: var(--paper); font-family: Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
+    body { margin: 0; color: var(--ink); background: var(--paper); font-family: Roboto, Arial, Helvetica, sans-serif; -webkit-font-smoothing: antialiased; }
     a { color: inherit; }
     .wrap { width: min(var(--max), calc(100% - 48px)); margin: 0 auto; }
     .hero { padding: 96px 0 72px; border-bottom: 1px solid var(--line); }
@@ -92,7 +92,7 @@
     .btn-primary { border-color: var(--blue); color: var(--white); background: var(--blue); }
     .btn-primary:hover { background: var(--blue-dark); }
     .btn-secondary:hover { color: var(--blue); border-color: var(--blue); }
-    .install { width: 100%; min-width: 0; display: flex; align-items: center; gap: 18px; padding: 13px 16px; color: #dce4ff; background: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
+    .install { width: 100%; min-width: 0; display: flex; align-items: center; gap: 18px; padding: 13px 16px; color: #dce4ff; background: var(--ink); font-family: Roboto Mono, ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
     .install span { min-width: 0; overflow-x: auto; white-space: nowrap; scrollbar-width: thin; }
     .install .copy { flex: 0 0 auto; }
     .proof { margin-top: 30px; display: flex; flex-wrap: wrap; gap: 18px; color: var(--muted); font-size: 14px; }
@@ -104,14 +104,14 @@
     .stage-third { position: absolute; background: rgba(45,91,255,.09); pointer-events: none; }
     .stage-third.v { top: 0; bottom: 0; width: 1px; }
     .stage-third.h { left: 0; right: 0; height: 1px; }
-    .stage-cross { position: absolute; transform: translate(-50%,-50%); color: rgba(15,30,77,.25); font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .stage-cross { position: absolute; transform: translate(-50%,-50%); color: rgba(15,30,77,.25); font: 13px Roboto Mono, ui-monospace, SFMono-Regular, Menlo, monospace; }
     .stage-bracket { position: absolute; width: 25px; height: 25px; }
     .stage-bracket.tl { top: 14px; left: 14px; border-top: 3px solid var(--blue); border-left: 3px solid var(--blue); }
     .stage-bracket.tr { top: 14px; right: 14px; border-top: 3px solid var(--blue); border-right: 3px solid var(--blue); }
     .stage-bracket.bl { bottom: 14px; left: 14px; border-bottom: 3px solid var(--blue); border-left: 3px solid var(--blue); }
     .stage-bracket.br { right: 14px; bottom: 14px; border-right: 3px solid var(--blue); border-bottom: 3px solid var(--blue); }
     .stage-mascot { position: absolute; left: 50%; bottom: 24px; width: min(76%, 300px); height: auto; transform: translateX(-50%); }
-    .stage-annot { position: absolute; color: var(--muted); font: 12px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; white-space: nowrap; }
+    .stage-annot { position: absolute; color: var(--muted); font: 12px Roboto, Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; white-space: nowrap; }
     .stage-annot.vert { writing-mode: vertical-rl; }
     #hero-flash { position: absolute; inset: 0; z-index: 5; pointer-events: none; background: #fff; opacity: 0; }
     #hero-flash.flashing { animation: flash .55s ease-out both; }
@@ -130,7 +130,7 @@
     .shutter:disabled { cursor: wait; }
     .shutter:focus-visible { outline: 3px solid var(--blue); outline-offset: 5px; }
     @media (prefers-reduced-motion: reduce) { .shutter:not(.used)::after { animation: none; } }
-    .shutter-label { color: #aeb8d2; font: 12px Arial, Helvetica, sans-serif; letter-spacing: 0; }
+    .shutter-label { color: #aeb8d2; font: 12px Roboto, Arial, Helvetica, sans-serif; letter-spacing: 0; }
     .hero-tray { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; overflow-y: hidden; padding: 10px 2px 6px; scrollbar-width: none; }
     .stage-row::after { content: ""; position: absolute; top: 14px; left: 96px; right: 18px; z-index: 2; height: 7px; border-radius: 4px; background: #05070c; box-shadow: inset 0 1px 2px rgba(0,0,0,.9), 0 1px 0 rgba(255,255,255,.1); pointer-events: none; }
     .hero-tray::-webkit-scrollbar { display: none; }
@@ -142,14 +142,14 @@
     .print.dev img { filter: none; }
     @media (prefers-reduced-motion: reduce) { .print { animation-duration: .2s; } .print-photo::after { transition-duration: .4s; } .print img { transition-duration: .4s; } }
     .print img { display: block; width: 100% !important; max-width: 100%; min-width: 0; height: auto !important; object-fit: contain; }
-    .print-cap { color: var(--muted); font: 12px Arial, Helvetica, sans-serif; letter-spacing: .5px; }
-    .print-plug { width: 0; min-width: 100%; margin-top: -2px; overflow-wrap: anywhere; color: var(--blue); font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.3; }
+    .print-cap { color: var(--muted); font: 12px Roboto, Arial, Helvetica, sans-serif; letter-spacing: .5px; }
+    .print-plug { width: 0; min-width: 100%; margin-top: -2px; overflow-wrap: anywhere; color: var(--blue); font: 12px Roboto Mono, ui-monospace, SFMono-Regular, Menlo, monospace; line-height: 1.3; }
     .print.r1 { transform: rotate(1.8deg); }
     .print.r2 { transform: rotate(-2.2deg); }
     .star-overlay { position: absolute; inset: 0; z-index: 4; display: flex; align-items: center; justify-content: center; }
     .star-overlay::before { content: ''; position: absolute; inset: 0; background: rgba(247,249,252,.68); backdrop-filter: blur(2px); }
     .star-card { position: relative; border: 1px solid var(--line); background: #fff; box-shadow: 0 14px 30px -14px rgba(15,30,77,.45); transform: rotate(-2deg); animation: print-in .5s cubic-bezier(.2,.9,.3,1) both; }
-    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 22px 34px 19px; color: var(--ink); text-decoration: none; text-align: center; font: 700 14px/1.5 Arial, Helvetica, sans-serif; letter-spacing: 0; }
+    .star-card a { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 22px 34px 19px; color: var(--ink); text-decoration: none; text-align: center; font: 700 14px/1.5 Roboto, Arial, Helvetica, sans-serif; letter-spacing: 0; }
     .star-card a:hover { color: var(--blue); }
     .star-big { color: #f5a623; font-size: 40px; line-height: 1; }
     .star-close { position: absolute; top: -12px; right: -12px; width: 28px; height: 28px; display: grid; place-items: center; padding: 0; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); background: #fff; cursor: pointer; }
@@ -169,17 +169,17 @@
     .section-white { background: var(--white); }
     .install-line { width: 100%; max-width: 600px; margin-top: 28px; background: var(--ink); }
     .install-tabs { display: flex; border-bottom: 1px solid rgba(217,226,247,.16); }
-    .install-tabs button { padding: 9px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: #b9c5e4; cursor: pointer; font: 700 12px Arial, Helvetica, sans-serif; }
+    .install-tabs button { padding: 9px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: #b9c5e4; cursor: pointer; font: 700 12px Roboto, Arial, Helvetica, sans-serif; }
     .install-tabs button[aria-selected="true"] { border-bottom-color: #9eb3ff; color: var(--white); }
     .install-line .install { margin: 0; }
     .demo-panel .stage-row { min-height: 128px; }
-    .tray-empty { padding-top: 26px; color: #8a95b3; font: 12px Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
+    .tray-empty { padding-top: 26px; color: #8a95b3; font: 12px Roboto, Arial, Helvetica, sans-serif; letter-spacing: 0; text-transform: none; }
     .output-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
     .output-card { display: flex; flex-direction: column; gap: 12px; padding: 24px; background: var(--white); border: 1px solid var(--line); transition: border-color .15s; }
     .output-card:hover { border-color: var(--blue); }
     .output-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
     .output-card h3 { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 23px; line-height: 1.2; letter-spacing: -.025em; }
-    .output-card-formats { color: var(--muted); font: 400 13px/1.5 Arial, Helvetica, sans-serif; }
+    .output-card-formats { color: var(--muted); font: 400 13px/1.5 Roboto, Arial, Helvetica, sans-serif; }
     .output-card p { flex: 1; margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
     .output-card-links { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding-top: 4px; }
     .output-card-links a { color: var(--blue); font-size: 14px; font-weight: 700; text-underline-offset: 4px; }
@@ -193,7 +193,7 @@
     .output-card-tags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
     .grid-more { margin: 24px 0 0; font-size: 15px; font-weight: 700; }
     .grid-more a { color: var(--blue); text-underline-offset: 4px; }
-    .hero-code { margin: 0; padding: 12px 16px; overflow-x: auto; white-space: nowrap; border-top: 1px solid rgba(217,226,247,.16); color: #dce4ff; background: var(--ink); font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .hero-code { margin: 0; padding: 12px 16px; overflow-x: auto; white-space: nowrap; border-top: 1px solid rgba(217,226,247,.16); color: #dce4ff; background: var(--ink); font: 13px/1.5 Roboto Mono, ui-monospace, SFMono-Regular, Menlo, monospace; }
     .showcase-callout { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
     .showcase-visual { position: relative; min-height: 360px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); background: #fff; }
     .showcase-visual img { width: 300px; max-width: 80%; position: relative; }
@@ -239,7 +239,7 @@
   <link rel="stylesheet" href="./navigation.css">
   <link rel="stylesheet" href="./panes.css">
   <script defer src="./site.js"></script>
-<link rel="stylesheet" href="code.css"><script defer data-manual src="assets/prism/prism.min.js"></script><script defer src="code-blocks.js"></script></head>
+<link rel="stylesheet" href="code.css"><script defer data-manual src="assets/prism/prism.min.js"></script><link rel="preload" href="assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="code-blocks.js"></script></head>
 <body>
   <header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="./" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
 

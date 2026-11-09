@@ -91,7 +91,7 @@
   </script>
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "How-To Recipe", "title": "How to convert <span class=\"accent\">HTML to PNG</span> in JavaScript", "lead": "Three patterns: append the image to the page, download it as a file, or get a Blob to upload. Pick the one that fits your use case and copy the snippet.", "links": []} -->
@@ -225,7 +225,7 @@ form.<span class="fn">append</span>(<span class="str">'file'</span>, blob, <span
 
       <details>
         <summary>What about converting HTML to PDF?</summary>
-        <p>Use the MIT <code>pdf</code> plugin. Its <code>toPdf()</code> method returns a PDF Blob with selectable text, pagination and links. The plugin is on npm as <code>@zumer/snapdom-pdf</code>; see the <a href="../../plugins/pdf/docs.html">PDF reference</a> for installation and examples.</p>
+        <p>Use the MIT <code>pdf</code> plugin. Its <code>toPdf()</code> method returns a PDF Blob with selectable text, pagination and links. The plugin is on npm as <code>@zumer/snapdom-pdf</code>; see the <a href="../../plugins/pdf/#install">PDF reference</a> for installation and examples.</p>
       </details>
 
       <details>

@@ -18,7 +18,7 @@ import { loadSnapdom, loadPlugin, mountSample, sampleFor } from './demo-runtime.
 customElements.define('sd-shadow-card', class extends HTMLElement {
   connectedCallback() {
     if (this.shadowRoot) return
-    this.attachShadow({ mode: 'open' }).innerHTML = '<style>:host{display:block;margin-top:10px}p{margin:0;padding:8px 10px;border-left:3px solid #1E9F6E;background:#EFFAF5;color:#0F1E4D;font:13px Arial}</style><p>Inside an open shadow root</p>'
+    this.attachShadow({ mode: 'open' }).innerHTML = '<style>:host{display:block;margin-top:10px}p{margin:0;padding:8px 10px;border-left:3px solid #1E9F6E;background:#EFFAF5;color:#0F1E4D;font:13px Roboto, Arial}</style><p>Inside an open shadow root</p>'
   }
 })
 

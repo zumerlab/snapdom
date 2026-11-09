@@ -1,7 +1,7 @@
 .plugin-page .pane-demo { min-width:0; }
 .plugin-demo-settings { display:grid; gap:12px; margin-bottom:20px; }
 .plugin-demo-settings label { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:13px; }
-.plugin-demo-settings select { flex:1; min-width:0; max-width:100%; padding:10px; background:#fff; color:#0F1E4D; border:1px solid #b7c4df; font:14px Arial; }
+.plugin-demo-settings select { flex:1; min-width:0; max-width:100%; padding:10px; background:#fff; color:#0F1E4D; border:1px solid #b7c4df; font:14px Roboto, Arial; }
 .plugin-demo-settings .demo-act { min-height:44px; }
 .plugin-demo-source { overflow:auto; max-height:420px; margin-bottom:20px; border:1px solid #b7c4df; }
 .plugin-demo-source .sample-card { margin:0; max-width:none; width:100%; box-sizing:border-box; }
@@ -15,7 +15,7 @@
 [data-export-file] a { text-decoration:underline; text-underline-offset:3px; }
 .plugin-page details summary { cursor:pointer; font-size:13px; padding:12px 0; }
 .pdf-reference section { margin:32px 0; }
-.pdf-reference .eyebrow { color:var(--c); font:12px Arial, Helvetica, sans-serif; text-transform: none; }
+.pdf-reference .eyebrow { color:var(--c); font:12px Roboto, Arial, Helvetica, sans-serif; text-transform: none; }
 .pdf-reference h2 { margin:12px 0 20px; font-size:26px; line-height:1.25; }
 .pdf-reference p { margin:12px 0; line-height:1.65; }
 .pdf-reference .spec { display:grid; gap:16px; margin:24px 0; }
@@ -24,7 +24,7 @@
 .pdf-reference dd { margin:0; line-height:1.6; }
 .pdf-reference .faq > div { padding:20px 0; border-bottom:1px solid #d6deef; }
 .pdf-reference h3 { font-size:18px; margin:0 0 12px; }
-.pdf-reference code:not(pre code) { background:#EEF3FF; padding:2px 4px; font-family:ui-monospace,monospace; font-size:.88em; overflow-wrap:anywhere; }
+.pdf-reference code:not(pre code) { background:#EEF3FF; padding:2px 4px; font-family:Roboto Mono, ui-monospace, monospace; font-size:.88em; overflow-wrap:anywhere; }
 .plugin-demo-source table { width:100%; border-collapse:collapse; margin:16px 0; font-size:12px; }
 .plugin-demo-source th,.plugin-demo-source td { padding:8px 2px; border-bottom:1px solid #d6deef; text-align:left; }
 .plugin-demo-source th:last-child,.plugin-demo-source td:last-child { text-align:right; }

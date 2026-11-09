@@ -40,11 +40,11 @@
   --halftone-size: 5px;
   --halftone-dot: 0px;
   --halftone-offset: 0px;
-  --font-display: Arial, Helvetica, sans-serif;
-  --font-body: Arial, Helvetica, sans-serif;
-  --font-mono: Arial, Helvetica, sans-serif;
-  --font-code: ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
-  --font-hand: Arial, Helvetica, sans-serif;
+  --font-display: Roboto, Arial, Helvetica, sans-serif;
+  --font-body: Roboto, Arial, Helvetica, sans-serif;
+  --font-mono: Roboto, Arial, Helvetica, sans-serif;
+  --font-code: Roboto Mono, ui-monospace, 'SF Mono', Menlo, Consolas, 'Courier New', monospace;
+  --font-hand: Roboto, Arial, Helvetica, sans-serif;
 
 }
 

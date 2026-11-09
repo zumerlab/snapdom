@@ -1,15 +1,20 @@
 # The plugin pages: /plugins/ (the index) and one page per toolbox plugin, written from the
 # sections of packages/plugins/README.md so the site and the package say the same thing.
-# PDF, Vector and Stream are products with a hand-written landing each
-# (docs/plugins/<name>/index.html); this file links to them and gives every plugin page the
-# same sidebar. The pages carry the `plugin-page` class so finish.py leaves them alone.
+# PDF, Vector and Stream are plugins like the rest, each published as a package of its own,
+# with a hand-written page (docs/plugins/<name>/index.html) that is also its reference; this
+# file lists them in their job group and writes the sidebar every plugin page shares into
+# them. The pages carry the `plugin-page` class so finish.py leaves them alone.
 README = open(os.path.join(HERE, '..', '..', 'packages', 'plugins', 'README.md')).read()
 GITHUB = 'https://github.com/zumerlab/snapdom/blob/main/'
 INSTALL = 'npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest'
 
-PRODUCTS = [('pdf', 'PDF', 'export', 'Documents with selectable text, links and pages'),
+# The three with a package and a hand-written page of their own: slug, name, job group, one line.
+OWN_PAGE = [('pdf', 'PDF', 'export', 'Documents with selectable text, links and pages'),
             ('vector', 'Vector', 'export', 'Editable SVG and the Figma clipboard'),
             ('stream', 'Stream', 'record', 'A live element as a canvas that repaints what changed')]
+# Stream's page links the places it runs; the other two demo themselves in the page.
+OWN_LINKS = {'stream': [('showcase/#stream-demo', 'Showcase demo'), ('labs/video-overlay/', 'Video overlay lab'),
+                        ('labs/webrtc-overlay/', 'WebRTC overlay lab'), ('labs/ascii-mirror/', 'ASCII mirror lab')]}
 
 # Groups by the job a plugin does. Each plugin: slug, name, h1, one line for the index, the
 # demo settings panes.js reads, its demo's id on the showcase, and the meta description
@@ -130,12 +135,15 @@ def readme_section(slug):
     return m[1]
 
 # ── Pages ──
-FLAT = [('plugins/', 'All plugins')] + [(f'plugins/{s}/', n) for s, n, _, _ in PRODUCTS] + [(f'plugins/{i[0]}/', i[1]) for g in TOOLBOX for i in g[3]]
+def by_job(sec, items):
+    """The (slug, name, one line) of a job group: the plugins with a page of their own first."""
+    return [(s, n, m) for s, n, g, m in OWN_PAGE if g == sec] + [(i[0], i[1], i[3]) for i in items]
+
+FLAT = [('plugins/', 'All plugins')] + [(f'plugins/{s}/', n) for _, sec, _, items in TOOLBOX for s, n, _ in by_job(sec, items)]
 
 def plugin_nav(path):
-    groups = [('Products', 'export', [(rel(path, f'plugins/{s}/'), n) for s, n, _, _ in PRODUCTS] + [(rel(path, 'plugins/'), 'All plugins')])]
-    groups += [(glabel, sec, [(rel(path, f'plugins/{i[0]}/'), i[1]) for i in items]) for glabel, sec, _, items in TOOLBOX]
-    return groups
+    return ([('Plugins', 'export', [(rel(path, 'plugins/'), 'All plugins')])]
+            + [(glabel, sec, [(rel(path, f'plugins/{s}/'), n) for s, n, _ in by_job(sec, items)]) for glabel, sec, _, items in TOOLBOX])
 
 def plugin_pager(path):
     i = [p for p, _ in FLAT].index(path[:-10])
@@ -173,19 +181,18 @@ def community_table():
 
 def plugins_index():
     path = 'plugins/index.html'
-    count = len(PRODUCTS) + sum(len(g[3]) for g in TOOLBOX)
+    count = len(OWN_PAGE) + sum(len(g[3]) for g in TOOLBOX)
     inner = doc_head(['Plugins'], f'{count} official plugins · MIT', 'Plugins for SnapDOM.',
-                     'Three products with a landing of their own, and a toolbox of smaller plugins grouped by the job they do. '
-                     'Every page has the options and a live demo. All of them are MIT: the products are packages of their own, the toolbox is one.',
-                     [(GITHUB + 'packages/plugins', 'Source'), ('https://www.npmjs.com/package/@zumer/snapdom-plugins', 'npm'), (rel(path, 'showcase/#plugins'), 'Plugin demos')])
-    inner += '<div class="pane-content pane-prose"><h2 id="products">Products</h2>'
-    inner += index_grid([(n, sec, m, rel(path, f'plugins/{s}/')) for s, n, sec, m in PRODUCTS])
+                     'Fourteen official plugins, grouped by the job they do. Every page has the options and a live demo. '
+                     'All of them are MIT. PDF, Vector and Stream are each a package of their own; the other eleven ship together as the toolbox.',
+                     [(GITHUB + 'packages', 'Source'), ('https://www.npmjs.com/package/@zumer/snapdom-plugins', 'npm'), (rel(path, 'showcase/#plugins'), 'Plugin demos')])
+    inner += '<div class="pane-content pane-prose">'
     inner += '<h2 id="install">Install</h2>' + code(INSTALL + '\nnpm install @zumer/snapdom-pdf @zumer/snapdom-vector @zumer/snapdom-stream')
-    inner += ('<p>The first line is SnapDOM and the toolbox; the second, the three products, each a package of its own. Import a product from its package and a toolbox plugin from its subpath, and pass them in <code>plugins</code>. All of them need SnapDOM 3.4.0 or newer within 3.x.</p>'
+    inner += ('<p>The first line is SnapDOM and the toolbox; the second, PDF, Vector and Stream, each a package of its own. Import those three from their package and a toolbox plugin from its subpath, and pass them in <code>plugins</code>. All of them need SnapDOM 3.4.0 or newer within 3.x.</p>'
               + code("import { snapdom } from '@zumer/snapdom'\nimport { redactInputs } from '@zumer/snapdom-plugins/redact-inputs'\nimport { pdf } from '@zumer/snapdom-pdf'\n\nconst result = await snapdom(el, { plugins: [redactInputs(), pdf()] })\nconst blob = await result.toPdf({ page: 'a4' })"))
-    inner += '<h2 id="toolbox">The toolbox</h2><p>Eleven plugins, each with one job. Prepare plugins change the clone before it renders; the others add an export method to the result.</p>'
+    inner += '<h2 id="toolbox">Plugins by job</h2><p>Prepare plugins change the clone before it renders; the others add an export method to the result, and Stream keeps a canvas in step with the element.</p>'
     for glabel, sec, blurb, items in TOOLBOX:
-        inner += f'<h3 id="{sec}">{E(glabel)}</h3><p>{E(blurb)}</p>' + index_grid([(n, sec, m, rel(path, f'plugins/{s}/')) for s, n, _, m, _, _, _ in items])
+        inner += f'<h3 id="{sec}">{E(glabel)}</h3><p>{E(blurb)}</p>' + index_grid([(n, sec, m, rel(path, f'plugins/{s}/')) for s, n, m in by_job(sec, items)])
     inner += ('<h2 id="community-plugins">Community plugins</h2><p>Maintained by their authors. Check the supported SnapDOM versions before using one with 3.x. '
               f'To add yours, open a pull request with a row in <a href="{GITHUB}docs/community-plugins.md">community-plugins.md</a>; '
               f'<a href="{GITHUB}CONTRIBUTING_PLUGINS.md">CONTRIBUTING_PLUGINS.md</a> says what a row needs.</p>' + community_table())
@@ -193,10 +200,24 @@ def plugins_index():
               f'and <a href="{GITHUB}PLUGIN_SPEC.md">PLUGIN_SPEC.md</a> is the contract: hook order, what each hook receives, and what it may change.</p></div>')
     ld = {'mainEntity': {'@type': 'ItemList', 'itemListElement': [{'@type': 'ListItem', 'position': i + 1, 'name': n, 'url': SITE + p} for i, (p, n) in enumerate(FLAT[1:])]}}
     standalone(path, 'Plugins', meta('SnapDOM plugins: PDF, Vector, Stream and the toolbox',
-               'Fourteen official plugins for SnapDOM: PDF, Vector and Stream, each its own package, and a toolbox that prepares, exports, records and maps captures. All MIT.',
+               'Fourteen official plugins for SnapDOM, grouped by job: prepare, export, record and map a capture. PDF, Vector and Stream are each a package of their own. MIT.',
                'plugins/', 'CollectionPage', ld), plugin_nav(path), 'Filter plugins', 'Plugins', 'export', 'Plugins', inner, None, plugin_pager(path), 'plugin-page')
 
+def own_page_side(s):
+    """Write the shared sidebar into a hand-written page, plus the sections of that page, read
+    from its h2 ids so the list cannot drift from the content. No filter box: these pages load
+    their own runner, not panes.js."""
+    path = f'plugins/{s}/index.html'
+    full = os.path.join(OUT, path)
+    page = open(full).read()
+    article = page[page.index('<article'):page.index('</article>')]
+    here = [('#' + i, html.unescape(re.sub(r'<[^>]+>', '', t))) for i, t in re.findall(r'<h2 id="([^"]+)">(.*?)</h2>', article, re.S)]
+    groups = plugin_nav(path) + [('On this page', 'context', here)]
+    if s in OWN_LINKS: groups.append(('Where it runs', 'labs', [(rel(path, h), t) for h, t in OWN_LINKS[s]]))
+    open(full, 'w').write(re.sub(r'<aside class="pane-side">.*?</aside>', lambda m: nav_groups(groups, None, 'Plugins'), page, count=1, flags=re.S))
+
 plugins_index()
+for s, _, _, _ in OWN_PAGE: own_page_side(s)
 for glabel, sec, _, items in TOOLBOX:
     # Not `slug`: this runs in build.py's namespace, where slug() is the function sections.py calls.
     for s, name, h1, _, demo, showcase_id, description in items:

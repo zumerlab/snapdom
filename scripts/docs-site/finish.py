@@ -30,6 +30,9 @@ for p in ROOT.rglob('*.html'):
         imports={'@zumer/snapdom':'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs','@zumer/snapdom/plugins':'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'}
         s=s.replace('<head>','<head><script type="importmap">'+json.dumps({'imports':imports})+'</script>',1)
     s=re.sub(r'<script\b[^>]*src="[^"]*(?:copy-code|code-blocks)\.js[^"]*"[^>]*></script>','',s)
+    # The text face is fetched with the stylesheet, not after it, so the first paint has it.
+    if 'shared.css' in s and 'fonts/roboto.woff2' not in s:
+        s=s.replace('</head>',f'<link rel="preload" href="{root}assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin></head>',1)
     if 'code.css' not in s:
         s=s.replace('</head>',f'<link rel="stylesheet" href="{root}code.css"><script defer data-manual src="{root}assets/prism/prism.min.js"></script><script defer src="{root}code-blocks.js"></script></head>')
     else:

@@ -30,9 +30,9 @@
     .lab-hic .hic-box img, .lab-hic .hic-box canvas { max-width: 100%; height: auto; display: block; }
     .lab-hic .hic-note { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; min-height: 1.4em; }
     .lab-hic .hic-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 18px 0 0; }
-    #hicCard { width: 300px; padding: 16px; box-sizing: border-box; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #1d3a8a, #3b82f6); font: 14px/1.4 Arial, Helvetica, sans-serif; }
+    #hicCard { width: 300px; padding: 16px; box-sizing: border-box; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #1d3a8a, #3b82f6); font: 14px/1.4 Roboto, Arial, Helvetica, sans-serif; }
     #hicCard h3 { margin: 0 0 8px; font-size: 18px; color: #fff; }
-    #hicCard p, #hicCard label { margin: 0 0 8px; color: #fff; font: 14px/1.4 Arial, Helvetica, sans-serif; }
+    #hicCard p, #hicCard label { margin: 0 0 8px; color: #fff; font: 14px/1.4 Roboto, Arial, Helvetica, sans-serif; }
     #hicCard p::before { content: "\2605  "; color: #fde047; }
     #hicCard label { display: block; }
     #hicCard input[type="email"] { width: 160px; }
@@ -47,7 +47,7 @@
   </style>
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "The browser paints <span class=\"accent\">the capture</span>", "lead": "SnapDOM's second engine hands the captured clone to Chrome's own renderer through the html-in-canvas API. Compare it with the SVG engine and see which plugins run on it.", "links": []} -->

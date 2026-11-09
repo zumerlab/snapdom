@@ -39,7 +39,7 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 - [Cache and preCapture](https://snapdom.dev/docs/cache/): resource reuse, repeat captures and intent events
 - [How-to](https://snapdom.dev/how-to/): capture recipes and framework guides (React, Vue, Next.js, Svelte, Angular, Lit)
 - [Compare](https://snapdom.dev/compare/): capture approaches and alternatives
-- [Plugins](https://snapdom.dev/plugins/): what a capture can become beyond images (PDF, editable vector, a live canvas, HTML, GIF/video, ASCII, agent context) and the plugin that provides each. PDF, Vector and Stream are the three products of the plugin line, each with its own landing page; the other eleven plugins are the toolbox, grouped by job (prepare, export, record, context), one page per plugin with options and a live demo. Community plugins: https://snapdom.dev/plugins/#community-plugins
+- [Plugins](https://snapdom.dev/plugins/): what a capture can become beyond images (PDF, editable vector, a live canvas, HTML, GIF/video, ASCII, agent context) and the plugin that provides each. PDF, Vector and Stream are each a package of their own; the other eleven plugins ship together as the toolbox. All fourteen are grouped by job (prepare, export, record, context), one page per plugin with options and a live demo. Community plugins: https://snapdom.dev/plugins/#community-plugins
 - [Ecosystem](https://snapdom.dev/ecosystem/): the hub for plugins and tools built on SnapDOM: the plugin line (PDF, Vector, Stream and the toolbox), community plugins, SnapDiff, SnapEye and SnapSurf, what each does and how they combine
 - [SnapDiff](https://snapdom.dev/tools/snapdiff/): visual regression testing in the browser with baselines, diff views and a Vitest suite
 - [SnapEye](https://snapdom.dev/tools/snapeye/): capture, compare and record a local app for coding agents through a CLI and a page API
@@ -49,11 +49,11 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 
 - [Plugin demos](https://snapdom.dev/showcase/#plugins): one live demo per official plugin, with the code it needs
 - [PDF live demos](https://snapdom.dev/plugins/pdf/): reports, paginated ledgers, multilingual text, form controls and transparency; PDFs generated from the live DOM
-- [PDF API reference](https://snapdom.dev/plugins/pdf/docs.html): capture-time options, pagination, text, fields, metadata and encryption
+- [PDF API reference](https://snapdom.dev/plugins/pdf/#install): capture-time options, pagination, text, fields, metadata and encryption
 - [Vector live demos](https://snapdom.dev/plugins/vector/): editable components, SVG, charts and forms; browser-generated SVG and Figma clipboard export
-- [Vector API reference](https://snapdom.dev/plugins/vector/docs.html): supported content, approximation reports and clipboard constraints
+- [Vector API reference](https://snapdom.dev/plugins/vector/#start): supported content, approximation reports and clipboard constraints
 - [Stream](https://snapdom.dev/plugins/stream/): a live element as a canvas that repaints only what changed, for WebGL textures and video overlays
-- [Stream reference](https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md): options, `streamTexture()`, `recordCanvas()`, `streamExport()`, overlay templates and limits
+- [Stream reference](https://snapdom.dev/plugins/stream/#one-function-and-the-pieces-around-it): options, `streamTexture()`, `recordCanvas()`, `streamExport()`, overlay templates and limits
 - [Toolbox plugins](https://snapdom.dev/plugins/#prepare): one page per plugin with options and a live demo. Prepare the clone (https://snapdom.dev/plugins/#prepare): https://snapdom.dev/plugins/redact-inputs/, https://snapdom.dev/plugins/timestamp-overlay/, https://snapdom.dev/plugins/replace-text/, https://snapdom.dev/plugins/filter/, https://snapdom.dev/plugins/color-tint/. Export (https://snapdom.dev/plugins/#export): https://snapdom.dev/plugins/html-export/, https://snapdom.dev/plugins/ascii-export/. Record (https://snapdom.dev/plugins/#record): https://snapdom.dev/plugins/gif-export/, https://snapdom.dev/plugins/video-export/. Context for agents (https://snapdom.dev/plugins/#context): https://snapdom.dev/plugins/context-export/, https://snapdom.dev/plugins/agent-map/
 
 ## Choose the output for the task
@@ -155,9 +155,9 @@ Import factories from their packages and pass instances through `plugins`. The t
 - `timestampOverlay({ format?, position? })`: timestamp badge. Page: https://snapdom.dev/plugins/timestamp-overlay/
 - `redactInputs({ types?, autocomplete?, selector?, all?, mask?, blocks?, attributes? })`: masks input/textarea values, excludes blocks and removes named attributes; `<select>` values are not masked, hide them with `blocks`. Page: https://snapdom.dev/plugins/redact-inputs/
 - `asciiExport({ width?, charset?, invert? })`: `toAscii(opts?)` returns text; `width`, `charset` and `invert` can be overridden per call. Page: https://snapdom.dev/plugins/ascii-export/
-- `pdf()`: `toPdf()` returns a PDF Blob with selectable text, pagination, links and optional form fields; `download` is opt-in. Landing: https://snapdom.dev/plugins/pdf/, reference: https://snapdom.dev/plugins/pdf/docs.html
-- `vector({ exclude? })`: `toVector()` returns a standalone SVG string with editable text and shapes; `toFigma()` returns `Promise<void>` after writing a Figma clipboard payload. Landing: https://snapdom.dev/plugins/vector/, reference: https://snapdom.dev/plugins/vector/docs.html
-- `stream(element, { onFrame?, fps?, patches?, animations? })`: a live canvas of the element that repaints only the boxes that changed; returns `{ canvas, ready, stats, stop() }` and accepts every capture option. `streamExport()` adds `toStream()` to a capture result; `streamTexture(gl)` keeps a WebGL texture in step with the stream and `recordCanvas(canvas)` records it. Pixel-exact patches need SnapDOM 3.4.0 or newer. Landing: https://snapdom.dev/plugins/stream/, reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md
+- `pdf()`: `toPdf()` returns a PDF Blob with selectable text, pagination, links and optional form fields; `download` is opt-in. Page and reference: https://snapdom.dev/plugins/pdf/
+- `vector({ exclude? })`: `toVector()` returns a standalone SVG string with editable text and shapes; `toFigma()` returns `Promise<void>` after writing a Figma clipboard payload. Page and reference: https://snapdom.dev/plugins/vector/
+- `stream(element, { onFrame?, fps?, patches?, animations? })`: a live canvas of the element that repaints only the boxes that changed; returns `{ canvas, ready, stats, stop() }` and accepts every capture option. `streamExport()` adds `toStream()` to a capture result; `streamTexture(gl)` keeps a WebGL texture in step with the stream and `recordCanvas(canvas)` records it. Pixel-exact patches need SnapDOM 3.4.0 or newer. Page and reference: https://snapdom.dev/plugins/stream/
 - `htmlExport({ fullDocument? })`: `toHtml()` returns captured HTML with styles and assets. Page: https://snapdom.dev/plugins/html-export/
 - `contextExport({ format?, geometry? })`: `toContext()` returns an outline or JSON tree. Page: https://snapdom.dev/plugins/context-export/
 - `agentMap({ image?, fields?, semantic? })`: `toAgentMap()` returns `{ dimensions, map, image? }`; map entries use compact keys such as `i`, `n`, `r` and `b: [x, y, width, height]`. Page: https://snapdom.dev/plugins/agent-map/
@@ -190,9 +190,9 @@ const svg = await artwork.toVector();
 // On a user click over HTTPS or localhost: await artwork.toFigma();
 ```
 
-PDF returns an `application/pdf` Blob; `download: 'report.pdf'` opts into downloading. Capture-model settings (`formValues`, `shadow`, `breakAvoid`, `outline`, `forms`) belong on `pdf()`. Paper, text, links, fields, headers/footers, metadata and encryption belong on `toPdf()` and may also be factory defaults. Read the [PDF reference](https://snapdom.dev/plugins/pdf/docs.html) for diagnostics and accessibility limits; tagged output alone does not guarantee PDF/UA.
+PDF returns an `application/pdf` Blob; `download: 'report.pdf'` opts into downloading. Capture-model settings (`formValues`, `shadow`, `breakAvoid`, `outline`, `forms`) belong on `pdf()`. Paper, text, links, fields, headers/footers, metadata and encryption belong on `toPdf()` and may also be factory defaults. Read the [PDF reference](https://snapdom.dev/plugins/pdf/#report) for diagnostics and accessibility limits; tagged output alone does not guarantee PDF/UA.
 
-Vector exports native SVG shapes and text without `foreignObject`, unlike core `toSvg()`. Keep the source element connected through export. Its only public option is `exclude` (selector, predicate returning true to omit, or an array), with per-export values overriding factory defaults. `toFigma()` needs the async clipboard API and a user action over HTTPS or localhost. See the [Vector reference](https://snapdom.dev/plugins/vector/docs.html).
+Vector exports native SVG shapes and text without `foreignObject`, unlike core `toSvg()`. Keep the source element connected through export. Its only public option is `exclude` (selector, predicate returning true to omit, or an array), with per-export values overriding factory defaults. `toFigma()` needs the async clipboard API and a user action over HTTPS or localhost. See the [Vector reference](https://snapdom.dev/plugins/vector/#start).
 
 ## Common questions
 

@@ -15,9 +15,10 @@ if (DOCS/'sitemap.xml').exists():
 changed=set(subprocess.check_output(['git','diff','--name-only','HEAD','--','docs'],cwd=ROOT,text=True).splitlines())
 changed.update(subprocess.check_output(['git','ls-files','--others','--exclude-standard','docs'],cwd=ROOT,text=True).splitlines())
 today=date.today().isoformat()
-# The header, the footer and the date stamp itself change on every page when the menu does;
+# The header, the footer, the sidebar, the font preload and the date stamp itself change on
+# every page when the menu or the shared chrome does;
 # a page whose own content equals HEAD keeps its date instead of moving the whole site to today.
-CHROME=re.compile(r'<header class="site-head">.*?</header>|<footer class="site-foot">.*?</footer>|"dateModified"\s*:\s*"[^"]+"',re.S)
+CHROME=re.compile(r'<header class="site-head">.*?</header>|<footer class="site-foot">.*?</footer>|<aside class="pane-side">.*?</aside>|<link rel="preload"[^>]*>|"dateModified"\s*:\s*"[^"]+"',re.S)
 def own(source):return CHROME.sub('',source)
 entries={}
 for file in sorted(DOCS.rglob('*.html')):

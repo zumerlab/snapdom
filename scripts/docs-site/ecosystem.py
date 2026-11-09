@@ -1,9 +1,9 @@
-# The ecosystem hub, /ecosystem/: one page that places the products, the toolbox and the three
+# The ecosystem hub, /ecosystem/: one page that places the plugins and the three
 # tools next to each other and sends the reader to the page of each. The tools' own pages are
 # written by tools.py; the plugins' by plugins.py. Old links into this page's topics
 # (#snapeye, #pdf, …) are forwarded by a short script, since the hub used to hold them all.
 PATH = 'ecosystem/index.html'
-CELLS = [(n, sec, 'Plugin', rel(PATH, f'plugins/{s}/')) for s, n, sec, _ in PRODUCTS] + [('The toolbox', 'prepare', '11 plugins', rel(PATH, 'plugins/#toolbox'))]
+CELLS = [(n, sec, 'Plugin', rel(PATH, f'plugins/{s}/')) for s, n, sec, _ in OWN_PAGE] + [('The toolbox', 'prepare', '11 plugins', rel(PATH, 'plugins/#toolbox'))]
 CELLS += [(t['name'], 'ecosystem', 'Experimental' if t.get('experimental') else 'Tool', rel(PATH, f'tools/{t["slug"]}/')) for t in TOOLS]
 JOBS = [('Export an element as an image', 'SnapDOM core', rel(PATH, 'docs/#quick-start')),
         ('Make a PDF with selectable text and pages', 'PDF', rel(PATH, 'plugins/pdf/')),
@@ -28,12 +28,12 @@ inner += ('<p class="pane-para" style="margin-top:20px">Your agent or test harne
 inner += (f'<h2 id="community-plugins">Community plugins</h2><p>Plugins written outside this repository are listed on <a href="{rel(PATH, "plugins/#community-plugins")}">the plugins page</a>, '
           f'with a row per project. <a href="{rel(PATH, "docs/plugins/#build")}">The plugin guide</a> shows how to write one.</p></div>')
 SIDE = [('Tools', 'ecosystem', [(rel(PATH, f'tools/{t["slug"]}/'), t['name']) for t in TOOLS]),
-        ('Plugins', 'export', [(rel(PATH, 'plugins/'), 'All plugins')] + [(rel(PATH, f'plugins/{s}/'), n) for s, n, _, _ in PRODUCTS]),
+        ('Plugins', 'export', [(rel(PATH, 'plugins/'), 'All plugins')] + [(rel(PATH, f'plugins/{s}/'), n) for s, n, _, _ in OWN_PAGE]),
         ('Community', 'context', [(rel(PATH, 'plugins/#community-plugins'), 'Community plugins'), (rel(PATH, 'made-with/'), 'Made with')])]
 FORWARD = {'#snapeye': 'tools/snapeye/', '#snapdiff': 'tools/snapdiff/', '#snapsurf': 'tools/snapsurf/', '#official-plugins': 'plugins/', '#pdf': 'plugins/pdf/', '#vector': 'plugins/vector/'}
 SCRIPT = '\n<script>{ const to = ' + json.dumps({k: rel(PATH, v) for k, v in FORWARD.items()}) + '[location.hash]; if (to) location.replace(to) }</script>'
 LD = {'mainEntity': {'@type': 'ItemList', 'itemListElement': [{'@type': 'ListItem', 'position': i + 1, 'name': n, 'url': SITE + p} for i, (p, n) in enumerate(
-      [(f'plugins/{s}/', n) for s, n, _, _ in PRODUCTS] + [(f'tools/{t["slug"]}/', t['name']) for t in TOOLS])]}}
+      [(f'plugins/{s}/', n) for s, n, _, _ in OWN_PAGE] + [(f'tools/{t["slug"]}/', t['name']) for t in TOOLS])]}}
 standalone(PATH, 'Ecosystem', meta('SnapDOM ecosystem: plugins, SnapDiff, SnapEye, SnapSurf',
            'Plugins and tools built on SnapDOM: PDF, Vector and Stream, the toolbox, SnapDiff for visual regression, SnapEye for coding agents, SnapSurf for browsing agents.',
            'ecosystem/', 'CollectionPage', LD), SIDE, 'Filter ecosystem', 'Ecosystem', 'ecosystem', 'Ecosystem', inner, None,

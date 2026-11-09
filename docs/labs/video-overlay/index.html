@@ -56,7 +56,7 @@
   </style>
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "Live video overlays from <span class=\"accent\">plain HTML</span>", "lead": "A scoreboard, a lower third, a stream chat: HTML and CSS composited over live video in the browser, in Chrome, Firefox and Safari. No OBS, no server.", "links": []} -->
@@ -203,7 +203,7 @@ for (const el of stage.querySelectorAll('.glass')) {
 .score .pts { min-width: 40px; height: 40px; border-radius: 10px; background: var(--cell);
   display: grid; place-items: center; font-size: 24px; letter-spacing: 0; }
 .clock { left: 362px; top: 26px; height: 52px; border-radius: 14px; padding: 0 16px;
-  color: #facc15; font: 800 20px/1 ui-monospace, Menlo, monospace; }
+  color: #facc15; font: 800 20px/1 Roboto Mono, ui-monospace, Menlo, monospace; }
 .live { right: 28px; top: 26px; height: 52px; border-radius: 14px; padding: 0 18px; gap: 10px;
   font-size: 15px; font-weight: 800; letter-spacing: .14em; }
 .live i { width: 10px; height: 10px; border-radius: 50%; background: #ef4444; }

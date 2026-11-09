@@ -1,9 +1,17 @@
 /* ═══════════════════════════════════════════════
    shared.css — Common styles for all SnapDOM docs
    "Capture instrument" design system
-   System fonts: Arial/Helvetica everywhere
+   Roboto for text, Roboto Mono for code, self-hosted in assets/fonts
    Paper #F7F9FC · Ink #0F1E4D · Electric #2D5BFF
    ═══════════════════════════════════════════════ */
+
+/* ── Fonts: the latin subsets of the variable files Google Fonts serves, self-hosted so
+   a page makes no third-party request and a capture embeds them from this origin ── */
+@font-face { font-family: Roboto; font-style: normal; font-weight: 100 900; font-stretch: 100%; font-display: swap; src: url(assets/fonts/roboto.woff2) format('woff2'); }
+@font-face { font-family: Roboto; font-style: italic; font-weight: 100 900; font-stretch: 100%; font-display: swap; src: url(assets/fonts/roboto-italic.woff2) format('woff2'); }
+@font-face { font-family: 'Roboto Mono'; font-style: normal; font-weight: 100 700; font-display: swap; src: url(assets/fonts/roboto-mono.woff2) format('woff2'); }
+
+code, kbd, samp, pre { font-family: Roboto Mono, ui-monospace, Menlo, Consolas, monospace; }
 
 /* ── GitHub badge ── */
 .github-badge {
@@ -18,7 +26,7 @@
   padding: 8px 14px;
   border-radius: 0;
   border: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.3)));
-  font-family: var(--font-mono, Arial, Helvetica, sans-serif);
+  font-family: var(--font-mono, Roboto, Arial, Helvetica, sans-serif);
   letter-spacing: 0.3px;
   transition: border-color 0.15s;
 }
@@ -48,7 +56,7 @@
   background: rgba(247,249,252,0.94);
   border-bottom: 1px solid rgba(15,30,77,0.14);
   backdrop-filter: blur(12px);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Roboto, Arial, Helvetica, sans-serif;
 }
 .site-shell-main {
   width: min(1180px, calc(100% - 48px));

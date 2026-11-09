@@ -31,9 +31,9 @@
     .hic-demo .hic-box img, .hic-demo .hic-box canvas { max-width: 100%; height: auto; display: block; }
     .hic-demo .hic-note { font-size: 13px; color: var(--text-muted); margin: 8px 0 0; min-height: 1.4em; font-family: var(--font-mono); }
     .hic-demo .hic-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0 0; }
-    #hicCard { width: 280px; padding: 16px; box-sizing: border-box; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #1d3a8a, #3b82f6); font: 14px/1.4 Arial, Helvetica, sans-serif; text-align: left; }
+    #hicCard { width: 280px; padding: 16px; box-sizing: border-box; border-radius: 12px; color: #fff; background: linear-gradient(135deg, #1d3a8a, #3b82f6); font: 14px/1.4 Roboto, Arial, Helvetica, sans-serif; text-align: left; }
     #hicCard h3 { margin: 0 0 8px; font-size: 18px; color: #fff; }
-    #hicCard p, #hicCard label { margin: 0 0 8px; color: #fff; font: 14px/1.4 Arial, Helvetica, sans-serif; }
+    #hicCard p, #hicCard label { margin: 0 0 8px; color: #fff; font: 14px/1.4 Roboto, Arial, Helvetica, sans-serif; }
     #hicCard label { display: block; }
     #hicCard select, #hicCard input[type="text"] { font: inherit; }
     #hicCard .hic-row { display: flex; align-items: center; gap: 8px; }
@@ -43,7 +43,7 @@
   </style>
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
 <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "How-To Recipe", "title": "Capture with <span class=\"accent\">html-in-canvas</span>", "lead": "Chrome 157 can paint a DOM element into a canvas with one call, <code>drawElementImage()</code>. SnapDOM uses that call as its second engine. Here is how to turn it on, when it is the better engine, and what SnapDOM still does for you around it.", "links": []} -->

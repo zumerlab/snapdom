@@ -35,7 +35,7 @@
     .lab-ascii-mirror #lamCard p { margin: 0; padding: 10px 12px; background: #e9eefc; font-size: 15px; line-height: 1.4; }
     .lab-ascii-mirror .pl-cube-scene { flex: none; width: 170px; height: 170px; perspective: 560px; display: grid; place-items: center; }
     .lab-ascii-mirror .pl-cube { position: relative; width: 96px; height: 96px; transform-style: preserve-3d; animation: pl-cube-spin 9s linear infinite; animation-play-state: var(--lam-play, paused); }
-    .lab-ascii-mirror .pl-cube i { position: absolute; inset: 0; background: #0F1E4D; border: 3px solid #fff; display: grid; place-items: center; color: #fff; font: 900 34px Arial, sans-serif; }
+    .lab-ascii-mirror .pl-cube i { position: absolute; inset: 0; background: #0F1E4D; border: 3px solid #fff; display: grid; place-items: center; color: #fff; font: 900 34px Roboto, Arial, sans-serif; }
     .lab-ascii-mirror .pl-cube i:nth-child(1) { transform: rotateY(0deg) translateZ(48px); }
     .lab-ascii-mirror .pl-cube i:nth-child(2) { transform: rotateY(90deg) translateZ(48px); background: #2D5BFF; }
     .lab-ascii-mirror .pl-cube i:nth-child(3) { transform: rotateY(180deg) translateZ(48px); background: #1b2f73; }
@@ -45,14 +45,14 @@
     @keyframes pl-cube-spin { from { transform: rotateX(-20deg) rotateY(0deg); } to { transform: rotateX(340deg) rotateY(360deg); } }
     @media (prefers-reduced-motion: reduce) { .pl-cube { animation-duration: 40s; } }
     .lab-ascii-mirror .lam-cube-scene { justify-self: center; width: 150px; height: 150px; }
-    .lab-ascii-mirror #lamOut { margin: 0; padding: 0; width: 100%; overflow: auto; font: 7px/1 ui-monospace, Menlo, Consolas, monospace; white-space: pre; color: #0F1E4D; background: #fff; min-height: 280px; }
+    .lab-ascii-mirror #lamOut { margin: 0; padding: 0; width: 100%; overflow: auto; font: 7px/1 Roboto Mono, ui-monospace, Menlo, Consolas, monospace; white-space: pre; color: #0F1E4D; background: #fff; min-height: 280px; }
     .lab-ascii-mirror #lamOut pre { font-size: 7px; line-height: 1; }
     .lab-ascii-mirror .lam-stats { margin: 12px 0 0; font-size: 12px; color: var(--text-muted); }
     @media (max-width: 760px) { .lab-ascii-mirror .lam-workspace { grid-template-columns: 1fr; } .lab-ascii-mirror #lamOut { font-size: 5px; } }
   </style>
   <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
   <script type="module" src="../../panes.js"></script>
-<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
 <body>
   <script defer src="../../site.js"></script>
   <!-- pane:start --><!-- hero {"badge": "Labs Experiment", "title": "A live element, <span class=\"accent\">as text</span>", "lead": "A card with text and a spinning CSS cube. The right side is the same element redrawn as ASCII art on every frame, through the stream plugin.", "links": []} -->

@@ -395,9 +395,9 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 
 PDF and Vector are MIT source in packages/pdf and packages/vector, published on npm as @zumer/snapdom-pdf and @zumer/snapdom-vector; both require SnapDOM 3.4.0 or newer. PDF returns a Blob; downloading is an explicit export option.
 
-Stream is its own package, `@zumer/snapdom-stream` (packages/stream); its patches are pixel-exact on SnapDOM 3.4.0 or newer. `streamTexture(gl)` uploads only the changed rectangles to a WebGL2 texture and `recordCanvas(canvas)` records a stream. See the Stream section below; the reference is its README: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
+Stream is its own package, `@zumer/snapdom-stream` (packages/stream); its patches are pixel-exact on SnapDOM 3.4.0 or newer. `streamTexture(gl)` uploads only the changed rectangles to a WebGL2 texture and `recordCanvas(canvas)` records a stream. See the Stream section below; the reference is its page: https://snapdom.dev/plugins/stream/.
 
-Every official plugin has its own page under https://snapdom.dev/plugins/. PDF, Vector and Stream are the three products of the plugin line, with landing pages at https://snapdom.dev/plugins/pdf/, https://snapdom.dev/plugins/vector/ and https://snapdom.dev/plugins/stream/. The other eleven are the toolbox, grouped on the index by job (https://snapdom.dev/plugins/#prepare, https://snapdom.dev/plugins/#export, https://snapdom.dev/plugins/#record and https://snapdom.dev/plugins/#context), with one page per plugin that lists its options and runs a live demo: https://snapdom.dev/plugins/redact-inputs/, https://snapdom.dev/plugins/timestamp-overlay/, https://snapdom.dev/plugins/replace-text/, https://snapdom.dev/plugins/filter/, https://snapdom.dev/plugins/color-tint/, https://snapdom.dev/plugins/html-export/, https://snapdom.dev/plugins/ascii-export/, https://snapdom.dev/plugins/gif-export/, https://snapdom.dev/plugins/video-export/, https://snapdom.dev/plugins/context-export/ and https://snapdom.dev/plugins/agent-map/. The community plugins table is at https://snapdom.dev/plugins/#community-plugins; the guide for writing a plugin is https://snapdom.dev/docs/plugins/.
+Every official plugin has its own page under https://snapdom.dev/plugins/. PDF, Vector and Stream are each a package of their own, and their pages carry the full reference: https://snapdom.dev/plugins/pdf/, https://snapdom.dev/plugins/vector/ and https://snapdom.dev/plugins/stream/. The other eleven ship together as the toolbox. All are grouped on the index by job (https://snapdom.dev/plugins/#prepare, https://snapdom.dev/plugins/#export, https://snapdom.dev/plugins/#record and https://snapdom.dev/plugins/#context), with one page per plugin that lists its options and runs a live demo: https://snapdom.dev/plugins/redact-inputs/, https://snapdom.dev/plugins/timestamp-overlay/, https://snapdom.dev/plugins/replace-text/, https://snapdom.dev/plugins/filter/, https://snapdom.dev/plugins/color-tint/, https://snapdom.dev/plugins/html-export/, https://snapdom.dev/plugins/ascii-export/, https://snapdom.dev/plugins/gif-export/, https://snapdom.dev/plugins/video-export/, https://snapdom.dev/plugins/context-export/ and https://snapdom.dev/plugins/agent-map/. The community plugins table is at https://snapdom.dev/plugins/#community-plugins; the guide for writing a plugin is https://snapdom.dev/docs/plugins/.
 
 ### Redaction across outputs
 
@@ -710,9 +710,9 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 - DOM capture boundaries: https://snapdom.dev/blog/dom-capture-boundaries/
 - Tiled rasterization: https://snapdom.dev/blog/huge-page-mosaic/
 - Plugins: https://snapdom.dev/plugins/
-- PDF: https://snapdom.dev/plugins/pdf/ (reference: https://snapdom.dev/plugins/pdf/docs.html)
-- Vector: https://snapdom.dev/plugins/vector/ (reference: https://snapdom.dev/plugins/vector/docs.html)
-- Stream: https://snapdom.dev/plugins/stream/ (reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md)
+- PDF: https://snapdom.dev/plugins/pdf/ (the reference is on the same page)
+- Vector: https://snapdom.dev/plugins/vector/ (the reference is on the same page)
+- Stream: https://snapdom.dev/plugins/stream/ (the reference is on the same page)
 - Ecosystem: https://snapdom.dev/ecosystem/
 - SnapDiff: https://snapdom.dev/tools/snapdiff/
 - SnapEye: https://snapdom.dev/tools/snapeye/
@@ -788,15 +788,15 @@ Keep the source element connected through export. Internal SVD documents, emitte
 
 Vector reconstructs supported text and shapes as vector elements; it is distinct from core toSvg(), which embeds HTML in foreignObject. Review engine diagnostics before using artwork that requires exact fidelity. Figma export writes to the async clipboard and requires a secure context and a user action.
 
-Live PDF documentation: https://snapdom.dev/plugins/pdf/. Full API: https://snapdom.dev/plugins/pdf/docs.html.
-Live Vector documentation: https://snapdom.dev/plugins/vector/. Full API: https://snapdom.dev/plugins/vector/docs.html.
-Live Stream documentation: https://snapdom.dev/plugins/stream/. Reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
+PDF documentation, full API and live demo: https://snapdom.dev/plugins/pdf/.
+Vector documentation, full API and live demo: https://snapdom.dev/plugins/vector/.
+Stream documentation, full API and live demo: https://snapdom.dev/plugins/stream/.
 Plugin demos: https://snapdom.dev/showcase/#plugins. Source directory: https://github.com/zumerlab/snapdom/tree/main/packages/plugins.
 Old /pro/ URLs redirect to /plugins/. Current PDF/Vector demos generate outputs in the browser from editable samples rather than serving pre-release files.
 
 ## Stream
 
-Stream (`@zumer/snapdom-stream`) keeps a live element as a canvas that repaints only what changed, for WebGL textures, video overlays and anything else that needs the DOM as pixels many times a second. Landing page: https://snapdom.dev/plugins/stream/. Reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
+Stream (`@zumer/snapdom-stream`) keeps a live element as a canvas that repaints only what changed, for WebGL textures, video overlays and anything else that needs the DOM as pixels many times a second. Page and reference: https://snapdom.dev/plugins/stream/.
 
 ```js
 import { stream } from '@zumer/snapdom-stream';

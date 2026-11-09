@@ -52,7 +52,7 @@ TOOL_FLAT = [('ecosystem/', 'Ecosystem')] + [(f'tools/{t["slug"]}/', t['name']) 
 
 def tool_nav(path):
     return [('Tools', 'ecosystem', [(rel(path, f'tools/{t["slug"]}/'), t['name']) for t in TOOLS] + [(rel(path, 'ecosystem/'), 'How they fit together')]),
-            ('Plugins', 'export', [(rel(path, 'plugins/'), 'All plugins')] + [(rel(path, f'plugins/{s}/'), n) for s, n, _, _ in PRODUCTS])]
+            ('Plugins', 'export', [(rel(path, 'plugins/'), 'All plugins')] + [(rel(path, f'plugins/{s}/'), n) for s, n, _, _ in OWN_PAGE])]
 
 def tool_page(t):
     path = f'tools/{t["slug"]}/index.html'

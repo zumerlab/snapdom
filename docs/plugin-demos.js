@@ -13,7 +13,7 @@ const figma = panel.querySelector('[data-figma]')
 const generateButton = form.querySelector('[type=submit]')
 let card, fileURL, pdfDocument, pageNumber = 1, lastResult, generation = 0
 const options = () => ({ sample:form.elements.sample.value, page:form.elements.page?.value, text:form.elements.text?.checked, fields:form.elements.fields?.checked })
-const heading = (kicker, title) => `<div class="sample-card-kicker">${kicker}</div><h2 data-title contenteditable="true" aria-label="Edit document title" style="font:700 21px Arial;margin:10px 0">${title}</h2>`
+const heading = (kicker, title) => `<div class="sample-card-kicker">${kicker}</div><h2 data-title contenteditable="true" aria-label="Edit document title" style="font:700 21px Roboto, Arial;margin:10px 0">${title}</h2>`
 function updateCode() {
   const s = options()
   code.textContent = `import { snapdom } from '@zumer/snapdom';\nimport { ${format} } from '@zumer/snapdom-${format}';\n\nconst result = await snapdom(element, {\n  plugins: [${format}()]\n});\n${format === 'pdf' ? `const blob = await result.toPdf({\n  page: '${s.page}',\n  text: ${s.text},\n  fields: ${s.fields}\n});` : 'const svg = await result.toVector();'}`
