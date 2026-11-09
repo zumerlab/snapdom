@@ -766,7 +766,8 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
       if (!spec || spec.kind !== 'element') continue
       const band = await captureBand(spec.el, {
         scale: options.scale, dpr: options.dpr, backgroundColor: null, quality, codec,
-        availW: provisionalW, captureOptions: options.captureOptions,
+        availW: provisionalW, fitW: options.rasterDensity == null ? provisionalW : 0,
+        captureOptions: options.captureOptions,
       }, encodeOpaque)
       capturedBands.set(where, band)
     }
@@ -781,6 +782,13 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
 
   const geo = pageBox({ page, orientation, margin, contentW, contentH, headerH, footerH, report })
   const { pageW, pageH, marginX, marginY, availW, availH, contentTop, k, scaledH } = geo
+  // A paper size that enlarges the capture to its printable width enlarged the
+  // pixels with it. The site's 340px demo card fills A4 at 2.15x, and its dpr 2
+  // capture came out at 89 dpi under text a reader zooms into. Rasterizing at the
+  // printed size keeps the capture's dpr per CSS px of paper (192 dpi there). A page
+  // that shrinks the capture keeps every pixel the capture had, and an absolute
+  // width/height is the caller's pixel budget. Pinned by test/verify.mjs `density`.
+  const magnify = options.rasterDensity == null ? Math.max(1, geo.drawScale) : 1
 
   // Viewport CSS px → content points.
   const toContentX = (vx) => (vx - rect.left) * k
@@ -833,7 +841,7 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
   const imageObjects = new WeakMap()
   const imageObject = async (crop = null) => {
     if (!raster) throw new Error('[snapdom-pdf] raster requested while image:false')
-    const encoded = await raster(crop)
+    const encoded = await raster(crop, magnify)
     let saved = imageObjects.get(encoded)
     if (saved) return saved
     if (/DCTDecode/.test(encoded.dict)) jpegRegions++
@@ -1179,7 +1187,7 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
   // canvas. Bound both stages with the same side/area ceilings as toCanvas.
   const intrinsicW = measured.intrinsic?.width > 0 ? measured.intrinsic.width : vbW
   const intrinsicH = measured.intrinsic?.height > 0 ? measured.intrinsic.height : vbH
-  const pixelFactor = options.scale * options.dpr
+  const pixelFactor = options.scale * options.dpr * magnify
   const densityX = options.rasterDensity != null
     ? Math.max(intrinsicW / vbW, options.rasterDensity * options.dpr)
     : intrinsicW / vbW * pixelFactor
@@ -1682,7 +1690,7 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
     const shot = await captureElement(el, {
       scale: options.scale, dpr: options.dpr, backgroundColor: null, quality, codec,
       captureOptions: options.captureOptions,
-      image,
+      image, fitW: options.rasterDensity == null ? pageW : 0,
     }, image ? encodeOpaque : null)
     const subMeasured = await measureArtifact(shot.url, shot.meta, {
       formValues: measured.formValues !== false,
@@ -2300,9 +2308,10 @@ export default function pdf(defaults = {}) {
       const cropKey = (crop) => crop
         ? ['crop', crop.x, crop.y, crop.width, crop.height].map(String).join(':')
         : 'full'
-      const rasterFor = (options) => async (crop = null) => {
+      // `magnify` is the page's enlargement of the capture (`draw`), 1 with an absolute size.
+      const rasterFor = (options) => async (crop = null, magnify = 1) => {
         const key = JSON.stringify([
-          cropKey(crop), options.quality, options.backgroundColor, options.codec,
+          cropKey(crop), magnify, options.quality, options.backgroundColor, options.codec,
         ])
         if (imageCache.has(key)) return imageCache.get(key)
         const promise = Promise.resolve().then(async () => {
@@ -2311,7 +2320,7 @@ export default function pdf(defaults = {}) {
             backgroundColor: null,
             width: absoluteSize ? (crop?.width ?? meta.vbW) * captureDensity : null,
             height: absoluteSize ? (crop?.height ?? meta.vbH) * captureDensity : null,
-            scale: rasterScale,
+            scale: rasterScale * magnify,
             ...(crop ? { crop } : {}),
           })
           return encodeImage(canvas, {

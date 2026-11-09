@@ -42,7 +42,7 @@ export function bandHeight(el, availW) {
  *
  * @param {Element} el
  * @param {{scale: number, dpr: number, quality: number,
- *          backgroundColor: string|null, availW: number}} opts
+ *          backgroundColor: string|null, availW: number, fitW?: number}} opts
  */
 export async function captureBand(el, options, encodeImage) {
   const img = await captureElement(el, options, encodeImage)
@@ -59,11 +59,15 @@ export async function captureBand(el, options, encodeImage) {
  * @returns {Promise<object>} what `addStream` needs, plus `aspect` (height/width).
  */
 export async function captureElement(el, {
-  scale, dpr, quality, backgroundColor, codec, captureOptions = {}, image = true,
+  scale, dpr, quality, backgroundColor, codec, captureOptions = {}, image = true, fitW = 0,
 }, encodeImage) {
   if (!el || el.nodeType !== 1) throw new TypeError('captureElement: expected an Element')
   if (image && typeof encodeImage !== 'function') throw new TypeError('captureElement: encodeImage must be a function')
-  const rasterScale = positive(scale, 1)
+  // `fitW` is the width in points the image is drawn at. Wider than the element's own
+  // box (CSS px x 0.75), the raster is enlarged to it the way the body's is (`magnify`
+  // in index.js), so a band or a cover is no softer than the page under it.
+  const boxW = fitW > 0 ? el.getBoundingClientRect().width * 0.75 : 0
+  const rasterScale = positive(scale, 1) * (boxW > 0 ? Math.max(1, fitW / boxW) : 1)
   const rasterDpr = positive(dpr, 1)
   const source = {
     baseURL: String(el.ownerDocument?.baseURI || document.baseURI),

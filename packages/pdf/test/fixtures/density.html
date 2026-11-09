@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: density</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  /* Narrower than any paper's printable width, so a paper size enlarges it. */
+  #target, #cover { width: 300px; box-sizing: border-box; padding: 16px; background: #fff; color: #111;
+                    font: 16px Arial, Helvetica, sans-serif; }
+  #cover { margin-top: 24px; background: #0f1e4d; color: #fff; }
+</style>
+</head>
+<body>
+<div id="target">
+  <h3 style="margin:0 0 8px">Receipt 1042</h3>
+  <p style="margin:0">Two lines of small print that a reader zooms into.</p>
+</div>
+<div id="cover"><h1 style="margin:0">Cover</h1></div>
+<script type="module">
+  import './_pdf.js'
+  window.__ready = true
+</script>
+</body>
+</html>

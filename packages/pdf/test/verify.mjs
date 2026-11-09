@@ -3700,6 +3700,32 @@ const FIXTURES = [
       }
     },
   },
+
+  {
+    // The page image is sized for the paper it lands on. A capture enlarged to the
+    // printable width is rasterized at that width (`magnify` in src/index.js), never
+    // below its own density, and an absolute width stays the caller's pixel count.
+    // The suite captures at scale 2, dpr 1 (fixtures/_pdf.js).
+    name: 'density',
+    async run() {
+      const widths = (raw) => [...raw.matchAll(/\/Subtype \/Image \/Width (\d+)/g)].map(m => Number(m[1]))
+      const box = await page.evaluate(() => document.getElementById('target').getBoundingClientRect().width)
+      const a4W = 595.28
+      const enlarge = (a4W - 48) / (box * PT)
+      const fit = await makePdf('density-fit', { page: 'fit' })
+      near('page:"fit" keeps the capture density', widths(fit.raw)[0], box * 2, 1, 'px')
+      const a4 = await makePdf('density-a4', { page: 'a4' })
+      near('an enlarged capture is rasterized at its printed width', widths(a4.raw)[0], box * 2 * enlarge, 2, 'px')
+      const sized = await makePdf('density-sized', { page: 'a4', width: 450 })
+      near('an absolute width keeps its pixel count', widths(sized.raw)[0], 450, 1, 'px')
+      const cover = await makePdf('density-cover', { page: 'a4', cover: '#cover' })
+      check('a cover is rasterized across the page it fills',
+        widths(cover.raw).some(w => Math.abs(w - a4W / PT * 2) <= 2), widths(cover.raw).join(', '))
+      await page.evaluate(() => { document.getElementById('target').style.width = '1000px' })
+      const wide = await makePdf('density-wide', { page: 'a4' })
+      near('a capture the page shrinks keeps every pixel', widths(wide.raw)[0], 2000, 1, 'px')
+    },
+  },
 ]
 
 // ——— fuzz ————————————————————————————————————————————————————————
