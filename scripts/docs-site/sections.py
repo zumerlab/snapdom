@@ -34,6 +34,7 @@ SECTIONS = [
                               ('how-to/export-invoice-as-image/index.html','Export an invoice',None),
                               ('how-to/generate-social-card-from-html/index.html','Generate a social card',None),
                               ('how-to/capture-before-pdf/index.html','Capture before a PDF',None),
+                              ('how-to/pdf-cross-origin-images/index.html','PDF with cross-origin images',None),
                               ('how-to/export-chart-as-svg/index.html','Export a chart as SVG',None),
                               ('how-to/save-chart-js-as-png/index.html','Save a Chart.js chart',None)]),
    ('Special cases','ecosystem',[('how-to/capture-element-without-puppeteer/index.html','Capture without Puppeteer',None),

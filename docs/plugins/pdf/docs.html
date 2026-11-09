@@ -495,6 +495,10 @@ if (report.counts['link-unresolved']) throw new Error('a link lost its destinati
   </ul>
   <p>Every one of these is also available as a structured diagnostic with a stable code (see
   <a href="#report">the report</a>), so a build can gate on them instead of reading the console.</p>
+  <p>An image the capture could not read is not a PDF diagnostic: it becomes a grey placeholder and an
+  <code>image-fallback</code> entry in the capture's <code>result.warnings</code>. A host without CORS
+  headers and a Content Security Policy without the host in <code>connect-src</code> both cause it;
+  <a href="../../how-to/pdf-cross-origin-images/">Export a PDF with cross-origin images</a> covers the fixes.</p>
 
   <h2 id="limits">Known limits</h2>
   <ul class="plain">
