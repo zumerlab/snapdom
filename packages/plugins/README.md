@@ -6,7 +6,7 @@
 Official plugins for [SnapDOM](https://github.com/zumerlab/snapdom), a high-performance DOM engine
 that exports a rendered element as PNG, SVG or canvas in the browser. Core exports images and
 canvases; this package adds HTML, structured context, element maps, ASCII, visual transforms,
-redaction and live GIF/video recording. PDF, Vector and Stream are their own packages:
+redaction, JPEG XL and live GIF/video recording. PDF, Vector and Stream are their own packages:
 [`@zumer/snapdom-pdf`](https://snapdom.dev/plugins/pdf/), [`@zumer/snapdom-vector`](https://snapdom.dev/plugins/vector/)
 and [`@zumer/snapdom-stream`](https://snapdom.dev/plugins/stream/).
 
@@ -21,7 +21,7 @@ Install the plugins next to a core supported by their peer dependency:
 npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 ```
 
-Plugins 5.x require SnapDOM 3.4.0 or newer within 3.x and hold the eleven toolbox plugins. PDF, Vector and Stream moved to their own packages in 5.0; see [Migrating from 4.x](#migrating-from-4x). See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
+Plugins 5.x require SnapDOM 3.4.0 or newer within 3.x and hold the twelve toolbox plugins. PDF, Vector and Stream moved to their own packages in 5.0; see [Migrating from 4.x](#migrating-from-4x). See the [migration guide](https://github.com/zumerlab/snapdom#migrating-from-v2) when upgrading from v2.
 
 ## Usage
 
@@ -393,6 +393,42 @@ Per-call `opts` accepts `fullDocument`, `filename` and `download`. Set `download
 download, or pass a filename string. The method returns the HTML string either way.
 
 The document retains source markup, including event-handler attributes; it is not sanitized.
+
+---
+
+### `jxl`
+
+Adds `toJxl()`, `toBlob({ format: 'jxl' })` and `download({ format: 'jxl' })`. Text and interface stay
+exact while photos take the quality, in one JPEG XL file. The encoder is [rapier-jxl](https://www.npmjs.com/package/rapier-jxl)
+(MIT), an optional peer: the text measurement loads at the first capture, the encoder at the first export.
+
+```bash
+npm install rapier-jxl
+```
+
+```js
+import { jxl } from '@zumer/snapdom-plugins/jxl';
+
+const result = await snapdom(el, { plugins: [jxl()] });
+const img = await result.toJxl({ quality: 0.8 });
+const blob = await result.toBlob({ format: 'jxl' });
+await result.download({ format: 'jxl', filename: 'card' });
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `module` | `string` | `'rapier-jxl/capture-complete'` | With your `codec`: `'rapier-jxl/capture'` (every pixel exact) or `'rapier-jxl/upload'` (photographic) |
+| `codec` | `object` | — | Your own encoder with `prepare` and `capture` |
+| `decoder` | `object` | — | `createCodec()` from `rapier-jxl/codec/decode`, for `toJxl()` where JPEG XL does not show |
+| `effort` | `number` | `3` | Default effort, 1-9 |
+| `webgpu` | `false \| 'required'` | — | Disable WebGPU, or require a device |
+| `helpers` | `boolean \| object` | — | Helper workers for the encoder the plugin creates |
+
+Exports take `toWebp()`'s options, plus `effort`, `signal`, `onProgress` (0 to 1) and `onEncoded` (once).
+`quality: 1` is exact. The plugin's own encoder takes up to 40 megapixels; `plugin.close()` ends its workers.
+
+Encoding works in every browser: `toBlob()` and `download()` give `image/jxl`. Where the browser cannot show
+JPEG XL (Edge, for one), `toJxl()` shows the `decoder`'s pixels, or rejects with `JXL_NOT_SHOWN` without one.
 
 ---
 
