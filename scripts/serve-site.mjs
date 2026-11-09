@@ -58,10 +58,8 @@ function packageFile(path) {
 createServer((req, res) => {
   try {
     let path = decodeURIComponent(new URL(req.url, 'http://x').pathname)
-    // A bare package (`/__pkg/pdf`) redirects to its root so the barrel's relative imports stay
-    // under it. So do the toolbox's 4.x product subpaths (`/__pkg/plugins/pdf`) until the site
-    // imports the products by their own names, after their first publish.
-    const root = path.match(/^\/__pkg\/(\w+)$/) || path.match(/^\/__pkg\/plugins\/(pdf|vector|stream)(?:\.js)?$/)
+    // A bare package (`/__pkg/pdf`) redirects to its root so the barrel's relative imports stay under it.
+    const root = path.match(/^\/__pkg\/(\w+)$/)
     if (root) {
       res.writeHead(302, { location: `/__pkg/${root[1]}/` }).end()
       return

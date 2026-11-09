@@ -554,7 +554,7 @@
         let label = 'snapdom.toPng()'
         if (roll) {
           try {
-            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins@latest/${roll.mod}?external=@zumer/snapdom`)
+            const plugin = await import(`https://esm.sh/@zumer/snapdom-plugins@5/${roll.mod}?external=@zumer/snapdom`)
             plugins = [plugin[roll.fn](roll.opts)]
             label = roll.label
           } catch (error) {

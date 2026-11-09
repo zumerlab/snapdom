@@ -36,7 +36,7 @@ For a browser ES module:
 </script>
 ```
 
-The package entry is ESM; there is no CommonJS build. The core has no runtime dependencies. Official plugins are a separate package. Use `@zumer/snapdom-plugins` 4.x with SnapDOM 3.x; the package major versions do not match. The 4.0.0 plugin release includes MIT-licensed PDF and Vector exports and is published on npm:
+The package entry is ESM; there is no CommonJS build. The core has no runtime dependencies. Official plugins are separate packages: the toolbox `@zumer/snapdom-plugins` 5.x, and `@zumer/snapdom-pdf`, `@zumer/snapdom-vector` and `@zumer/snapdom-stream` 1.x. All need SnapDOM 3.4.0 or newer within 3.x; the package major versions do not match. The toolbox is published on npm:
 
 ```bash
 npm install @zumer/snapdom-plugins@latest
@@ -393,9 +393,9 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `videoExport()` | `toMp4()` → Blob | fps 10, duration 2000 ms, frames overrides duration |
 | `stream()`, `streamExport()` | `stream(element, options)` → `{ canvas, ready, stats, stop() }`, a live canvas that repaints only the boxes that changed; `streamExport()` adds `toStream()` to a capture result | onFrame(frame), fps (default: every animation frame), patches true, animations true; every capture option applies |
 
-PDF and Vector are MIT source in packages/plugins. PDF and Vector are available on npm in @zumer/snapdom-plugins 4.x and require SnapDOM 3.x. PDF returns a Blob; downloading is an explicit export option.
+PDF and Vector are MIT source in packages/pdf and packages/vector, published on npm as @zumer/snapdom-pdf and @zumer/snapdom-vector; both require SnapDOM 3.4.0 or newer. PDF returns a Blob; downloading is an explicit export option.
 
-Stream ships in the same package at the `/stream` subpath (packages/stream); its patches are pixel-exact on SnapDOM 3.4.0 or newer. `streamTexture(gl)` uploads only the changed rectangles to a WebGL2 texture and `recordCanvas(canvas)` records a stream. See the Stream section below; the reference is its README: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
+Stream is its own package, `@zumer/snapdom-stream` (packages/stream); its patches are pixel-exact on SnapDOM 3.4.0 or newer. `streamTexture(gl)` uploads only the changed rectangles to a WebGL2 texture and `recordCanvas(canvas)` records a stream. See the Stream section below; the reference is its README: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
 
 Every official plugin has its own page under https://snapdom.dev/plugins/. PDF, Vector and Stream are the three products of the plugin line, with landing pages at https://snapdom.dev/plugins/pdf/, https://snapdom.dev/plugins/vector/ and https://snapdom.dev/plugins/stream/. The other eleven are the toolbox, grouped on the index by job (https://snapdom.dev/plugins/#prepare, https://snapdom.dev/plugins/#export, https://snapdom.dev/plugins/#record and https://snapdom.dev/plugins/#context), with one page per plugin that lists its options and runs a live demo: https://snapdom.dev/plugins/redact-inputs/, https://snapdom.dev/plugins/timestamp-overlay/, https://snapdom.dev/plugins/replace-text/, https://snapdom.dev/plugins/filter/, https://snapdom.dev/plugins/color-tint/, https://snapdom.dev/plugins/html-export/, https://snapdom.dev/plugins/ascii-export/, https://snapdom.dev/plugins/gif-export/, https://snapdom.dev/plugins/video-export/, https://snapdom.dev/plugins/context-export/ and https://snapdom.dev/plugins/agent-map/. The community plugins table is at https://snapdom.dev/plugins/#community-plugins; the guide for writing a plugin is https://snapdom.dev/docs/plugins/.
 
@@ -630,7 +630,7 @@ Map label IDs are capture-local references, not browser handles. Use browser aut
 ### Produce a PDF, preview, HTML and JSON from one capture
 
 ```js
-import { pdf } from '@zumer/snapdom-plugins/pdf';
+import { pdf } from '@zumer/snapdom-pdf';
 import { htmlExport } from '@zumer/snapdom-plugins/html-export';
 import { contextExport } from '@zumer/snapdom-plugins/context-export';
 import { redactInputs } from '@zumer/snapdom-plugins/redact-inputs';
@@ -659,7 +659,7 @@ Redact source content before capture, rather than painting a cover over pixels: 
 ### Export editable artwork on a user action
 
 ```js
-import { vector } from '@zumer/snapdom-plugins/vector';
+import { vector } from '@zumer/snapdom-vector';
 
 const artwork = await snapdom(element, {
   plugins: [vector({ exclude: '.toolbar' })]
@@ -722,13 +722,13 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 
 ## PDF and Vector exports
 
-Both exporters live in the SnapDOM monorepo: packages/pdf and packages/vector. Vector includes its internal SVD dependency in packages/vector/svd. @zumer/snapdom-plugins 4.0.0 is published on npm and available through npm-backed CDNs.
+Both exporters live in the SnapDOM monorepo: packages/pdf and packages/vector. Vector includes its internal SVD dependency in packages/vector/svd. @zumer/snapdom-pdf and @zumer/snapdom-vector 1.0.0 are published on npm and available through npm-backed CDNs.
 
 PDF usage:
 
 ```js
 import { snapdom } from '@zumer/snapdom';
-import { pdf } from '@zumer/snapdom-plugins/pdf';
+import { pdf } from '@zumer/snapdom-pdf';
 const capture = await snapdom(element, {
   dpr: 1,
   embedFonts: true,
@@ -765,7 +765,7 @@ Vector usage:
 
 ```js
 import { snapdom } from '@zumer/snapdom';
-import { vector } from '@zumer/snapdom-plugins/vector';
+import { vector } from '@zumer/snapdom-vector';
 const capture = await snapdom(element, { plugins: [vector()] });
 const svg = await capture.toVector();
 // On a later user click in a secure context, call capture.toFigma().
@@ -796,10 +796,10 @@ Old /pro/ URLs redirect to /plugins/. Current PDF/Vector demos generate outputs 
 
 ## Stream
 
-Stream (`@zumer/snapdom-plugins/stream`) keeps a live element as a canvas that repaints only what changed, for WebGL textures, video overlays and anything else that needs the DOM as pixels many times a second. Landing page: https://snapdom.dev/plugins/stream/. Reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
+Stream (`@zumer/snapdom-stream`) keeps a live element as a canvas that repaints only what changed, for WebGL textures, video overlays and anything else that needs the DOM as pixels many times a second. Landing page: https://snapdom.dev/plugins/stream/. Reference: https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md.
 
 ```js
-import { stream } from '@zumer/snapdom-plugins/stream';
+import { stream } from '@zumer/snapdom-stream';
 
 const live = stream(panel, {
   scale: 2,

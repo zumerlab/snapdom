@@ -109,39 +109,38 @@ body{ margin:0; color:var(--ink); background:#fff; font:15.5px/1.65 var(--sans);
   <code>toPdf()</code> to a capture. The versioned <code>REFERENCE.md</code> shipped beside the
   module is canonical for that version.</p>
 
-  <div class="note"><p>The PDF exporter is MIT-licensed source in the SnapDOM monorepo. The plugin package is available on npm in @zumer/snapdom-plugins 4.x and requires SnapDOM 3.x.</p></div>
+  <div class="note"><p>The PDF exporter is MIT-licensed source in the SnapDOM monorepo, published on npm as @zumer/snapdom-pdf. It requires SnapDOM 3.4.0 or newer.</p></div>
 
   <h2 id="install">Installation</h2>
-  <p>Import <code>pdf</code> from <code>@zumer/snapdom-plugins/pdf</code>. For local development, use the monorepo workspace.</p>
+  <p>Install <code>@zumer/snapdom-pdf</code> next to SnapDOM and import <code>pdf</code> from it. For local development, use the monorepo workspace.</p>
 
   <h3>Bundler</h3>
   <pre><code>import { snapdom } from '@zumer/snapdom'
-import { pdf } from '@zumer/snapdom-plugins/pdf'</code></pre>
+import { pdf } from '@zumer/snapdom-pdf'</code></pre>
 
   <h3>Browser without a bundler</h3>
   <pre><code>&lt;script type="importmap"&gt;
 {
   "imports": {
     "@zumer/snapdom": "/vendor/snapdom.mjs",
-    "@zumer/snapdom-plugins/pdf": "/vendor/plugins/pdf.js"
+    "@zumer/snapdom-pdf": "/vendor/snapdom-pdf/index.js"
   }
 }
 &lt;/script&gt;
 &lt;script type="module"&gt;
   import { snapdom } from '@zumer/snapdom'
-  import { pdf } from '@zumer/snapdom-plugins/pdf'
+  import { pdf } from '@zumer/snapdom-pdf'
 &lt;/script&gt;</code></pre>
-  <p>Serve the plugin package with its <code>pdf/src/</code> tree and a JavaScript MIME type. A global/IIFE SnapDOM script cannot satisfy
-  the plugin's ESM peer import. Requires <code>@zumer/snapdom &gt;=3.0.0 &lt;4</code>.</p>
+  <p>Serve the whole package directory with a JavaScript MIME type: <code>index.js</code> imports its <code>src/</code> tree. A global/IIFE SnapDOM script cannot satisfy
+  the plugin's ESM peer import. Requires <code>@zumer/snapdom</code> 3.4.0 or newer within 3.x.</p>
   <div class="note"><p><b>SnapDOM 3 is the floor.</b> The exporter reads v3's immutable capture
-  metadata, requested export options and pre-decode canvas crops, which 2.x does not expose. The
-  fixture suite runs against the published 3.0.0.</p></div>
+  metadata, requested export options and pre-decode canvas crops, which 2.x does not expose.</p></div>
 
   <h2 id="register">Registering</h2>
   <p>The module exports the same <code>pdf</code> factory as default and named export. It does not
   export a standalone <code>toPdf(element)</code> helper.</p>
   <pre><code>import { snapdom } from '@zumer/snapdom'
-import pdf, { pdf as namedPdf } from '@zumer/snapdom-plugins/pdf'
+import pdf, { pdf as namedPdf } from '@zumer/snapdom-pdf'
 
 snapdom.plugins(pdf())                         // every later capture
 const local = await snapdom(el, { plugins: [pdf()] }) // this capture

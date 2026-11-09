@@ -23,7 +23,7 @@ const blob = await shot.toPdf({ page: 'a4' })
 
 See [README.md](./README.md) for the bundler and import-map installation
 recipes. Both builds export the same factory as the default export and as the
-named export `pdf`. The supported peer range is `@zumer/snapdom >=3.0.0 <4`.
+named export `pdf`. The supported peer range is `@zumer/snapdom ^3.4.0`.
 The plugin uses v3's immutable capture metadata, requested export options and
 pre-decode canvas crops. PDF declares `needs: 'render'` and uses the SVG path so
 the text layer and raster share one immutable artifact.

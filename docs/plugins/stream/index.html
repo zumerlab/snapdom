@@ -15,12 +15,12 @@
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
   "name": "SnapDOM Stream plugin",
-  "alternateName": "@zumer/snapdom-plugins/stream",
+  "alternateName": "@zumer/snapdom-stream",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Web",
   "description": "SnapDOM Stream, an open-source MIT plugin: a live element as a canvas that repaints only what changed, for WebGL textures, video overlays, WebRTC and mirrors.",
   "url": "https://snapdom.dev/plugins/stream/",
-  "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom-plugins",
+  "downloadUrl": "https://www.npmjs.com/package/@zumer/snapdom-stream",
   "codeRepository": "https://github.com/zumerlab/snapdom",
   "license": "https://spdx.org/licenses/MIT.html",
   "offers": {
@@ -66,7 +66,7 @@
   ]
 }
 </script>
-<script defer src="../../code-blocks.js"></script></head><body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><nav class="pane-nav" aria-label="Official plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Products</button><div class="pane-nav-items"><a href="../pdf/">PDF</a><a href="../vector/">Vector</a><a href="../stream/" aria-current="page">Stream</a><a href="../">All plugins</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Stream reference</button><div class="pane-nav-items"><a href="https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md">README on GitHub</a><a href="../../showcase/#stream-demo">Showcase demo</a><a href="../../labs/video-overlay/">Video overlay lab</a><a href="../../labs/webrtc-overlay/">WebRTC overlay lab</a><a href="../../labs/ascii-mirror/">ASCII mirror lab</a></div></div></nav></aside><article class="pane-read sec-record"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Plugins</span><span aria-hidden="true">/</span><span>Stream</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Stream a live element as a canvas.</h1><p class="doc-lead">A live element as a canvas that repaints only what changed, for WebGL textures, video overlays and anything else that needs the DOM as pixels, many times a second.</p></header><aside class="callout"><div class="callout-label">Open source</div><p>Stream is MIT-licensed source inside <code>packages/stream</code>. Available in <code>@zumer/snapdom-plugins@4</code> for SnapDOM 3.4.0 or newer. The demo below is the showcase's ASCII mirror lab, running the published plugin from unpkg.</p></aside><div class="pane-content pdf-reference"><section>
+<script defer src="../../code-blocks.js"></script></head><body><header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header><main id="main" class="pane plugin-page"><aside class="pane-side"><nav class="pane-nav" aria-label="Official plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Products</button><div class="pane-nav-items"><a href="../pdf/">PDF</a><a href="../vector/">Vector</a><a href="../stream/" aria-current="page">Stream</a><a href="../">All plugins</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Stream reference</button><div class="pane-nav-items"><a href="https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md">README on GitHub</a><a href="../../showcase/#stream-demo">Showcase demo</a><a href="../../labs/video-overlay/">Video overlay lab</a><a href="../../labs/webrtc-overlay/">WebRTC overlay lab</a><a href="../../labs/ascii-mirror/">ASCII mirror lab</a></div></div></nav></aside><article class="pane-read sec-record"><header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><span>Plugins</span><span aria-hidden="true">/</span><span>Stream</span></nav><span class="doc-meta">Official plugin · MIT</span></div><h1>Stream a live element as a canvas.</h1><p class="doc-lead">A live element as a canvas that repaints only what changed, for WebGL textures, video overlays and anything else that needs the DOM as pixels, many times a second.</p></header><aside class="callout"><div class="callout-label">Open source</div><p>Stream is MIT-licensed source inside <code>packages/stream</code>, published as <code>@zumer/snapdom-stream</code> for SnapDOM 3.4.0 or newer. The demo below is the showcase's ASCII mirror lab, running the published package from unpkg.</p></aside><div class="pane-content pdf-reference"><section>
   <span class="eyebrow">How it works</span>
   <h2 id="one-full-frame-then-patches">One full frame, then patches</h2>
   <p>The first frame is a full capture. After that, every change (mutations, typing, focus,
@@ -122,10 +122,9 @@
 <section>
   <span class="eyebrow">Quick start</span>
   <h2 id="add-stream-to-a-page">Add Stream to a page</h2>
-  <p>The plugin ships inside <code>@zumer/snapdom-plugins</code>, on its
-  <code>/stream</code> subpath. Install it next to SnapDOM 3.4.0 or newer.</p>
+  <p>The plugin is a package of its own, <code>@zumer/snapdom-stream</code>. Install it next to SnapDOM 3.4.0 or newer.</p>
 
-  <pre><code>npm install @zumer/snapdom @zumer/snapdom-plugins</code></pre>
+  <pre><code>npm install @zumer/snapdom @zumer/snapdom-stream</code></pre>
 
   <p><code>stream(element, options)</code> returns the canvas, <code>ready</code> (a
   promise for the first full frame), <code>stats</code> and <code>stop()</code>. The canvas is
@@ -133,7 +132,7 @@
   (<code>scale</code>, <code>dpr</code>, <code>embedFonts</code>, <code>exclude</code> and the
   rest).</p>
 
-  <pre><code>import { stream } from '@zumer/snapdom-plugins/stream'
+  <pre><code>import { stream } from '@zumer/snapdom-stream'
 
 const live = stream(panel, {
   scale: 2,
@@ -149,7 +148,7 @@ live.stop()</code></pre>
 <section>
   <span class="eyebrow">The whole API</span>
   <h2 id="one-function-and-the-pieces-around-it">One function, and the pieces around it</h2>
-  <p>Everything below is exported from <code>@zumer/snapdom-plugins/stream</code>.</p>
+  <p>Everything below is exported from <code>@zumer/snapdom-stream</code>.</p>
 
   <dl class="spec">
     <div>
@@ -162,7 +161,7 @@ live.stop()</code></pre>
       <dd>The plugin form. Register <code>streamExport()</code> on a capture and the result gains
       <code>toStream(options)</code>, next to <code>toMp4()</code> and <code>toGif()</code>. It
       streams the captured element with the capture's own options.
-      <pre><code>import { streamExport } from '@zumer/snapdom-plugins/stream'
+      <pre><code>import { streamExport } from '@zumer/snapdom-stream'
 
 const result = await snapdom(panel, { plugins: [streamExport()] })
 const live = await result.toStream({ onFrame })</code></pre></dd>
@@ -171,7 +170,7 @@ const live = await result.toStream({ onFrame })</code></pre></dd>
       <dt>streamTexture(gl)</dt>
       <dd>Keeps a WebGL texture in step with the stream. On WebGL2 it uploads only the changed
       rects: 4% of the texture per frame in the WebGL demo, against 100%.
-      <pre><code>import { stream, streamTexture } from '@zumer/snapdom-plugins/stream'
+      <pre><code>import { stream, streamTexture } from '@zumer/snapdom-stream'
 
 const tex = streamTexture(gl)
 stream(panel, { onFrame: (frame) =&gt; tex.update(frame) })
@@ -182,7 +181,7 @@ stream(panel, { onFrame: (frame) =&gt; tex.update(frame) })
       <dd>Composite <code>live.canvas</code> over anything with <code>drawImage</code>, and record
       the result. <code>rec.done</code> resolves to an MP4 or WebM Blob, whichever the browser
       records.
-      <pre><code>import { recordCanvas } from '@zumer/snapdom-plugins/stream'
+      <pre><code>import { recordCanvas } from '@zumer/snapdom-stream'
 
 const rec = recordCanvas(output, { fps: 30, duration: 10000 })
 const blob = await rec.done // MP4 or WebM, whichever the browser records</code></pre></dd>
@@ -204,7 +203,7 @@ peerConnection.addTrack(track, new MediaStream([track]))</code></pre></dd>
       Theme through CSS variables on the stage: <code>accent</code>, <code>panel</code>,
       <code>panel-2</code>, <code>text</code>, <code>ink</code>, <code>live</code>,
       <code>font</code>.
-      <pre><code>import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '@zumer/snapdom-plugins/stream'
+      <pre><code>import { stream, overlayStage, scoreboard, lowerThird, ticker, liveBadge } from '@zumer/snapdom-stream'
 
 const stage = overlayStage({ width: 1920, height: 1080, theme: { accent: '#facc15' } })
 const score = scoreboard({ home: 'HOME', away: 'AWAY' })
@@ -263,9 +262,8 @@ const live = stream(stage, { onFrame })</code></pre></dd>
 <section id="license">
   <span class="eyebrow">Open source</span>
   <h2 id="included-in-the-snapdom-monorepo">Included in the SnapDOM monorepo</h2>
-  <p>The Stream plugin is available as MIT-licensed source in
-  <code>packages/stream</code>. PDF, Vector and Stream are available on npm in
-  <code>@zumer/snapdom-plugins</code> 4.x; Stream needs SnapDOM 3.4.0 or newer.</p>
+  <p>The Stream plugin is MIT-licensed source in <code>packages/stream</code>, published on npm as
+  <code>@zumer/snapdom-stream</code>; it needs SnapDOM 3.4.0 or newer.</p>
   <p><a href="https://github.com/zumerlab/snapdom/blob/main/packages/stream/README.md">Read the README</a> · <a href="https://github.com/zumerlab/snapdom">SnapDOM on GitHub</a></p>
 </section>
 

@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Live video overlays from plain HTML","description":"Write a scoreboard, a lower third or a stream chat in HTML and CSS and put it over live video in the browser, with WebGL looks from clean broadcast to liquid glass, in Chrome, Firefox and Safari. No OBS, no server: the HTML streams into a texture that repaints only what changed.","url":"https://snapdom.dev/labs/video-overlay/","datePublished":"2026-10-24","dateModified":"2026-10-28","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom), @zumer/snapdom-plugins/stream"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"Live video overlays from plain HTML","description":"Write a scoreboard, a lower third or a stream chat in HTML and CSS and put it over live video in the browser, with WebGL looks from clean broadcast to liquid glass, in Chrome, Firefox and Safari. No OBS, no server: the HTML streams into a texture that repaints only what changed.","url":"https://snapdom.dev/labs/video-overlay/","datePublished":"2026-10-24","dateModified":"2026-11-09","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom), @zumer/snapdom-stream"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"Video overlay","item":"https://snapdom.dev/labs/video-overlay/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -128,7 +128,7 @@
     <section class="prose">
       <h2 id="the-code">The code</h2>
       <p>The SnapDOM part is short. The rest is a full-screen fragment shader.</p>
-<pre><code class="language-javascript">import { stream, streamTexture } from '@zumer/snapdom-plugins/stream'
+<pre><code class="language-javascript">import { stream, streamTexture } from '@zumer/snapdom-stream'
 
 const gl = canvas.getContext('webgl2')
 const overlay = streamTexture(gl)
@@ -163,7 +163,7 @@ for (const el of stage.querySelectorAll('.glass')) {
 <!-- pane:end -->
   <script type="module">
     // Raw ES modules from unpkg: esm.sh builds a package on first request and answered 408 after 30 s for the release that added the stream.
-    const { stream, streamTexture, recordCanvas } = await import('https://unpkg.com/@zumer/snapdom-plugins@4/stream.js').catch((err) => {
+    const { stream, streamTexture, recordCanvas } = await import('https://unpkg.com/@zumer/snapdom-stream@1/index.js').catch((err) => {
       document.querySelector('#lgpStats').textContent = 'Could not load the stream plugin: ' + err.message
       throw err
     })

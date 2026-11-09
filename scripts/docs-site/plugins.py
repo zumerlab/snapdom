@@ -176,13 +176,13 @@ def plugins_index():
     count = len(PRODUCTS) + sum(len(g[3]) for g in TOOLBOX)
     inner = doc_head(['Plugins'], f'{count} official plugins · MIT', 'Plugins for SnapDOM.',
                      'Three products with a landing of their own, and a toolbox of smaller plugins grouped by the job they do. '
-                     'Every page has the options and a live demo. All of them are MIT and ship in one package.',
+                     'Every page has the options and a live demo. All of them are MIT: the products are packages of their own, the toolbox is one.',
                      [(GITHUB + 'packages/plugins', 'Source'), ('https://www.npmjs.com/package/@zumer/snapdom-plugins', 'npm'), (rel(path, 'showcase/#plugins'), 'Plugin demos')])
     inner += '<div class="pane-content pane-prose"><h2 id="products">Products</h2>'
     inner += index_grid([(n, sec, m, rel(path, f'plugins/{s}/')) for s, n, sec, m in PRODUCTS])
-    inner += '<h2 id="install">Install</h2>' + code(INSTALL)
-    inner += ('<p>Import a plugin from its subpath and pass it in <code>plugins</code>. Plugins 4.x need SnapDOM 3.4.0 or newer within 3.x.</p>'
-              + code("import { snapdom } from '@zumer/snapdom'\nimport { redactInputs } from '@zumer/snapdom-plugins/redact-inputs'\nimport { pdf } from '@zumer/snapdom-plugins/pdf'\n\nconst result = await snapdom(el, { plugins: [redactInputs(), pdf()] })\nconst blob = await result.toPdf({ page: 'a4' })"))
+    inner += '<h2 id="install">Install</h2>' + code(INSTALL + '\nnpm install @zumer/snapdom-pdf @zumer/snapdom-vector @zumer/snapdom-stream')
+    inner += ('<p>The first line is SnapDOM and the toolbox; the second, the three products, each a package of its own. Import a product from its package and a toolbox plugin from its subpath, and pass them in <code>plugins</code>. All of them need SnapDOM 3.4.0 or newer within 3.x.</p>'
+              + code("import { snapdom } from '@zumer/snapdom'\nimport { redactInputs } from '@zumer/snapdom-plugins/redact-inputs'\nimport { pdf } from '@zumer/snapdom-pdf'\n\nconst result = await snapdom(el, { plugins: [redactInputs(), pdf()] })\nconst blob = await result.toPdf({ page: 'a4' })"))
     inner += '<h2 id="toolbox">The toolbox</h2><p>Eleven plugins, each with one job. Prepare plugins change the clone before it renders; the others add an export method to the result.</p>'
     for glabel, sec, blurb, items in TOOLBOX:
         inner += f'<h3 id="{sec}">{E(glabel)}</h3><p>{E(blurb)}</p>' + index_grid([(n, sec, m, rel(path, f'plugins/{s}/')) for s, n, _, m, _, _, _ in items])
@@ -193,7 +193,7 @@ def plugins_index():
               f'and <a href="{GITHUB}PLUGIN_SPEC.md">PLUGIN_SPEC.md</a> is the contract: hook order, what each hook receives, and what it may change.</p></div>')
     ld = {'mainEntity': {'@type': 'ItemList', 'itemListElement': [{'@type': 'ListItem', 'position': i + 1, 'name': n, 'url': SITE + p} for i, (p, n) in enumerate(FLAT[1:])]}}
     standalone(path, 'Plugins', meta('SnapDOM plugins: PDF, Vector, Stream and the toolbox',
-               'Fourteen official plugins for SnapDOM: PDF, Vector and Stream, and a toolbox that prepares, exports, records and maps captures. MIT, one package.',
+               'Fourteen official plugins for SnapDOM: PDF, Vector and Stream, each its own package, and a toolbox that prepares, exports, records and maps captures. All MIT.',
                'plugins/', 'CollectionPage', ld), plugin_nav(path), 'Filter plugins', 'Plugins', 'export', 'Plugins', inner, None, plugin_pager(path), 'plugin-page')
 
 plugins_index()

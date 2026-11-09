@@ -17,7 +17,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
   <link rel="stylesheet" href="../../shared.css"><link rel="stylesheet" href="../../page.css">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"HTML overlay over WebRTC","description":"A broadcast overlay written in HTML is composited onto video in the browser and sent as a WebRTC video track. The viewer receives plain video with the graphics inside it: no OBS, no server render.","url":"https://snapdom.dev/labs/webrtc-overlay/","datePublished":"2026-10-24","dateModified":"2026-10-28","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom), @zumer/snapdom-plugins/stream"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"TechArticle","headline":"HTML overlay over WebRTC","description":"A broadcast overlay written in HTML is composited onto video in the browser and sent as a WebRTC video track. The viewer receives plain video with the graphics inside it: no OBS, no server render.","url":"https://snapdom.dev/labs/webrtc-overlay/","datePublished":"2026-10-24","dateModified":"2026-11-09","author":{"@type":"Organization","name":"Zumerlab"},"dependencies":"SnapDOM (@zumer/snapdom), @zumer/snapdom-stream"}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"SnapDOM","item":"https://snapdom.dev/"},{"@type":"ListItem","position":2,"name":"Labs","item":"https://snapdom.dev/showcase/#labs"},{"@type":"ListItem","position":3,"name":"WebRTC overlay","item":"https://snapdom.dev/labs/webrtc-overlay/"}]}</script>
   <style>
     /* ── Scoped to this lab's live demo only ── */
@@ -99,7 +99,7 @@
 
     <section class="prose">
       <h2 id="the-code">The code</h2>
-<pre><code class="language-javascript">import { stream } from '@zumer/snapdom-plugins/stream'
+<pre><code class="language-javascript">import { stream } from '@zumer/snapdom-stream'
 
 const overlay = stream(stage, { embedFonts: false })
 
@@ -123,7 +123,7 @@ peerConnection.addTrack(track)</code></pre>
 <!-- pane:end -->
   <script type="module">
     // Raw ES modules from unpkg: esm.sh builds a package on first request and answered 408 after 30 s for the release that added the stream.
-    const { stream, overlayStage, scoreboard, lowerThird, liveBadge } = await import('https://unpkg.com/@zumer/snapdom-plugins@4/stream.js').catch((err) => {
+    const { stream, overlayStage, scoreboard, lowerThird, liveBadge } = await import('https://unpkg.com/@zumer/snapdom-stream@1/index.js').catch((err) => {
       document.querySelector('#lwoStats').textContent = 'Could not load the stream plugin: ' + err.message
       throw err
     })

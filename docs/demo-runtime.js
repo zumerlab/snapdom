@@ -2,8 +2,11 @@
 export const loadSnapdom = () => import('https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs').then(m => m.snapdom)
 const modules = new Map()
 const retries = new Map()
+// PDF, Vector and Stream are packages of their own; the toolbox plugins are subpaths of @zumer/snapdom-plugins.
+const CDN = { pdf: 'https://esm.sh/@zumer/snapdom-pdf@1', vector: 'https://esm.sh/@zumer/snapdom-vector@1', stream: 'https://esm.sh/@zumer/snapdom-stream@1' }
 export async function loadPlugin(name) {
-  if (!modules.has(name)) modules.set(name, import(`https://esm.sh/@zumer/snapdom-plugins@4/${name}?external=@zumer/snapdom${retries.has(name) ? '&retry=' + retries.get(name) : ''}`).catch(error => {
+  const url = CDN[name] || `https://esm.sh/@zumer/snapdom-plugins@5/${name}`
+  if (!modules.has(name)) modules.set(name, import(`${url}?external=@zumer/snapdom${retries.has(name) ? '&retry=' + retries.get(name) : ''}`).catch(error => {
     modules.delete(name)
     retries.set(name, (retries.get(name) || 0) + 1)
     throw new Error(`${name} could not load. Reload to retry, or run npm run site to use the local plugin build.`, { cause: error })

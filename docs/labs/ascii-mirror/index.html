@@ -119,7 +119,7 @@
 
     <section class="prose">
       <h2 id="copy-paste-example">Copy-paste example</h2>
-<pre><code class="language-javascript">import { stream } from '@zumer/snapdom-plugins/stream'
+<pre><code class="language-javascript">import { stream } from '@zumer/snapdom-stream'
 import { asciiFromCanvas } from '@zumer/snapdom-plugins/ascii-export'
 
 const out = document.querySelector('pre')
@@ -156,8 +156,8 @@ await live.ready
 
   <script type="module">
     // Raw ES modules from unpkg: esm.sh builds a package on first request and can time out on a fresh release.
-    import { stream } from 'https://unpkg.com/@zumer/snapdom-plugins@4/stream.js'
-    import { asciiFromCanvas } from 'https://unpkg.com/@zumer/snapdom-plugins@4/ascii-export.js'
+    import { stream } from 'https://unpkg.com/@zumer/snapdom-stream@1/index.js'
+    import { asciiFromCanvas } from 'https://unpkg.com/@zumer/snapdom-plugins@5/ascii-export.js'
 
     const card = document.getElementById('lamCard'), out = document.getElementById('lamOut'), stats = document.getElementById('lamStats')
     const charset = document.getElementById('lamCharset'), width = document.getElementById('lamWidth'), widthOut = document.getElementById('lamWidthOut')

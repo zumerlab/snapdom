@@ -955,7 +955,7 @@
     <!-- Plugins: what they make, how to install, one live demo each, community and your own -->
     <section id="plugins">
       <h2 id="plugin-demos">Plugins</h2>
-      <p class="demo-explanation">Official plugins from <code>@zumer/snapdom-plugins</code> turn the same capture into a PDF, editable SVG, HTML, ASCII, a GIF, video or live canvas, or context for an agent, or change it before it renders. Each demo runs one plugin. Every plugin also has <a href="../plugins/">its own page</a> with options and a live demo.</p>
+      <p class="demo-explanation">Official plugins turn the same capture into a PDF, editable SVG, HTML, ASCII, a GIF, video or live canvas, or context for an agent, or change it before it renders. PDF, Vector and Stream are packages of their own; the toolbox ships in <code>@zumer/snapdom-plugins</code>. Each demo runs one plugin. Every plugin also has <a href="../plugins/">its own page</a> with options and a live demo.</p>
     </section>
 
 
@@ -1112,7 +1112,7 @@
         <p contenteditable="true" spellcheck="false" style="margin:0;padding:8px 10px;background:#1b2f73;border-radius:6px">Each box repaints on its own when it changes.</p>
         <div style="display:flex;gap:8px;align-items:center"><span style="padding:5px 12px;border-radius:999px;background:#2ee6a6;color:#0F1E4D;font-weight:700">live</span><span id="xp-stream-count" style="display:inline-block;padding:5px 12px;border-radius:999px;background:#ffd166;color:#0F1E4D;font-weight:800">00</span></div>
       </div>
-      <pre class="pl-code" id="pl-stream-code">import { stream } from '@zumer/snapdom-plugins/stream'
+      <pre class="pl-code" id="pl-stream-code">import { stream } from '@zumer/snapdom-stream'
 
 const live = stream(el, { onFrame: f => console.log(f.full ? 'full' : 'patch', f.rects, f.ms) })
 await live.ready
@@ -1826,7 +1826,10 @@ document.body.append(live.canvas)
     // ── Export plugin demos ──
     // Plugins are lazy-loaded from npm (via esm.sh) on first click, so an
     // unpublished/offline CDN only breaks its own demo, never the whole page.
-    const PLUGIN_CDN = 'https://esm.sh/@zumer/snapdom-plugins@4'; // pinned: 5.0.0 dropped pdf, vector and stream, which move to their own packages
+    // PDF, Vector and Stream are packages of their own; the toolbox plugins are subpaths of @zumer/snapdom-plugins.
+    const PLUGIN_CDN = { pdf: 'https://esm.sh/@zumer/snapdom-pdf@1', vector: 'https://esm.sh/@zumer/snapdom-vector@1', stream: 'https://esm.sh/@zumer/snapdom-stream@1' };
+    const pluginURL = (mod) => `${PLUGIN_CDN[mod] || `https://esm.sh/@zumer/snapdom-plugins@5/${mod}`}?external=@zumer/snapdom`;
+    const pluginSpecifier = (mod) => PLUGIN_CDN[mod] ? `@zumer/snapdom-${mod}` : `@zumer/snapdom-plugins/${mod}`;
     // Tick only while a counter is on screen: a running counter is a DOM mutation every 80 ms,
     // and it kept the repeat-capture demo from ever reusing a capture.
     let _xpCount = 0;
@@ -1996,7 +1999,7 @@ document.body.append(live.canvas)
       const demo = PLUGIN_DEMOS[key], o = demoValues[key];
       const opts = pluginOptions(demo, o);
       document.getElementById(`pl-${key}-code`).textContent =
-        `import { ${pick(demo.fn, o)} } from '@zumer/snapdom-plugins/${pick(demo.mod, o)}'\n\n` +
+        `import { ${pick(demo.fn, o)} } from '${pluginSpecifier(pick(demo.mod, o))}'\n\n` +
         `const result = await snapdom(el, { plugins: [${pick(demo.fn, o)}(${Object.keys(opts).length ? jsLiteral(opts) : ''})] })\n` +
         `await result.${demo.call}()`;
       for (const label of document.querySelectorAll(`#pl-${key}-opts [data-when]`)) {
@@ -2058,7 +2061,7 @@ document.body.append(live.canvas)
       if (xpStream) { xpStream.stop(); xpStream = null; btn.textContent = 'Start stream'; return; }
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Loading stream…</div>';
       try {
-        const { stream } = await import(`${PLUGIN_CDN}/stream?external=@zumer/snapdom`);
+        const { stream } = await import(pluginURL('stream'));
         const stats = document.createElement('p');
         stats.className = 'demo-explanation'; stats.style.margin = '10px 0 0';
         let frames = 0, patched = 0, ms = [];
@@ -2085,7 +2088,7 @@ document.body.append(live.canvas)
       const out = document.getElementById(`${prefix}-out`);
       btn.disabled = true; out.innerHTML = '<div class="progress-message">Capturing…</div>';
       try {
-        const module = await import(`${PLUGIN_CDN}/${pick(demo.mod, o)}?external=@zumer/snapdom`);
+        const module = await import(pluginURL(pick(demo.mod, o)));
         const result = await snapdom(src, { plugins: [module[pick(demo.fn, o)](pluginOptions(demo, o))] });
         const value = await result[demo.call]();
         const node = demo.show ? await demo.show(value, src) : value;

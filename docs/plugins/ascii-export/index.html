@@ -56,10 +56,11 @@ console.log(art);</code></pre>
 <h2>Options</h2>
 <div class="compare-table"><table><thead><tr><th scope="col">Option</th><th scope="col">Type</th><th scope="col">Default</th><th scope="col">Description</th></tr></thead><tbody><tr><td><code>width</code></td><td><code>number</code></td><td><code>80</code></td><td>Character width of output</td></tr><tr><td><code>charset</code></td><td><code>string</code></td><td><code>&#x27; .:-=+*#%@&#x27;</code></td><td>Characters from lightest to darkest</td></tr><tr><td><code>invert</code></td><td><code>boolean</code></td><td><code>false</code></td><td>Invert luminance mapping</td></tr><tr><td><code>format</code></td><td><code>&#x27;text&#x27; | &#x27;html&#x27;</code></td><td><code>&#x27;text&#x27;</code></td><td>Plain text, or colored HTML in a <code>&lt;pre&gt;</code></td></tr><tr><td><code>contrast</code></td><td><code>number</code></td><td><code>0</code></td><td>Non-negative luminance contrast boost</td></tr></tbody></table></div>
 <p><code>toAscii({ width, charset, invert, format, contrast })</code> overrides any of them per call.</p>
-<p>The conversion is also exported on its own. <code>asciiFromCanvas(source, options)</code> turns any drawable (a canvas, an image, a video frame) into ASCII with the same options, and <code>asciiStream(element, options)</code> runs it on every frame of a <a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/stream/README.md"><code>stream()</code></a>:</p>
-<pre><code>import { asciiStream } from &#x27;@zumer/snapdom-plugins/ascii-export&#x27;;
+<p>The conversion is also exported on its own. <code>asciiFromCanvas(source, options)</code> turns any drawable (a canvas, an image, a video frame) into ASCII with the same options. Run it on every frame of a <a href="https://snapdom.dev/plugins/stream/"><code>@zumer/snapdom-stream</code></a> stream for a live ASCII mirror:</p>
+<pre><code>import { stream } from &#x27;@zumer/snapdom-stream&#x27;;
+import { asciiFromCanvas } from &#x27;@zumer/snapdom-plugins/ascii-export&#x27;;
 
-const live = asciiStream(el, { width: 100, fps: 15, onText: (text) =&gt; (pre.textContent = text) });
+const live = stream(el, { fps: 15, onFrame: (frame) =&gt; (pre.textContent = asciiFromCanvas(frame.canvas, { width: 100 })) });
 await live.ready;
 live.stop();</code></pre><h2>Something missing?</h2><p>Options are added for captures someone needed, not in advance. <a href="https://github.com/zumerlab/snapdom/issues/new?title=ascii-export%3A%20">Open an issue</a> with the element and the output you need.</p></div>
 </article>

@@ -147,7 +147,7 @@ await snapdom(element, {
 
 ## Official plugins
 
-Import factories from `@zumer/snapdom-plugins` and pass instances through `plugins`. Use `@zumer/snapdom-plugins` 4.x with `@zumer/snapdom` 3.x; the package major versions do not match. PDF and Vector are MIT-licensed official plugins, available through the `/pdf` and `/vector` subpaths. Stream is the third product of the plugin line, at the `/stream` subpath. Every official plugin ships inside `@zumer/snapdom-plugins` 4.x and has its own page under https://snapdom.dev/plugins/: landing pages for PDF, Vector and Stream, and one page per toolbox plugin with options and a live demo.
+Import factories from their packages and pass instances through `plugins`. The toolbox is `@zumer/snapdom-plugins` 5.x; PDF, Vector and Stream are packages of their own: `@zumer/snapdom-pdf`, `@zumer/snapdom-vector` and `@zumer/snapdom-stream`. All of them need `@zumer/snapdom` 3.4.0 or newer within 3.x; the package major versions do not match. Every official plugin is MIT and has its own page under https://snapdom.dev/plugins/: landing pages for PDF, Vector and Stream, and one page per toolbox plugin with options and a live demo.
 
 - `filter({ preset?, filter? })`: CSS effects. Page: https://snapdom.dev/plugins/filter/
 - `colorTint({ color?, opacity? })`: color overlay. Page: https://snapdom.dev/plugins/color-tint/
@@ -171,13 +171,13 @@ Redaction leaves the live page unchanged. `selector` selects inputs/textareas on
 ## PDF and editable vector exports
 
 ```bash
-npm install @zumer/snapdom@^3 @zumer/snapdom-plugins@^4
+npm install @zumer/snapdom@^3 @zumer/snapdom-pdf @zumer/snapdom-vector
 ```
 
 ```js
 import { snapdom } from '@zumer/snapdom';
-import { pdf } from '@zumer/snapdom-plugins/pdf';
-import { vector } from '@zumer/snapdom-plugins/vector';
+import { pdf } from '@zumer/snapdom-pdf';
+import { vector } from '@zumer/snapdom-vector';
 
 const documentCapture = await snapdom(element, {
   dpr: 1,
@@ -206,7 +206,7 @@ Q: Is SnapDOM faster than html2canvas, html-to-image or dom-to-image?
 A: Measure it on your own content: https://snapdom.dev/compare/live/ runs eight libraries on real scenes in your browser and reports first and repeat captures. Repeat captures of an unchanged element reuse the previous result; small changes rebuild only the subtree that moved.
 
 Q: How do I convert HTML to PDF with selectable text in the browser?
-A: Use the `pdf` plugin from `@zumer/snapdom-plugins`: `result.toPdf()` writes a paginated PDF with a real text layer and links, no headless browser. Comparison with html2canvas + jsPDF: https://snapdom.dev/blog/snapdom-pdf-vs-html2canvas-jspdf/
+A: Use the `pdf` plugin from `@zumer/snapdom-pdf`: `result.toPdf()` writes a paginated PDF with a real text layer and links, no headless browser. Comparison with html2canvas + jsPDF: https://snapdom.dev/blog/snapdom-pdf-vs-html2canvas-jspdf/
 
 Q: How do I capture a React, Vue, Svelte, Angular or Lit component as an image?
 A: Get a ref to the rendered element and call `snapdom.toPng(ref)` after the framework has committed the DOM. Guides: https://snapdom.dev/guides/react/ (also /vue/, /svelte/, /angular/, /lit/, /nextjs/).
@@ -225,7 +225,7 @@ A: Only when the page is already open in a user's browser. SnapDOM captures clie
 
 Use SnapDOM when a web interface already exists in a real browser and you need images, reusable capture data or plugin exports. It handles browser features such as open Shadow DOM, pseudo-elements, CSS variables, transforms and webfonts, subject to resource access and browser rendering limits.
 
-It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. Core SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. PDF and Vector now have MIT source in packages/plugins; both exporters are available on npm in @zumer/snapdom-plugins 4.x for SnapDOM 3.x. Use a browser automation tool when the task requires navigation or rendering a remote URL.
+It cannot read arbitrary cross-origin iframe contents or closed Shadow DOM. Cross-origin assets need usable CORS permissions or a proxy you control. Core SVG output contains HTML in `foreignObject`, so it is not a conversion to editable vector paths. PDF and Vector are MIT source in packages/pdf and packages/vector, published on npm as @zumer/snapdom-pdf and @zumer/snapdom-vector for SnapDOM 3.4.0 or newer. Use a browser automation tool when the task requires navigation or rendering a remote URL.
 
 ## Project links
 

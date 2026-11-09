@@ -213,7 +213,9 @@ const png = await result.toPng()</code></pre>
     })
 
     // Raw ES modules from unpkg: esm.sh builds a package on first request and can time out on a fresh release.
-    const PLUGINS = 'https://unpkg.com/@zumer/snapdom-plugins@4'
+    const PLUGINS = 'https://unpkg.com/@zumer/snapdom-plugins@5'
+    // PDF, Vector and Stream are packages of their own.
+    const PRODUCTS = { pdf: 'https://unpkg.com/@zumer/snapdom-pdf@1/index.js', vector: 'https://unpkg.com/@zumer/snapdom-vector@1/index.js', stream: 'https://unpkg.com/@zumer/snapdom-stream@1/index.js' }
     const checks = {
       'timestamp-overlay': async (m) => ({ plugins: [m.timestampOverlay()] }),
       'replace-text': async (m) => ({ plugins: [m.replaceText({ replacements: [{ find: 'Quarterly', replace: 'Annual' }] })] }),
@@ -240,7 +242,7 @@ const png = await result.toPng()</code></pre>
         cell.className = ''
         cell.textContent = 'Running…'
         try {
-          const module = await import(`${PLUGINS}/${name}.js`)
+          const module = await import(PRODUCTS[name] || `${PLUGINS}/${name}.js`)
           const { plugins, run } = await checks[name](module)
           draws = 0
           const result = await snapdom(card, { engine: 'html-in-canvas', burst: false, plugins })

@@ -16,7 +16,7 @@ const options = () => ({ sample:form.elements.sample.value, page:form.elements.p
 const heading = (kicker, title) => `<div class="sample-card-kicker">${kicker}</div><h2 data-title contenteditable="true" aria-label="Edit document title" style="font:700 21px Arial;margin:10px 0">${title}</h2>`
 function updateCode() {
   const s = options()
-  code.textContent = `import { snapdom } from '@zumer/snapdom';\nimport { ${format} } from '@zumer/snapdom-plugins/${format}';\n\nconst result = await snapdom(element, {\n  plugins: [${format}()],\n  dpr: 1\n});\n${format === 'pdf' ? `const blob = await result.toPdf({\n  page: '${s.page}',\n  text: ${s.text},\n  fields: ${s.fields}\n});` : 'const svg = await result.toVector();'}`
+  code.textContent = `import { snapdom } from '@zumer/snapdom';\nimport { ${format} } from '@zumer/snapdom-${format}';\n\nconst result = await snapdom(element, {\n  plugins: [${format}()],\n  dpr: 1\n});\n${format === 'pdf' ? `const blob = await result.toPdf({\n  page: '${s.page}',\n  text: ${s.text},\n  fields: ${s.fields}\n});` : 'const svg = await result.toVector();'}`
 }
 function clearOutput() {
   buttonState(generateButton, 'idle', format === 'pdf' ? 'Generate PDF' : 'Generate Vector')
