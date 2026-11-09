@@ -4,6 +4,10 @@
 .plugin-demo-settings select { flex:1; min-width:0; max-width:100%; padding:10px; background:#fff; color:#0F1E4D; border:1px solid #b7c4df; font:14px Roboto, Arial; }
 .plugin-demo-settings .demo-act { min-height:44px; }
 .plugin-demo-source { overflow:auto; max-height:420px; margin-bottom:20px; border:1px solid #b7c4df; }
+/* The element the PDF and Vector demos export keeps a system font. In the site's Roboto the
+   SVG carried the whole font file (4 KB became 52 KB) and the PDF plugin logged that a WOFF2
+   face cannot be embedded. */
+.export-sample,.export-sample * { font-family:Arial, Helvetica, sans-serif !important; }
 .plugin-demo-source .sample-card { margin:0; max-width:none; width:100%; box-sizing:border-box; }
 .plugin-demo-output { position:relative; min-height:100px; background:#fff; padding:12px; border:1px solid #b7c4df; overflow:auto; }
 .plugin-demo-output img,.plugin-demo-output canvas { display:block; max-width:100%; height:auto; }
