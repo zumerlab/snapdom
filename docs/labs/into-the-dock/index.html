@@ -342,8 +342,11 @@ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, canvas)
       if (!gl || reduced) return Promise.resolve()
       return new Promise((resolve) => {
         const start = performance.now()
-        const tick = (now) => {
-          const t = Math.min(1, (now - start) / ms)
+        // performance.now(), not the rAF argument: in a same-origin iframe Chrome hands rAF a
+        // frame time ~1 s behind the iframe's own clock (the showcase embed, 2026-11-09), so
+        // mixing the two held the fold at progress 0 for a second.
+        const tick = () => {
+          const t = Math.min(1, (performance.now() - start) / ms)
           draw(a + (b - a) * ease(t))
           if (t < 1) requestAnimationFrame(tick)
           else resolve()

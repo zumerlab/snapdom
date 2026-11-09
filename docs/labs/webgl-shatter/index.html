@@ -551,7 +551,8 @@ const tex = makeTexture(canvas) // gl.texImage2D(..., canvas)</pre>
       const DURATION = 1500
       const start = performance.now()
 
-      function tick (now) {
+      function tick () {
+        const now = performance.now()
         const t = Math.min(1, (now - start) / DURATION)
         clearFx()
         useProgram(programs.ripple)
@@ -573,7 +574,8 @@ const tex = makeTexture(canvas) // gl.texImage2D(..., canvas)</pre>
       const DURATION = 1300
       const start = performance.now()
 
-      function tick (now) {
+      function tick () {
+        const now = performance.now()
         const elapsed = now - start
         const t = Math.min(1, elapsed / DURATION)
         const intensity = 1 - t
@@ -597,7 +599,8 @@ const tex = makeTexture(canvas) // gl.texImage2D(..., canvas)</pre>
       const DURATION = 1800
       const start = performance.now()
 
-      function tick (now) {
+      function tick () {
+        const now = performance.now()
         const t = Math.min(1, (now - start) / DURATION)
         clearFx()
         useProgram(programs.dissolve)
