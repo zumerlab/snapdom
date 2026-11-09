@@ -630,11 +630,31 @@ async function measureArtifact(url, meta, opts, source = {}) {
     frameDoc.head.prepend(base)
     const svg = frameDoc.importNode(parsed.documentElement, true)
     svg.style.cssText = `display:block;width:${meta.vbW}px;height:${meta.vbH}px;max-width:none;max-height:none;overflow:visible;`
-    frameDoc.body.appendChild(svg)
-    if (frameDoc.fonts?.ready) await frameDoc.fonts.ready
     const fo = svg.getElementsByTagNameNS('http://www.w3.org/2000/svg', 'foreignObject')[0] ||
       svg.querySelector('foreignObject')
     const container = fo && [...fo.children].find(el => el.localName === 'div')
+    // On a screen that lays out on the device grid, snapdom lays the raster's copy out
+    // under `zoom: devicePixelRatio` on this container, with `scale(1 / zoom)` on the
+    // <g> around the foreignObject (layoutZoom, #508). Mounted inline under this page's
+    // own dpr that wrapper laid out at zoom x dpr, and the text layer took the scale but
+    // not the zoom, so on a Retina Mac every run came out at half its size with its
+    // baseline half an ascent high and the selection sat over the top of the words.
+    // Undone the way the core's svg file export undoes it (#552), which lays the clone
+    // out at the page's dpr, the grid the raster was laid out on. Pinned by
+    // test/verify.mjs `hidpi`.
+    const zoom = parseFloat(container?.style.zoom) || 1
+    if (zoom !== 1) {
+      container.style.removeProperty('zoom')
+      for (const name of ['x', 'y', 'width', 'height']) {
+        fo.setAttribute(name, String(Number(fo.getAttribute(name)) / zoom))
+      }
+      const group = fo.parentNode
+      if (group.localName === 'g') {
+        group.setAttribute('transform', group.getAttribute('transform').replace(/scale\([^)]*\)/, '').trim())
+      }
+    }
+    frameDoc.body.appendChild(svg)
+    if (frameDoc.fonts?.ready) await frameDoc.fonts.ready
     const root = container?.firstElementChild
     if (!root) throw new Error('[snapdom-pdf] the final SVG has no measurable capture root')
     const svgRect = svg.getBoundingClientRect()

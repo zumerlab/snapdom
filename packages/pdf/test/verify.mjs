@@ -3659,6 +3659,47 @@ const FIXTURES = [
     name: 'fuzz',
     run: fuzzRun,
   },
+
+  {
+    // A real hidpi screen lays the page out on the device grid, so the core wraps the
+    // capture in its layout zoom (`zoom` on the foreignObject's container, `scale(1/zoom)`
+    // on the <g> around it). Playwright's deviceScaleFactor never takes that path: it
+    // reports dpr 2 over a 1x layout. A browser forced to a 2x device grid, reporting
+    // dpr 2, does. Every Retina Mac in Chrome took it, and its text layer came out at
+    // half size with a high baseline, the selection sitting over the top of the words.
+    name: 'hidpi',
+    dom: false,
+    async run() {
+      const hidpi = await chromium.launch({ args: ['--force-device-scale-factor=2'] })
+      try {
+        const hiPage = await hidpi.newPage({ viewport: { width: 1200, height: 900 } })
+        await hiPage.addInitScript(() =>
+          Object.defineProperty(window, 'devicePixelRatio', { get: () => 2, configurable: true }))
+        const { errors } = instrument(hiPage)
+        await openFixture(hiPage, `${base}/test/fixtures/hidpi.html`)
+        const probe = await hiPage.evaluate(PROBES)
+        const type = await hiPage.evaluate(() => window.__type)
+        const tools = pdfTools({ page: hiPage, outDir: OUT })
+        const { r } = await tools.standard('hidpi', { page: 'fit', snapdom: { scale: 1, dpr: 2 } })
+        // The control: without the zoom wrapper this fixture is the plain path again.
+        const zoomed = await hiPage.evaluate(() =>
+          /zoom:\s*2\b/.test(decodeURIComponent(window.__pdfArtifacts.hidpi.url)))
+        check('the capture carries the core layout zoom', zoomed)
+        const pageH = r.pages[0].height
+        for (const key of ['head', 'wrap', 'cell', 'right']) {
+          const b = probe.items[key]
+          const item = itemStartingWith(r, b.text)
+          if (!check(`${key}: "${b.text}" starts a run`, !!item)) continue
+          near(`${key}: origin x`, toCssX(item), b.left, 1, 'px')
+          near(`${key}: baseline`, toCssY(item, pageH), type[key].baseline, 1, 'px')
+          near(`${key}: type size`, item.d / PT, type[key].size, 0.5, 'px')
+        }
+        check('no page errors at 2x', errors.length === 0, errors.join(' | '))
+      } finally {
+        await hidpi.close()
+      }
+    },
+  },
 ]
 
 // ——— fuzz ————————————————————————————————————————————————————————

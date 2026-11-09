@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: hidpi</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  /* The site's PDF demo card: a system font, a heading, a wrapped paragraph, a table. */
+  #target { width: 340px; box-sizing: border-box; padding: 24px; background: #fff; color: #0f1e4d;
+            font: 16px Arial, Helvetica, sans-serif; }
+  h3 { margin: 0 0 8px; font-size: 18.72px; }
+  p { margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  td { padding: 4px 0; border-bottom: 1px solid #e3e9f5; }
+  td:last-child { text-align: right; }
+</style>
+</head>
+<body>
+<div id="target">
+  <h3><span data-probe="head">Delivery</span> report</h3>
+  <p>Three interface screens shipped and ready for <span data-probe="wrap">implementation.</span></p>
+  <table><tr><td><span data-probe="cell">Navigation</span></td><td><span data-probe="right">Approved</span></td></tr></table>
+</div>
+<script type="module">
+  import './_pdf.js'
+
+  // Each probe's baseline and type size, read from the live page: a zero-size
+  // inline-block sits on the baseline.
+  const target = document.getElementById('target').getBoundingClientRect()
+  window.__type = {}
+  for (const el of document.querySelectorAll('[data-probe]')) {
+    const mark = document.createElement('span')
+    mark.style.cssText = 'display:inline-block;width:0;height:0'
+    el.prepend(mark)
+    window.__type[el.dataset.probe] = {
+      baseline: mark.getBoundingClientRect().top - target.top,
+      size: parseFloat(getComputedStyle(el).fontSize),
+    }
+    mark.remove()
+  }
+  window.__ready = true
+</script>
+</body>
+</html>
