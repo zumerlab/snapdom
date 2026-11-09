@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.7.3](https://github.com/zumerlab/snapdom/compare/v3.7.2...v3.7.3)
+
+> 9 November 2026
+
+**Fixes**
+
+- **exporters:** size the Safari vector export through the clone's zoom, not the viewBox [`e104693`](https://github.com/zumerlab/snapdom/commit/e104693e0eb056c540ff593c6a3289245800216b)
+- **styles:** carry the one-line pin to every element under the pinned box [`c5da3e0`](https://github.com/zumerlab/snapdom/commit/c5da3e0a8a1fbb9c4576d762a0b23c9b7dbc14be)
+- **site:** pin the showcase plugin demos to plugins 4.x [`0f483bb`](https://github.com/zumerlab/snapdom/commit/0f483bb7398376765863274e28ab42c1fc84d2b5)
+
+**Docs**
+
+- **site:** plugin pages, tool pages and the ecosystem hub [`1bec73d`](https://github.com/zumerlab/snapdom/commit/1bec73d5ccef16741fd27dc5ec9c4fb95baeb92d)
+- **site:** point the demos and docs at the published packages [`c57b2b3`](https://github.com/zumerlab/snapdom/commit/c57b2b38f3b57fc51e0cb7f64f8207ddad9421ef)
+- **how-to:** export a PDF with cross-origin images [`83cab60`](https://github.com/zumerlab/snapdom/commit/83cab60e9558a6d3542d3fea3b20b4b87fb3eca8)
+- **site:** add index redirects for /plugins/ and /labs/, drop noindex from the moved /pro pages [`8975bdb`](https://github.com/zumerlab/snapdom/commit/8975bdb951b8df7b9a25063eff2658b2aa30bee7)
+
+**Tests**
+
+- pin the first PDF export of a dark theme with a cross-origin font sheet [`da5213c`](https://github.com/zumerlab/snapdom/commit/da5213c967225b488f4f4a437de8238bd3e31884)
+
+**Other**
+
+- feat(plugins)split pdf, vector and stream into their own packages [`76d40cc`](https://github.com/zumerlab/snapdom/commit/76d40cce8c346dec676cf0cfe3b65124ad02df82)
+
 #### [v3.7.2](https://github.com/zumerlab/snapdom/compare/v3.7.1...v3.7.2)
 
 > 8 November 2026
