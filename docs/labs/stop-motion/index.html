@@ -24,11 +24,11 @@
     .lab-stop-motion { border: 1px solid var(--border); background: var(--surface); padding: 24px; margin: 18px 0 8px; }
     .lab-stop-motion .stage-wrap { display: flex; justify-content: center; margin-bottom: 16px; }
     .lab-stop-motion #pose-scene { position: relative; width: min(400px, 90vw); aspect-ratio: 4 / 3; overflow: hidden; border: 1px solid var(--border); background: linear-gradient(#dfe9fb 0 66%, #b9c8e6 66%); }
-    .lab-stop-motion #pose-scene::before { content: ''; position: absolute; inset: 0; opacity: 0.4; background: linear-gradient(90deg, transparent 49.5%, rgba(15,30,77,0.18) 50%, transparent 50.5%), linear-gradient(transparent 49.5%, rgba(15,30,77,0.18) 50%, transparent 50.5%); background-size: 40px 40px; }
+    .lab-stop-motion #pose-scene::before { content: ''; position: absolute; inset: 0; opacity: 0.4; background: linear-gradient(90deg, transparent 49.5%, rgba(28,36,48,0.18) 50%, transparent 50.5%), linear-gradient(transparent 49.5%, rgba(28,36,48,0.18) 50%, transparent 50.5%); background-size: 40px 40px; }
     .lab-stop-motion .actor { position: absolute; top: 50%; left: 50%; width: 68px; height: 68px; transform: translate(-50%, -50%); }
     .lab-stop-motion .actor-body { position: absolute; inset: 0; border: 4px solid var(--border); border-radius: 20% 50% 25% 45%; background: var(--accent); transform: rotate(var(--rotation, 0deg)); }
     .lab-stop-motion .actor-body::before { content: '★'; position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 34px; }
-    .lab-stop-motion .actor-shadow { position: absolute; left: 50%; bottom: -12px; width: 74px; height: 12px; border-radius: 50%; background: rgba(15,30,77,0.22); transform: translateX(-50%); }
+    .lab-stop-motion .actor-shadow { position: absolute; left: 50%; bottom: -12px; width: 74px; height: 12px; border-radius: 50%; background: rgba(28,36,48,0.22); transform: translateX(-50%); }
     .lab-stop-motion #playback { position: absolute; inset: 0; z-index: 5; display: none; width: 100%; height: 100%; object-fit: cover; background: #dfe9fb; }
     .lab-stop-motion #playback.visible { display: block; }
     .lab-stop-motion .sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; max-width: 400px; margin: 16px auto 0; }

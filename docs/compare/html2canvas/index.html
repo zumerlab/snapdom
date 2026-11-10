@@ -82,8 +82,8 @@
     .h2c-crash-msg { font-family: var(--font-mono); font-size: 11px; line-height: 1.5; color: var(--rose, #E63946); background: var(--rose-soft, rgba(230,57,70,0.12)); border: 1px solid var(--rose, #E63946); border-radius: 6px; padding: 8px 10px; word-break: break-word; }
     .winner-glow { animation: bench-glow 1.2s infinite alternate ease-in-out; border-radius: 0; }
     @keyframes bench-glow {
-      from { box-shadow: 0 0 0 1px rgba(45,91,255,0.25); }
-      to   { box-shadow: 0 0 0 3px rgba(45,91,255,0.55); }
+      from { box-shadow: 0 0 0 1px rgba(53,120,227,0.25); }
+      to   { box-shadow: 0 0 0 3px rgba(53,120,227,0.55); }
     }
     @media (max-width: 640px) {
       .bench-grid { grid-template-columns: 1fr; }
@@ -302,7 +302,7 @@ document.body.<span class="fn">appendChild</span>(img);</pre>
 <div class="pane-demo"><section class="demo-panel sec-capture" aria-label="Live demo">
 <header class="demo-panel-head"><span class="demo-panel-title">Try it here<span class="demo-panel-sub"></span></span><button type="button" class="demo-act is-primary" data-act="run">Run</button><button type="button" class="demo-act" data-act="baseline" hidden>Baseline</button><button type="button" class="demo-act" data-act="compare" hidden>Compare</button><button type="button" class="demo-act" data-act="reset">Reset</button></header>
 <div class="demo-panel-body"><p class="demo-label">Live element</p>
-<div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#2D5BFF}.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #0F1E4D}</style><h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div><sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div><p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
+<div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#3578E3}.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #3578E3}</style><h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div><sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div><p class="demo-label" data-result-label>Result</p><div data-results><div class="demo-empty">Nothing captured yet</div></div><p class="demo-note"></p></div>
 <div class="demo-panel-status" role="status">Edit the title, then run. This uses the real library from unpkg.</div></section></div>
 <nav class="pager" aria-label="Pages"><a href="../live/"><span>Previous</span><strong>Live benchmark</strong></a><a class="is-next" href="../html-to-image/"><span>Next</span><strong>vs html-to-image</strong></a></nav>
 </main>

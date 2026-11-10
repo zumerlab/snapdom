@@ -38,15 +38,15 @@
     .lab-webgl-seamless .input-layer h2, .lab-webgl-seamless .input-layer p { position: relative; color: transparent; -webkit-text-fill-color: transparent; caret-color: var(--accent); outline: none; }
     .lab-webgl-seamless .input-layer h2 { margin-top: 30%; margin-bottom: 14px; font: 400 clamp(28px, 8vw, 42px)/1.02 var(--font-display); letter-spacing: 0.3px; }
     .lab-webgl-seamless .input-layer p { max-width: 300px; margin-top: 0; font: 15px/1.5 var(--font-body); white-space: pre-wrap; overflow-wrap: anywhere; }
-    .lab-webgl-seamless .input-layer [contenteditable]::selection { color: transparent; background: rgba(45,91,255,0.35); }
+    .lab-webgl-seamless .input-layer [contenteditable]::selection { color: transparent; background: rgba(53,120,227,0.35); }
 
-    .lab-webgl-seamless .gpu-label { position: absolute; top: 12px; right: 12px; z-index: 5; padding: 5px 9px; border: 1px solid rgba(45,91,255,0.4); border-radius: 999px; color: #8FB5FF; background: rgba(5,8,16,0.85); font: 700 8px/1 var(--font-mono); letter-spacing: 0.12em; pointer-events: none; }
+    .lab-webgl-seamless .gpu-label { position: absolute; top: 12px; right: 12px; z-index: 5; padding: 5px 9px; border: 1px solid rgba(53,120,227,0.4); border-radius: 999px; color: #8FB5FF; background: rgba(5,8,16,0.85); font: 700 8px/1 var(--font-mono); letter-spacing: 0.12em; pointer-events: none; }
     .lab-webgl-seamless .status { display: flex; justify-content: space-between; width: min(420px, 100%); margin: 12px auto 0; color: var(--text-muted); font: 700 10px/1.4 var(--font-mono); text-transform: uppercase; letter-spacing: 0.5px; }
     .lab-webgl-seamless .status #perf { color: var(--accent); }
 
     /* ── Off-screen source element (what SnapDOM actually captures) ── */
     .source-bin { position: fixed; top: 0; left: -200vw; width: 460px; height: 570px; pointer-events: none; }
-    #dom-source { --local-accent: #2D5BFF; position: relative; width: 460px; height: 570px; overflow: hidden; padding: 30px; border: 1px solid color-mix(in srgb, var(--local-accent), white 30%); color: #E7ECFB; background: radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--local-accent), transparent 68%) 0 18%, transparent 18.5%), linear-gradient(150deg, #16233f, #070b16); }
+    #dom-source { --local-accent: #3578E3; position: relative; width: 460px; height: 570px; overflow: hidden; padding: 30px; border: 1px solid color-mix(in srgb, var(--local-accent), white 30%); color: #E7ECFB; background: radial-gradient(circle at 82% 16%, color-mix(in srgb, var(--local-accent), transparent 68%) 0 18%, transparent 18.5%), linear-gradient(150deg, #16233f, #070b16); }
     #dom-source::before { content: ''; position: absolute; inset: 0; opacity: 0.1; background: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 32px 32px; }
     .signal { position: relative; color: var(--local-accent); font: 700 9px/1 var(--font-mono); letter-spacing: 0.16em; text-transform: uppercase; }
     .signal::before { content: ''; display: inline-block; width: 6px; height: 6px; margin-right: 7px; border-radius: 50%; background: var(--local-accent); }
@@ -209,7 +209,7 @@ async function refresh () {
   <script type="module">
     import { snapdom } from 'https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs'
 
-    const COLORS = ['#2D5BFF', '#1E9F6E', '#E63946']
+    const COLORS = ['#3578E3', '#1E9F6E', '#E63946']
 
     class SeamlessRenderer {
       constructor (canvas) {

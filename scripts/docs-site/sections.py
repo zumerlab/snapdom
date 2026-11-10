@@ -8,9 +8,9 @@
 # Markers (<!-- pane:start --> … <!-- pane:end -->) let a rerun find what it wrote.
 
 SAMPLE_SHADOW = SAMPLE[:SAMPLE.rindex('</div>')] + '<sd-shadow-card></sd-shadow-card></div>'
-TRICKY = ('<div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#2D5BFF}'
+TRICKY = ('<div class="sample-card tricky-card" data-target><style>.tricky-card h4{margin:0 0 8px;font:700 19px Arial;color:#3578E3}'
           '.tricky-card h4::after{content:" · pseudo";color:#E63946;font-size:12px}'
-          '.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #0F1E4D}</style>'
+          '.tricky-card .chip{display:inline-block;padding:4px 8px;margin:8px 0;background:#EEF3FF;transform:rotate(-3deg);box-shadow:4px 4px 0 #3578E3}</style>'
           '<h4 data-title contenteditable spellcheck="false">Hard parts</h4><div class="chip">transform + shadow</div>'
           '<sd-shadow-card></sd-shadow-card><input value="typed value" aria-label="Typed value" style="margin-top:10px;width:100%;box-sizing:border-box;padding:6px;font:13px Arial"></div>')
 

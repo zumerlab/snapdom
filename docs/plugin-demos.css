@@ -1,7 +1,7 @@
 .plugin-page .pane-demo { min-width:0; }
 .plugin-demo-settings { display:grid; gap:12px; margin-bottom:20px; }
 .plugin-demo-settings label { display:flex; align-items:center; flex-wrap:wrap; gap:8px; font-size:13px; }
-.plugin-demo-settings select { flex:1; min-width:0; max-width:100%; padding:10px; background:#fff; color:#0F1E4D; border:1px solid #b7c4df; font:14px Roboto, Arial; }
+.plugin-demo-settings select { flex:1; min-width:0; max-width:100%; padding:10px; background:#fff; color:#1C2430; border:1px solid #b7c4df; font:14px Roboto, Arial; }
 .plugin-demo-settings .demo-act { min-height:44px; }
 .plugin-demo-source { overflow:auto; max-height:420px; margin-bottom:20px; border:1px solid #b7c4df; }
 /* The element the PDF and Vector demos export keeps a system font. In the site's Roboto the
@@ -14,7 +14,7 @@
 .plugin-demo-output > p { font-size:13px; color:#55617C; }
 .plugin-demo-preview { position:relative; }
 [data-pdf-pages] { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:12px; font-size:12px; }
-[data-pdf-pages] button { min-height:44px; padding:8px; background:white; color:#0F1E4D; border:1px solid #b7c4df; cursor:pointer; }
+[data-pdf-pages] button { min-height:44px; padding:8px; background:white; color:#1C2430; border:1px solid #b7c4df; cursor:pointer; }
 [data-export-status],[data-export-file] { margin:16px 0; font-size:13px; }
 [data-export-file] a { text-decoration:underline; text-underline-offset:3px; }
 .plugin-page details summary { cursor:pointer; font-size:13px; padding:12px 0; }

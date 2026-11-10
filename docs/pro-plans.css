@@ -22,7 +22,7 @@
   align-items: center;
   gap: 24px 40px;
   color: #fff;
-  background: #0f1e4d;
+  background: #1B212B;
 }
 .plugin-pro h2 { margin: 0; font-size: clamp(24px, 3vw, 32px); line-height: 1.15; letter-spacing: -.03em; }
 .plugin-pro p { margin: 12px 0 0; color: #d5def5; font-size: 15px; line-height: 1.6; max-width: 70ch; }

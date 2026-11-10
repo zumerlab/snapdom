@@ -29,27 +29,27 @@
     .mosaic-demo { margin: 20px 0 10px; padding: 22px; border: 1px solid var(--border); background: var(--surface); }
     .mosaic-demo h3 { margin-top: 0; }
     .mosaic-scroll { width: 100%; height: 430px; overflow: auto; padding: 18px; border: 1px solid var(--border); background: #DCE4F5; }
-    .mosaic-source { width: 640px; height: 2400px; overflow: hidden; color: #0F1E4D; background: #F7F9FC; box-shadow: -16px -12px 0 #2D5BFF; font-family: Roboto, Arial, Helvetica, sans-serif; }
-    .mosaic-source header { display: flex; height: 300px; flex-direction: column; justify-content: space-between; padding: 42px; color: #FFFFFF; background: #0F1E4D; }
+    .mosaic-source { width: 640px; height: 2400px; overflow: hidden; color: #1C2430; background: #F7F9FC; box-shadow: -16px -12px 0 #3578E3; font-family: Roboto, Arial, Helvetica, sans-serif; }
+    .mosaic-source header { display: flex; height: 300px; flex-direction: column; justify-content: space-between; padding: 42px; color: #FFFFFF; background: #1B212B; }
     .mosaic-source header small, .tile-doc-end small { font-size: 12px; font-weight: 700; letter-spacing: 2.5px; text-transform: uppercase; }
     .mosaic-source header h3 { max-width: 480px; margin: 0; color: #FFFFFF; font-size: 44px; font-weight: 700; letter-spacing: -2px; line-height: 0.98; text-transform: none; }
     .mosaic-source header p { max-width: 420px; margin: 0; color: #BFCBEB; font-size: 15px; line-height: 1.55; }
     .tile-doc-kpis { display: grid; height: 300px; grid-template-columns: repeat(3, 1fr); gap: 14px; padding: 32px; background: #FFFFFF; }
     .tile-doc-kpi { display: flex; flex-direction: column; justify-content: space-between; padding: 20px; border: 1px solid #BAC5DE; }
     .tile-doc-kpi span { color: #5C6884; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
-    .tile-doc-kpi strong { color: #0F1E4D; font-size: 34px; line-height: 1; }
+    .tile-doc-kpi strong { color: #1C2430; font-size: 34px; line-height: 1; }
     .tile-doc-kpi em { color: #167F57; font-size: 13px; font-style: normal; font-weight: 700; }
     .tile-doc-chart { height: 500px; padding: 38px 42px; background: #EAF0FF; }
-    .tile-doc-eyebrow { color: #2D5BFF; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
-    .tile-doc-chart h4, .tile-doc-regions h4, .tile-doc-timeline h4 { margin: 8px 0 24px; color: #0F1E4D; font-size: 28px; letter-spacing: -1px; text-transform: none; }
-    .tile-doc-bars { display: flex; height: 320px; align-items: end; gap: 18px; padding: 20px 22px 0; border-bottom: 2px solid #0F1E4D; }
-    .tile-doc-bar { position: relative; flex: 1; min-width: 0; background: #2D5BFF; }
-    .tile-doc-bar:nth-child(2n) { background: #0F1E4D; }
+    .tile-doc-eyebrow { color: #3578E3; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+    .tile-doc-chart h4, .tile-doc-regions h4, .tile-doc-timeline h4 { margin: 8px 0 24px; color: #1C2430; font-size: 28px; letter-spacing: -1px; text-transform: none; }
+    .tile-doc-bars { display: flex; height: 320px; align-items: end; gap: 18px; padding: 20px 22px 0; border-bottom: 2px solid #3578E3; }
+    .tile-doc-bar { position: relative; flex: 1; min-width: 0; background: #3578E3; }
+    .tile-doc-bar:nth-child(2n) { background: #1B212B; }
     .tile-doc-bar::after { position: absolute; right: 0; bottom: -28px; left: 0; color: #5C6884; content: attr(data-label); font-size: 10px; font-weight: 700; text-align: center; }
     .tile-doc-regions { height: 520px; padding: 38px 42px; background: #FFFFFF; }
     .tile-doc-region-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
     .tile-doc-region { min-height: 158px; padding: 22px; border: 1px solid #BAC5DE; }
-    .tile-doc-region:nth-child(1) { border-top: 6px solid #2D5BFF; }
+    .tile-doc-region:nth-child(1) { border-top: 6px solid #3578E3; }
     .tile-doc-region:nth-child(2) { border-top: 6px solid #1E9F6E; }
     .tile-doc-region:nth-child(3) { border-top: 6px solid #F5A623; }
     .tile-doc-region:nth-child(4) { border-top: 6px solid #E63946; }
@@ -63,9 +63,9 @@
     .tile-doc-event time { color: #93ABFF; font-size: 12px; font-weight: 700; }
     .tile-doc-event b { display: block; margin-bottom: 4px; font-size: 15px; }
     .tile-doc-event p { margin: 0; color: #BFCBEB; font-size: 11px; line-height: 1.45; }
-    .tile-doc-end { display: flex; height: 260px; align-items: center; justify-content: space-between; gap: 30px; padding: 42px; color: #0F1E4D; background: #BFD0FF; }
+    .tile-doc-end { display: flex; height: 260px; align-items: center; justify-content: space-between; gap: 30px; padding: 42px; color: #1C2430; background: #BFD0FF; }
     .tile-doc-end h4 { max-width: 390px; margin: 8px 0 0; font-size: 30px; letter-spacing: -1px; line-height: 1.08; text-transform: none; }
-    .tile-doc-mark { display: grid; width: 88px; height: 88px; flex: 0 0 auto; place-items: center; color: #FFFFFF; background: #2D5BFF; font-size: 34px; font-weight: 700; }
+    .tile-doc-mark { display: grid; width: 88px; height: 88px; flex: 0 0 auto; place-items: center; color: #FFFFFF; background: #3578E3; font-size: 34px; font-weight: 700; }
     .mosaic-actions { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; padding: 18px 0 0; }
     .mosaic-status { min-height: 20px; color: var(--text-muted); font-family: var(--font-mono); font-size: 12px; }
     .mosaic-result { margin-top: 18px; padding: 18px; border: 1px dashed var(--border); background: var(--surface-hover); }
@@ -73,7 +73,7 @@
     .mosaic-grid { display: grid; width: min(100%, 640px); grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 auto; }
     .mosaic-tile { position: relative; min-width: 0; border: 1px solid var(--border); background: #FFFFFF; }
     .mosaic-tile canvas { display: block; width: 100%; height: auto; }
-    .mosaic-tile span { position: absolute; top: 6px; left: 6px; padding: 3px 6px; color: #FFFFFF; background: rgba(15,30,77,0.86); font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 1px; }
+    .mosaic-tile span { position: absolute; top: 6px; left: 6px; padding: 3px 6px; color: #FFFFFF; background: rgba(28,36,48,0.86); font-family: var(--font-mono); font-size: 9px; font-weight: 700; letter-spacing: 1px; }
     .mosaic-note { margin: 12px 0 0; color: var(--text-muted); font-size: 12px; line-height: 1.5; text-align: center; }
     @media (max-width: 680px) {
       .tile-pipeline { grid-template-columns: 1fr; }

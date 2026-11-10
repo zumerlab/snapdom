@@ -2,7 +2,7 @@
    shared.css — Common styles for all SnapDOM docs
    "Capture instrument" design system
    Roboto for text, Roboto Mono for code, self-hosted in assets/fonts
-   Paper #F7F9FC · Ink #0F1E4D · Electric #2D5BFF
+   Paper #F7F9FC · Ink #1C2430 · Electric #3578E3
    ═══════════════════════════════════════════════ */
 
 /* ── Fonts: the latin subsets of the variable files Google Fonts serves, self-hosted so
@@ -19,29 +19,29 @@ code, kbd, samp, pre { font-family: Roboto Mono, ui-monospace, Menlo, Consolas, 
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  color: var(--text, var(--sd-text, #0F1E4D));
+  color: var(--text, var(--sd-text, #1C2430));
   font-weight: 700;
   font-size: 11.5px;
   background: var(--surface, var(--sd-surface, #FFFFFF));
   padding: 8px 14px;
   border-radius: 0;
-  border: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.3)));
+  border: 1px solid var(--border-soft, var(--sd-border-soft, rgba(28,36,48,0.3)));
   font-family: var(--font-mono, Roboto, Arial, Helvetica, sans-serif);
   letter-spacing: 0.3px;
   transition: border-color 0.15s;
 }
 .github-badge:hover {
-  border-color: var(--border, var(--sd-border, #0F1E4D));
-  color: var(--text, var(--sd-text, #0F1E4D));
+  border-color: var(--border, var(--sd-border, #3578E3));
+  color: var(--text, var(--sd-text, #1C2430));
 }
 .github-stars {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-weight: 700;
-  color: var(--text, var(--sd-text, #0F1E4D));
+  color: var(--text, var(--sd-text, #1C2430));
   font-size: 11.5px;
-  border-left: 1px solid var(--border-soft, var(--sd-border-soft, rgba(15,30,77,0.2)));
+  border-left: 1px solid var(--border-soft, var(--sd-border-soft, rgba(28,36,48,0.2)));
   padding-left: 10px;
 }
 .github-stars svg { color: #F5A623; font-size: 11px; }
@@ -52,9 +52,9 @@ code, kbd, samp, pre { font-family: Roboto Mono, ui-monospace, Menlo, Consolas, 
   top: 0;
   z-index: 50;
   width: 100%;
-  color: #0F1E4D;
+  color: #1C2430;
   background: rgba(247,249,252,0.94);
-  border-bottom: 1px solid rgba(15,30,77,0.14);
+  border-bottom: 1px solid rgba(28,36,48,0.14);
   backdrop-filter: blur(12px);
   font-family: Roboto, Arial, Helvetica, sans-serif;
 }
@@ -71,7 +71,7 @@ code, kbd, samp, pre { font-family: Roboto Mono, ui-monospace, Menlo, Consolas, 
   align-items: center;
   gap: 10px;
   margin-right: auto;
-  color: #0F1E4D;
+  color: #1C2430;
   font-size: 24px;
   text-decoration: none;
 }
@@ -89,22 +89,22 @@ code, kbd, samp, pre { font-family: Roboto Mono, ui-monospace, Menlo, Consolas, 
   font-weight: 400;
   text-decoration: none;
 }
-.site-shell-links a:hover, .site-shell-links a[aria-current='page'], .site-shell-mobile a:hover, .site-shell-mobile a[aria-current='page'] { color: #2D5BFF; }
+.site-shell-links a:hover, .site-shell-links a[aria-current='page'], .site-shell-mobile a:hover, .site-shell-mobile a[aria-current='page'] { color: #3578E3; }
 .site-shell-github {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   min-height: 38px;
   padding: 0 12px;
-  color: #0F1E4D;
+  color: #1C2430;
   background: #FFFFFF;
-  border: 1px solid rgba(15,30,77,0.3);
+  border: 1px solid rgba(28,36,48,0.3);
   font-size: 12px;
   font-weight: 700;
   text-decoration: none;
 }
-.site-shell-github:hover { color: #2D5BFF; border-color: #2D5BFF; }
-.site-shell-stars { padding-left: 10px; border-left: 1px solid rgba(15,30,77,0.18); }
+.site-shell-github:hover { color: #3578E3; border-color: #3578E3; }
+.site-shell-stars { padding-left: 10px; border-left: 1px solid rgba(28,36,48,0.18); }
 .site-shell-stars::first-letter { color: #F5A623; }
 .site-shell-mobile { display: none; }
 .site-shell + .hero > .github-badge,
@@ -140,7 +140,7 @@ body > .site-shell + .hero .hero-badge {
   width: auto;
   margin: 0 0 18px;
   padding: 0;
-  color: #2D5BFF;
+  color: #3578E3;
   background: transparent;
   border: 0;
   font-size: 12px;
@@ -174,7 +174,7 @@ body > .site-shell + .hero.section-hero {
   max-width: 320px;
   aspect-ratio: 1;
   justify-self: end;
-  border: 1px solid rgba(15,30,77,0.12);
+  border: 1px solid rgba(28,36,48,0.12);
   padding: 12px;
   box-sizing: border-box;
 }
@@ -194,13 +194,13 @@ body > .site-shell + .hero.section-hero {
 
 /* Keyboard focus is part of the capture-instrument language: visible and exact. */
 :where(a, button, input, select, textarea):focus-visible {
-  outline: 3px solid var(--accent, var(--sd-accent, #2D5BFF));
+  outline: 3px solid var(--accent, var(--sd-accent, #3578E3));
   outline-offset: 3px;
 }
 
 @media (max-width: 1180px) {
   .site-shell-links { display: none; }
-  .site-shell-mobile { display: flex; overflow-x: auto; border-top: 1px solid rgba(15,30,77,0.14); scrollbar-width: none; }
+  .site-shell-mobile { display: flex; overflow-x: auto; border-top: 1px solid rgba(28,36,48,0.14); scrollbar-width: none; }
   .site-shell-mobile::-webkit-scrollbar { display: none; }
   .site-shell-mobile-inner { width: min(1180px, calc(100% - 48px)); margin: 0 auto; display: flex; }
   .site-shell-mobile a { flex: 1 0 auto; padding: 11px 14px; text-align: center; font-size: 12px; font-weight: 700; }
