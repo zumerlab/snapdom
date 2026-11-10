@@ -200,8 +200,11 @@ export async function use(el: HTMLElement) {
     // must register. The helpers (a stream, its WebGL texture and recorder, the overlay
     // templates, the ASCII converter) are not factories: they take an element or a canvas and
     // need a DOM, so they are only checked for identity. pdf and vector also export default.
+    // jxl is the one subpath the barrel must NOT re-export: it imports rapier-jxl, an optional
+    // peer, and a bundler resolves a barrel's imports whether or not the app uses them.
     ['official plugins', `(async () => {
       const HELPERS = new Set(${JSON.stringify(HELPERS)})
+      const SUBPATH_ONLY = new Set(['@zumer/snapdom-plugins/jxl'])
       const { registerPlugins, clearPlugins, getGlobalPlugins } = await import('@zumer/snapdom')
       for (const [name, subpaths] of ${JSON.stringify(packed.map(({ pkg, entries }) => [pkg.name, entries.map(([key]) => key.slice(1))]))}) {
         const all = await import(name)
@@ -210,7 +213,10 @@ export async function use(el: HTMLElement) {
         for (const subpath of subpaths) {
           const mod = await import(name + subpath)
           for (const [key, value] of Object.entries(mod)) {
-            if (!Object.values(all).includes(value)) throw new Error('different export for ' + key + ' in ' + name + subpath)
+            if (SUBPATH_ONLY.has(name + subpath)) {
+              if (key in all) throw new Error(key + ' must stay out of the barrel of ' + name)
+              if (key !== 'default') factories.add(value)
+            } else if (!Object.values(all).includes(value)) throw new Error('different export for ' + key + ' in ' + name + subpath)
             if (!factories.has(value) || registered.has(value)) continue
             registered.add(value)
             const plugin = value()
