@@ -18,6 +18,7 @@ OWN_LINKS = {'stream': [('showcase/#stream-demo', 'Showcase demo'), ('labs/video
 
 # Groups by the job a plugin does. Each plugin: slug, name, h1, one line for the index, the
 # demo settings panes.js reads, its demo's id on the showcase, and a concise meta description.
+# jxl has neither demo: its encoder is rapier-jxl, a peer the site does not load.
 TOOLBOX = [
  ('Prepare', 'prepare', 'Change what the capture shows. The live page is never touched.', [
   ('redact-inputs', 'Redact inputs', 'Redact fields before sharing.', 'Mask field values, hide blocks, drop attributes',
@@ -43,6 +44,8 @@ TOOLBOX = [
   ('ascii-export', 'ASCII export', 'Export the capture as ASCII art.', 'Text or colored HTML, also frame by frame',
    {'demo': 'capture', 'transform': 'ascii', 'sample': 'svg', 'demo-label': 'toAscii() at 46 columns'}, 'ascii-demo',
    'SnapDOM plugin that adds toAscii(): convert a capture to ASCII art as plain text or colored HTML, with width, invert and contrast options, frame by frame.'),
+  ('jxl', 'JPEG XL', 'Export the capture as JPEG XL.', 'Exact text and lossy photos in one file', None, None,
+   'SnapDOM plugin that adds toJxl(): export a capture as a JPEG XL file, encoded in the browser, where text and interface stay exact and photos take the quality.'),
  ]),
  ('Record', 'record', 'Record the live element over time.', [
   ('gif-export', 'GIF export', 'Record the element as a GIF.', 'A built-in GIF89a encoder, no dependency',
@@ -157,7 +160,7 @@ def plugin_page(glabel, sec, slug, name, h1, demo, showcase_id, description):
     if not any(b[0] == 'h2' and b[1] == 'Options' for b in rest):
         k = next((i for i, b in enumerate(rest) if b[0] == 'table'), None)
         if k is not None: rest.insert(k, ('h2', 'Options'))
-    k = next((i for i, b in enumerate(rest) if b[0] == 'code'), None)
+    k = next((i for i, b in enumerate(rest) if b[0] == 'code' and b[1] == 'js'), None)
     if k is not None:
         _, lang, source = rest[k]
         source = "import { snapdom } from '@zumer/snapdom';\n" + source
@@ -168,7 +171,7 @@ def plugin_page(glabel, sec, slug, name, h1, demo, showcase_id, description):
         rest[k] = ('code', lang, source)
         rest.insert(k, ('h2', 'Usage'))
     links = [(GITHUB + f'packages/plugins/{slug}.js', 'Source · MIT'), (GITHUB + 'packages/plugins/CHANGELOG.md', 'Changelog'),
-             (rel(path, f'showcase/#{showcase_id}'), 'Showcase demo')]
+             *([(rel(path, f'showcase/#{showcase_id}'), 'Showcase demo')] if showcase_id else [])]
     inner = doc_head(['Plugins', glabel, name], '@zumer/snapdom-plugins · MIT', E(h1), md_inline(intro[1]), links)
     inner += '<div class="pane-content pane-prose">' + code(INSTALL) + md_html(rest) + '</div>'
     title = 'Export DOM as text or JSON for agents — SnapDOM' if slug == 'context-export' else f'{name} plugin for SnapDOM'
@@ -189,7 +192,7 @@ def plugins_index():
     path = 'plugins/index.html'
     count = len(OWN_PAGE) + sum(len(g[3]) for g in TOOLBOX)
     inner = doc_head(['Plugins'], f'{count} official plugins · MIT', 'Plugins for SnapDOM.',
-                     'Choose a plugin by its output or by what it changes in the capture. PDF, Vector and Stream have their own packages; the other eleven ship as the toolbox. All are MIT-licensed.',
+                     'Choose a plugin by its output or by what it changes in the capture. PDF, Vector and Stream have their own packages; the other twelve ship as the toolbox. All are MIT-licensed.',
                      [(GITHUB + 'packages', 'Source'), ('https://www.npmjs.com/package/@zumer/snapdom-plugins', 'npm'), (rel(path, 'showcase/#plugins'), 'Plugin demos')])
     inner += '<div class="pane-content pane-prose">'
     inner += '<h2 id="install">Install</h2>' + code(INSTALL)
@@ -206,7 +209,7 @@ def plugins_index():
               f'and <a href="{GITHUB}PLUGIN_SPEC.md">PLUGIN_SPEC.md</a> is the contract: hook order, what each hook receives, and what it may change.</p></div>')
     ld = {'mainEntity': {'@type': 'ItemList', 'itemListElement': [{'@type': 'ListItem', 'position': i + 1, 'name': n, 'url': SITE + p} for i, (p, n) in enumerate(FLAT[1:])]}}
     standalone(path, 'Plugins', meta('SnapDOM plugins: PDF, Vector, Stream and the toolbox',
-               'Fourteen official plugins for SnapDOM, grouped by job: prepare, export, record and map a capture. PDF, Vector and Stream are each a package of their own. MIT.',
+               'Fifteen official plugins for SnapDOM, grouped by job: prepare, export, record and map a capture. PDF, Vector and Stream are each a package of their own. MIT.',
                'plugins/', 'CollectionPage', ld), plugin_nav(path), 'Filter plugins', 'Plugins', 'export', 'Plugins', inner, None, plugin_pager(path), 'plugin-page')
 
 def own_page_side(s):

@@ -90,7 +90,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/ecosystem/</loc>
-    <lastmod>2026-11-09</lastmod>
+    <lastmod>2026-11-10</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/guides/angular/</loc>
@@ -258,7 +258,7 @@
   </url>
   <url>
     <loc>https://snapdom.dev/plugins/</loc>
-    <lastmod>2026-11-09</lastmod>
+    <lastmod>2026-11-10</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/plugins/agent-map/</loc>
@@ -287,6 +287,10 @@
   <url>
     <loc>https://snapdom.dev/plugins/html-export/</loc>
     <lastmod>2026-11-09</lastmod>
+  </url>
+  <url>
+    <loc>https://snapdom.dev/plugins/jxl/</loc>
+    <lastmod>2026-11-10</lastmod>
   </url>
   <url>
     <loc>https://snapdom.dev/plugins/pdf/</loc>

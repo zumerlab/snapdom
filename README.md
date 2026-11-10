@@ -99,7 +99,7 @@ Products, each with its own landing page and reference:
 - [Vector](https://snapdom.dev/plugins/vector/): editable SVG and Figma clipboard export.
 - [Stream](https://snapdom.dev/plugins/stream/): a live element as a canvas that repaints only what changed, for WebGL textures and video overlays.
 
-Toolbox: the [eleven smaller plugins](https://snapdom.dev/plugins/) are `redact-inputs`, `timestamp-overlay`, `replace-text`, `filter`, `color-tint`, `html-export`, `ascii-export`, `gif-export`, `video-export`, `context-export` and `agent-map`.
+Toolbox: the [twelve smaller plugins](https://snapdom.dev/plugins/) are `redact-inputs`, `timestamp-overlay`, `replace-text`, `filter`, `color-tint`, `html-export`, `ascii-export`, `jxl`, `gif-export`, `video-export`, `context-export` and `agent-map`.
 
 Tools built on SnapDOM:
 
@@ -118,7 +118,7 @@ npm i @zumer/snapdom@latest @zumer/snapdom-plugins@latest
 npm i @zumer/snapdom-pdf@latest   # or @zumer/snapdom-vector, @zumer/snapdom-stream
 ```
 
-Every plugin package requires SnapDOM 3.4.0 or newer within 3.x. `@zumer/snapdom-plugins` 5.x is the toolbox of eleven smaller plugins; PDF, Vector and Stream are their own packages. All MIT, with sources under `packages/`.
+Every plugin package requires SnapDOM 3.4.0 or newer within 3.x. `@zumer/snapdom-plugins` 5.x is the toolbox of twelve smaller plugins; PDF, Vector and Stream are their own packages. All MIT, with sources under `packages/`.
 
 Or load it in a browser:
 

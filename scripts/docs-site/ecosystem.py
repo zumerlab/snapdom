@@ -3,7 +3,7 @@
 # written by tools.py; the plugins' by plugins.py. Old links into this page's topics
 # (#snapeye, #pdf, …) are forwarded by a short script, since the hub used to hold them all.
 PATH = 'ecosystem/index.html'
-CELLS = [(n, sec, 'Plugin', rel(PATH, f'plugins/{s}/')) for s, n, sec, _ in OWN_PAGE] + [('The toolbox', 'prepare', '11 plugins', rel(PATH, 'plugins/#toolbox'))]
+CELLS = [(n, sec, 'Plugin', rel(PATH, f'plugins/{s}/')) for s, n, sec, _ in OWN_PAGE] + [('The toolbox', 'prepare', f'{sum(len(g[3]) for g in TOOLBOX)} plugins', rel(PATH, 'plugins/#toolbox'))]
 CELLS += [(t['name'], 'ecosystem', 'Experimental' if t.get('experimental') else 'Tool', rel(PATH, f'tools/{t["slug"]}/')) for t in TOOLS]
 JOBS = [('Export an element as an image', 'SnapDOM core', rel(PATH, 'docs/#quick-start')),
         ('Make a PDF with selectable text and pages', 'PDF', rel(PATH, 'plugins/pdf/')),

@@ -418,11 +418,11 @@ await result.download({ format: 'jxl', filename: 'card' });
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `module` | `string` | `'rapier-jxl/capture-complete'` | With your `codec`: `'rapier-jxl/capture'` (every pixel exact) or `'rapier-jxl/upload'` (photographic) |
-| `codec` | `object` | — | Your own encoder with `prepare` and `capture` |
-| `decoder` | `object` | — | `createCodec()` from `rapier-jxl/codec/decode`, for `toJxl()` where JPEG XL does not show |
+| `codec` | `object` | none | Your own encoder with `prepare` and `capture` |
+| `decoder` | `object` | none | `createCodec()` from `rapier-jxl/codec/decode`, for `toJxl()` where JPEG XL does not show |
 | `effort` | `number` | `3` | Default effort, 1-9 |
-| `webgpu` | `false \| 'required'` | — | Disable WebGPU, or require a device |
-| `helpers` | `boolean \| object` | — | Helper workers for the encoder the plugin creates |
+| `webgpu` | `false \| 'required'` | none | Disable WebGPU, or require a device |
+| `helpers` | `boolean \| object` | none | Helper workers for the encoder the plugin creates |
 
 Exports take `toWebp()`'s options, plus `effort`, `signal`, `onProgress` (0 to 1) and `onEncoded` (once).
 `quality: 1` is exact. The plugin's own encoder takes up to 40 megapixels; `plugin.close()` ends its workers.

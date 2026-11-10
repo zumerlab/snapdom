@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JPEG XL plugin for SnapDOM</title>
+  <meta name="description" content="SnapDOM plugin that adds toJxl(): export a capture as a JPEG XL file, encoded in the browser, where text and interface stay exact and photos take the quality.">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://snapdom.dev/plugins/jxl/">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="JPEG XL plugin for SnapDOM">
+  <meta property="og:description" content="SnapDOM plugin that adds toJxl(): export a capture as a JPEG XL file, encoded in the browser, where text and interface stay exact and photos take the quality.">
+  <meta property="og:url" content="https://snapdom.dev/plugins/jxl/">
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "name": "JPEG XL plugin for SnapDOM",
+  "description": "SnapDOM plugin that adds toJxl(): export a capture as a JPEG XL file, encoded in the browser, where text and interface stay exact and photos take the quality.",
+  "url": "https://snapdom.dev/plugins/jxl/",
+  "isPartOf": {
+    "@type": "WebSite",
+    "name": "SnapDOM",
+    "url": "https://snapdom.dev/"
+  },
+  "headline": "JPEG XL plugin for SnapDOM"
+}
+  </script>
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F7F9FC">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+  <link rel="stylesheet" href="../../navigation.css">
+  <link rel="stylesheet" href="../../panes.css">
+  <script defer src="../../site.js"></script>
+  <script type="module" src="../../panes.js"></script>
+<link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><script defer src="../../code-blocks.js"></script></head>
+<body>
+<a class="site-skip" href="#page-content" tabindex="0">Skip to content</a>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo plugin-page" data-pane>
+<aside class="pane-side"><details class="pane-menu" open><summary>Plugins <span aria-hidden="true">/</span> JPEG XL</summary><label class="pane-filter"><span aria-hidden="true">⌕</span><input type="search" placeholder="Filter navigation" aria-label="Filter navigation titles"></label><p class="pane-filter-status" role="status" hidden>No matching links. Use Search docs to search page contents.</p><nav class="pane-nav" aria-label="Plugins"><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Plugins</button><div class="pane-nav-items"><a href="../">All plugins</a></div></div><div class="sec-prepare"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Prepare</button><div class="pane-nav-items"><a href="../redact-inputs/">Redact inputs</a><a href="../replace-text/">Replace text</a><a href="../filter/">Filter</a><a href="../color-tint/">Color tint</a><a href="../timestamp-overlay/">Timestamp overlay</a></div></div><div class="sec-export"><button type="button" class="pane-nav-head" aria-expanded="true"><span class="sec-dot"></span>Export</button><div class="pane-nav-items"><a href="../pdf/">PDF</a><a href="../vector/">Vector</a><a href="../html-export/">HTML export</a><a href="../ascii-export/">ASCII export</a><a href="./" aria-current="page">JPEG XL</a></div></div><div class="sec-record"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Record</button><div class="pane-nav-items"><a href="../stream/">Stream</a><a href="../gif-export/">GIF export</a><a href="../video-export/">Video export</a></div></div><div class="sec-context"><button type="button" class="pane-nav-head" aria-expanded="false"><span class="sec-dot"></span>Context</button><div class="pane-nav-items"><a href="../agent-map/">Agent map</a><a href="../context-export/">Context export</a></div></div></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#usage" class="">Usage</a><a href="#options" class="">Options</a></nav></details></aside>
+
+<article class="pane-read sec-export" data-title="JPEG XL" id="page-content" tabindex="-1">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../">Plugins</a><span aria-hidden="true">/</span><span>Export</span><span aria-hidden="true">/</span><span aria-current="page">JPEG XL</span></nav><span class="doc-meta">@zumer/snapdom-plugins · MIT</span></div><h1>Export the capture as JPEG XL.</h1><p class="doc-lead">Adds <code>toJxl()</code>, <code>toBlob({ format: &#x27;jxl&#x27; })</code> and <code>download({ format: &#x27;jxl&#x27; })</code>. Text and interface stay exact while photos take the quality, in one JPEG XL file. The encoder is <a href="https://www.npmjs.com/package/rapier-jxl">rapier-jxl</a> (MIT), an optional peer: the text measurement loads at the first capture, the encoder at the first export.</p><p class="pane-links doc-links"><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/jxl.js">Source · MIT</a><a href="https://github.com/zumerlab/snapdom/blob/main/packages/plugins/CHANGELOG.md">Changelog</a></p></header><div class="pane-content pane-prose"><pre><code>npm install @zumer/snapdom@latest @zumer/snapdom-plugins@latest</code></pre><pre><code>npm install rapier-jxl</code></pre>
+<h2 id="usage">Usage</h2>
+<pre><code>import { snapdom } from &#x27;@zumer/snapdom&#x27;;
+import { jxl } from &#x27;@zumer/snapdom-plugins/jxl&#x27;;
+
+const el = document.querySelector(&#x27;#target&#x27;);
+const result = await snapdom(el, { plugins: [jxl()] });
+const img = await result.toJxl({ quality: 0.8 });
+const blob = await result.toBlob({ format: &#x27;jxl&#x27; });
+await result.download({ format: &#x27;jxl&#x27;, filename: &#x27;card&#x27; });</code></pre>
+<h2 id="options">Options</h2>
+<div class="compare-table"><table><thead><tr><th scope="col">Option</th><th scope="col">Type</th><th scope="col">Default</th><th scope="col">Description</th></tr></thead><tbody><tr><td><code>module</code></td><td><code>string</code></td><td><code>&#x27;rapier-jxl/capture-complete&#x27;</code></td><td>With your <code>codec</code>: <code>&#x27;rapier-jxl/capture&#x27;</code> (every pixel exact) or <code>&#x27;rapier-jxl/upload&#x27;</code> (photographic)</td></tr><tr><td><code>codec</code></td><td><code>object</code></td><td>none</td><td>Your own encoder with <code>prepare</code> and <code>capture</code></td></tr><tr><td><code>decoder</code></td><td><code>object</code></td><td>none</td><td><code>createCodec()</code> from <code>rapier-jxl/codec/decode</code>, for <code>toJxl()</code> where JPEG XL does not show</td></tr><tr><td><code>effort</code></td><td><code>number</code></td><td><code>3</code></td><td>Default effort, 1-9</td></tr><tr><td><code>webgpu</code></td><td><code>false | &#x27;required&#x27;</code></td><td>none</td><td>Disable WebGPU, or require a device</td></tr><tr><td><code>helpers</code></td><td><code>boolean | object</code></td><td>none</td><td>Helper workers for the encoder the plugin creates</td></tr></tbody></table></div>
+<p>Exports take <code>toWebp()</code>&#x27;s options, plus <code>effort</code>, <code>signal</code>, <code>onProgress</code> (0 to 1) and <code>onEncoded</code> (once). <code>quality: 1</code> is exact. The plugin&#x27;s own encoder takes up to 40 megapixels; <code>plugin.close()</code> ends its workers.</p>
+<p>Encoding works in every browser: <code>toBlob()</code> and <code>download()</code> give <code>image/jxl</code>. Where the browser cannot show JPEG XL (Edge, for one), <code>toJxl()</code> shows the <code>decoder</code>&#x27;s pixels, or rejects with <code>JXL_NOT_SHOWN</code> without one.</p></div>
+<nav class="pager" aria-label="Pages"><a href="../ascii-export/"><span>Previous</span><strong>ASCII export</strong></a><a class="is-next" href="../stream/"><span>Next</span><strong>Stream</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../plugins/">Plugins</a><a href="../../plugins/pdf/">PDF</a><a href="../../plugins/vector/">Vector</a><a href="../../plugins/stream/">Stream</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../tools/snapdiff/">SnapDiff</a><a href="../../tools/snapeye/">SnapEye</a><a href="../../tools/snapsurf/">SnapSurf</a><a href="../../made-with/">Made with</a><a href="../../plugins/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+</body>
+</html>
