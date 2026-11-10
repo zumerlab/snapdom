@@ -19,7 +19,8 @@
     "./context-export": "./context-export.js",
     "./html-export": "./html-export.js",
     "./gif-export": "./gif-export.js",
-    "./video-export": "./video-export.js"
+    "./video-export": "./video-export.js",
+    "./jxl": "./jxl.js"
   },
   "files": [
     "*.js",
@@ -51,10 +52,17 @@
     "url": "https://github.com/sponsors/tinchox5"
   },
   "peerDependencies": {
-    "@zumer/snapdom": "^3.4.0"
+    "@zumer/snapdom": "^3.4.0",
+    "rapier-jxl": "^8.3.2"
+  },
+  "peerDependenciesMeta": {
+    "rapier-jxl": {
+      "optional": true
+    }
   },
   "devDependencies": {
-    "@zumer/snapdom": "file:../.."
+    "@zumer/snapdom": "file:../..",
+    "rapier-jxl": "^8.3.2"
   },
   "sideEffects": false
 }
