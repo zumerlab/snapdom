@@ -836,8 +836,9 @@ describe('jxl plugin: generated text and controls', () => {
   it('a ::first-letter drop cap is covered, and its shadow makes the line not solid text', async () => {
     const { call } = await inCard('<p class="drop" style="margin:30px 0 0;color:rgb(230,0,0)">Drop cap</p>',
       '.drop::first-letter{font-size:48px;text-shadow:2px 2px 2px #000}')
-    // Firefox places the large letter a few pixels further in than its line's start.
-    check(call, 26)
+    // Firefox places the large letter a few pixels further in than its line's start, and on
+    // macOS its line box ends 29px under the last red pixel (the shadow and the descent).
+    check(call, 30)
     const p = call.exactRects.filter((r) => !r.edge && r.y < 80)
     expect(p.length).toBeGreaterThan(0)
     expect(p.some((r) => r.solidText), 'a shadowed letter is not solid text').toBe(false)
