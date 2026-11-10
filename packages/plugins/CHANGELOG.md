@@ -1,5 +1,17 @@
 # Plugin changes
 
+## 5.1.0
+
+> 10 November 2026
+
+**Features**
+
+- **plugins:** jxl, JPEG XL exports with exact text [`#556`](https://github.com/zumerlab/snapdom/pull/556)
+
+**Docs**
+
+- **site:** add the JPEG XL plugin page [`5ceba24`](https://github.com/zumerlab/snapdom/commit/5ceba24c2887996381b402c9927d8b9be3445430)
+
 ## 5.0.0
 
 > 9 November 2026

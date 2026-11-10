@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-plugins",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Official plugin toolbox for SnapDOM: prepare, export and record captures",
   "type": "module",
   "scripts": {
