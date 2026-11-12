@@ -1,0 +1,9 @@
+{
+  "name": "snapdom",
+  "description": "Agent skill for SnapDOM 3 (@zumer/snapdom): capture a DOM element in the browser and export it as PNG, JPG, WebP, SVG, canvas or Blob, or as PDF, editable vector, GIF and video through its plugins.",
+  "author": { "name": "Juan Martin Muda", "url": "https://zumerlab.com" },
+  "homepage": "https://snapdom.dev/docs/agents/",
+  "repository": "https://github.com/zumerlab/snapdom",
+  "license": "MIT",
+  "keywords": ["snapdom", "screenshot", "dom", "html-to-image", "html2canvas", "pdf", "svg"]
+}
