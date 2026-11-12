@@ -72,6 +72,10 @@ const REQUIRED = [
   'package/dist/snapdom.js',
   'package/dist/snapdom.mjs',
   'package/types/snapdom.d.ts',
+  // The agent skill, named file by file: `files: ["skills/"]` ships whatever sits in the folder.
+  'package/skills/snapdom/SKILL.md',
+  'package/skills/snapdom/references/options.md',
+  'package/skills/snapdom/references/plugins.md',
 ]
 
 try {

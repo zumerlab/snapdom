@@ -26,6 +26,7 @@
   "files": [
     "dist/",
     "types/snapdom.d.ts",
+    "skills/",
     "README.md"
   ],
   "scripts": {
