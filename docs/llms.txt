@@ -1,6 +1,6 @@
 # SnapDOM
 
-Last updated: 2026-11-09. Updated with each release. Full reference: https://snapdom.dev/llms-full.txt
+Last updated: 2026-11-12. Updated with each release. Full reference: https://snapdom.dev/llms-full.txt
 
 > SnapDOM (`@zumer/snapdom`) is a high-performance DOM engine that captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into PDF, HTML, editable vector, GIF, video or context for agents. Zero runtime dependencies; about one release a week.
 
@@ -37,6 +37,7 @@ The package entry is ESM. The browser IIFE build exposes `window.snapdom`; there
 - [Options](https://snapdom.dev/docs/options/): geometry, assets, fonts and exclusions
 - [Build a plugin](https://snapdom.dev/docs/plugins/): hooks and custom exports
 - [Cache and preCapture](https://snapdom.dev/docs/cache/): resource reuse, repeat captures and intent events
+- [AI agents](https://snapdom.dev/docs/agents/): the agent skill for coding agents (Claude Code plugin, `npx skills add zumerlab/snapdom`, or the raw file at https://raw.githubusercontent.com/zumerlab/snapdom/main/skills/snapdom/SKILL.md)
 - [How-to](https://snapdom.dev/how-to/): capture recipes and framework guides (React, Vue, Next.js, Svelte, Angular, Lit)
 - [Compare](https://snapdom.dev/compare/): capture approaches and alternatives
 - [Plugins](https://snapdom.dev/plugins/): what a capture can become beyond images (PDF, editable vector, a live canvas, HTML, JPEG XL, GIF/video, ASCII, agent context) and the plugin that provides each. PDF, Vector and Stream are each a package of their own; the other twelve plugins ship together as the toolbox. All fifteen are grouped by job (prepare, export, record, context), one page per plugin with options and a live demo. Community plugins: https://snapdom.dev/plugins/#community-plugins

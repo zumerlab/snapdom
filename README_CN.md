@@ -379,6 +379,22 @@ const after = await snapdom(card, options); // 使用当前策略
 - [官方插件](packages/plugins/README.md)、[插件规范](PLUGIN_SPEC.md)与[插件贡献指南](CONTRIBUTING_PLUGINS.md)
 - [架构](ARCHITECTURE.md)与[技术功能](FEATURES_CN.md)
 
+## AI 智能体
+
+SnapDOM 提供了一个智能体技能（agent skill）：[`skills/snapdom/`](skills/snapdom/SKILL.md)。它向编程智能体讲解 v3 的 API，让它们使用真实存在的选项来捕获，而不是照搬 html2canvas 的写法。技能文件为英文。使用 skills CLI 安装：
+
+```sh
+npx skills add zumerlab/snapdom
+```
+
+在 Claude Code 中，它是一个插件：
+
+```
+/plugin install snapdom --marketplace zumerlab/orbit
+```
+
+从 3.7.4 之后的下一个版本起，npm 包中也会包含它，位于 `node_modules/@zumer/snapdom/skills/snapdom/`。其他安装方式以及技能涵盖的内容，见 [AI agents 页面](https://snapdom.dev/docs/agents/)（英文）。对于其他助手，[llms.txt](https://snapdom.dev/llms.txt) 是简短参考，[llms-full.txt](https://snapdom.dev/llms-full.txt) 是完整参考。
+
 ## 开发
 
 在本仓库中运行：

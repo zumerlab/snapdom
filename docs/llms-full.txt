@@ -1,6 +1,6 @@
 # SnapDOM: v3 reference
 
-Last updated: 2026-11-09.
+Last updated: 2026-11-12.
 
 SnapDOM (`@zumer/snapdom`) is a high-performance DOM engine that captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into PDF, HTML, editable vector, GIF, video or context for agents. Zero runtime dependencies; about one release a week.
 
@@ -703,6 +703,7 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 - Options: https://snapdom.dev/docs/options/
 - Build a plugin: https://snapdom.dev/docs/plugins/
 - Cache and preCapture: https://snapdom.dev/docs/cache/
+- AI agents, the agent skill and how to install it: https://snapdom.dev/docs/agents/ (the skill itself: https://raw.githubusercontent.com/zumerlab/snapdom/main/skills/snapdom/SKILL.md)
 - How-to: https://snapdom.dev/how-to/
 - Framework guides: https://snapdom.dev/how-to/#frameworks
 - Compare: https://snapdom.dev/compare/

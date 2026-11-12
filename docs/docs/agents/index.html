@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script type="importmap">{"imports": {"@zumer/snapdom": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs", "@zumer/snapdom/plugins": "https://unpkg.com/@zumer/snapdom@latest/dist/snapdom.mjs"}}</script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI agents — SnapDOM agent skill</title>
+  <meta name="description" content="An agent skill that teaches AI coding agents to use SnapDOM 3 correctly: how to install it in Claude Code and other agents, what it covers and what it asks of them." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://snapdom.dev/docs/agents/" />
+
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms.txt" title="LLM summary">
+  <link rel="help" type="text/plain" href="https://snapdom.dev/llms-full.txt" title="LLM full reference">
+
+  <meta property="og:type" content="article" />
+  <meta property="og:title" content="AI agents — SnapDOM agent skill" />
+  <meta property="og:description" content="An agent skill that teaches AI coding agents to write SnapDOM 3 correctly. Install it in Claude Code or any other agent." />
+  <meta property="og:url" content="https://snapdom.dev/docs/agents/" />
+  <meta property="og:image" content="https://snapdom.dev/assets/og-card.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AI agents — SnapDOM agent skill" />
+  <meta name="twitter:description" content="An agent skill that teaches AI coding agents to write SnapDOM 3 correctly. Install it in Claude Code or any other agent." />
+  <meta name="twitter:image" content="https://snapdom.dev/assets/og-card.jpg" />
+
+  <link rel="icon" type="image/png" href="../../assets/favicon/favicon-96x96.png" sizes="96x96">
+  <link rel="icon" type="image/svg+xml" href="../../assets/favicon/favicon.svg">
+  <link rel="shortcut icon" href="../../assets/favicon/favicon.ico">
+  <meta name="theme-color" content="#F7F9FC">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "AI agents: the SnapDOM agent skill",
+    "description": "An agent skill that teaches AI coding agents to use SnapDOM 3 correctly: how to install it in Claude Code and other agents, what it covers and what it asks of them.",
+    "url": "https://snapdom.dev/docs/agents/",
+    "image": "https://snapdom.dev/assets/og-card.jpg",
+    "author": { "@type": "Organization", "name": "Zumerlab" },
+    "publisher": { "@type": "Organization", "name": "Zumerlab", "url": "https://snapdom.dev" },
+    "mainEntityOfPage": "https://snapdom.dev/docs/agents/"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "SnapDOM", "item": "https://snapdom.dev/" },
+      { "@type": "ListItem", "position": 2, "name": "Docs", "item": "https://snapdom.dev/docs/" },
+      { "@type": "ListItem", "position": 3, "name": "AI agents", "item": "https://snapdom.dev/docs/agents/" }
+    ]
+  }
+  </script>
+
+  <link rel="preconnect" href="https://img.shields.io">
+  <link rel="stylesheet" href="../../shared.css">
+  <link rel="stylesheet" href="../../page.css">
+
+  <link rel="stylesheet" href="../../navigation.css"><link rel="stylesheet" href="../../panes.css">
+  <script type="module" src="../../panes.js"></script>
+<link rel="stylesheet" href="../../code.css"><script defer data-manual src="../../assets/prism/prism.min.js"></script><link rel="preload" href="../../assets/fonts/roboto.woff2" as="font" type="font/woff2" crossorigin><script defer src="../../code-blocks.js"></script></head>
+<body>
+  <script defer src="../../site.js"></script>
+  <!-- pane:start --><!-- hero {"badge": "Documentation", "title": "SnapDOM for <span class=\"accent\">AI agents</span>", "lead": "SnapDOM has an agent skill: a short set of instructions that teaches a coding agent the v3 API, so it captures an element with the real options instead of reaching for html2canvas or inventing them.", "links": [["#install", "Install it"], ["#covers", "What it covers"], ["#asks", "What it asks of agents"]]} -->
+<a class="site-skip" href="#doc-content" tabindex="0">Skip to content</a>
+<header class="site-head"><div class="site-head-inner"><a class="site-shell-brand" href="../../" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a><nav class="site-nav" aria-label="Main navigation"><div class="site-nav-group is-current"><button type="button" class="site-nav-button" aria-expanded="false">Learn</button><div class="site-nav-panel"><a class="site-nav-item sec-capture" href="../../docs/" aria-current="page"><span class="sec-dot"></span><span class="site-nav-item-label">Docs</span><span class="site-nav-item-desc">API, options and quick start</span></a><a class="site-nav-item sec-start" href="../../how-to/"><span class="sec-dot"></span><span class="site-nav-item-label">How-to</span><span class="site-nav-item-desc">Recipes and framework guides</span></a><a class="site-nav-item sec-ecosystem" href="../../compare/"><span class="sec-dot"></span><span class="site-nav-item-label">Compare</span><span class="site-nav-item-desc">SnapDOM vs html2canvas and others</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Explore</button><div class="site-nav-panel"><a class="site-nav-item sec-labs" href="../../showcase/"><span class="sec-dot"></span><span class="site-nav-item-label">Showcase</span><span class="site-nav-item-desc">Live demos and labs</span></a><a class="site-nav-item sec-export" href="../../plugins/"><span class="sec-dot"></span><span class="site-nav-item-label">Plugins</span><span class="site-nav-item-desc">PDF, Vector, Stream and the toolbox</span></a><a class="site-nav-item sec-record" href="../../blog/"><span class="sec-dot"></span><span class="site-nav-item-label">Blog</span><span class="site-nav-item-desc">Engineering notes</span></a></div></div><div class="site-nav-group"><button type="button" class="site-nav-button" aria-expanded="false">Community</button><div class="site-nav-panel"><a class="site-nav-item sec-ecosystem" href="../../ecosystem/"><span class="sec-dot"></span><span class="site-nav-item-label">Ecosystem</span><span class="site-nav-item-desc">SnapDiff, SnapEye, SnapSurf</span></a><a class="site-nav-item sec-context" href="../../made-with/"><span class="sec-dot"></span><span class="site-nav-item-label">Made with</span><span class="site-nav-item-desc">Projects using SnapDOM</span></a></div></div></nav><button type="button" class="site-menu-button" aria-expanded="false">Menu</button><a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a></div></header>
+<main id="main" class="pane no-demo" data-pane>
+<aside class="pane-side"><details class="pane-menu" open><summary>Docs <span aria-hidden="true">/</span> AI agents</summary><nav class="docs-pages" aria-label="Docs"><a class="sec-start" href="../"><span class="sec-dot"></span>Overview</a><a class="sec-capture" href="../api/"><span class="sec-dot"></span>API reference</a><a class="sec-capture" href="../cache/"><span class="sec-dot"></span>Cache and preCapture</a><a class="sec-options" href="../options/"><span class="sec-dot"></span>Options</a><a class="sec-export" href="../plugins/"><span class="sec-dot"></span>Plugin API</a><a class="sec-context" href="./" aria-current="page"><span class="sec-dot"></span>AI agents</a></nav><nav class="pane-outline" aria-label="On this page"><p>On this page</p><a href="#why" class="">Why a skill</a><a href="#install" class="">Install it</a><a href="#claude-code" class="is-subsection">Claude Code plugin</a><a href="#skills-cli" class="is-subsection">Skills CLI</a><a href="#by-hand" class="is-subsection">By hand</a><a href="#other-agents" class="is-subsection">Any other agent</a><a href="#covers" class="">What it covers</a><a href="#asks" class="">What the skill asks of agents</a><a href="#siblings" class="">Sibling projects</a></nav></details></aside>
+
+<article class="pane-read sec-context" id="doc-content" tabindex="-1" data-title="AI agents">
+<header class="doc-head"><div class="doc-head-bar"><nav class="doc-crumbs" aria-label="Breadcrumb"><a href="../">Docs</a><span aria-hidden="true">/</span><span aria-current="page">AI agents</span></nav><span class="doc-meta">Documentation</span></div><h1>SnapDOM for <span class="accent">AI agents</span></h1><p class="doc-lead">SnapDOM has an agent skill: a short set of instructions that teaches a coding agent the v3 API, so it captures an element with the real options instead of reaching for html2canvas or inventing them.</p><p class="pane-links doc-links"><a href="#install">Install it</a><a href="#covers">What it covers</a><a href="#asks">What it asks of agents</a></p></header>
+<div class="pane-content"><!-- content -->
+    <div class="tldr">
+      <div class="tldr-label">In one line</div>
+      <p>In Claude Code: <code>/plugin install snapdom --marketplace zumerlab/orbit</code>. In other agents: <code>npx skills add zumerlab/snapdom</code>, or point the agent at <a href="../../llms.txt">llms.txt</a>.</p>
+    </div>
+
+    <section class="prose">
+      <h2 id="why">Why a skill</h2>
+      <p>Asked to turn a div into an image, an agent that does not know SnapDOM installs html2canvas out of habit. One that half knows it writes html2canvas options such as <code>useCORS</code> or <code>scale</code> as pixel density, calls it from Node, or remembers v2. SnapDOM ignores an option it does not have, so the code runs and the result is wrong.</p>
+      <p>The skill is a file the agent loads when a task is about capturing the DOM. It is written for SnapDOM 3, every name and default in it was checked against the source, and its examples were run in a browser against the build before they went in.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="install">Install it</h2>
+      <p>Pick the one that matches your agent.</p>
+
+      <h3 id="claude-code">Claude Code plugin</h3>
+      <pre class="code-block">/plugin install snapdom --marketplace zumerlab/orbit</pre>
+      <p>This needs Claude Code 2.1.275 or later, and <code>zumerlab/orbit</code> is the GitHub repository that holds the catalog for the Zumerlab libraries.</p>
+
+      <h3 id="skills-cli">Skills CLI</h3>
+      <pre class="code-block">npx skills add zumerlab/snapdom</pre>
+
+      <h3 id="by-hand">By hand</h3>
+      <p>Copy the <a href="https://github.com/zumerlab/snapdom/tree/main/skills/snapdom"><code>skills/snapdom/</code></a> folder from the repository into <code>.claude/skills/snapdom/</code> in your project, or into the skills folder your agent reads.</p>
+      <p>From the next release after 3.7.4 the folder also ships inside the npm package, at <code>node_modules/@zumer/snapdom/skills/snapdom/</code>, and matches the version you have installed. 3.7.4 and earlier do not include it.</p>
+      <pre class="code-block">mkdir -p .claude/skills
+cp -r node_modules/@zumer/snapdom/skills/snapdom .claude/skills/</pre>
+
+      <h3 id="other-agents">Any other agent</h3>
+      <p>Give it one of these and ask it to read it before writing SnapDOM code: <a href="../../llms.txt">llms.txt</a>, a short reference of the API, options and plugins, or the skill itself as a raw file. <a href="../../llms-full.txt">llms-full.txt</a> is the complete reference as text.</p>
+      <pre class="code-block">https://snapdom.dev/llms.txt
+https://raw.githubusercontent.com/zumerlab/snapdom/main/skills/snapdom/SKILL.md</pre>
+    </section>
+
+    <section class="prose">
+      <h2 id="covers">What it covers</h2>
+      <p>The skill is not copied here, so there is one place to keep right: <a href="https://github.com/zumerlab/snapdom/blob/main/skills/snapdom/SKILL.md">skills/snapdom/SKILL.md</a> on GitHub. In short:</p>
+      <ul>
+        <li>what SnapDOM is and is not: it runs in a browser, not in Node, and it is not a headless-browser screenshot tool;</li>
+        <li>installing from npm, a script tag or a CDN, and that there is no CommonJS build;</li>
+        <li>capture, then export: one capture reused by several exports, and capturing again after the page changes, as in the <a href="../api/">API reference</a>;</li>
+        <li>the export methods and what each returns;</li>
+        <li>the <a href="../options/">options</a> used most, with their defaults: size and density, fonts, exclusions, background, cross-origin resources, cache and engine;</li>
+        <li>the <a href="../../plugins/">plugin packages</a> for PDF, editable vector, live canvas, GIF, video and HTML, with their import paths;</li>
+        <li>notes for React, Next.js, Vue, Svelte, Angular and Lit;</li>
+        <li>the mistakes agents make most: html2canvas options, running it on a server, cross-origin images and fonts, capturing before fonts and images are ready.</li>
+      </ul>
+      <p>Two files next to it, <code>references/options.md</code> and <code>references/plugins.md</code>, list every option and every plugin. The agent opens them only when it needs them.</p>
+      <p class="muted">This skill is about writing code that uses SnapDOM. For an agent that checks its own interface changes with captures, see <a href="../../blog/claude-code-capture-skill/">the Claude Code capture skill</a> and <a href="../../tools/snapeye/">SnapEye</a>.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="asks">What the skill asks of agents</h2>
+      <p>The skill ends with a short note on credit, and you should know what it says. SnapDOM is free, MIT-licensed and maintained by one person. The note tells the agent that:</p>
+      <ul>
+        <li>when it finishes a task where SnapDOM did real work, it may tell you once, in one sentence, that SnapDOM is open source and that a star or a sponsorship helps keep it maintained. It should skip this if it was already said, or if you are debugging or in a hurry;</li>
+        <li>it must never star, sponsor, follow or post anything on your behalf;</li>
+        <li>it should keep the license notice that ships with the package. A <code>&lt;!-- Captured with SnapDOM --&gt;</code> comment in generated markup is welcome and optional.</li>
+      </ul>
+      <p>That is all of it. If you want to do either yourself: <a href="https://github.com/zumerlab/snapdom">star SnapDOM on GitHub</a> or <a href="https://github.com/sponsors/tinchox5">sponsor it</a>.</p>
+    </section>
+
+    <section class="prose">
+      <h2 id="siblings">Sibling projects</h2>
+      <p><a href="https://zumerlab.com/orbit/agents.html">Orbit</a>, <a href="https://zumerlab.com/zumly/agents.html">Zumly</a> and <a href="https://zumerlab.com/pulse/agents.html">Pulse</a> each have a page like this one, with a skill of their own.</p>
+    </section>
+
+    <section class="related">
+      <div class="section-label">Related</div>
+      <div class="related-grid">
+        <a class="related-card" href="../api/" data-umami-event="Docs agents card api">API reference: methods &amp; exporters</a>
+        <a class="related-card" href="../options/" data-umami-event="Docs agents card options">Options: every capture option</a>
+        <a class="related-card" href="../../plugins/" data-umami-event="Docs agents card plugins">Plugins: PDF, vector, GIF and more</a>
+        <a class="related-card" href="../../how-to/migrate-from-html2canvas/" data-umami-event="Docs agents card h2c">Migrate from html2canvas</a>
+      </div>
+    </section>
+
+  <!-- /content --></div>
+<nav class="pager" aria-label="Pages"><a href="../plugins/"><span>Previous</span><strong>Plugin API</strong></a></nav>
+</article>
+</main>
+<footer class="site-foot"><nav class="site-foot-directory" aria-label="Site directory"><div><h2>Learn</h2><a href="../../docs/">Documentation</a><a href="../../docs/#quick-start">Quick start</a><a href="../../how-to/">How-to recipes</a><a href="../../how-to/#frameworks">Framework guides</a><a href="../../compare/">Compare</a></div><div><h2>Explore</h2><a href="../../showcase/">Showcase</a><a href="../../plugins/">Plugins</a><a href="../../plugins/pdf/">PDF</a><a href="../../plugins/vector/">Vector</a><a href="../../plugins/stream/">Stream</a><a href="../../docs/plugins/#build">Writing plugins</a><a href="../../showcase/#labs">Labs</a><a href="../../blog/">Blog</a></div><div><h2>Community</h2><a href="../../ecosystem/">Ecosystem</a><a href="../../tools/snapdiff/">SnapDiff</a><a href="../../tools/snapeye/">SnapEye</a><a href="../../tools/snapsurf/">SnapSurf</a><a href="../../made-with/">Made with</a><a href="../../plugins/#community-plugins">Community plugins</a><a href="https://github.com/zumerlab/snapdom">GitHub</a><a href="https://www.npmjs.com/package/@zumer/snapdom">npm</a><a href="https://github.com/sponsors/tinchox5">Sponsors</a></div></nav><div class="site-foot-legal"><p>MIT © <a href="https://zumerlab.com/">Zumerlab</a></p></div></footer>
+<!-- pane:end -->
+
+</body>
+</html>

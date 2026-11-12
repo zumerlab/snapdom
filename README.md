@@ -400,6 +400,22 @@ For a useful comparison, use the same scene, output format, scale and DPR. Compa
 - [Official plugins](packages/plugins/README.md), [plugin specification](PLUGIN_SPEC.md) and [contributing plugins](CONTRIBUTING_PLUGINS.md)
 - [Architecture](ARCHITECTURE.md) and [technical features](FEATURES.md)
 
+## AI agents
+
+SnapDOM ships an agent skill, [`skills/snapdom/`](skills/snapdom/SKILL.md), that teaches coding agents the v3 API so they capture with the real options instead of html2canvas habits. Install it with the skills CLI:
+
+```sh
+npx skills add zumerlab/snapdom
+```
+
+In Claude Code it is a plugin:
+
+```
+/plugin install snapdom --marketplace zumerlab/orbit
+```
+
+From the next release after 3.7.4 it is also in the npm package, at `node_modules/@zumer/snapdom/skills/snapdom/`. Other ways to install it, and what it covers, are on the [AI agents page](https://snapdom.dev/docs/agents/). For any other assistant, [llms.txt](https://snapdom.dev/llms.txt) is a short reference and [llms-full.txt](https://snapdom.dev/llms-full.txt) the complete one.
+
 ## Development
 
 From this checkout:

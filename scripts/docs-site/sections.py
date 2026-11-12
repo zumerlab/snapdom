@@ -21,7 +21,8 @@ SECTIONS = [
    ('Capture API','capture',[('docs/api/index.html','API reference',None),
                              ('docs/cache/index.html','Cache and preCapture',None)]),
    ('Options','options',[('docs/options/index.html','Options',None)]),
-   ('Plugins','export',[('docs/plugins/index.html','Plugin API',None)])]},
+   ('Plugins','export',[('docs/plugins/index.html','Plugin API',None)]),
+   ('AI agents','context',[('docs/agents/index.html','AI agents',None)])]},
  {'name':'How-to', 'menu':'How-to', 'filter':'Filter recipes and guides', 'groups':[
    ('Overview','start',[('how-to/index.html','How to capture the DOM',None)]),
    ('Basics','start',[('how-to/screenshot-a-div/index.html','Screenshot a div',None),
