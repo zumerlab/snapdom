@@ -14,6 +14,9 @@
   <a href="https://www.npmjs.com/package/@zumer/snapdom-plugins">
     <img alt="Plugins NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom-plugins?style=flat-square&label=Plugins">
   </a>
+  <a href="https://chromewebstore.google.com/detail/snapstudio/alhbgenkncnogdpfgjbldjgohhfodohm">
+    <img alt="SnapStudio on the Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/alhbgenkncnogdpfgjbldjgohhfodohm?style=flat-square&label=SnapStudio&logo=googlechrome&logoColor=white">
+  </a>
   <a href="https://www.npmjs.com/package/@zumer/snapdom">
     <img alt="NPM weekly downloads" src="https://img.shields.io/npm/dw/@zumer/snapdom?style=flat-square&label=Downloads">
   </a>
@@ -89,6 +92,16 @@ await result.download({ format: 'jpg', filename: 'card' });
 | 导出可编辑图形或复制到 Figma | 原生 SVG 形状与文本，或 Figma 剪贴板数据 | [`vector`](packages/vector/README.md) 插件 |
 
 图片、HTML 和上下文导出使用捕获时保存的状态。GIF 和视频插件则在一段时间内持续捕获当前元素。
+
+## 浏览器扩展
+
+[SnapStudio](https://snapdom.dev/snapstudio/) 是 SnapDOM 官方的 Chrome 扩展，把 SnapDOM 及其插件放进浏览器侧边栏。无需编写代码，点击页面上的任意部分，即可保存为图片、PDF、可编辑 SVG、GIF 或视频，还能把当前捕获显示为可粘贴到项目中的 SnapDOM 代码。免费，所有内容都留在浏览器内。
+
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/snapstudio/alhbgenkncnogdpfgjbldjgohhfodohm">
+    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/snapstudio/marquee.webp" alt="SnapStudio：捕获网页的任意部分。添加到 Chrome。" width="80%">
+  </a>
+</p>
 
 ## 安装
 

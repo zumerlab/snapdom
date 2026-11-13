@@ -324,3 +324,20 @@
 /* Same box as pre.site-code-block (code.css), so code-blocks.js adding that class does not shift the page. */
 .pane-content pre:not([class]):not(.code-block pre) { margin: 18px 0; padding: 48px 20px 20px; overflow-x: auto; background: #1B212B; color: #D9E2F7; border: 1px solid #3578E3; white-space: pre; font: 13px/1.7 Roboto Mono, ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
 @media (max-width: 600px) { .pane-content pre:not([class]):not(.code-block pre) { padding: 48px 14px 16px; font-size: 12px; } }
+
+/* /snapstudio/: the install row, the store marquee and the five listing screenshots. */
+.studio-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin: 0 0 28px; }
+.studio-cta span { color: #59647D; font: 400 14px Roboto, Arial, Helvetica, sans-serif; }
+.pane-prose a.studio-add { margin-top: 0; background: #3578E3; color: #FFFFFF; text-decoration: none; }
+.pane-prose a.studio-add:hover { background: #2460C8; border-color: #2460C8; color: #FFFFFF; }
+.studio-hero { display: block; border: 1px solid rgba(28,36,48,0.14); line-height: 0; }
+.studio-hero img, .studio-shots img { display: block; width: 100%; height: auto; }
+.studio-shots + p { margin-top: 28px; }
+.studio-shots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 0; padding: 0; list-style: none; }
+.studio-shots li:first-child { grid-column: span 2; }
+.studio-shots a { display: block; border: 1px solid rgba(28,36,48,0.14); transition: border-color .15s; }
+.studio-shots a:hover { border-color: #3578E3; }
+.studio-shots h3 { margin: 14px 0 4px; font: 700 16px/1.3 Roboto, Arial, Helvetica, sans-serif; }
+.studio-shots p { margin: 0; color: #59647D; font: 400 14.5px/1.55 Roboto, Arial, Helvetica, sans-serif; }
+.pane-prose kbd { padding: 2px 6px; border: 1px solid rgba(28,36,48,0.3); border-bottom-width: 2px; background: #FFFFFF; font: 500 12.5px Roboto, Arial, Helvetica, sans-serif; }
+@media (max-width: 600px) { .studio-shots { grid-template-columns: minmax(0, 1fr); } .studio-shots li:first-child { grid-column: auto; } }

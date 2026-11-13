@@ -13,6 +13,9 @@
   <a href="https://www.npmjs.com/package/@zumer/snapdom-plugins">
     <img alt="Plugins NPM version" src="https://img.shields.io/npm/v/@zumer/snapdom-plugins?style=flat-square&label=Plugins">
   </a>
+  <a href="https://chromewebstore.google.com/detail/snapstudio/alhbgenkncnogdpfgjbldjgohhfodohm">
+    <img alt="SnapStudio on the Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/alhbgenkncnogdpfgjbldjgohhfodohm?style=flat-square&label=SnapStudio&logo=googlechrome&logoColor=white">
+  </a>
   <a href="https://www.npmjs.com/package/@zumer/snapdom">
     <img alt="NPM weekly downloads" src="https://img.shields.io/npm/dw/@zumer/snapdom?style=flat-square&label=Downloads">
   </a>
@@ -40,7 +43,7 @@
 
 SnapDOM is a high-performance DOM engine that captures a rendered element in the browser and exports it as PNG, SVG or canvas. Plugins turn the same capture into self-contained HTML, PDF, editable vectors, GIF, video or context for agents. Everything runs in the page, with no core dependencies.
 
-[Documentation and demos](https://snapdom.dev/) · [Technical features](FEATURES.md) · [Official plugins](packages/plugins/README.md) · [简体中文](README_CN.md)
+[Documentation and demos](https://snapdom.dev/) · [Technical features](FEATURES.md) · [Official plugins](packages/plugins/README.md) · [SnapStudio for Chrome](https://snapdom.dev/snapstudio/) · [简体中文](README_CN.md)
 
 ## Why SnapDOM
 
@@ -100,6 +103,16 @@ Products, each with its own landing page and reference:
 - [Stream](https://snapdom.dev/plugins/stream/): a live element as a canvas that repaints only what changed, for WebGL textures and video overlays.
 
 Toolbox: the [twelve smaller plugins](https://snapdom.dev/plugins/) are `redact-inputs`, `timestamp-overlay`, `replace-text`, `filter`, `color-tint`, `html-export`, `ascii-export`, `jxl`, `gif-export`, `video-export`, `context-export` and `agent-map`.
+
+Browser extension:
+
+- [SnapStudio](https://snapdom.dev/snapstudio/): SnapDOM and its plugins in a Chrome side panel. Click any part of a page and save it as an image, a PDF, an editable SVG, a GIF or a video, with no code. It can also show the capture as SnapDOM code to paste into your project. Free, and nothing leaves the browser.
+
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/snapstudio/alhbgenkncnogdpfgjbldjgohhfodohm">
+    <img src="https://raw.githubusercontent.com/zumerlab/snapdom/main/docs/assets/snapstudio/marquee.webp" alt="SnapStudio: capture any part of a web page. Add it to Chrome." width="80%">
+  </a>
+</p>
 
 Tools built on SnapDOM:
 

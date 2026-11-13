@@ -695,6 +695,8 @@ If output differs, read `capture.warnings` after export, use `debug: true`, and 
 - SnapSurf (https://snapdom.dev/tools/snapsurf/): web navigation and verification for agents as an MCP server and CLI; experimental. It provides browser navigation, compact page observations, typed changes and assertions. Its semantic verification is different from comparing pixels against a saved visual baseline.
 - SnapDiff (https://snapdom.dev/tools/snapdiff/): visual regression testing in the browser with baselines, diff views and a Vitest suite. It provides repeatable visual regression tests, saved baselines and review tools in the page or a Vitest browser suite in CI.
 
+SnapStudio (https://snapdom.dev/snapstudio/) is the official SnapDOM extension for Chrome, for people who want a capture without writing code. It opens in a side panel, captures an element, a region, the visible area or the full page, and saves it as PNG, JPEG, WebP, SVG, PDF, HTML, editable SVG, a Figma paste, GIF or video. It can show the current capture as SnapDOM code. It collects no data and runs in the browser. Install it from the Chrome Web Store: https://chromewebstore.google.com/detail/snapstudio/alhbgenkncnogdpfgjbldjgohhfodohm
+
 An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect an edit, and SnapDiff to maintain regression coverage. These steps require explicit setup; baselines are managed separately. SnapEye's URL trigger reloads the page; use its in-page API for states already reached through interaction.
 
 ## Further reading
@@ -716,6 +718,7 @@ An agent or test harness can use SnapSurf to reach a state, SnapEye to inspect a
 - Vector: https://snapdom.dev/plugins/vector/ (the reference is on the same page)
 - Stream: https://snapdom.dev/plugins/stream/ (the reference is on the same page)
 - Ecosystem: https://snapdom.dev/ecosystem/
+- SnapStudio (Chrome extension): https://snapdom.dev/snapstudio/
 - SnapDiff: https://snapdom.dev/tools/snapdiff/
 - SnapEye: https://snapdom.dev/tools/snapeye/
 - SnapSurf: https://snapdom.dev/tools/snapsurf/

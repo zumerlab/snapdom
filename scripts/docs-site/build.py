@@ -1,7 +1,7 @@
 # Builds the snapdom.dev pages that use the pane template (docs/panes.css, docs/panes.js):
 # sidebar, reading column, and the live demo below the reading column where a page has one.
 #   python3 scripts/docs-site/build.py
-# plugins.py, tools.py and ecosystem.py write their pages from data; sections.py converts the
+# plugins.py, tools.py, snapstudio.py and ecosystem.py write their pages from data; sections.py converts the
 # existing content pages (docs, how-to, guides, compare, blog, labs) in place and is
 # idempotent, so it can run again after a page's content changes. finish.py then refreshes
 # the shared chrome of every page and metadata.py rebuilds the sitemap.
@@ -14,13 +14,13 @@ SITE = 'https://snapdom.dev/'
 
 MENU = [
  ('Learn', [('Docs','docs/','capture','API, options and quick start'),('How-to','how-to/','start','Recipes and framework guides'),('Compare','compare/','ecosystem','SnapDOM vs html2canvas and others')]),
- ('Explore', [('Showcase','showcase/','labs','Live demos and labs'),('Plugins','plugins/','export','PDF, Vector, Stream and the toolbox'),('Blog','blog/','record','Engineering notes')]),
- ('Community', [('Ecosystem','ecosystem/','ecosystem','SnapDiff, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
+ ('Explore', [('Showcase','showcase/','labs','Live demos and labs'),('Plugins','plugins/','export','PDF, Vector, Stream and the toolbox'),('SnapStudio','snapstudio/','capture','The Chrome extension'),('Blog','blog/','record','Engineering notes')]),
+ ('Community', [('Ecosystem','ecosystem/','ecosystem','SnapStudio, SnapDiff, SnapEye, SnapSurf'),('Made with','made-with/','context','Projects using SnapDOM')]),
 ]
 FOOT = [
  ('Learn', [('Documentation','docs/'),('Quick start','docs/#quick-start'),('How-to recipes','how-to/'),('Framework guides','how-to/#frameworks'),('Compare','compare/')]),
  ('Explore', [('Showcase','showcase/'),('Plugins','plugins/'),('PDF','plugins/pdf/'),('Vector','plugins/vector/'),('Stream','plugins/stream/'),('Writing plugins','docs/plugins/#build'),('Labs','showcase/#labs'),('Blog','blog/')]),
- ('Community', [('Ecosystem','ecosystem/'),('SnapDiff','tools/snapdiff/'),('SnapEye','tools/snapeye/'),('SnapSurf','tools/snapsurf/'),('Made with','made-with/'),('Community plugins','plugins/#community-plugins'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
+ ('Community', [('Ecosystem','ecosystem/'),('SnapStudio','snapstudio/'),('SnapDiff','tools/snapdiff/'),('SnapEye','tools/snapeye/'),('SnapSurf','tools/snapsurf/'),('Made with','made-with/'),('Community plugins','plugins/#community-plugins'),('GitHub','https://github.com/zumerlab/snapdom'),('npm','https://www.npmjs.com/package/@zumer/snapdom'),('Sponsors','https://github.com/sponsors/tinchox5')]),
 ]
 
 CUR = ' aria-current="page"'
@@ -36,6 +36,7 @@ def header(active, root='../'):
             f'<a class="site-shell-brand" href="{root or "./"}" aria-label="SnapDOM home"><span class="site-shell-mark"></span><span>SnapDOM</span></a>'
             f'<nav class="site-nav" aria-label="Main navigation">{"".join(groups)}</nav>'
             '<button type="button" class="site-menu-button" aria-expanded="false">Menu</button>'
+            f'<a class="site-try" href="{root}snapstudio/">Try SnapStudio</a>'
             '<a class="site-shell-github" aria-label="SnapDOM on GitHub" href="https://github.com/zumerlab/snapdom" target="_blank" rel="noopener"><span>GitHub</span><span class="site-shell-stars">★ <span data-star-count>8K</span></span></a>'
             '</div></header>')
 
@@ -294,7 +295,7 @@ def standalone(path, active, head, groups, placeholder, label, sec, title, inner
     os.makedirs(os.path.dirname(full), exist_ok=True)
     open(full, 'w').write(page_navigation(doc, path))
 
-for name in ('plugins.py', 'tools.py', 'ecosystem.py', 'sections.py'):
+for name in ('plugins.py', 'tools.py', 'snapstudio.py', 'ecosystem.py', 'sections.py'):
     exec(open(os.path.join(HERE, name)).read())
 
 exec(open(os.path.join(HERE, 'finish.py')).read(), {'__file__': os.path.join(HERE, 'finish.py')})

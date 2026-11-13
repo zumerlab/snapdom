@@ -131,6 +131,20 @@
   letter-spacing: 0;
   text-transform: none;
 }
+.site-try {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid #3578E3;
+  background: #3578E3;
+  color: #FFFFFF;
+  font: 700 12px Roboto, Arial, Helvetica, sans-serif;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+}
+.site-try:hover { background: #2460C8; border-color: #2460C8; }
 .site-head.is-menu-open .site-menu-button { border-color: #3578E3; background: #1B212B; color: #FFFFFF; }
 
 @media (max-width: 1080px) {
@@ -167,6 +181,7 @@
 }
 @media (max-width: 600px) {
   .site-head-inner { width: calc(100% - 28px); min-height: 64px; gap: 10px; }
+  .site-try { display: none; }
   .site-head .site-shell-brand { font-size: 21px; gap: 8px; white-space: nowrap; }
   .site-head :is(.site-search-button, .site-menu-button, .site-shell-github) {
     box-sizing: border-box;
