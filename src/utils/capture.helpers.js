@@ -447,16 +447,19 @@ export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap, sta
 }
 
 const XMLNS_ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
+const XML_ATTR_NAME = /^[A-Za-z_:][\w.:-]*$/
 
 /** True when an attribute name can't survive XHTML serialization (or is a framework directive). */
 function isInvalidXHTMLAttr(name, stripFrameworkDirectives) {
-  if (name.startsWith('*')) return true
+  // The HTML parser accepts almost any attribute name and XMLSerializer writes it verbatim:
+  // `<img \/>` yields an attribute called `\`, the tag comes out as `\=""` and the SVG fails
+  // to decode. ASCII only on purpose: Firefox's XML parser (XML 1.0 4th edition) rejects
+  // later-Unicode names that Chromium and WebKit take, and a dropped attribute costs nothing.
+  if (!XML_ATTR_NAME.test(name)) return true
   // `xmlns` set through setAttribute is a plain attribute beside the element's real
   // namespace, which XMLSerializer writes too. Any other value, even with a trailing
   // space, leaves two xmlns attributes on one tag and the SVG fails to decode (#511).
   if (name === 'xmlns') return true
-  // "@": never valid in XML attribute names
-  if (name.includes('@')) return true
   // ":" requires a declared namespace (xml:, xlink:)
   if (name.includes(':')) {
     const prefix = name.split(':', 1)[0]

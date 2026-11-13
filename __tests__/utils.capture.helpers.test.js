@@ -152,6 +152,27 @@ describe('sanitizeCloneForXHTML: attributes', () => {
     expect(svg.hasAttribute('xmlns')).toBe(false)
     expect(svg.getAttribute('viewBox')).toBe('0 0 16 16')
   })
+
+  // A page that closes its tags with `\/>` (minutouno.com does) gives every such element an
+  // attribute called `\`. Written into the SVG as `\=""` it made the whole capture
+  // undecodable: "The source image cannot be decoded".
+  it('removes attribute names the HTML parser accepts and XML does not', async () => {
+    const root = document.createElement('div')
+    root.innerHTML = '<img width="4" height="4" data-ok="1" data-a.b_c="2" \\/><p "="" 1a="" -b="" {c}="" d,e="" ñ="">text</p>'
+    document.body.appendChild(root)
+    const [img, p] = root.children
+    expect(img.hasAttribute('\\')).toBe(true)
+
+    const { snapdom } = await import('../src/index.js')
+    const out = await (await snapdom(root)).toPng()
+    expect(out.naturalWidth).toBeGreaterThan(0)
+
+    sanitizeCloneForXHTML(root)
+    expect([...img.attributes].map(a => a.name)).toEqual(['width', 'height', 'data-ok', 'data-a.b_c'])
+    expect(p.attributes.length).toBe(0)
+    expect(() => new XMLSerializer().serializeToString(root)).not.toThrow()
+    expect(new DOMParser().parseFromString(new XMLSerializer().serializeToString(root), 'application/xml').querySelector('parsererror')).toBe(null)
+  })
 })
 
 describe('sanitizeCloneForXHTML', () => {
