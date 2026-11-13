@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.7.5](https://github.com/zumerlab/snapdom/compare/v3.7.4...v3.7.5)
+
+> 13 November 2026
+
+**Features**
+
+- **plugins:** jxl, JPEG XL exports with exact text [`#556`](https://github.com/zumerlab/snapdom/pull/556)
+
+**Fixes**
+- **sanitize:** add test for removing invalid XHTML attributes in SVG [`ad634b1`](https://github.com/zumerlab/snapdom/commit/ad634b193a8882b1e68655a73cad39ef88fbc9d4)
+- **plugins:** accept the subpath-only jxl export in the packaging check [`8f432ad`](https://github.com/zumerlab/snapdom/commit/8f432addb4da8248c4d2fab2a74fe0ec0dba9d77)
+
+**Docs**
+
+- **site:** add the AI agents page and link it from the docs, README and llms files [`d50b626`](https://github.com/zumerlab/snapdom/commit/d50b626007ad1de87681c4f35a6e1f7a0062636f)
+- **site:** add the JPEG XL plugin page [`fc154dc`](https://github.com/zumerlab/snapdom/commit/fc154dc1c44ab23bfa1e3a881ac1356ab9953ba3)
+- **site:** SnapStudio privacy policy [`6fa3ddf`](https://github.com/zumerlab/snapdom/commit/6fa3ddf014b3e874d7a70339b801f8c6897fdcea)
+- **privacy:** update last updated date and enhance history description [`cf2a411`](https://github.com/zumerlab/snapdom/commit/cf2a411909b6d8b1805af6ea5b45ec333bedfa51)
+- drop the never-star line from the agent skill and its page [`6c5db25`](https://github.com/zumerlab/snapdom/commit/6c5db25c98c72ff96a7d39c325dbfb78c8ef0da7)
+
+**Tests**
+
+- **exporter:** pin the svg data URL length on a token-heavy workflow [`5078e80`](https://github.com/zumerlab/snapdom/commit/5078e80a2538fc83dc9b026b1921ddba8829fc63)
+- **plugins:** widen the Firefox drop cap tolerance in the jxl suite [`c145f30`](https://github.com/zumerlab/snapdom/commit/c145f30d88ff49952b965308f400376141aac6d9)
+
+
 #### [v3.7.4](https://github.com/zumerlab/snapdom/compare/v3.7.3...v3.7.4)
 
 > 9 November 2026
