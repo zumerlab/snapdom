@@ -1044,4 +1044,44 @@ describe('createCheckboxRadioReplacement (#311)', () => {
     const { el } = createCheckboxRadioReplacement(input)
     expect(paints(el)).toContain('rgb(255, 0, 128)')
   })
+
+  // #560: `auto` is the UA's own accent, which CSS names AccentColor. The text colour stood in
+  // for it, and on a dark page that is near white: a checked box came out light under a white
+  // tick.
+  const systemAccent = CSS.supports('color', 'AccentColor') && CSS.supports('color', 'AccentColorText')
+  const control = (type, checked) => {
+    const input = document.createElement('input')
+    input.type = type
+    input.checked = checked
+    input.style.colorScheme = 'dark'
+    document.body.appendChild(input)
+    return input
+  }
+
+  it.runIf(systemAccent)('fills a checked `auto` control with the system accent (#560)', () => {
+    const box = createCheckboxRadioReplacement(control('checkbox', true)).el
+    expect(box.querySelector('rect').getAttribute('fill')).toBe('AccentColor')
+    expect(box.querySelector('rect').getAttribute('stroke')).toBe('AccentColor')
+    expect(box.querySelector('path').getAttribute('stroke')).toBe('AccentColorText')
+
+    const [ring, dot] = createCheckboxRadioReplacement(control('radio', true)).el.querySelectorAll('circle')
+    expect(ring.getAttribute('fill')).toBe('AccentColor')
+    expect(dot.getAttribute('fill')).toBe('AccentColorText')
+  })
+
+  it('outlines an unchecked `auto` control in its text colour', () => {
+    for (const type of ['checkbox', 'radio']) {
+      const input = control(type, false)
+      const shape = createCheckboxRadioReplacement(input).el.querySelector('rect, circle')
+      expect(shape.getAttribute('fill')).toBe('none')
+      expect(shape.getAttribute('stroke')).toBe(getComputedStyle(input).color)
+    }
+  })
+
+  it('draws a white tick on an authored accent-color', () => {
+    const input = control('checkbox', true)
+    input.style.accentColor = 'rgb(255, 0, 128)'
+    const { el } = createCheckboxRadioReplacement(input)
+    expect(el.querySelector('path').getAttribute('stroke')).toBe('white')
+  })
 })

@@ -66,6 +66,14 @@ describe('createRangeReplacement', () => {
     expect(CSS.supports('color', thumbOf(plainEl).fill)).toBe(true)
   })
 
+  // #560: the filled run of an `auto` slider takes the accent a checked box takes.
+  const systemAccent = CSS.supports('color', 'AccentColor') && CSS.supports('color', 'AccentColorText')
+  it.runIf(systemAccent)('fills the run of an `auto` slider with the system accent', () => {
+    const input = mount('<input type="range" value="70">')
+    const { el } = createRangeReplacement(input)
+    expect(el.querySelectorAll('rect')[1].getAttribute('fill')).toBe('AccentColor')
+  })
+
   it('dims a disabled slider and keeps the control box', () => {
     const input = mount('<input type="range" value="50" disabled style="width:120px;height:20px">')
     const { el } = createRangeReplacement(input)
@@ -164,6 +172,35 @@ describe('the raster carries the control', () => {
     } finally {
       style.remove()
     }
+  })
+
+  // #560: `accent-color: auto` is drawn with the AccentColor keyword, so the keyword has to
+  // resolve inside the capture to what the page resolves it to. An indeterminate box takes the
+  // drawn control on every engine, a checked one on Firefox only.
+  const systemAccent = CSS.supports('color', 'AccentColor')
+  // Probed inside the capture root: a system colour resolves in its element's colour scheme.
+  const systemAccentRgb = () => {
+    const probe = document.createElement('div')
+    probe.style.color = 'AccentColor'
+    mounted.appendChild(probe)
+    const rgb = getComputedStyle(probe).color.match(/[\d.]+/g).slice(0, 3).map(Number)
+    probe.remove()
+    return rgb
+  }
+
+  it.runIf(systemAccent)('paints an indeterminate `auto` box in the system accent', async () => {
+    const input = mount('<input type="checkbox" style="width:30px;height:30px;margin:0">')
+    input.indeterminate = true
+    const canvas = await snapdom.toCanvas(mounted, { dpr: 1, embedFonts: false, burst: false })
+    expect(accentHits(canvas, systemAccentRgb())).toBeGreaterThan(100)
+  })
+
+  it.runIf(systemAccent && isFirefox())('fills a checked `auto` box with the system accent on a dark page', async () => {
+    mount('<input type="checkbox" checked style="width:30px;height:30px;margin:0">')
+    mounted.style.colorScheme = 'dark'
+    mounted.style.background = '#22252b'
+    const canvas = await snapdom.toCanvas(mounted, { dpr: 1, embedFonts: false, burst: false })
+    expect(accentHits(canvas, systemAccentRgb())).toBeGreaterThan(300)
   })
 
   it('paints the colour well on every engine', async () => {

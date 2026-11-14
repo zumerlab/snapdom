@@ -613,22 +613,49 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
 // ========== Checkbox/Radio replacement (Firefox fix) ==========
 
+/** @type {{ fill: string, mark: string } | undefined} */
+let systemAccent
+
 /**
- * The control's accent, as a colour SVG can take. `accent-color` computes to the keyword
- * `auto` when the author never set one — a truthy string, so falling through a `||` chain
- * handed SVG an invalid paint and the control rendered black. The UA's own auto accent is
- * not readable from CSS, so a blue in the range every desktop UA ships stands in for it.
- * @param {CSSStyleDeclaration | undefined} cs computed style of the control
- * @returns {string}
+ * What `accent-color: auto` paints with: the system colours, which resolve inside the capture
+ * to what the page resolves them to (#560, Firefox 160 and Chrome 157). Firefox paints its
+ * controls in them. Chromium does on a light page only: on a dark one its controls are a
+ * lighter blue than its AccentColor. Without the keywords, a blue in the range every desktop
+ * UA ships.
+ * @returns {{ fill: string, mark: string }}
  */
-function resolveAccentColor(cs) {
+function resolveSystemAccent() {
+  if (!systemAccent) {
+    let keywords = false
+    try {
+      keywords = CSS.supports('color', 'AccentColor') && CSS.supports('color', 'AccentColorText')
+    } catch { /* no CSS.supports */ }
+    systemAccent = keywords
+      ? { fill: 'AccentColor', mark: 'AccentColorText' }
+      /* c8 ignore next -- every engine the suite runs has both keywords */
+      : { fill: '#0a6ed1', mark: 'white' }
+  }
+  return systemAccent
+}
+
+/**
+ * The paints a drawn control takes from its accent: `fill` for a checked box or radio and a
+ * slider's run, `mark` for the tick or dot on it, `rim` for the outline of a control that is
+ * neither checked nor indeterminate.
+ * `accent-color` computes to the keyword `auto` when the author never set one, which SVG can't
+ * paint. With `auto`, `rim` is the text colour, close to the UA's neutral outline.
+ * @param {CSSStyleDeclaration | undefined} cs computed style of the control
+ * @returns {{ fill: string, mark: string, rim: string }}
+ */
+function resolveAccent(cs) {
+  let text = ''
   try {
     const accent = cs && cs.accentColor
-    if (accent && accent !== 'auto' && accent !== 'none') return accent
-    const color = cs && cs.color
-    if (color) return color
+    if (accent && accent !== 'auto' && accent !== 'none') return { fill: accent, mark: 'white', rim: accent }
+    text = (cs && cs.color) || ''
   } catch { /* detached or cross-realm */ }
-  return '#0a6ed1'
+  const { fill, mark } = resolveSystemAccent()
+  return { fill, mark, rim: text || fill }
 }
 
 /**
@@ -683,7 +710,7 @@ export function createRangeReplacement(node) {
   box.appendChild(svg)
 
   function applyVisual() {
-    const accent = resolveAccentColor(cs)
+    const accent = resolveAccent(cs).fill
     const disabled = !!node.disabled
     const trackH = Math.max(2, Math.min(4, h))
     const trackY = (h - trackH) / 2
@@ -775,7 +802,7 @@ export function createCheckboxRadioReplacement(node) {
   box.appendChild(svg)
 
   function applyVisual() {
-    const color = resolveAccentColor(cs)
+    const { fill: color, mark, rim } = resolveAccent(cs)
     const stroke = 2
     const pad = stroke / 2
     const inner = s - stroke
@@ -789,13 +816,13 @@ export function createCheckboxRadioReplacement(node) {
       rectEl.setAttribute('rx', '2')
       rectEl.setAttribute('ry', '2')
       rectEl.setAttribute('fill', checked ? color : 'none')
-      rectEl.setAttribute('stroke', color)
+      rectEl.setAttribute('stroke', checked || indeterminate ? color : rim)
       rectEl.setAttribute('stroke-width', String(stroke))
       svg.appendChild(rectEl)
       if (checked) {
         const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
         path.setAttribute('d', `M ${pad + 2} ${s / 2} L ${s / 2 - 1} ${s - pad - 2} L ${s - pad - 2} ${pad + 2}`)
-        path.setAttribute('stroke', 'white')
+        path.setAttribute('stroke', mark)
         path.setAttribute('stroke-width', String(Math.max(1.5, stroke)))
         path.setAttribute('fill', 'none')
         path.setAttribute('stroke-linecap', 'round')
@@ -818,7 +845,7 @@ export function createCheckboxRadioReplacement(node) {
       circle.setAttribute('cy', String(s / 2))
       circle.setAttribute('r', String((s - stroke) / 2))
       circle.setAttribute('fill', checked ? color : 'none')
-      circle.setAttribute('stroke', color)
+      circle.setAttribute('stroke', checked ? color : rim)
       circle.setAttribute('stroke-width', String(stroke))
       svg.appendChild(circle)
       if (checked) {
@@ -827,7 +854,7 @@ export function createCheckboxRadioReplacement(node) {
         dot.setAttribute('cx', String(s / 2))
         dot.setAttribute('cy', String(s / 2))
         dot.setAttribute('r', String(r))
-        dot.setAttribute('fill', 'white')
+        dot.setAttribute('fill', mark)
         svg.appendChild(dot)
       }
     }
