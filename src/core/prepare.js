@@ -296,7 +296,11 @@ export async function prepareClone(element, options = {}) {
   // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
 
   try {
-    const styleNodes = clone.querySelectorAll('style[data-sd]')
+    // Shallow first (#558): a group's one copy must follow every scope above any member and
+    // precede every scope below one. Same-depth scopes never cover one element, so their order
+    // is free. The sort is stable, so with no sharing the only blocks it moves against the
+    // document order it replaced are ones whose subtrees never meet.
+    const styleNodes = [...clone.querySelectorAll('style[data-sd]')].sort((a, b) => a.getAttribute('data-sd') - b.getAttribute('data-sd'))
     for (const s of styleNodes) {
       shadowScopedCSS += s.textContent || ''
       s.remove() // Do not leave <style> inside the visual clone

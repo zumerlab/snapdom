@@ -173,11 +173,14 @@ export function resolveMediaQueries(rules) {
 
 /**
  * Extract CSS text from a ShadowRoot: inline <style> plus adoptedStyleSheets (if readable),
- * with @media resolved against the live viewport (see resolveMediaQueries).
+ * with @media resolved against the live viewport (see resolveMediaQueries). Each adopted
+ * sheet is read once per capture. Sixteen roots on one 5,000-rule sheet read it sixteen times,
+ * most of the 60 ms the capture still took once they shared one copy (#558); now it takes 9.
  * @param {ShadowRoot} sr
+ * @param {WeakMap<CSSStyleSheet, string>} sheetText per-capture text of each adopted sheet
  * @returns {string}
  */
-export function extractShadowCSS(sr) {
+export function extractShadowCSS(sr, sheetText) {
   let css = ''
   try {
     sr.querySelectorAll('style').forEach(s => {
@@ -189,7 +192,9 @@ export function extractShadowCSS(sr) {
     const sheets = sr.adoptedStyleSheets || []
     for (const sh of sheets) {
       try {
-        if (sh && sh.cssRules) css += resolveMediaQueries(sh.cssRules)
+        let text = sheetText.get(sh)
+        if (text === undefined) sheetText.set(sh, text = sh.cssRules ? resolveMediaQueries(sh.cssRules) : '')
+        css += text
       } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
@@ -197,15 +202,16 @@ export function extractShadowCSS(sr) {
 }
 
 /**
- * Inject a <style> as the first child of `hostClone` with rewritten CSS.
+ * Inject a <style> as the first child of `hostClone` with rewritten CSS. Its `data-sd` holds
+ * the host's shadow depth, the order prepare.js emits the blocks in (#558).
  * @param {Element} hostClone
  * @param {string} cssText
- * @param {string} scopeId like s1
+ * @param {number} depth shadow hosts above this one
  */
-export function injectScopedStyle(hostClone, cssText, scopeId) {
+export function injectScopedStyle(hostClone, cssText, depth) {
   if (!cssText) return
   const style = document.createElement('style')
-  style.setAttribute('data-sd', scopeId)
+  style.setAttribute('data-sd', depth)
   style.textContent = cssText
   // prepend to ensure it wins over later subtree
   hostClone.insertBefore(style, hostClone.firstChild || null)

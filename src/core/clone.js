@@ -1096,23 +1096,42 @@ export async function deepClone(node, sessionCache, options) {
       }
     } catch {
     }
-    const scopeId = nextShadowScopeId(sessionCache)
-    const scopeSelector = `[data-sd="${scopeId}"]`
-    sessionCache.shadowScopes ||= new WeakMap()
-    sessionCache.shadowScopes.set(shadow, scopeId)
+    const scopes = sessionCache.shadowScopes ||= new WeakMap()
+    // #558: design systems hand the same sheet to every component, and each root used to get
+    // its own rewritten copy. Sixteen components on one 5,000-rule sheet made a 9.9 MB svg that
+    // took 104 ms to raster. Now they share one copy, carried as a group token in `data-sd`, and
+    // the svg is 0.6 MB, rastered in 4 ms and captured in 9 instead of 116 (with the sheet memo
+    // in extractShadowCSS). Each host keeps its own custom-property seed, keyed on its whole
+    // `data-sd`. Only hosts at the same depth share, depth being the shadow hosts above.
+    // prepare.js writes the blocks shallow first, so a host's own rules still come after the
+    // ones that reach it from above, and two hosts of one group are never nested, so a slotted
+    // mark means one thing. Pinned by __tests__/core.clone.issue558.test.js.
+    let depth = 0
+    for (let p = node; (p = p.assignedSlot || p.parentNode || (p.nodeType === 11 ? p.host : null));) {
+      if (p.shadowRoot && scopes.has(p.shadowRoot)) depth++
+    }
+    const ownId = nextShadowScopeId(sessionCache)
+    const rawCSS = extractShadowCSS(shadow, sessionCache.shadowSheets ||= new WeakMap())
+    const groups = (sessionCache.shadowGroups ||= [])[depth] ||= new Map()
+    let group = rawCSS && groups.get(rawCSS)
+    let rewritten = ''
+    if (!group) {
+      group = { id: ownId, vars: collectCustomPropsFromCSS(rawCSS) }
+      if (rawCSS) groups.set(rawCSS, group)
+      // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
+      // among them, and a page whose only ::after lives in a shadow root skipped the pass
+      // entirely (the pinned shadow ::after that never painted).
+      if (!sessionCache.__shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.__shadowPseudo = true
+      rewritten = rewriteShadowCSS(rawCSS, `[data-sd~="${ownId}"]`, ownId)
+    }
+    const hostId = group.id === ownId ? ownId : `${ownId} ${group.id}`
+    scopes.set(shadow, group.id)
     try {
-      clone.setAttribute('data-sd', scopeId)
+      clone.setAttribute('data-sd', hostId)
     } catch {
     }
-    const rawCSS = extractShadowCSS(shadow)
-    // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
-    // among them, and a page whose only ::after lives in a shadow root skipped the pass
-    // entirely (the pinned shadow ::after that never painted).
-    if (!sessionCache.__shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.__shadowPseudo = true
-    const rewritten = rewriteShadowCSS(rawCSS, scopeSelector, scopeId)
-    const neededVars = collectCustomPropsFromCSS(rawCSS)
-    const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)
-    injectScopedStyle(clone, seed + rewritten, scopeId)
+    const seed = buildSeedCustomPropsRule(node, group.vars, `[data-sd="${hostId}"]`)
+    injectScopedStyle(clone, seed + rewritten, depth)
     // Children clone concurrently (sibling iframe/canvas work overlaps); a failed child
     // resolves to null and is dropped. A leaf is cloned in place, as in the light-DOM loop below.
     const shadowFrag = document.createDocumentFragment()

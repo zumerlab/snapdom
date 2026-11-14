@@ -461,8 +461,8 @@ describe('deepClone – targeted branches for coverage gaps', () => {
   // Seeding rule present
   expect(css).toMatch(/--brand:\s*hotpink/)
   // Rewriting applied
-  expect(css).toMatch(/:where\(\[data-sd="s\d+"\]\s+\.btn:not\(\[data-sd-slotted~="s\d+"\]\)\)/)
-  expect(css).toMatch(/:where\(\[data-sd="s\d+"\]\s+a\)/)
+  expect(css).toMatch(/:where\(\[data-sd~="s\d+"\]\s+\.btn:not\(\[data-sd-slotted~="s\d+"\]\)\)/)
+  expect(css).toMatch(/:where\(\[data-sd~="s\d+"\]\s+a\)/)
 
   host.remove()
 })
@@ -529,11 +529,11 @@ describe('deepClone – extra targets to lift coverage', () => {
     expect(css).toMatch(/\[data-sd="s\d+"\]\{[^}]*--brand:\s*deepskyblue/i)
 
     // ::slotted reescrito como descendiente dentro del scope (sin exclusión slotted)
-    expect(css).toMatch(/:where\(\[data-sd="s\d+"\]\s+a\)/)
+    expect(css).toMatch(/:where\(\[data-sd~="s\d+"\]\s+a\)/)
 
      const alreadyMatches = css.match(/:where\(\.already\)/g) || []
       expect(alreadyMatches.length).toBe(1)
-       expect(css).toMatch(/:where\(\s*\[?data-sd="s\d+"\]?[^)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted~="s\d+"\]\)\)/)
+       expect(css).toMatch(/:where\(\s*\[?data-sd~="s\d+"\]?[^)]*\)\s*[\s\S]*:where\(\.already\)\s*:not\(\[data-sd-slotted~="s\d+"\]\)\)/)
 
     // @media is resolved during extraction: the condition matches (min-width:1px), so the
     // regla interna se inlinea SIN wrapper (el viewport del SVG no debe re-evaluarla) y
