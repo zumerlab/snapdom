@@ -911,7 +911,9 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       sessionCache.styleMap.set(pseudoEl, key)
 
       // ---- Content handling (icon-font glyphs / url() / text) ----
-      if (isIconFont2 && cleanContent && cleanContent.length === 1) {
+      // One code point, not one UTF-16 unit: a glyph above U+FFFF (Material Design Icons 5+)
+      // is a surrogate pair. Pinned by __tests__/module.pseudo.issue557.test.js.
+      if (isIconFont2 && cleanContent && [...cleanContent].length === 1) {
         const { dataUrl, height: h, advance, descent } =
           await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color, fontStyle)
         const imgEl = document.createElement('img')
