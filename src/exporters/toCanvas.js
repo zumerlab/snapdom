@@ -335,7 +335,7 @@ function rewriteCssBlock(css) {
 function rewriteSvgBoxShadowToDropShadow(svgText) {
   // 1) <style>…</style>
   svgText = svgText.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (m, css) =>
-    m.replace(css, rewriteCssBlock(css))
+    m.replace(css, () => rewriteCssBlock(css))
   )
   // 2) style="…"
   svgText = svgText.replace(/style=(['"])([\s\S]*?)\1/gi, (m, q, body) =>
@@ -420,7 +420,7 @@ function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
     return d
   }).join(';')
   svgText = svgText.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (m, css) =>
-    m.replace(css, css.replace(/([^{}]+)\{([^}]*)\}/g, (_m, sel, body) => `${sel}{${rewriteList(body)}}`))
+    m.replace(css, () => css.replace(/([^{}]+)\{([^}]*)\}/g, (_m, sel, body) => `${sel}{${rewriteList(body)}}`))
   )
   svgText = svgText.replace(/style=(['"])([\s\S]*?)\1/gi, (m, q, body) => `style=${q}${rewriteList(body)}${q}`)
   return svgText

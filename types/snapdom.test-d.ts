@@ -253,3 +253,19 @@ void pluginShape
 void normalizedPluginContext
 void preCaptureHelper
 void canvasTargetOption
+
+async function exportCssOptionTypes() {
+  const result = await snapdom(el)
+  await result.toPng({ css: '.hit{outline:3px solid #f0f!important}' })
+  await result.toJpg({ css: '.hit{outline:3px solid #f0f!important}' })
+  await result.toCanvas({ css: '.hit{outline:3px solid #f0f!important}', crop: { x: 0, y: 0, width: 10, height: 10 } })
+  await result.toWebp({ css: '.hit{outline:3px solid #f0f!important}' })
+  await result.toBlob({ format: 'png', css: '.hit{outline:3px solid #f0f!important}' })
+  await result.toSvg({ css: '.hit{outline:3px solid #f0f!important}' })
+  await result.toImg({ css: '.hit{outline:3px solid #f0f!important}' })
+  await result.download({ filename: 'styled', css: '.hit{outline:3px solid #f0f!important}' })
+  // @ts-expect-error css is an export option on CaptureResult, not a capture option.
+  const badCapture: SnapdomOptions = { css: '.hit{outline:3px solid #f0f!important}' }
+  void badCapture
+}
+void exportCssOptionTypes
