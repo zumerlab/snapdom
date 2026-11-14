@@ -1069,19 +1069,71 @@ describe('createCheckboxRadioReplacement (#311)', () => {
     expect(dot.getAttribute('fill')).toBe('AccentColorText')
   })
 
-  it('outlines an unchecked `auto` control in its text colour', () => {
+  // An accent only shows on a checked control: unchecked, the UA draws its neutral outline.
+  it('outlines an unchecked control in its text colour, whatever its accent', () => {
     for (const type of ['checkbox', 'radio']) {
-      const input = control(type, false)
-      const shape = createCheckboxRadioReplacement(input).el.querySelector('rect, circle')
-      expect(shape.getAttribute('fill')).toBe('none')
-      expect(shape.getAttribute('stroke')).toBe(getComputedStyle(input).color)
+      for (const accent of ['', 'rgb(255, 0, 128)']) {
+        const input = control(type, false)
+        input.style.accentColor = accent
+        const shape = createCheckboxRadioReplacement(input).el.querySelector('rect, circle')
+        expect(shape.getAttribute('fill')).toBe('none')
+        expect(shape.getAttribute('stroke')).toBe(getComputedStyle(input).color)
+      }
     }
   })
 
-  it('draws a white tick on an authored accent-color', () => {
+  // The UA picks the tick by contrast. A white one on a light accent is the same unreadable
+  // box as #560. Firefox 160 turns the tick dark between a grey of 167 and 168.
+  it('draws the tick and the dot that read on an authored accent-color', () => {
+    const marks = (accent) => ['checkbox', 'radio'].map((type) => {
+      const input = control(type, true)
+      input.style.accentColor = accent
+      const { el } = createCheckboxRadioReplacement(input)
+      return type === 'checkbox'
+        ? el.querySelector('path').getAttribute('stroke')
+        : el.querySelectorAll('circle')[1].getAttribute('fill')
+    })
+    expect(marks('rgb(255, 0, 128)')).toEqual(['white', 'white'])
+    expect(marks('rgb(167, 167, 167)')).toEqual(['white', 'white'])
+    expect(marks('rgb(168, 168, 168)')).toEqual(['black', 'black'])
+    expect(marks('rgb(255, 225, 77)')).toEqual(['black', 'black'])
+    expect(marks('oklch(0.9 0.15 100)')).toEqual(['black', 'black'])
+  })
+
+  // A "select all" box is often both. Every engine shows the dash.
+  it('draws the dash on a checkbox that is checked and indeterminate', () => {
     const input = control('checkbox', true)
+    input.indeterminate = true
     input.style.accentColor = 'rgb(255, 0, 128)'
     const { el } = createCheckboxRadioReplacement(input)
-    expect(el.querySelector('path').getAttribute('stroke')).toBe('white')
+    const [box, dash] = el.querySelectorAll('rect')
+    expect(el.querySelector('path')).toBeNull()
+    expect(box.getAttribute('fill')).toBe('none')
+    expect(box.getAttribute('stroke')).toBe('rgb(255, 0, 128)')
+    expect(dash.getAttribute('fill')).toBe('rgb(255, 0, 128)')
+  })
+
+  // A disabled control is grey whatever its accent. In the system accent it read as enabled.
+  it('draws a disabled control in its greyed text colour, dimmed', () => {
+    const fieldset = document.createElement('fieldset')
+    fieldset.disabled = true
+    document.body.appendChild(fieldset)
+    for (const type of ['checkbox', 'radio']) {
+      for (const accent of ['', 'rgb(255, 0, 128)']) {
+        const own = control(type, true)
+        own.disabled = true
+        const inherited = fieldset.appendChild(control(type, true))
+        for (const input of [own, inherited]) {
+          input.style.accentColor = accent
+          const { el } = createCheckboxRadioReplacement(input)
+          const shape = el.querySelector('rect, circle')
+          expect(shape.getAttribute('fill')).toBe(getComputedStyle(input).color)
+          expect(shape.getAttribute('stroke')).toBe(getComputedStyle(input).color)
+          expect(el.querySelector('svg').getAttribute('opacity')).toBe('0.5')
+        }
+      }
+    }
+    const enabled = createCheckboxRadioReplacement(control('checkbox', true)).el
+    expect(enabled.querySelector('svg').hasAttribute('opacity')).toBe(false)
   })
 })

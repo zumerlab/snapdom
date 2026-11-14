@@ -14,7 +14,7 @@
 import { debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
-import { inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
+import { colorToRgba, inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
 import { splitTopLevel } from '../modules/styleScan.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 import { markInternalNode } from './ownership.js'
@@ -639,21 +639,44 @@ function resolveSystemAccent() {
 }
 
 /**
+ * The tick or dot that reads on an authored accent: white, or black on a light one. Firefox
+ * 160 switches where white's contrast with the accent falls under 2.4: a grey of 167 keeps
+ * the white tick and 168 gets a dark one.
+ * @param {string} accent a computed colour
+ * @returns {string}
+ */
+function markOn(accent) {
+  try {
+    const linear = (channel) => {
+      const c = channel / 255
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+    }
+    const [r, g, b] = colorToRgba(accent)
+    const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+    return 1.05 / (luminance + 0.05) < 2.4 ? 'black' : 'white'
+  } catch { return 'white' } // no canvas
+}
+
+/**
  * The paints a drawn control takes from its accent: `fill` for a checked box or radio and a
  * slider's run, `mark` for the tick or dot on it, `rim` for the outline of a control that is
  * neither checked nor indeterminate.
  * `accent-color` computes to the keyword `auto` when the author never set one, which SVG can't
- * paint. With `auto`, `rim` is the text colour, close to the UA's neutral outline.
+ * paint. `rim` is the text colour, close to the UA's neutral outline: an accent only shows on
+ * a checked control.
  * @param {CSSStyleDeclaration | undefined} cs computed style of the control
  * @returns {{ fill: string, mark: string, rim: string }}
  */
 function resolveAccent(cs) {
+  let accent = ''
   let text = ''
   try {
-    const accent = cs && cs.accentColor
-    if (accent && accent !== 'auto' && accent !== 'none') return { fill: accent, mark: 'white', rim: accent }
+    accent = (cs && cs.accentColor) || ''
     text = (cs && cs.color) || ''
   } catch { /* detached or cross-realm */ }
+  if (accent && accent !== 'auto' && accent !== 'none') {
+    return { fill: accent, mark: markOn(accent), rim: text || accent }
+  }
   const { fill, mark } = resolveSystemAccent()
   return { fill, mark, rim: text || fill }
 }
@@ -773,8 +796,9 @@ export function createCheckboxRadioReplacement(node) {
   let w = Number.isFinite(parsedW) && parsedW > 0 ? Math.round(parsedW) : Math.max(12, rw || 16)
   let h = Number.isFinite(parsedH) && parsedH > 0 ? Math.round(parsedH) : Math.max(12, rh || 16)
   const isCheckbox = (node.type || 'text').toLowerCase() === 'checkbox'
-  const checked = !!node.checked
-  const indeterminate = !!node.indeterminate
+  // An indeterminate checkbox shows the dash whether or not it is checked as well.
+  const indeterminate = isCheckbox && !!node.indeterminate
+  const checked = !!node.checked && !indeterminate
 
   const size = Math.max(Math.min(w, h), 12)
   const s = size
@@ -802,7 +826,13 @@ export function createCheckboxRadioReplacement(node) {
   box.appendChild(svg)
 
   function applyVisual() {
-    const { fill: color, mark, rim } = resolveAccent(cs)
+    const accent = resolveAccent(cs)
+    // A disabled control drops its accent: the UA paints it in the grey it gives the control's
+    // text. Dimmed like the slider above. :disabled matches inside a disabled fieldset too.
+    const disabled = node.matches(':disabled')
+    const rim = accent.rim
+    const color = disabled ? rim : accent.fill
+    const mark = disabled ? 'white' : accent.mark
     const stroke = 2
     const pad = stroke / 2
     const inner = s - stroke
@@ -858,6 +888,7 @@ export function createCheckboxRadioReplacement(node) {
         svg.appendChild(dot)
       }
     }
+    if (disabled) svg.setAttribute('opacity', '0.5')
     // Force dimensions (inlineAllStyles may copy width:0 from native input)
     box.style.setProperty('width', `${bw}px`, 'important')
     box.style.setProperty('height', `${bh}px`, 'important')
