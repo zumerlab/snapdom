@@ -1049,23 +1049,43 @@ describe('createCheckboxRadioReplacement (#311)', () => {
   // for it, and on a dark page that is near white: a checked box came out light under a white
   // tick.
   const systemAccent = CSS.supports('color', 'AccentColor') && CSS.supports('color', 'AccentColorText')
-  const control = (type, checked) => {
+  const control = (type, checked, scheme = 'dark') => {
     const input = document.createElement('input')
     input.type = type
     input.checked = checked
-    input.style.colorScheme = 'dark'
+    input.style.colorScheme = scheme
     document.body.appendChild(input)
     return input
   }
 
-  it.runIf(systemAccent)('fills a checked `auto` control with the system accent (#560)', () => {
-    const box = createCheckboxRadioReplacement(control('checkbox', true)).el
-    expect(box.querySelector('rect').getAttribute('fill')).toBe('AccentColor')
-    expect(box.querySelector('path').getAttribute('stroke')).toBe('AccentColorText')
+  const paintsAs = (userAgent, scheme) => {
+    const ua = vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(userAgent)
+    try {
+      const box = createCheckboxRadioReplacement(control('checkbox', true, scheme)).el
+      const [disc, ring] = createCheckboxRadioReplacement(control('radio', true, scheme)).el.querySelectorAll('circle')
+      return [
+        box.querySelector('rect').getAttribute('fill'), box.querySelector('path').getAttribute('stroke'),
+        disc.getAttribute('fill'), ring.getAttribute('stroke'),
+      ]
+    } finally {
+      ua.mockRestore()
+    }
+  }
 
-    const [disc, ring] = createCheckboxRadioReplacement(control('radio', true)).el.querySelectorAll('circle')
-    expect(disc.getAttribute('fill')).toBe('AccentColor')
-    expect(ring.getAttribute('stroke')).toBe('AccentColorText')
+  const system = ['AccentColor', 'AccentColorText', 'AccentColor', 'AccentColorText']
+
+  it.runIf(systemAccent)('fills a checked `auto` control with the system accent (#560)', () => {
+    const firefox = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0'
+    expect(paintsAs(firefox, 'dark')).toEqual(system)
+    expect(paintsAs(firefox, 'light')).toEqual(system)
+  })
+
+  // Chromium's AccentColor is #0075ff in either colour scheme, but on a dark page it paints its
+  // controls #99c8ff under a mark in the Field colour (Chrome and Edge 157).
+  it.runIf(systemAccent)('takes the lighter blue of a dark page in Chromium', () => {
+    const chromium = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/157.0.0.0 Safari/537.36'
+    expect(paintsAs(chromium, 'dark')).toEqual(['#99c8ff', 'Field', '#99c8ff', 'Field'])
+    expect(paintsAs(chromium, 'light')).toEqual(system)
   })
 
   // The capture's base rule for <svg> resets color-scheme, and the system colours resolve in it.
@@ -1073,10 +1093,12 @@ describe('createCheckboxRadioReplacement (#311)', () => {
     const dark = createCheckboxRadioReplacement(control('checkbox', false)).el.querySelector('svg')
     expect(dark.style.colorScheme).toBe('dark')
 
-    const plain = document.createElement('input')
-    plain.type = 'checkbox'
-    document.body.appendChild(plain)
-    expect(createCheckboxRadioReplacement(plain).el.querySelector('svg').style.colorScheme).toBe('')
+    const light = createCheckboxRadioReplacement(control('checkbox', false, 'light')).el.querySelector('svg')
+    expect(light.style.colorScheme).toBe('light')
+
+    // `light dark` follows the user's preference, which the capture cannot ask for.
+    const either = createCheckboxRadioReplacement(control('checkbox', false, 'light dark')).el.querySelector('svg')
+    expect(either.style.colorScheme).toBe(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
   })
 
   // An accent only shows on a control that is on. Off, the UA draws a hairline around its

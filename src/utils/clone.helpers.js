@@ -18,7 +18,7 @@ import { colorToRgba, inlineAllStyles, invalidateSnapshotsUnder } from '../modul
 import { splitTopLevel } from '../modules/styleScan.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 import { markInternalNode } from './ownership.js'
-import { isFirefox } from './browser.js'
+import { isFirefox, isSafari } from './browser.js'
 
 /** Add the current scope's slotted exclusion at the rightmost compound. */
 function addNotSlottedRightmost(sel, scopeId) {
@@ -613,29 +613,22 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
 // ========== Checkbox/Radio replacement (Firefox fix) ==========
 
-/** @type {{ fill: string, mark: string } | undefined} */
-let systemAccent
-
 /**
  * What `accent-color: auto` paints with: the system colours, which resolve inside the capture
  * to what the page resolves them to (#560, Firefox 160 and Chrome 157). Firefox paints its
- * controls in them. Chromium does on a light page only: on a dark one its controls are a
- * lighter blue than its AccentColor. Without the keywords, a blue in the range every desktop
- * UA ships.
+ * controls in them. Chromium does on a light page only. On a dark one its controls are
+ * #99c8ff under a mark in the Field colour, while its AccentColor stays #0075ff (Chrome and
+ * Edge 157). Inside the capture Chromium paints AccentColor only as the whole value of an
+ * attribute, not inside light-dark(), so the scheme is settled here. Without the keywords, a
+ * blue in the range every desktop UA ships.
+ * @param {boolean} dark whether the control is in the dark colour scheme
  * @returns {{ fill: string, mark: string }}
  */
-function resolveSystemAccent() {
-  if (!systemAccent) {
-    let keywords = false
-    try {
-      keywords = CSS.supports('color', 'AccentColor') && CSS.supports('color', 'AccentColorText')
-    } catch { /* no CSS.supports */ }
-    systemAccent = keywords
-      ? { fill: 'AccentColor', mark: 'AccentColorText' }
-      /* c8 ignore next -- every engine the suite runs has both keywords */
-      : { fill: '#0a6ed1', mark: 'white' }
-  }
-  return systemAccent
+function resolveSystemAccent(dark) {
+  /* c8 ignore next -- every engine the suite runs has both keywords */
+  if (!isColor('AccentColor') || !isColor('AccentColorText')) return { fill: '#0a6ed1', mark: 'white' }
+  if (dark && !isFirefox() && !isSafari()) return { fill: '#99c8ff', mark: 'Field' }
+  return { fill: 'AccentColor', mark: 'AccentColorText' }
 }
 
 /**
@@ -658,6 +651,22 @@ function markOn(accent) {
 }
 
 /**
+ * Whether the control is in the dark colour scheme: its color-scheme, or the page's
+ * `<meta name="color-scheme">` when it has none, with the user's preference choosing between
+ * `light dark`.
+ * @param {CSSStyleDeclaration | undefined} cs computed style of the control
+ * @returns {boolean}
+ */
+function usesDarkScheme(cs) {
+  try {
+    let scheme = (cs && cs.colorScheme) || ''
+    if (!scheme || scheme === 'normal') scheme = document.querySelector('meta[name="color-scheme"]')?.content || ''
+    if (!/\bdark\b/.test(scheme)) return false
+    return !/\blight\b/.test(scheme) || matchMedia('(prefers-color-scheme: dark)').matches
+  } catch { return false } // detached or cross-realm
+}
+
+/**
  * The control's colour scheme, as a declaration for the stand-in's own svg. The capture's base
  * rule for the tag resets color-scheme on every `<svg>`, the stand-in's included, and the system
  * colours it is painted in then resolve as on a light page: on a dark one an unchecked box
@@ -666,11 +675,7 @@ function markOn(accent) {
  * @returns {string}
  */
 function schemeOf(cs) {
-  try {
-    const scheme = cs && cs.colorScheme
-    if (scheme && scheme !== 'normal') return `;color-scheme:${scheme}`
-  } catch { /* detached or cross-realm */ }
-  return ''
+  return `;color-scheme:${usesDarkScheme(cs) ? 'dark' : 'light'}`
 }
 
 /** Whether the engine takes `color` as a colour: an older one lacks some system colours. */
@@ -698,7 +703,7 @@ function resolveAccent(cs) {
     text = (cs && cs.color) || ''
   } catch { /* detached or cross-realm */ }
   const authored = accent && accent !== 'auto' && accent !== 'none'
-  const { fill, mark } = authored ? { fill: accent, mark: markOn(accent) } : resolveSystemAccent()
+  const { fill, mark } = authored ? { fill: accent, mark: markOn(accent) } : resolveSystemAccent(usesDarkScheme(cs))
   const rim = isFirefox() && isColor('ButtonBorder') ? 'ButtonBorder' : text || fill
   return { fill, mark, rim, text: text || fill }
 }
@@ -784,8 +789,15 @@ export function createRangeReplacement(node) {
     const thumb = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     thumb.setAttribute('cx', String(cx))
     thumb.setAttribute('cy', String(h / 2))
-    thumb.setAttribute('r', String(r))
-    thumb.setAttribute('fill', accent)
+    // Firefox's thumb is grey inside a white rim, whatever the accent and the colour scheme
+    // (Firefox 160). Only the run takes the accent.
+    const firefox = isFirefox()
+    thumb.setAttribute('r', String(firefox ? r - 1 : r))
+    thumb.setAttribute('fill', firefox ? '#676774' : accent)
+    if (firefox) {
+      thumb.setAttribute('stroke', 'white')
+      thumb.setAttribute('stroke-width', '2')
+    }
     svg.appendChild(thumb)
     if (disabled) svg.setAttribute('opacity', '0.5')
 
