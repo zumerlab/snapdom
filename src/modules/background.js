@@ -6,7 +6,8 @@
  * that reads the real value from the live node, fetches it, and puts the data URL on the
  * clone's inline style, together with the layout longhands (position, size, repeat, mask
  * mode) that keep it where it was. Only nodes the snapshot flagged (needsBackgroundInline)
- * are visited. A fixed-attachment layer is frozen to the viewport slice the user saw.
+ * are visited, and one with nothing to inline only when author CSS travels with the clone.
+ * A fixed-attachment layer is frozen to the viewport slice the user saw.
  * @module background
  */
 import { isFirefox, isIOS } from '../utils/browser.js'
@@ -289,19 +290,39 @@ const limitPx = (n) => Math.round(n * 100) / 100
  * (diff.js) for the rebuilt subtree. Pinned by __tests__/module.background.test.js and
  * __tests__/module.background.masks.test.js.
  *
+ * A flagged node whose URL-bearing values all read none, live, has nothing to inline: the
+ * snapshot flagged it for its background colour. The pass then writes only layout longhands
+ * from that snapshot, the values the node's class and the base reset already give it. They
+ * matter when author CSS travels with the clone, where a kept `<style>` or a shadow sheet can
+ * outrank the class (`.badge{background-clip:content-box}` kept in the clone, overridden in
+ * the page by a rule that stayed outside). `plain` says none does, and those nodes are left
+ * alone. The live reads are the ones the pass made, so a node whose snapshot is behind the
+ * page (a `:checked` set through the property, a twin a selector split) is still inlined.
+ * Pinned by __tests__/module.background.plain.test.js.
+ *
  * @param {HTMLElement} source The original source element.
  * @param {HTMLElement} clone The cloned element receiving inline styles.
  * @param {WeakMap} styleCache
  * @param {Object} [options={}]
  * @param {Map<Node, Node>} [nodeMap] Session clone→source map (the capturing session's
  *   own reference; the empty-map default only serves direct test calls).
+ * @param {boolean} [plain] no author CSS travels with the clone (captureDOM decides)
  * @returns {Promise<void>}
  */
-export async function inlineBackgroundImages(source, clone, styleCache, options = {}, nodeMap = new Map()) {
+export async function inlineBackgroundImages(source, clone, styleCache, options = {}, nodeMap = new Map(), plain = false) {
   if (!clone) return
 
   const jobs = []
-  if (source && needsBackgroundInline(source)) jobs.push([source, clone])
+  const add = (src, cn) => {
+    if (!needsBackgroundInline(src)) return
+    if (plain && snapshotFor(src)) {
+      const style = styleCache.get(src) || getStyle(src)
+      if (URL_PROPS.every((prop) => (style.getPropertyValue(prop) || 'none') === 'none') &&
+          !/url\s*\(/.test(style.getPropertyValue('background') || '')) return
+    }
+    jobs.push([src, cn])
+  }
+  if (source) add(source, clone)
   const stack = [clone]
   while (stack.length) {
     const cn = stack.pop()
@@ -309,7 +330,7 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
     for (const child of cn.children) {
       if (child.tagName === 'STYLE') continue
       const src = nodeMap.get(child)
-      if (src && needsBackgroundInline(src)) jobs.push([src, child])
+      if (src) add(src, child)
       stack.push(child)
     }
   }

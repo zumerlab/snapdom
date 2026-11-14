@@ -236,7 +236,8 @@ function scanRules(rules, universe, pseudoSels, state) {
       // that window's CSSContainerRule, so the parent realm's constructor never claims it.
       const container = rule.constructor?.name === 'CSSContainerRule'
       const scope = rule.constructor?.name === 'CSSScopeRule'
-      if (container) state.inContainer++
+      // A container that changes size restyles its descendants with no record on them.
+      if (container) { state.inContainer++; state.leaksAcrossSubtrees = true }
       if (scope) state.inScope = (state.inScope || 0) + 1
       const ok = scanRules(rule.cssRules, universe, pseudoSels, state)
       if (container) state.inContainer--
@@ -434,7 +435,7 @@ function composePseudoGates(probe, pseudoSels) {
  *  ::before/::after do not change the HOST element's computed style. `:link` is included
  *  (href-less anchors differ) but `:visited` need not be — getComputedStyle deliberately
  *  answers with unvisited values for privacy, so it cannot split identical elements. */
-const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-of-type|empty|hover|focus|active|target|checked|indeterminate|disabled|enabled|read-only|read-write|placeholder-shown|autofill|valid|invalid|user-valid|user-invalid|in-range|out-of-range|required|optional|default|link|any-link|scope|defined|modal|fullscreen|picture-in-picture|playing|paused|dir\(|lang\(|has\()/
+const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-of-type|empty|hover|focus|active|target|checked|indeterminate|disabled|enabled|read-only|read-write|placeholder-shown|autofill|valid|invalid|user-valid|user-invalid|in-range|out-of-range|required|optional|default|link|any-link|scope|defined|modal|fullscreen|picture-in-picture|playing|paused|muted|seeking|buffering|stalled|volume-locked|open|popover-open|state\(|dir\(|lang\(|has\()/
 
 /**
  * Scans the document's author styles once: every sheet, the adopted sheets, WAAPI keyframes.
@@ -451,8 +452,9 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
  *   node; null means unreliable, probe every node.
  * - `usesHas`: some rule uses `:has()`, which turns per-node stamp narrowing off. True when
  *   unreliable.
- * - `leaksAcrossSubtrees`: relational selectors or counters can restyle retained siblings.
- *   True when unreliable, so differential capture falls back to the full pipeline.
+ * - `leaksAcrossSubtrees`: relational selectors, counters or container queries can restyle
+ *   retained nodes. True when unreliable, so differential capture falls back to the full
+ *   pipeline.
  * - `shareGate`: the selectors that can split identity twins, each with its subject key for
  *   styleShareSafe's presence index. Null when one cannot be matched (share off).
  * - `marginUnstable` / `paddingUnstable`: a %, auto, calc() or var() value in that family

@@ -4,8 +4,9 @@
  * Everything scoped to one capture lives on the session (session.js). What lives here is
  * reused across captures on purpose: fetched assets, per-tag defaults, the clone-in-document
  * measurement, the compress output. Each Map is capped and evicts FIFO, so a long-lived SPA
- * cannot grow them without bound. `cache: 'disabled'` replaces every one of them before a
- * capture. Pinned by __tests__/core.cache.test.js.
+ * cannot grow them without bound; compress.js trims its own when a pass that added to it
+ * ends. `cache: 'disabled'` replaces every one of them before a capture.
+ * Pinned by __tests__/core.cache.test.js.
  * @module cache
  */
 
@@ -19,7 +20,6 @@ const MAX_BASE_STYLE = 50
 // filling it, and every capture then re-measured div defaults from a live sandbox.
 // Headroom above 31 covers the tags a real document uses beyond that list.
 const MAX_DEFAULT_STYLE = 64
-const MAX_COMPRESS = 50
 
 /**
  * Map that evicts oldest entries when exceeding maxSize. FIFO order.
@@ -57,9 +57,9 @@ export const cache = {
   resource: new EvictingMap(MAX_RESOURCE),
   defaultStyle: new EvictingMap(MAX_DEFAULT_STYLE),
   baseStyle: new EvictingMap(MAX_BASE_STYLE),
-  /** {source, result} records keyed by a sampled lookup hint + target size. compress.js
-   *  verifies exact source equality and also bounds the retained source/result bytes. */
-  compress: new EvictingMap(MAX_COMPRESS),
+  /** {source, result, pass} records keyed by a sampled lookup hint + target size. compress.js
+   *  verifies exact source equality and evicts (compressCloneAssets). */
+  compress: new Map(),
   computedStyle: new WeakMap(),
   /** Persistent cache for clone-in-document layout measurements (PERF-3).
    *  Key: Element. Value: { cssLen, w0, csh, csw } — cssLen is the total injected CSS
@@ -104,5 +104,5 @@ export function applyCachePolicy(policy = 'soft') {
   cache.image         = new EvictingMap(MAX_IMAGE)
   cache.background    = new EvictingMap(MAX_BACKGROUND)
   cache.resource      = new EvictingMap(MAX_RESOURCE)
-  cache.compress      = new EvictingMap(MAX_COMPRESS)
+  cache.compress      = new Map()
 }

@@ -27,12 +27,15 @@ import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { universeFor, inlineAllStyles, stylesLeakAcrossSubtrees } from '../modules/styles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
-import { sanitizeCloneForXHTML } from '../utils/capture.helpers.js'
+import { sanitizeCloneForXHTML, neutralizeRootMarginCollapse } from '../utils/capture.helpers.js'
 import { hasImpureRenderPlugins } from './plugins.js'
 
 /** Content whose capture involves whole-tree or root-coupled machinery (svg defs hoisting,
  *  nested rasterization, shadow scoping…) — a dirty subtree touching any of these goes full. */
 const HEAVY_SUBTREE = 'svg,iframe,canvas,video,audio,object,embed,slot,template,picture,style,pre'
+
+/** A style key of a box out of the flow, which no sibling or ancestor lays out around. */
+const OUT_OF_FLOW_KEY = /(?:^|;)position:(?:absolute|fixed)(?:;|$)/
 
 /** prepareClone applies these features after the subtree clone/style passes. Replacing one
  *  descendant cannot reproduce their root-coupled state, so their presence makes a retained
@@ -218,13 +221,36 @@ async function diffCapture(element, state, context) {
   }
   if (!roots.length) return null
 
+  // #426: the full pipeline zeroes, in the clone, each margin that collapses through the
+  // root's top or bottom edge, and nothing else in the clone depends on that chain. A
+  // retained node keeps its zero and a rebuilt one gets it back in the loop below, so the
+  // splice is exact when the zeroed list for the live DOM is the retained one, element for
+  // element. Comparing the lists covers a dirty root at any depth and every way the chain
+  // moves (a node entering or leaving the flow, a margin appearing, a sibling turning inline
+  // and ending the chain).
+  //
+  // A box that was and still is absolutely positioned takes no part in that chain nor in
+  // anyone else's layout, so it needs no walk, and it is the one kind of DIRECT child served
+  // here. An in-flow direct child can resize the root, and values that follow the root's box
+  // are not all compared below (a sibling's `margin: 0 auto` under a shrink-to-fit root kept
+  // its old offset), so it goes to the full pipeline, as every direct child did.
+  // Pinned by __tests__/core.capture.diff.collapseChain.test.js.
+  const zeroed = R.marginZeroed
+  if (!zeroed) return null
+  const inFlow = roots.filter((r) => !(OUT_OF_FLOW_KEY.test(R.styleMap.get(R.srcToClone.get(r)) || '') &&
+    /^(?:absolute|fixed)$/.test(getComputedStyle(r).position)))
+  if (inFlow.length) {
+    if (inFlow.some((r) => r.parentElement === element)) return null
+    const live = neutralizeRootMarginCollapse(element, null)
+    if (live.length !== zeroed.length || live.some((n, i) => n !== zeroed[i])) return null
+  }
+  const bottomEdge = zeroed.indexOf(null)
+
   context.__compressedAssets = R.__compressedAssets
   context.__compressionDensity = R.__compressionDensity
   context.__compressionRootTransform = R.rootTransform2D
 
   for (const src of roots) {
-    // Direct children interact with root margin-collapse neutralization — keep it full.
-    if (src.parentElement === element) return null
     if (src.matches?.(HEAVY_SUBTREE) || src.querySelector?.(HEAVY_SUBTREE)) return null
     if (subtreeUsesBackdropFilter(src, universe)) return null
     const oldClone = R.srcToClone.get(src)
@@ -257,6 +283,16 @@ async function diffCapture(element, state, context) {
     // The first placeholder input needs PLACEHOLDER_RULE, absent from the retained prefix.
     if (sessionCache.__usesPlaceholder && !R.classPrefixCSS?.includes('[data-sd-ph]')) return null
     await resolveBlobUrlsInTree(sub, sessionCache)
+    // The #426 zeroes of the rebuilt nodes, written where the full pipeline writes them:
+    // after the clone passes, before the assets.
+    if (zeroed.length > 1) {
+      for (const [cloneNode, srcNode] of delta) {
+        const at = zeroed.indexOf(srcNode)
+        if (at === -1) continue
+        if (at < bottomEdge) cloneNode.style.marginTop = '0px'
+        if (zeroed.lastIndexOf(srcNode) > bottomEdge) cloneNode.style.marginBottom = '0px'
+      }
+    }
     sanitizeCloneForXHTML(sub)
     try { await ligatureIconToImage(sub, src, delta) } catch { /* parity with full: non-blocking */ }
     try {
@@ -264,7 +300,7 @@ async function diffCapture(element, state, context) {
     } catch { /* parity with full: non-blocking */ }
     await Promise.all([
       inlineImages(sub, context),
-      inlineBackgroundImages(src, sub, R.styleCache, context, delta),
+      inlineBackgroundImages(src, sub, R.styleCache, context, delta, R.plainBg),
     ])
     if (context.compress) {
       try { await compressCloneAssets(sub, context, delta) } catch { /* parity with full */ }
@@ -286,6 +322,7 @@ async function diffCapture(element, state, context) {
   // current epoch, so byte-fidelity holds without bailing on layout-changing mutations.
   const sessionLike = { styleMap: R.styleMap, styleCache: R.styleCache, nodeMap: R.nodeMap, options: context }
   const resizedParents = new WeakSet()
+  let rezero = false
   for (const [cloneN, srcN] of R.nodeMap.entries()) {
     if (!srcN || srcN.nodeType !== 1 || !srcN.isConnected) continue
     const key = R.styleMap.get(cloneN)
@@ -298,8 +335,19 @@ async function diffCapture(element, state, context) {
       cs ||= getComputedStyle(srcN)
       let live = cs.getPropertyValue(p)
       // Width softening and overflowing flex items synthesize a floor from the
-      // used width. Comparing that floor to the live keyword "auto" always drifts.
-      if (p === 'min-width' && live === 'auto' && !resizedParents.has(srcN.parentElement)) {
+      // used width. Comparing that floor to the live keyword "auto" always drifts, and so
+      // does comparing it to "0px", which is how every engine reports `auto` on a box that
+      // is neither a flex nor a grid item. On the 250-row benchmark table every row and
+      // cell drifted and was re-read on each frame (1,253 of 1,506 nodes), for a floor that
+      // paints nothing there: min-width does not apply to the parts of a table. The table
+      // box is read the same way, or its drift would hand every row to the comparison as
+      // written (resizedParents). Every other box keeps drifting, because that re-read is
+      // what refreshes the used values its key also holds and nothing else compares (the
+      // static position of an absolutely positioned box, the tracks of a grid).
+      // Pinned by __tests__/core.capture.diff.collapseChain.test.js.
+      if (p === 'min-width' && (live === 'auto' || (live === '0px' && frozen[p] !== '0px' &&
+          cs.display.startsWith('table') && !OUT_OF_FLOW_KEY.test(key))) &&
+          !resizedParents.has(srcN.parentElement)) {
         let width = parseFloat(cs.width)
         if (cs.boxSizing !== 'border-box' && key.includes('box-sizing:border-box')) {
           width += ['padding-left', 'padding-right', 'border-left-width', 'border-right-width']
@@ -317,9 +365,19 @@ async function diffCapture(element, state, context) {
       // stay constant; refresh their synthesized floors too. nodeMap is parent-first.
       resizedParents.add(srcN)
       __diffStats.reconciled++
+      // The root's inline style also holds what prepareClone took off it (margin, offsets,
+      // float, transform, zoom). A re-read that rewrites it, as an inline `margin: 1em 0`
+      // or an `!important` rule makes it do, puts those back.
+      const rootStyle = srcN === element ? cloneN.style.cssText : null
       await inlineAllStyles(srcN, cloneN, sessionLike, context)
+      if (rootStyle !== null && cloneN.style.cssText !== rootStyle) return null
+      // An authored inline style holding a context-dependent value (`margin:20px auto`) is
+      // rewritten from the computed one, margin included, which undoes a #426 zero.
+      if (zeroed.includes(srcN)) rezero = true
     }
   }
+  // In the order of the full pipeline, styles first and then the zeroes, on the same nodes.
+  if (rezero) neutralizeRootMarginCollapse(element, R.clone, R.nodeMap)
 
   // Class numbering is positional over the sorted key set, so new keys renumber: strip the
   // generated classes everywhere and re-apply against the fresh keyToClass.

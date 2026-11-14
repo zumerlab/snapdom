@@ -13,6 +13,7 @@
 import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl, isShadowRoot } from './index.js'
 import { cache } from '../core/cache.js'
 import { markInternalNode } from './ownership.js'
+import { splitTopLevel } from '../modules/styleScan.js'
 import {
   bboxWithOriginFull,
   parseTransformOriginPx,
@@ -402,21 +403,30 @@ function firstInFlowBlockChild(el, side) {
  * which misaligns once `exclude`/`filter` drop nodes during cloning — see pseudo.js).
  * A clip husk is not in nodeMap and comes from `standIns`. Without it, a culled first child
  * kept its margin and moved the whole window down by it (#549).
- * Pinned by __tests__/utils.capture.helpers.test.js and __tests__/core.clip.test.js.
+ *
+ * Returns the source elements whose margin the walk zeroes, top edge first, then `null`,
+ * then the bottom edge. The list depends on the source alone: without a clone nothing is
+ * written, and diff.js compares the list for the live DOM with the one the retained capture
+ * wrote to tell whether a splice can leave a zero stale or miss one.
+ * Pinned by __tests__/utils.capture.helpers.test.js, __tests__/core.clip.test.js and
+ * __tests__/core.capture.diff.collapseChain.test.js.
  *
  * @param {Element} originalEl
- * @param {HTMLElement} cloneRoot
+ * @param {HTMLElement|null} cloneRoot - null lists without writing
  * @param {Map<Node, Node>} [nodeMap] - clone → original
  * @param {Map<Element, Element>|null} [standIns] - culled original → its husk
+ * @returns {Array<Element|null>}
  */
 export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap, standIns = null) {
-  if (!originalEl || !cloneRoot || !cloneRoot.style) return
+  const zeroed = []
+  if (!originalEl) return zeroed
   const rootCS = getComputedStyle(originalEl)
   // Replaced elements and BFC roots never collapse margins with their children.
-  if (establishesBFC(rootCS)) return
+  if (establishesBFC(rootCS)) return zeroed
 
   for (const side of /** @type {const} */ (['top', 'bottom'])) {
     const Side = side === 'top' ? 'Top' : 'Bottom'
+    if (side === 'bottom') zeroed.push(null)
     // Edge must be "open": no border or padding separating root from child.
     if ((parseFloat(rootCS[`border${Side}Width`]) || 0) > 0) continue
     if ((parseFloat(rootCS[`padding${Side}`]) || 0) > 0) continue
@@ -425,16 +435,17 @@ export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap, sta
     let cln = cloneRoot
     // Walk the chain of first/last in-flow block children whose margins all
     // collapse together through the root edge.
-    while (src && cln) {
+    while (src) {
       const childSrc = firstInFlowBlockChild(src, side)
       if (!childSrc) break
-      const childCln = nodeMap
+      const childCln = !cln ? null : nodeMap
         ? Array.from(cln.children).find((c) => nodeMap.get(c) === childSrc) || standIns?.get(childSrc) || null
         : cln.children[Array.from(src.children).indexOf(childSrc)] || null
       const childCS = getComputedStyle(childSrc)
       const m = parseFloat(childCS[`margin${Side}`]) || 0
-      if (childCln && childCln.style && m > 0) {
-        childCln.style[`margin${Side}`] = '0px'
+      if (m > 0) {
+        zeroed.push(childSrc)
+        if (childCln?.style) childCln.style[`margin${Side}`] = '0px'
       }
       // Collapse continues into this child only if its matching edge is also open.
       if (establishesBFC(childCS)) break
@@ -444,6 +455,7 @@ export function neutralizeRootMarginCollapse(originalEl, cloneRoot, nodeMap, sta
       cln = childCln
     }
   }
+  return zeroed
 }
 
 const XMLNS_ALLOWED_PREFIXES = new Set(['xml', 'xlink'])
@@ -991,7 +1003,8 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
 const PART_PSEUDO = /::-(?:webkit-(?:scrollbar|meter|progress|slider)|moz-(?:meter|progress))/i
 
 /**
- * Recursively collect the CSS rules whose selectors name a part pseudo.
+ * Recursively collect the CSS rules whose selectors name a part pseudo, each with only the
+ * selectors of its list that do. Pinned by __tests__/module.background.plain.test.js.
  * @param {CSSRuleList} rules
  * @param {Set<string>} seen - dedupe by cssText
  * @returns {string}
@@ -1014,7 +1027,12 @@ function collectScrollbarRulesFromRules(rules, seen = new Set()) {
       if (rule.type === CSSRule.STYLE_RULE) {
         const sel = rule.selectorText || ''
         if (PART_PSEUDO.test(sel)) {
-          const text = rule.cssText
+          let text = rule.cssText
+          // A list can name a part next to ordinary selectors (`.a .b, .a::-webkit-scrollbar`).
+          // Copied whole, the ordinary ones restyled clone nodes over their class.
+          const all = splitTopLevel(sel, ',')
+          const parts = all.filter((one) => PART_PSEUDO.test(one))
+          if (parts.length < all.length && text.startsWith(sel)) text = parts.join(',') + text.slice(sel.length)
           if (text && !seen.has(text)) {
             seen.add(text)
             out += text

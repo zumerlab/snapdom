@@ -26,7 +26,13 @@
  *  - same-tick <style> ..... flushStyleInvalidations at capture start (records are async)
  *  - CSS/WAAPI animations .. getAnimations({subtree}) per capture: memo never serves nor
  *                            persists while running; targeted subtrees become dirty roots
- *                            for the diff path with invalidateSnapshotsUnder per frame
+ *                            for the diff path with invalidateSnapshotsUnder before AND after
+ *                            each frame. Below burst, captureDOM drops the snapshots under
+ *                            every animation target (light DOM, and the open shadow roots a
+ *                            capture has walked) before the clone and after the asset phase,
+ *                            so no animated frame outlives its capture, with or without burst.
+ *                            What each target animates also travels as `__animated`: it
+ *                            outranks the inline declarations, which are then re-resolved
  *  - mid-capture edits ..... records that land WHILE a capture runs are buffered and judged
  *                            once it ends (hasTornMutation): a net change that is not the
  *                            pipeline's own self-undoing work leaves the element dirty, so a
@@ -66,6 +72,7 @@ import {
   invalidateHoverChanges,
   invalidateStyleCaches,
   invalidateSnapshotsUnder,
+  animatedProps,
 } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
@@ -494,12 +501,20 @@ function collectControls(element, state) {
 }
 
 /** Discover scroll offsets that can repaint without a MutationRecord. The layout reads happen
- *  only when state is created or a full capture commits; memo hits sample the short list. */
+ *  only when state is created or a full capture commits; memo hits sample the short list.
+ *  An inline box has no scrollport, yet Firefox reports its text as `scrollWidth` against a
+ *  client size of 0, so every inline element was listed, the list changed length with each
+ *  inserted `<span>`, and the next capture ran the full pipeline instead of hitting the memo.
+ *  A scroll container can have no client size either (a box of scrollbars alone, or one
+ *  under half a pixel that a transform enlarges), so `display` settles those few.
+ *  Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
 function collectScrollNodes(element, state) {
   const out = []
   const add = (el, force = false) => {
     try {
-      if (force || el.scrollLeft || el.scrollTop || el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) out.push(el)
+      if (force || el.scrollLeft || el.scrollTop ||
+          ((el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
+            (el.clientWidth || el.clientHeight || getComputedStyle(el).display !== 'inline'))) out.push(el)
     } catch { }
   }
   // No dedupe needed: querySelectorAll excludes the scope itself (the element is already in
@@ -853,6 +868,8 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     const liveRenderState = renderStateOf(element, state)
     const animations = animationsInScopes(element, state)
     liveRenderState.animation = animationSignature(animations)
+    // captureDOM sets this for the full pipeline; the differential path never enters it.
+    context.__animated = animatedProps(animations)
     if (state.renderState) {
       const styleChanged = !sameRenderState(state.renderState, liveRenderState, 'style')
       if (styleChanged) {
@@ -890,6 +907,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     // memo, and drop any memo taken before the animation started (it would be served as
     // soon as the animation ends, showing a pre-animation frame).
     let animationRunning = false
+    let animatedRoots = null
     let animationDirty = !!state.renderState &&
       !sameRenderState(state.renderState, liveRenderState, 'animation')
     try {
@@ -912,6 +930,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       // no mutation records, so the epoch never bumps.
       if (animationDirty && targets && targets.size && state.retained) {
         state.dirty = true
+        animatedRoots = targets
         for (const t of targets) {
           if (state.dirtyRoots) state.dirtyRoots.add(t)
           invalidateSnapshotsUnder(t)
@@ -987,6 +1006,10 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
           state.retainedFrameDriven ||= retainedHasFrameDriven(state.retained, diffRoots)
           collectControls(element, state)
           collectScrollNodes(element, state)
+          // The frame just read must not outlive it. Once the animation ends no target is
+          // left to name, and the full capture that follows would serve this frame.
+          // Pinned by `__tests__/core.capture.animationFrames.test.js`.
+          for (const t of animatedRoots || []) invalidateSnapshotsUnder(t)
         }
         const committedRenderState = renderStateOf(element, state)
         committedRenderState.animation = animationSignature(animationsInScopes(element, state))

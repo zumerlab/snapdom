@@ -14,7 +14,7 @@
  */
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
-const BG_PROPS = ['background-image', 'background-size', 'background-position', 'background-repeat', 'background-origin']
+const BG_PROPS = ['background-color', 'background-image', 'background-size', 'background-position', 'background-repeat', 'background-origin']
 
 /**
  * Repaint every recorded gradient-text clone with its live gradient.

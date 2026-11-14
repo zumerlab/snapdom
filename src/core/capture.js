@@ -20,7 +20,7 @@ import { createCaptureSession } from './session.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
-import { styleShareSafe } from '../modules/styles.js'
+import { styleShareSafe, invalidateSnapshotsUnder, addShadowAnimations, animatedProps } from '../modules/styles.js'
 import { stageReaches, DEFAULT_STAGE } from './stages.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { applyTextFieldSelectionLayers } from '../modules/selection.js'
@@ -84,7 +84,7 @@ export async function captureDOM(element, options) {
   state.element = element
   Object.defineProperty(state, 'options', { value: state, configurable: true })
 
-  let clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe
+  let clone, classCSS, classPrefixCSS, shadowCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe
   let fontsCSS = ''
   // Root transform (scale/skew), kept when outerTransforms is on
   let rootTransform2D = null
@@ -124,6 +124,27 @@ export async function captureDOM(element, options) {
   // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
   const preClipRect = state.clip ? resolveClipRect(state.element, state.clip) : null
 
+  // Animations under the root, read once. An animation changes computed styles with no
+  // mutation record, so the snapshot cache would serve a frame read by an earlier capture.
+  // Each target's subtree (inherited values and used sizes follow it) is dropped here, before
+  // the clone reads it, and again once nothing reads the cache, so a frame read now does not
+  // outlive a capture that completes. The second drop asks the shadow roots again, because
+  // the clone has met new ones by then. A capture that throws in between leaves its reads
+  // behind, as every capture did before.
+  // Pinned by `__tests__/core.capture.animationFrames.test.js`.
+  let animations = []
+  try {
+    if (typeof state.element.getAnimations === 'function') animations = state.element.getAnimations({ subtree: true })
+  } catch { animations = null }
+  const moving = new Set(animations)
+  const dropAnimated = () => {
+    addShadowAnimations(state.element, moving)
+    for (const a of moving) invalidateSnapshotsUnder(a.effect?.target)
+  }
+  dropAnimated()
+  // inlineAllStyles re-resolves the inline declarations these animate from computed values.
+  options.__animated = animatedProps(moving)
+
   // Identity-share fast path (see styles.js): decided ONCE per capture, before any clone
   // work. Both gates are cheap and both err toward full reads: an unscannable stylesheet or
   // any selector that can split identical identities answers unsafe, and one running
@@ -131,9 +152,7 @@ export async function captureDOM(element, options) {
   // it off wholesale. Respect an explicit override so tests can pin the slow path.
   if (options.__styleShare === undefined) {
     try {
-      options.__styleShare = styleShareSafe(state.element) &&
-        (typeof state.element.getAnimations !== 'function' ||
-          state.element.getAnimations({ subtree: true }).length === 0)
+      options.__styleShare = styleShareSafe(state.element) && animations?.length === 0
     } catch {
       options.__styleShare = false
     }
@@ -147,7 +166,7 @@ export async function captureDOM(element, options) {
     try {
       // Keep this capture's own clone→source map — every later pass must use this
       // reference (sessions are per-capture; there is no shared session global).
-      ({ clone, classCSS, classPrefixCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe } = await prepareClone(state.element, state.options))
+      ({ clone, classCSS, classPrefixCSS, shadowCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe } = await prepareClone(state.element, state.options))
 
       if (reconcileRisk > 0 && !options.reconcile) {
         sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
@@ -166,7 +185,8 @@ export async function captureDOM(element, options) {
       // #426: zero margins that collapse through the root edge so the clone's
       // content sits flush like the captured border box (no clipping / no offset).
       if (clone) {
-        neutralizeRootMarginCollapse(state.element, clone, nodeMap, standIns)
+        // The list of zeroed elements goes to the retained artifacts below (diff.js).
+        options.__marginZeroed = neutralizeRootMarginCollapse(state.element, clone, nodeMap, standIns)
         // #483: the raster is sized in the root's pre-zoom coordinate space, so an inline
         // `zoom` carried over by cloneNode() would shrink the content and leave blank bands.
         neutralizeRootZoom(state.element, clone)
@@ -195,7 +215,10 @@ export async function captureDOM(element, options) {
   // (XHTML sanitizing, asset inlining, fonts, foreignObject, serialization) exists only
   // to feed a renderer, so it is skipped whole. Nothing is retained for burst: it is off
   // below 'render' (src/api/snapdom.js), so there is no memo to feed.
-  if (!stageReaches(stage, 'render')) return null
+  if (!stageReaches(stage, 'render')) {
+    dropAnimated()
+    return null
+  }
 
   if (slicer?.due()) await slicer.pause()
   sanitizeCloneForXHTML(state.clone)
@@ -222,11 +245,15 @@ export async function captureDOM(element, options) {
   // depends on the inlined data URLs, so it waits for images+backgrounds only.
   // Microtask boundary only — keeps the parallel asset phases' Promise.all concurrency.
   const runIdle = (fn) => Promise.resolve().then(fn)
+  // Whether author CSS travels with the clone, read after the afterClone hooks. With no
+  // shadow sheet, no `<style>` kept or added by a hook and the class CSS as generated,
+  // nothing can outrank a node's class (inlineBackgroundImages).
+  const plainBg = !shadowCSS && state.classCSS === classCSS && !state.clone?.querySelector('style')
 
   const assetsPhase = (async () => {
     await Promise.all([
       runIdle(() => inlineImages(state.clone, state.options)),
-      runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options, state.nodeMap)),
+      runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options, state.nodeMap, plainBg)),
     ])
     // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it
     // from the already-inlined clone. Non-blocking — a failure just loses the effect.
@@ -303,6 +330,10 @@ export async function captureDOM(element, options) {
   }
 
   await Promise.all([assetsPhase, fontsPhase])
+  // The background pass above was the last reader of the snapshot cache (needsBackgroundInline,
+  // snapshotFor). Dropping the animated reads earlier sends every node under them down the
+  // live-read path there.
+  dropAnimated()
 
   // ——— Render engine ———
   // The clone is finished. Which engine turns it into pixels is the only choice left, and
@@ -338,7 +369,8 @@ export async function captureDOM(element, options) {
     try {
       options.__retain({
         clone, nodeMap, styleCache, styleMap: options.__session.styleMap,
-        classPrefixCSS, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
+        classPrefixCSS, plainBg, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
+        marginZeroed: options.__marginZeroed,
         __compressedAssets: options.__compressedAssets,
         __compressionDensity: options.__compressionDensity,
       })

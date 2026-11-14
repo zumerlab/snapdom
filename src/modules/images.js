@@ -15,7 +15,10 @@
  * megabytes. Removing all but the first took the warm pipeline from 172 ms to 62 and the
  * cold one from 409 to 298. What is left is cloneNode's own 41 ms, since the attribute copy
  * itself starts a load; avoiding it means a clone with no `src` until serialization, which a
- * plugin reading the clone would see, so it is not done.
+ * plugin reading the clone would see, so it is not done. The write is synchronous and grows
+ * with the payload: on d-compress (19 images, 44M characters) it is 85 of the 99 ms a
+ * recapture takes in Chromium. A clone made in a document without a browsing context skips
+ * it and pays it when adopted, so that is no way around it either.
  * Pinned by __tests__/modules.images.dataUrlPassthrough.test.js, which counts the writes.
  * @module images
  */

@@ -48,7 +48,8 @@ const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important
  *   classCSS is the full stylesheet (prefix included); classPrefixCSS is the shadow, pseudo
  *   and suppression part alone, which burst re-prepends after a diff; clipWindow is the
  *   clip rect in the root's own layout pixels; standIns maps each culled source to the
- *   husk standing in for it, which nodeMap leaves out
+ *   husk standing in for it, which nodeMap leaves out; shadowCSS says the prefix carries
+ *   shadow-root rules
  */
 export async function prepareClone(element, options = {}) {
   // Same-tick DOM/style mutations otherwise reach the clone against a stale epoch
@@ -432,6 +433,7 @@ export async function prepareClone(element, options = {}) {
     clone,
     classCSS,
     classPrefixCSS,
+    shadowCSS: !!shadowScopedCSS,
     styleCache: sessionCache.styleCache,
     nodeMap: sessionCache.nodeMap,
     reconcileRisk: sessionCache.reconcileRisk || 0,

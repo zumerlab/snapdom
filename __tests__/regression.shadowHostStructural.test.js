@@ -80,4 +80,28 @@ describe('shadow host structural rules (#488 separators)', () => {
   it('identical slotted nodes split by ::slotted(:not(:first-child)) each paint their own', async () => {
     await expectSeparators(mountRow('slotted'))
   })
+
+  it('scopes the first rule of a group rule like the ones after it', () => {
+    for (const head of ['@supports (display:block)', '@container (min-width:1px)', '@layer base']) {
+      const out = rewriteShadowCSS(`${head}{p{color:red}.b{color:blue}}`, '[data-sd="s1"]', 's1')
+      expect(out).toBe(`${head}{:where([data-sd="s1"] p:not([data-sd-slotted~="s1"])){color:red}:where([data-sd="s1"] .b:not([data-sd-slotted~="s1"])){color:blue}}`)
+    }
+    expect(rewriteShadowCSS('@font-face{font-family:x}@layer a, b;', '[data-sd="s1"]', 's1')).toBe('@font-face{font-family:x}@layer a, b;')
+    // Inside a nested style rule a group can open with declarations: they are not a selector.
+    const nested = '@supports (display:block) { background-color: rgb(0, 255, 0); & .x { color: red; } }'
+    expect(rewriteShadowCSS(`.card { & .a { color: blue; } ${nested} }`, '[data-sd="s1"]', 's1')).toContain(nested)
+  })
+
+  it('a shadow rule inside @supports does not paint the light DOM', async () => {
+    const root = document.createElement('div')
+    root.style.cssText = 'width:60px;background:rgb(255,255,255)'
+    root.innerHTML = '<p style="margin:0;height:20px"></p><div class="host"></div>'
+    root.querySelector('.host').attachShadow({ mode: 'open' }).innerHTML =
+      '<style>@supports (display:block){p{background-color:rgb(255,0,0)}}</style><p style="margin:0;height:20px"></p>'
+    document.body.appendChild(root)
+    mounted = root
+    const canvas = await snapdom.toCanvas(root, { scale: 1, dpr: 1, burst: false })
+    expect(rgb(canvas, 30, 10)).toEqual([255, 255, 255])
+    expect(rgb(canvas, 30, 30)).toEqual([255, 0, 0])
+  })
 })

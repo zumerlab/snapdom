@@ -113,6 +113,15 @@ export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
     return `${brace}${ws}${wrapped}{`
   })
 
+  // 5) The first rule of a group (@supports, @container, @layer, @scope, a raw @media)
+  //    follows a `{`, where step 4 never starts, so it went out as written and `p{…}` in a
+  //    shadow root also painted every <p> of the light DOM. A `;` ends the attempt, since
+  //    inside a nested style rule the group can open with declarations.
+  //    Pinned by __tests__/regression.shadowHostStructural.test.js.
+  cssText = cssText.replace(/(^|})(\s*@(?:supports|container|layer|scope|media)\b[^{};]*{\s*)([^@}{;]+){/g, (_, brace, head, selectorList) => {
+    return `${brace}${head}${wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true, scopeId)}{`
+  })
+
   return cssText
 }
 

@@ -234,22 +234,20 @@ const WORKER_MIN_CHARS = 64 * 1024
 
 // The sampled key is only a lookup hint: PNG metadata and fixed-size frames can share
 // both ends while their pixels differ. Keep the source for an exact equality check, and
-// bound retained source + result characters as well as cache.js's entry count.
+// bound the entries and the source + result characters they retain.
 const COMPRESS_CACHE_MAX_CHARS = 32 * 1024 * 1024
+const COMPRESS_CACHE_MAX_ENTRIES = 50
 const compressInFlight = new Map()
-
-function rememberCompression(targetCache, key, source, result) {
-  if (source.length + (result?.length || 0) > COMPRESS_CACHE_MAX_CHARS) return
-  targetCache.set(key, { source, result })
-  let chars = 0
-  for (const entry of targetCache.values()) chars += entry.source.length + (entry.result?.length || 0)
-  while (chars > COMPRESS_CACHE_MAX_CHARS) {
-    const oldest = targetCache.keys().next().value
-    const entry = targetCache.get(oldest)
-    chars -= entry.source.length + (entry.result?.length || 0)
-    targetCache.delete(oldest)
-  }
-}
+/** `pass` counts compressCloneAssets passes and an entry carries the pass that last used it;
+ *  `stored` counts inserts. The bounds are applied when a pass that stored something ends,
+ *  oldest first, sparing what any pass has used since it began (the end of
+ *  compressCloneAssets). Applied on every insert, oldest first, they dropped the very entry
+ *  the next image needed, so a page over a bound never hit (d-compress, 19 images, 44M
+ *  characters, 287 ms a recapture, 99 ms with the 19 served) and one replaced image cost
+ *  every image after it its entry. A pass over the bounds is therefore kept whole until a
+ *  later pass stores something. Pinned by __tests__/compress.cachePass.test.js. */
+let pass = 0
+let stored = 0
 
 /** First `maxBytes` decoded bytes of a base64 data URL (null for percent-encoded or
  *  malformed payloads — callers just fall through to the decode path). */
@@ -475,7 +473,10 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
     ':' + targetW + 'x' + targetH
   const targetCache = cache.compress
   const cached = targetCache.get(cacheKey)
-  if (cached?.source === dataURL) return cached.result
+  if (cached?.source === dataURL) {
+    cached.pass = pass
+    return cached.result
+  }
   const pending = compressInFlight.get(cacheKey)
   if (pending?.source === dataURL && pending.cache === targetCache) return pending.promise
 
@@ -532,7 +533,10 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
   compressInFlight.set(cacheKey, entry)
   try {
     const result = await promise
-    rememberCompression(targetCache, cacheKey, dataURL, result)
+    if (dataURL.length + (result?.length || 0) <= COMPRESS_CACHE_MAX_CHARS) {
+      targetCache.set(cacheKey, { source: dataURL, result, pass })
+      stored++
+    }
     return result
   } finally {
     if (compressInFlight.get(cacheKey) === entry) compressInFlight.delete(cacheKey)
@@ -741,8 +745,20 @@ export async function compressClonedSvgImages(clone, options, nodeMap = new Map(
  */
 export async function compressCloneAssets(clone, options, nodeMap) {
   if (!options.compress) return
+  const since = ++pass
+  const before = stored
   const geometry = {}
   await compressClonedImages(clone, options, nodeMap, geometry)
   await compressClonedBackgrounds(clone, options, nodeMap, geometry)
   await compressClonedSvgImages(clone, options, nodeMap, geometry)
+  if (stored === before) return
+  const kept = cache.compress
+  let chars = 0
+  for (const entry of kept.values()) chars += entry.source.length + (entry.result?.length || 0)
+  for (const [key, entry] of kept) {
+    if (chars <= COMPRESS_CACHE_MAX_CHARS && kept.size <= COMPRESS_CACHE_MAX_ENTRIES) break
+    if (entry.pass >= since) continue
+    chars -= entry.source.length + (entry.result?.length || 0)
+    kept.delete(key)
+  }
 }

@@ -92,6 +92,20 @@ describe('identity share — the gates, in pixels', () => {
     expect(await px(el, 0.75, 0.5)).toBe('0,0,255')
   })
 
+  it(':state() differentiates two identical custom elements', async () => {
+    if (!customElements.get('share-state-g')) {
+      customElements.define('share-state-g', class extends HTMLElement {
+        constructor() { super(); this.internals = this.attachInternals() }
+      })
+    }
+    const el = mount(
+      '<share-state-g></share-state-g><share-state-g></share-state-g>',
+      `share-state-g { ${BOX}; background-color: rgb(0,0,255) } share-state-g:state(on) { background-color: rgb(255,0,0) }`)
+    el.lastElementChild.internals.states.add('on')
+    expect(await px(el, 0.2, 0.5)).toBe('0,0,255')
+    expect(await px(el, 0.75, 0.5)).toBe('255,0,0')
+  })
+
   it('the focused element keeps its focus styling', async () => {
     const el = mount(
       '<button class="foc-g">a</button><button class="foc-g">a</button>',

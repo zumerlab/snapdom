@@ -552,6 +552,56 @@ export function invalidateSnapshotsUnder(root) {
   } catch { }
 }
 
+/**
+ * Add the animations inside the open shadow roots under `element` to `animations`.
+ * `getAnimations({ subtree: true })` stops at a shadow boundary on all three engines, so
+ * captureDOM asks each root itself. Only roots a capture already walked are asked, since a
+ * node of any other root has no snapshot to go stale, and a page without shadow roots pays
+ * an empty loop (3,000 observed roots under the capture root cost 0.5 ms a call in Chromium).
+ * Pinned by `__tests__/core.capture.animationFrames.test.js`.
+ * @param {Element} element - the capture root
+ * @param {Set<Animation>} animations - collects them
+ */
+export function addShadowAnimations(element, animations) {
+  for (const { root } of __shadowObservers) {
+    let host = root.host
+    while (host && host !== element && !element.contains(host)) host = host.getRootNode().host
+    if (host) for (const a of root.getAnimations?.() || []) animations.add(a)
+  }
+}
+
+/**
+ * List what each animation target has animated, as target -> longhand names. An animation
+ * or a transition outranks the target's inline declarations, so inlineAllStyles re-resolves
+ * those from the computed style, and only those: re-resolving them all wrote the used
+ * `width` of a flex item over its authored one, and the clone shrank it a second time.
+ * Keyframes name longhands, except a script-made effect, which keeps the shorthand it was
+ * given; a detached declaration expands it. An effect on a pseudo-element animates nothing
+ * of the element's own.
+ * Pinned by `__tests__/core.capture.animationFrames.test.js`.
+ * @param {Iterable<Animation>} animations
+ * @returns {Map<Element, Set<string>>|null} null when nothing is animated
+ */
+export function animatedProps(animations) {
+  let out = null
+  for (const a of animations) {
+    const target = a.effect?.target
+    if (!target || a.effect.pseudoElement) continue
+    let props = (out ||= new Map()).get(target)
+    if (!props) out.set(target, props = new Set())
+    const probe = target.ownerDocument.createElement('div').style
+    for (const frame of a.effect.getKeyframes()) {
+      for (const key in frame) {
+        if (key === 'offset' || key === 'easing' || key === 'composite' || key === 'computedOffset') continue
+        if (key.startsWith('--')) props.add(key)
+        else probe[key] = frame[key]
+      }
+    }
+    for (let i = 0; i < probe.length; i++) props.add(probe[i])
+  }
+  return out
+}
+
 /** URL-bearing props that mean inlineBackgroundImages must visit the node. */
 const BG_INLINE_FLAG_PROPS = [
   'mask', 'mask-image', '-webkit-mask', '-webkit-mask-image',
@@ -1677,9 +1727,13 @@ const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
 /**
  * Re-resolves the source's inline declarations through the cascade onto the clone.
  *
- * Three cases need it. Everything else is an absolute value copied onto itself, which the
+ * Four cases need it. Everything else is an absolute value copied onto itself, which the
  * clone's style attribute already holds.
  *  - A stylesheet `!important` must still beat an inline declaration inside the clone (#328).
+ *  - An animation or a transition outranks the inline declaration of what it animates: a
+ *    transition started through `el.style` has the END value inline while the frame is
+ *    halfway, and the capture showed that end value. Only the animated properties are
+ *    re-resolved (animatedProps). Pinned by __tests__/core.capture.animationFrames.test.js.
  *  - `background` on text fields only: the selection highlight composes its layers on top
  *    of the longhands this writes on an input's clone. On every other node the shorthand is
  *    the same value, and re-resolving it cost the 500-row table 13.5k reads plus 13.5k
@@ -1693,15 +1747,16 @@ const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
  * @param {Element} clone
  * @param {CSSStyleDeclaration} computed - getComputedStyle(source)
  * @param {string} attr - the source's style attribute, read once by the caller
+ * @param {Set<string>} [animated] - the longhands an animation or transition holds on the source
  */
-function normalizeInlineStyleToComputed(source, clone, computed, attr) {
+function normalizeInlineStyleToComputed(source, clone, computed, attr, animated) {
   const inline = source.style
   if (!inline || inline.length === 0) return
   const important = importantPropsFor(source)
   const canSkip = important != null && !CONTEXT_DEPENDENT_VALUE_RE.test(attr)
   // With no `!important` rule in the document only a border width can still differ, and the
   // loop skips every other prop. `all` expands to the border longhands too.
-  const bordersOnly = canSkip && important.size === 0 && !isTextField(source)
+  const bordersOnly = canSkip && important.size === 0 && !animated && !isTextField(source)
   if (bordersOnly && !/border|\ball\s*:/i.test(attr)) return
   let sameBorderWidths
   for (let i = 0, n = inline.length; i < n; i++) {
@@ -1717,7 +1772,7 @@ function normalizeInlineStyleToComputed(source, clone, computed, attr) {
         BORDER_WIDTHS.every(p => previous.snapshot[p] === authored)) || computed.borderWidth === authored
       if (sameBorderWidths && bordersOnly) return
     }
-    if (canSkip && !important.has(prop) && (!borderWidth || sameBorderWidths) && !(prop.startsWith('background') && isTextField(source))) continue
+    if (canSkip && !important.has(prop) && !animated?.has(prop) && (!borderWidth || sameBorderWidths) && !(prop.startsWith('background') && isTextField(source))) continue
     const val = computed.getPropertyValue(prop)
     // A retained <style> can still contain an important ID selector. The live inline
     // !important wins it; dropping that priority here reverses the cascade in the clone.
@@ -1774,7 +1829,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // Replace authored inline style with computed values so !important in stylesheets
   // correctly overrides inline styles in the clone (fixes #328)
   const styleAttr = source.getAttribute?.('style')
-  if (styleAttr) normalizeInlineStyleToComputed(source, clone, pre, styleAttr)
+  if (styleAttr) normalizeInlineStyleToComputed(source, clone, pre, styleAttr, ctx.options.__animated?.get(source))
 
   // A static snapshot must not animate. The generated style class already filters animation
   // props (shouldIgnoreProp), but `animation` can still reach the SVG through the normalized
