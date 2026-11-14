@@ -94,14 +94,19 @@ function subtreeUsesBackdropFilter(root, universe) {
 const FROZEN_LENGTH_EPS = 1 / 16
 function sameFrozenLength(live, frozen) {
   if (live === frozen) return true
-  if (!live.endsWith('px') || !frozen.endsWith('px')) return false
+  // A track list holds several lengths: compared as written.
+  if (!live.endsWith('px') || !frozen.endsWith('px') || frozen.includes(' ')) return false
   const a = parseFloat(live), b = parseFloat(frozen)
   return Number.isFinite(a) && Number.isFinite(b) && Math.abs(a - b) <= FROZEN_LENGTH_EPS
 }
 
 /** Parsed box geometry from a style key, memoized per key string (keys are deduped). */
 const keyGeomCache = new Map()
-const GEOM_PROPS = ['width', 'height', 'min-width', 'min-height']
+// Offsets, margins and grid tracks too: they are used values (a pinned footer's `top`, a
+// centred block's margin, the columns of an `auto 1fr` grid) that move while the box itself
+// keeps its size.
+const GEOM_PROPS = ['width', 'height', 'min-width', 'min-height', 'top', 'right', 'bottom', 'left',
+  'margin-top', 'margin-right', 'margin-bottom', 'margin-left', 'grid-template-columns', 'grid-template-rows']
 function geomOfKey(key) {
   let g = keyGeomCache.get(key)
   if (g === undefined) {

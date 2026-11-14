@@ -33,6 +33,12 @@
  *                            so no animated frame outlives its capture, with or without burst.
  *                            What each target animates also travels as `__animated`: it
  *                            outranks the inline declarations, which are then re-resolved
+ *  - layout beside a change  no record names the box a neighbour pushed. Below burst, a cached
+ *                            style snapshot is served only while the box, offsets, margins
+ *                            and tracks it froze still read the same (styles.js
+ *                            usedValuesHold), asked once any stamp has moved; an animation
+ *                            and a resource `load` move that clock themselves, and the
+ *                            reconcile of the diff path compares the same values (diff.js)
  *  - mid-capture edits ..... records that land WHILE a capture runs are buffered and judged
  *                            once it ends (hasTornMutation): a net change that is not the
  *                            pipeline's own self-undoing work leaves the element dirty, so a

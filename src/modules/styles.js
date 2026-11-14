@@ -168,8 +168,18 @@ export function invalidateStyleCaches() {
  *  snapshot covers `:has()` reaching upwards. What that does NOT cover is `:has()` reaching
  *  SIDEWAYS — `.a:has(.b) ~ .c` restyles a cousin no walk from T would visit — so the
  *  narrowing is only used on documents whose author rules contain no `:has()` at all, and
- *  those documents get the old document-wide invalidation. Fidelity is not traded for speed
- *  here: there is no staleness window, only a case that opts out of the optimization.
+ *  those documents get the old document-wide invalidation.
+ *
+ *  That reach is the cascade's. LAYOUT reaches further: a node no selector connects to T can
+ *  still move or resize when T does, and its snapshot holds used values (its box, the
+ *  offsets of a positioned box, the margins a flex line hands out). A footer pinned with
+ *  `bottom: 0` kept the `top` it had before the text above it grew, on every engine since
+ *  3.0.0. So a stamp is necessary and not sufficient: once any stamp has moved, getSnapshot
+ *  reads those values again before it serves a cached snapshot (usedValuesHold), and a box
+ *  that did change passes the miss on to what resolves against it (the end of getSnapshot).
+ *  What moves a box with no stamp at all has to move the clock: an animation (through
+ *  invalidateSnapshotsUnder) and a resource that finishes loading (setupInvalidationOnce).
+ *  Pinned by __tests__/module.styles.usedValues.test.js.
  *
  *  Everything that is genuinely document-wide keeps its epoch: rule and head changes, font
  *  loads, viewport resizes, and the invalidate escape hatch all bump __envEpoch, which the
@@ -444,6 +454,11 @@ function setupInvalidationOnce(doc = document) {
     doc.addEventListener('beforetoggle', onInteraction, { capture: true, passive: true })
     doc.addEventListener('toggle', onInteraction, { capture: true, passive: true })
     view?.addEventListener('hashchange', () => { bumpEpoch(); __allStamp++ }, { passive: true })
+    // An image that finishes loading resizes the boxes around it with no record: a lazy one
+    // loads when it scrolls into view, which is no record either. Not snapdom's own nodes:
+    // WebKit's paint probe (toCanvas) is an <img> in the document on every export, and the
+    // clock would never rest.
+    doc.addEventListener('load', (event) => { if (!isOwnedNode(event.target)) nodeClock++ }, { capture: true, passive: true })
   } catch { }
   try {
     const f = doc.fonts
@@ -545,6 +560,8 @@ export function flushStyleInvalidations() {
  *  cache would freeze the first captured frame. */
 export function invalidateSnapshotsUnder(root) {
   if (!root || root.nodeType !== 1) return
+  // An animated box pushes the boxes beside it, which keep their snapshots and their stamps.
+  nodeClock++
   snapshotCache.delete(root)
   try {
     const tw = (root.ownerDocument || document).createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
@@ -1559,17 +1576,116 @@ export function pseudoSnapshotFor(source, pseudo, style, session, options) {
   return snap
 }
 
+/** The four sides of a `margin` or `inset` shorthand as computed style serializes it. */
+function fourSides(shorthand) {
+  const v = shorthand.split(' ')
+  return v.length === 4 ? shorthand : `${v[0]} ${v[1] ?? v[0]} ${v[2] ?? v[0]} ${v[3] ?? v[1] ?? v[0]}`
+}
+
+const INSET_PROPS = ['top', 'right', 'bottom', 'left']
+const NO_SIDES = '0px 0px 0px 0px'
+
+/** The four values of `props` as the snapshot holds them, null when excludeStyleProps took one. */
+function frozenSides(snap, props) {
+  const a = snap[props[0]], b = snap[props[1]], c = snap[props[2]], d = snap[props[3]]
+  return a === undefined || b === undefined || c === undefined || d === undefined ? null : `${a} ${b} ${c} ${d}`
+}
+
+/**
+ * Whether four sides still read as the snapshot froze them. Chromium and WebKit serialize the
+ * used values in the shorthand, one read for the four. Firefox serializes the computed ones
+ * (`auto auto 0px 0px` for a box pinned to its bottom left, `0px auto` for a centred block),
+ * so a shorthand that differs is asked again side by side before it counts as a change.
+ * @param {CSSStyleDeclaration} style
+ * @param {string} frozen - the four used values, space separated
+ * @param {string} shorthand - 'inset' or 'margin'
+ * @param {string[]} sides - its four physical longhands
+ * @returns {boolean}
+ */
+function sidesHold(style, frozen, shorthand, sides) {
+  return fourSides(style.getPropertyValue(shorthand)) === frozen ||
+    `${style.getPropertyValue(sides[0])} ${style.getPropertyValue(sides[1])} ${style.getPropertyValue(sides[2])} ${style.getPropertyValue(sides[3])}` === frozen
+}
+
+/**
+ * Note what a fresh snapshot froze that layout can move while the cascade stands still: the
+ * node's own box, the offsets of a positioned box, the margins a flex line, a grid area or
+ * an absolutely positioned box hands out, and the tracks of a grid. Offsets that all read
+ * 0px on a relative box and margins that all read 0px are left out: the first hold nothing,
+ * and the second are either zero by the cascade or an `auto` the read below puts back as the
+ * keyword. Where Typed OM cannot tell (Firefox) the zero margins are noted too. Read off the
+ * snapshot before any pass rewrites it, so it costs no computed-style read.
+ * @param {Record<string, string>} snap
+ * @param {Element} el
+ * @param {boolean} flexItem - its parent is a flex or grid container
+ * @returns {{w: string|undefined, h: string|undefined, box: number[]|null|false, inset: string|null, margin: string|null, tracks: string|null}}
+ *   `box` is false when the snapshot froze no box (an inline one, or excludeStyleProps took
+ *   it), null until the first check reads the rectangle
+ */
+function usedValuesOf(snap, el, flexItem) {
+  const w = snap.width, h = snap.height
+  const used = { w, h, box: w === undefined || h === undefined || (w === 'auto' && h === 'auto') ? false : null, inset: null, margin: null, tracks: null }
+  const position = snap.position
+  const out = position === 'absolute' || position === 'fixed'
+  if (out || position === 'relative' || position === 'sticky') {
+    const inset = frozenSides(snap, INSET_PROPS)
+    if (inset && (out || inset !== NO_SIDES)) used.inset = inset
+  }
+  if (out || flexItem) {
+    const margin = frozenSides(snap, MARGIN_PROPS)
+    if (margin && (margin !== NO_SIDES || typeof el.computedStyleMap !== 'function')) used.margin = margin
+  }
+  if ((snap.display || '').includes('grid')) {
+    const columns = snap['grid-template-columns'], rows = snap['grid-template-rows']
+    if (columns !== undefined && rows !== undefined) used.tracks = columns + '/' + rows
+  }
+  return used
+}
+
+/**
+ * Whether the used values a cached snapshot froze still read the same. The box is compared
+ * through getBoundingClientRect: on a recapture of the 250-row table after a nested edit it
+ * costs 5% where reading `width` and `height` costs 10%, and `offsetWidth` with
+ * `offsetHeight` 4% while missing a change below one pixel (Chromium, paired rounds). The
+ * first check after a read compares the two strings once and keeps the rectangle for the
+ * next ones.
+ * @param {ReturnType<typeof usedValuesOf>} used
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} style
+ * @returns {boolean}
+ */
+function usedValuesHold(used, el, style) {
+  if (used.box !== false) {
+    const rect = el.getBoundingClientRect()
+    if (used.box) {
+      if (rect.width !== used.box[0] || rect.height !== used.box[1]) return false
+    } else {
+      if (style.getPropertyValue('width') !== used.w || style.getPropertyValue('height') !== used.h) return false
+      used.box = [rect.width, rect.height]
+    }
+  }
+  return (!used.inset || sidesHold(style, used.inset, 'inset', INSET_PROPS)) &&
+    (!used.margin || sidesHold(style, used.margin, 'margin', MARGIN_PROPS)) &&
+    (!used.tracks || style.getPropertyValue('grid-template-columns') + '/' + style.getPropertyValue('grid-template-rows') === used.tracks)
+}
+
 /**
  * The element's snapshot: the cached one while it is current, else a fresh full read, or on
  * an identity hit a copy of the twin's read with only the used-value props re-read here.
+ * Current means the stamp AND the used values: a cached snapshot is served only while what
+ * it froze of the layout still reads the same, and a re-read that finds another box passes
+ * the miss on to what resolves against that box (see the stamp note). The used values are
+ * read again only once some stamp has moved since they last held (the node clock): a
+ * recapture of a page where nothing happened pays one comparison a node.
  * @param {Element} el
  * @param {CSSStyleDeclaration|null} [preStyle] - getComputedStyle(el), when the caller has it
  * @param {object} [options]
  * @param {{st: object, id: number}|null} [shareInfo] - the identity to share under, or null
  * @param {object|null} [session] - the capture's sessionCache, for shadow content's universe
+ * @param {boolean} [flexItem] - its parent is a flex or grid container, for usedValuesOf
  * @returns {Record<string, string>}
  */
-function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, session = null) {
+function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, session = null, flexItem = false) {
   const rec = snapshotCache.get(el)
   // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
   // (skipped props), which no invalidation signal tracks. Capturing the same element twice
@@ -1578,9 +1694,13 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   // when the caller already bypassed result memoization.
   const ef = !!(options && options.embedFonts)
   const ex = (options && options.excludeStyleProps) || null
-  if (typeof ex !== 'function' && rec && snapshotIsCurrent(rec, el) &&
-      rec.embedFonts === ef && rec.excludeStyleProps === ex) return rec.snapshot
   const style = preStyle || getComputedStyle(el)
+  if (typeof ex !== 'function' && rec && snapshotIsCurrent(rec, el) &&
+      rec.embedFonts === ef && rec.excludeStyleProps === ex &&
+      (rec.clock === nodeClock || usedValuesHold(rec.used, el, style))) {
+    rec.clock = nodeClock
+    return rec.snapshot
+  }
   let snap
   let dyn = null
   const shared = shareInfo && shareInfo.st.snaps.get(shareInfo.id)
@@ -1625,6 +1745,7 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
       shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null, sig: null, h: 'height' in snap, b: 'block-size' in snap })
     }
   }
+  const used = usedValuesOf(snap, el, flexItem)
   // Chromium can report a zero used margin after a partial container layout even
   // though the box remains centered. Typed OM retains the resolved `auto` keyword;
   // carrying it lets the frozen parent/child dimensions reproduce that alignment.
@@ -1671,7 +1792,28 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     shareInfo.rec = shared
   }
   const hosts = shadowHostsOf(el)
-  snapshotCache.set(el, { env: session?.__scanEnv ?? __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
+  // Before the stamp below is read. A box that changed since the last read passes the miss on.
+  // A query container, to everything under it, whose rules it selects. Any other box, to its
+  // children (what a slot holds included, and its shadow content through its own stamp) when
+  // what their percentages and auto margins resolve against moved: its inline size (the
+  // width, or the height under a vertical writing mode), the tracks of a grid, or a block
+  // size that was zero, against which every percentage read 0. The block size alone moves
+  // nothing below that the node's own check does not read: re-reading every subtree under a
+  // box that grew cost a recapture after one added line 61 to 139% (40 panels, 400 cards).
+  const before = rec && rec.used
+  if (before && (before.w !== used.w || before.h !== used.h || before.tracks !== used.tracks)) {
+    const query = (before.w !== used.w || before.h !== used.h) && style.getPropertyValue('container-type')
+    const [inline, block] = /^(?:vertical|sideways)/.test(snap['writing-mode']) ? ['h', 'w'] : ['w', 'h']
+    if (query && query !== 'normal') stampSubtree(el)
+    else if (before[inline] !== used[inline] || before.tracks !== used.tracks || before[block] === '0px') {
+      stampNode(el)
+      for (let child = el.firstElementChild; child; child = child.nextElementSibling) {
+        stampNode(child)
+        if (child.localName === 'slot') for (const held of child.assignedElements({ flatten: true })) stampNode(held)
+      }
+    }
+  }
+  snapshotCache.set(el, { env: session?.__scanEnv ?? __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex, used, clock: nodeClock })
   return snap
 }
 
@@ -1839,7 +1981,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // therefore blanks it out even though the live element already finished animating. Pin
   // `animation` off with inline `!important` on the elements that actually have one; the
   // current opacity/transform captured in the snapshot below then renders as the frozen,
-  // already-settled frame.
+  // already-settled frame. Asked of the live style on every capture and never kept with the
+  // cached snapshot: a state set by script (`input.value`) can name an animation with no
+  // record at all. Pinned by __tests__/core.capture.animation.test.js.
   const animName = pre.getPropertyValue('animation-name')
   if (clone && clone.style && animName && animName !== 'none') {
     clone.style.setProperty('animation', 'none', 'important')
@@ -1880,7 +2024,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
       !source.shadowRoot && !source.assignedSlot
     if (eligible) shareInfo = { st, id }
   }
-  const snap = getSnapshot(source, pre, ctx.options, shareInfo, session)
+  const flexItem = isFlexOrGridItem(source)
+  const snap = getSnapshot(source, pre, ctx.options, shareInfo, session, flexItem)
   // Inline author declarations were normalized above from getComputedStyle too.
   // Override their zero margin (including logical shorthands) with the retained auto.
   if (styleAttr) {
@@ -1910,7 +2055,6 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (clone.style?.length && snap['box-sizing'] === 'border-box' &&
       pre.getPropertyValue('box-sizing') !== 'border-box') syncInlineBorderBox(source, clone, snap)
 
-  const flexItem = isFlexOrGridItem(source)
   freezeOneLine(source, clone, snap, flexItem, session)
 
   // #406: foreignObject may resolve min-width:auto differently than normal DOM

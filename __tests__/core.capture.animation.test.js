@@ -33,6 +33,28 @@ describe('entry keyframe animations do not blank the captured element', () => {
     expect(px[3]).toBeGreaterThan(200) // fully opaque, not the 0% frame
   })
 
+  // The name is asked of the live style on every capture. Kept with the cached snapshot it
+  // went stale here: a value set by script leaves no record, no event and no stamp, the
+  // snapshot is served, and the box replayed its animation from opacity 0 (blank).
+  it('pins an animation that a state set by script names between two captures', async () => {
+    const root = mount(document.createElement('div'))
+    root.style.cssText = 'position:absolute;left:300px;top:200px;width:120px;padding:10px;background:rgb(255,255,255)'
+    root.innerHTML = '<style>@keyframes snapStateIn { from { opacity: 0 } to { opacity: 1 } }' +
+      '.fv:not(:placeholder-shown) ~ .box { animation: snapStateIn 60ms linear }</style>' +
+      '<input class="fv" placeholder="type" style="display:block;margin:0;border:0;padding:0;width:60px;height:16px">' +
+      '<div class="box" style="width:60px;height:40px;background:rgb(0,0,255)"></div>'
+    const box = root.querySelector('.box')
+    for (let i = 0; i < 3; i++) await snapdom(root, { burst: false })
+    root.querySelector('.fv').value = 'hello'
+    await Promise.all(box.getAnimations().map((a) => a.finished))
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(getComputedStyle(box).animationName).toBe('snapStateIn')
+    expect(box.getAnimations().length).toBe(0)
+    const canvas = await (await snapdom(root, { burst: false })).toCanvas({ dpr: 1, scale: 1 })
+    const px = canvas.getContext('2d').getImageData(40, 50, 1, 1).data
+    expect([px[0], px[1], px[2], px[3]]).toEqual([0, 0, 255, 255])
+  })
+
   it('preserves native suppression when a painted pseudo is currently display:none', async (ctx) => {
     const style = mount(document.createElement('style'))
     style.textContent = `
