@@ -21,6 +21,7 @@ import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
 import { markInternalNode } from '../utils/ownership.js'
 import { fileSvgText } from '../utils/helpers.js'
+import { stripInvalidXML } from '../utils/capture.helpers.js'
 import { restoreCompressedAssets } from '../modules/compress.js'
 
 /**
@@ -287,7 +288,7 @@ async function buildResult(url, context) {
     ? (Number.isFinite(context.width) ? meta.targetW / meta.vbW : meta.targetH / meta.vbH) : 1
   const intrinsicY = sizedSVG
     ? (Number.isFinite(context.height) ? meta.targetH / meta.vbH : meta.targetW / meta.vbW) : 1
-  const exportSource = (options) => {
+  const drawnSource = (options) => {
     if (engineCanvas || !originals?.size) return pixelSource
     let w = meta.vbW, h = meta.vbH
     const crop = options.crop
@@ -305,8 +306,28 @@ async function buildResult(url, context) {
     if (requested <= density) return pixelSource
     return originalUrl ??= restoreCompressedAssets(urlOf(), originals)
   }
+  // css: one export's rules, in a cascade layer declared first in the engine's <style>.
+  // Spliced into the encoded URL: decoding a 3.9 MB capture to add them cost 35 ms, this 3.
+  const checkCss = (css) => {
+    if (css != null && typeof css !== 'string') throw new TypeError('[SnapDOM] css must be a string.')
+    return css
+  }
+  const exportSource = (options) => {
+    const source = drawnSource(options)
+    const css = checkCss(options.css)
+    if (!css) return source
+    const at = typeof source === 'string' && source.startsWith('data:image/svg+xml;charset=utf-8,')
+      ? source.indexOf('%3Cstyle') : -1
+    const open = at < 0 ? -1 : source.indexOf('%3E', at) + 3
+    const close = open < 3 ? -1 : source.indexOf('%3C%2Fstyle%3E', open)
+    if (close < 0 || source.startsWith('%2F', open - 6)) throw new RangeError('[SnapDOM] Only SVG captures can be styled.')
+    const rules = stripInvalidXML(css).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return source.slice(0, open) + '%40layer%20snapdom-export%3B' + source.slice(open, close) +
+      encodeURIComponent(`@layer snapdom-export{${rules}}`) + source.slice(close)
+  }
 
   const rasterEngineImage = async (ctx, opts) => {
+    if (checkCss(opts?.css)) throw new RangeError('[SnapDOM] Only SVG captures can be styled.')
     const { rasterize } = await import('../modules/rasterize.js')
     return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'png' })
   }

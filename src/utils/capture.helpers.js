@@ -494,7 +494,7 @@ const INVALID_XML_CHARS = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\x00-\x08\x0B\x0C\x0E
 /* eslint-enable no-control-regex */
 
 /** Drops the XML-illegal chars above, keeping whole surrogate pairs. */
-const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length === 2 ? m : ''))
+export const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length === 2 ? m : ''))
 
 /** A base64 payload is XML-safe by alphabet, so the scrub below never scans one. */
 const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/

@@ -80,7 +80,14 @@ export interface CanvasCrop {
   height: number;
 }
 
-export type CanvasExportOptions = Partial<SnapdomOptions> & { crop?: CanvasCrop };
+export type ExportOptions = Partial<SnapdomOptions> & {
+  /** Export option: style rules for this export only, in the first cascade layer. */
+  css?: string;
+};
+
+export type CanvasExportOptions = ExportOptions & {
+  crop?: CanvasCrop;
+};
 
 /* =========================
  * Font & proxy declarations
@@ -390,7 +397,7 @@ export interface CaptureContext extends Omit<SnapdomOptions, "exclude" | "filter
 
   /** Core export facade for `defineExports`: the built-in exporters without their hooks,
    *  so a plugin format can build on `png`/`canvas`/… without re-entering the pipeline. */
-  exports?: Record<string, (opts?: any) => Promise<any>>;
+  exports?: Record<string, (opts?: CanvasExportOptions) => Promise<any>>;
 }
 
 /* =========================
@@ -562,11 +569,11 @@ export interface CaptureResult {
    * @deprecated Use `toSvg()` for an <img> representing the capture.
    * Historical alias kept for compatibility.
    */
-  toImg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  toImg(options?: ExportOptions): Promise<HTMLImageElement>;
 
   /** Returns an HTMLImageElement representing the capture (SVG-backed by default,
    *  PNG-backed after a successful native html-in-canvas capture, SVG-backed on fallback). */
-  toSvg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  toSvg(options?: ExportOptions): Promise<HTMLImageElement>;
 
   /** Returns a Canvas with the rasterized snapshot. `crop` windows the capture in
    *  `meta` viewBox coordinates, so a long capture can be rasterized page by page. */
@@ -578,19 +585,19 @@ export interface CaptureResult {
    *  Defaults to SVG on the default
    *  engine and PNG after a successful html-in-canvas capture. An explicit SVG request on
    *  that raster path rejects because there is no SVG source. */
-  toBlob(options?: BlobOptions & Partial<SnapdomOptions>): Promise<Blob>;
+  toBlob(options?: BlobOptions & ExportOptions): Promise<Blob>;
 
   /** Convenience raster exports returning an HTMLImageElement. */
-  toPng(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
-  toJpeg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  toPng(options?: ExportOptions): Promise<HTMLImageElement>;
+  toJpeg(options?: ExportOptions): Promise<HTMLImageElement>;
   /** Alias for `toJpeg()`. */
-  toJpg(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
-  toWebp(options?: Partial<SnapdomOptions>): Promise<HTMLImageElement>;
+  toJpg(options?: ExportOptions): Promise<HTMLImageElement>;
+  toWebp(options?: ExportOptions): Promise<HTMLImageElement>;
 
   /** Download the snapshot at DPR 1. PNG and JPEG files from SVG captures automatically
    *  preserve oversized output resolution (PNG needs CompressionStream, JPEG stops at 65535px
    *  per side). */
-  download(options?: DownloadOptions & Partial<SnapdomOptions>): Promise<void>;
+  download(options?: DownloadOptions & ExportOptions): Promise<void>;
 
   /**
    * Custom exporters exposed by plugins: a plugin returning { pdf: (...) => ... } enables

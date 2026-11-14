@@ -322,6 +322,14 @@ When export keys collide, priority is **local plugin > global plugin > core**. A
 plugin can override `toPng`, `toJpg`, `toCanvas` or another exporter. Use `ctx.export.url` or
 `ctx.exports` to build that export from the existing capture.
 
+An export can take style rules of its own: `result.toPng({ css: '.hit{outline:3px solid #f0f!important}' })`.
+They go in a cascade layer declared first in the capture, so a rule needs `!important` to win, and then
+it wins over every style sheet rule (an inline `!important` can still win, depending on the engine). A
+`beforeExport` hook can add to `options.css`, and `ctx.exports.canvas({ ...opts, css })` draws a styled
+copy beside the plain one. Select by the page's own ids, classes, attributes and tag names: in the clone,
+`::before`, `:host`, `::part` and `:hover` do not match. CSS hides, it does not remove: an SVG export still
+carries hidden text. A raster `html-in-canvas` capture rejects `css` with a `RangeError`, as it rejects a crop.
+
 ## Distribution
 
 ### Official plugins
