@@ -619,15 +619,15 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
  * controls in them. Chromium does on a light page only. On a dark one its controls are
  * #99c8ff under a mark in the Field colour, while its AccentColor stays #0075ff (Chrome and
  * Edge 157). Inside the capture Chromium paints AccentColor only as the whole value of an
- * attribute, not inside light-dark(), so the scheme is settled here. Without the keywords, a
- * blue in the range every desktop UA ships.
+ * attribute, not inside light-dark(), so the scheme is settled here. That blue needs neither
+ * keyword, so it comes first: Chromium 140, the suite's, has no AccentColorText. Without the
+ * keywords, a blue in the range every desktop UA ships.
  * @param {boolean} dark whether the control is in the dark colour scheme
  * @returns {{ fill: string, mark: string }}
  */
 function resolveSystemAccent(dark) {
-  /* c8 ignore next -- every engine the suite runs has both keywords */
-  if (!isColor('AccentColor') || !isColor('AccentColorText')) return { fill: '#0a6ed1', mark: 'white' }
   if (dark && !isFirefox() && !isSafari()) return { fill: '#99c8ff', mark: 'Field' }
+  if (!isColor('AccentColor') || !isColor('AccentColorText')) return { fill: '#0a6ed1', mark: 'white' }
   return { fill: 'AccentColor', mark: 'AccentColorText' }
 }
 
