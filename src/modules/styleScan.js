@@ -138,6 +138,9 @@ const PSEUDO_KINDS = {
   marker: /(?<!\\)::marker\b/, firstLine: /(?<!\\)::?first-line\b/,
 }
 const PSEUDO_STRIP = /(?<!\\)::?(?:before|after|first-letter|first-line|marker)\b/g
+/** A selector that can restyle a retained sibling: a sibling combinator (An+B's `+` included,
+ *  conservatively), `:has()`, or a filtered nth-child. */
+const LEAK_SEL_RE = /[+~]|:has\(|:nth-(?:last-)?child\([^)]*\bof\b/i
 
 /** Strips pseudo-element tokens from a selector list so it can feed `el.matches()`.
  *  A part that was ONLY the pseudo (`::before {}`) becomes `*` (pseudo-elements are not
@@ -156,9 +159,11 @@ function scanRules(rules, universe, pseudoSels, state) {
     if (--state.budget < 0) return false
     const rule = rules[i]
     const style = rule.style
+    // Read once: Gecko and WebKit serialize the selector on every read.
+    const sel0 = rule.selectorText
     let svgGeo = false, svgAnim = false
     if (style) {
-      const pseudoRule = !!rule.selectorText && PSEUDO_ELEMENT_SEL_RE.test(rule.selectorText)
+      const pseudoRule = !!sel0 && PSEUDO_ELEMENT_SEL_RE.test(sel0)
       for (let j = 0; j < style.length; j++) {
         const prop = style[j]
         universe.add(prop)
@@ -168,6 +173,10 @@ function scanRules(rules, universe, pseudoSels, state) {
         }
         if (pseudoRule) state.pseudoProps.add(prop)
         if (style.getPropertyPriority(prop)) state.importantProps.add(prop)
+        // Counters restyle retained siblings. The counter longhands have no shorthand, so a
+        // rule that sets one lists it here. Chromium lists `all` unexpanded.
+        if (!state.leaksAcrossSubtrees && (prop === 'all' || (prop[0] === 'c' && (prop.startsWith('counter-') ||
+          (prop === 'content' && style.getPropertyValue('content').includes('counter')))))) state.leaksAcrossSubtrees = true
         if (prop.length > 5 && (prop[0] === 'm' || prop[0] === 'p')) {
           const fam = prop.startsWith('margin') ? 'marginUnstable'
             : prop.startsWith('padding') ? 'paddingUnstable' : null
@@ -177,7 +186,7 @@ function scanRules(rules, universe, pseudoSels, state) {
         }
       }
     }
-    let sel = rule.selectorText
+    let sel = sel0
     // `:has()` is the one selector whose reach a DOM mutation cannot be walked back from — it
     // restyles ancestors AND, combined with a combinator, their other descendants. A document
     // that uses it keeps document-wide style invalidation (see nodeStamp in styles.js).
@@ -185,9 +194,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     // A class change can shift filtered nth positions without dirtying the siblings.
     // Keep the existing conservative combinator check (including An+B's '+').
     // This rides the import/cross-origin-aware walk instead of scanning sheets again.
-    if (sel && /[+~]|:has\(|:nth-(?:last-)?child\([^)]*\bof\b/i.test(sel)) state.leaksAcrossSubtrees = true
-    if (style && (style.counterReset || style.counterIncrement || style.counterSet ||
-      (style.content && style.content.includes('counter')))) state.leaksAcrossSubtrees = true
+    if (!state.leaksAcrossSubtrees && sel && LEAK_SEL_RE.test(sel)) state.leaksAcrossSubtrees = true
     // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
     // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
     // every node out and delete the pseudo. Resolve & against the enclosing style rule,
@@ -254,10 +261,14 @@ function addSvgGeometrySel(rule, sel, geo, state) {
   }
 }
 
-/** One sheet through scanRules. False on a cross-origin sheet, whose cssRules getter throws. */
+/** A sheet's rules, or the caller's copy of them when the getter throws (cross-origin). */
+function rulesOf(sheet, crossOriginRules) {
+  try { return sheet.cssRules } catch { return crossOriginRules?.(sheet) }
+}
+
+/** One sheet through scanRules. False on a sheet whose rules cannot be read. */
 function scanSheet(sheet, universe, pseudoSels, state) {
-  let rules
-  try { rules = sheet.cssRules } catch { rules = state.crossOriginRules?.(sheet) } // cross-origin
+  const rules = rulesOf(sheet, state.crossOriginRules)
   if (!rules) return false
   return scanRules(rules, universe, pseudoSels, state)
 }
@@ -293,6 +304,54 @@ export function scanSheetProps(sheet) {
   const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
   const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set() }
   return scanSheet(sheet, props, pseudoSels, state) ? props : null
+}
+
+/** Sheets with at most this many top-level rules also list each rule's own child count. */
+const CENSUS_NESTED_MAX = 64
+
+/**
+ * List what a document scan reads, cheap enough to compare instead of scanning again: per
+ * sheet its rule list, the list's length and its first and last rule, then the props WAAPI
+ * animates. A sheet injected, adopted, loaded or replaced changes a list; a top-level
+ * insertRule or deleteRule changes a length or an end. A short sheet also lists the child
+ * count of each top-level rule, which is where a library that keeps its rules inside a few
+ * `@media` or `@layer` groups inserts them.
+ *
+ * Not seen, and left to `invalidate: true` like every CSSOM edit no observer reports: a rule
+ * edited in place, a delete and an insert that keep the count and both ends, an insert two
+ * levels down or inside a group of a sheet longer than CENSUS_NESTED_MAX.
+ *
+ * Null when no comparison can stand for a scan: an unreadable sheet, or one that imports
+ * another, whose late load changes nothing listed here.
+ * Pinned by __tests__/module.styles.ruleEpoch.test.js.
+ * @param {Document} doc
+ * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - as scanAuthorStyles
+ * @returns {Array<unknown>|null}
+ */
+export function sheetCensus(doc, crossOriginRules) {
+  const out = []
+  const adopted = /** @type {any} */ (doc).adoptedStyleSheets
+  for (const sheets of [doc.styleSheets, Array.isArray(adopted) ? adopted : []]) {
+    for (const sheet of sheets) {
+      const rules = rulesOf(sheet, crossOriginRules)
+      if (!rules) return null
+      const n = rules.length
+      // @import can only follow @charset and @layer statements, which report type 0.
+      for (let i = 0; i < n; i++) {
+        const type = rules[i].type
+        if (type === 3) return null
+        if (type !== 0) break
+      }
+      out.push(rules, n, rules[0], rules[n - 1])
+      if (n <= CENSUS_NESTED_MAX) for (let i = 0; i < n; i++) out.push(rules[i].cssRules?.length)
+    }
+  }
+  if (typeof doc.getAnimations === 'function') {
+    const animated = new Set()
+    addAnimationProps(doc.getAnimations(), animated)
+    out.push(Array.from(animated).sort().join())
+  }
+  return out
 }
 
 /** Splits `sel` on `sep` outside parentheses, brackets and quotes. */
@@ -379,7 +438,8 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
 
 /**
  * Scans the document's author styles once: every sheet, the adopted sheets, WAAPI keyframes.
- * Pure; styles.js memoizes it per document and style epoch (scanFor).
+ * Pure; styles.js memoizes it per document and style epoch, and keeps a scan across epochs
+ * while sheetCensus reads the same (scanFor).
  *
  * Everything in the result rides the same rule walk, so none of it costs a second pass:
  * - `universe`: the properties any rule can touch, plus ALWAYS_PROPS. Null when the scan
@@ -412,14 +472,19 @@ export function scanAuthorStyles(doc, crossOriginRules) {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
     const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, inScope: 0, crossOriginRules }
-    for (const sheet of doc.styleSheets) {
-      if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
-    }
     const adopted = /** @type {any} */ (doc).adoptedStyleSheets
-    if (Array.isArray(adopted)) {
-      for (const sheet of adopted) {
-        if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
-      }
+    const sheets = Array.isArray(adopted) ? [...doc.styleSheets, ...adopted] : Array.from(doc.styleSheets)
+    // Every top-level rule spends one unit of the budget, so a document whose top-level rules
+    // alone exceed it, or with a sheet nobody can read, is unreliable before the walk.
+    let top = 0
+    for (const sheet of sheets) {
+      const rules = rulesOf(sheet, crossOriginRules)
+      if (!rules) return unreliable
+      top += rules.length
+    }
+    if (top > MAX_SCAN_RULES) return unreliable
+    for (const sheet of sheets) {
+      if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
     // Programmatic (WAAPI) animations don't live in stylesheets — union their keyframe props.
     if (typeof doc.getAnimations === 'function') {

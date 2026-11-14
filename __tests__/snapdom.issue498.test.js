@@ -14,7 +14,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { prepareClone } from '../src/core/prepare.js'
 import { inlinePseudoElements } from '../src/modules/pseudo.js'
-import { addScrollbarGutter } from '../src/modules/styles.js'
+import { addScrollbarGutter, snapshotFor } from '../src/modules/styles.js'
+import { snapdom } from '../src/index.js'
 
 const mounted = []
 function mount(el) {
@@ -94,6 +95,25 @@ describe('#498 classic scrollbar gutter on content-box scroll containers', () =>
     const c = { width: '306px', height: '184px' }
     addScrollbarGutter(overlay, pre(base), c)
     expect(c).toEqual({ width: '306px', height: '184px' })
+  })
+
+  it('adds the gutter once: a recapture reads the cached snapshot and leaves it alone', async (ctx) => {
+    const style = mount(document.createElement('style'))
+    style.textContent = '.gutter-once::-webkit-scrollbar{width:14px;height:14px}.gutter-once::-webkit-scrollbar-thumb{background:#888}'
+    const root = mount(document.createElement('div'))
+    root.style.cssText = 'width:400px;padding:10px;background:#fff'
+    root.innerHTML = '<div class="gutter-once" style="width:200px;height:80px;overflow:scroll;border:1px solid #333"><div style="width:150px;height:300px"></div></div>'
+    const box = root.firstElementChild
+    // Only an engine that lays out a classic scrollbar can tell: Playwright's WebKit does
+    // (14px here), headless Chromium and Firefox do not and skip.
+    if (box.offsetWidth - box.clientWidth - 2 < 2) return ctx.skip()
+    const widths = []
+    for (let i = 0; i < 3; i++) {
+      await snapdom(root, { dpr: 1, scale: 1, burst: false })
+      widths.push(snapshotFor(box).width)
+    }
+    // It grew by one scrollbar per capture: 200px, 214px, 228px.
+    expect(widths).toEqual(['200px', '200px', '200px'])
   })
 
   it('end-to-end: a frozen scroll container keeps its live outer height', async () => {

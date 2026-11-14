@@ -431,7 +431,9 @@ function animatedDataUrl(url) {
 function animatedUrl(value) {
   const url = String(value || '').trim()
   if (!url) return false
-  if (ANIMATED_IMAGE_RE.test(url)) return true
+  // A base64 body holds no '.' or '(' and still decodes, so only its meta prefix can match.
+  const b64 = /^data:[^,]*;base64,/i.exec(url)
+  if (ANIMATED_IMAGE_RE.test(b64 ? b64[0] : url)) return true
   if (/^data:/i.test(url)) return animatedDataUrl(url)
   return false
 }
@@ -440,8 +442,10 @@ function animatedUrl(value) {
  *  inside the other quote style (and encodeURIComponent leaves apostrophes intact), so a
  *  generic "until quote/paren" character class silently truncated valid SVG data URLs. */
 function containsAnimatedUrl(value) {
-  const text = String(value || '')
+  if (!value) return false
+  const text = String(value)
   if (animatedUrl(text)) return true
+  if (/^\s*data:[^,]*;base64,/i.test(text) || !/url\(/i.test(text)) return false
   for (const match of text.matchAll(/url\(\s*(?:"((?:\\.|[^"\\])*)"|'((?:\\.|[^'\\])*)'|([^)]*))\s*\)/gi)) {
     if (animatedUrl(match[1] ?? match[2] ?? match[3])) return true
   }
@@ -450,25 +454,30 @@ function containsAnimatedUrl(value) {
 
 /** The completed clone already contains fetched images/backgrounds as data URLs, including
  *  blob and extensionless endpoints. Classify their container metadata once per full commit;
- *  steady memo hits never rescan base64. */
+ *  steady memo hits never rescan base64. A style key shared by many elements is classified
+ *  once per call. */
 function retainedHasFrameDriven(retained, sourceRoots = null) {
   const clone = retained && retained.clone
   if (!clone) return false
   const roots = sourceRoots
     ? sourceRoots.map((source) => retained.srcToClone?.get(source)).filter(Boolean)
     : [clone]
-  for (const root of roots) for (const el of elementsOf(root)) {
+  const keys = new Set()
+  const animated = (el) => {
     if (containsAnimatedUrl(el.getAttribute?.('src')) || containsAnimatedUrl(el.getAttribute?.('href')) ||
-        containsAnimatedUrl(el.getAttribute?.('style')) || containsAnimatedUrl(retained.styleMap?.get(el))) return true
+        containsAnimatedUrl(el.getAttribute?.('style'))) return true
+    const k = retained.styleMap?.get(el)
+    if (!k || keys.has(k)) return false
+    keys.add(k)
+    return containsAnimatedUrl(k)
+  }
+  for (const root of roots) {
+    if (root.nodeType === 1 && animated(root)) return true
+    let all
+    try { all = root.querySelectorAll('*') } catch { continue }
+    for (const el of all) if (animated(el)) return true
   }
   return false
-}
-
-function elementsOf(scope) {
-  const out = []
-  if (scope && scope.nodeType === 1) out.push(scope)
-  try { out.push(...scope.querySelectorAll('*')) } catch { }
-  return out
 }
 
 function collectControls(element, state) {
@@ -488,16 +497,17 @@ function collectControls(element, state) {
  *  only when state is created or a full capture commits; memo hits sample the short list. */
 function collectScrollNodes(element, state) {
   const out = []
-  const seen = new Set()
   const add = (el, force = false) => {
-    if (!el || seen.has(el)) return
-    seen.add(el)
     try {
       if (force || el.scrollLeft || el.scrollTop || el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) out.push(el)
     } catch { }
   }
+  // No dedupe needed: querySelectorAll excludes the scope itself (the element is already in
+  // from the ancestors loop) and shadow scopes are disjoint from the light tree.
   for (let el = element; el; el = el.parentElement) add(el, true)
-  for (const scope of scopesOf(element, state)) for (const el of elementsOf(scope)) add(el)
+  for (const scope of scopesOf(element, state)) {
+    try { for (const el of scope.querySelectorAll('*')) add(el) } catch { }
+  }
   state.scrollNodes = out
 }
 

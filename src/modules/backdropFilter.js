@@ -45,9 +45,11 @@ export function emulateBackdropFilters(root, clone, nodeMap = new Map()) {
 
   const rootRect = root.getBoundingClientRect()
   // Snapshot every backdrop copy from the pristine clone before any frost mutates it.
+  // The live layout is untouched until the frost loop, so a source rect repeats across targets.
+  const rects = targets.length > 1 ? new Map() : null
   const jobs = targets.map((t, i) => {
     const copy = clone.cloneNode(true)
-    prunePayload(copy, clone, t.orig.getBoundingClientRect(), nodeMap)
+    prunePayload(copy, clone, t.orig.getBoundingClientRect(), nodeMap, rects)
     removeSelfAndFollowing(nodeAtPath(copy, t.path))
     // Earlier bf elements survive inside this copy (they precede in tree order);
     // kill their raw backdrop-filter so the rasterizer can't smear it (#457).
@@ -143,13 +145,14 @@ const PRUNE_MARGIN = 128
  * rect can't reach the frost box. Structure is never removed — dropping nodes
  * could reflow the copy and misalign the visible part.
  */
-function prunePayload(copy, clone, rect, nodeMap) {
+function prunePayload(copy, clone, rect, nodeMap, rects) {
   const stack = [[copy, clone]]
   while (stack.length) {
     const [c, o] = stack.pop()
     const orig = nodeMap.get(o)
     if (orig?.nodeType === 1) {
-      const r = orig.getBoundingClientRect()
+      let r = rects?.get(orig)
+      if (!r) { r = orig.getBoundingClientRect(); rects?.set(orig, r) }
       if (r.left > rect.right + PRUNE_MARGIN || r.right < rect.left - PRUNE_MARGIN ||
           r.top > rect.bottom + PRUNE_MARGIN || r.bottom < rect.top - PRUNE_MARGIN) {
         if (c.tagName === 'IMG') c.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=')

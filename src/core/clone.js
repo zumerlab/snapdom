@@ -636,7 +636,6 @@ export async function deepClone(node, sessionCache, options) {
   // the same task and each must check the slice again. With an if, 3000 sibling spans at 4x CPU
   // kept a 132 ms task; with the loop the longest was 58. Pinned by core.capture.fast.test.js.
   while (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
-  const clonedAssignedNodes = new Set()
   let pendingSelectedOptions = null
   let pendingTextAreaValue = null
   if (node.nodeType === Node.ELEMENT_NODE) {
@@ -786,12 +785,11 @@ export async function deepClone(node, sessionCache, options) {
     }
   }
 
-  {
-    const preHandler = PRE_PLACEHOLDER_TAGS.has(node.tagName) && tagHandlers.get(node.tagName)
-    if (preHandler) {
-      const handled = await preHandler(node, sessionCache, options)
-      if (handled !== undefined) return handled
-    }
+  const handler = tagHandlers.get(node.tagName)
+  const preHandler = handler && PRE_PLACEHOLDER_TAGS.has(node.tagName)
+  if (preHandler) {
+    const handled = await handler(node, sessionCache, options)
+    if (handled !== undefined) return handled
   }
 
   if (node.getAttribute('data-capture') === 'placeholder') {
@@ -805,12 +803,9 @@ export async function deepClone(node, sessionCache, options) {
     return clone2
   }
 
-  {
-    const handler = !PRE_PLACEHOLDER_TAGS.has(node.tagName) && tagHandlers.get(node.tagName)
-    if (handler) {
-      const handled = await handler(node, sessionCache, options)
-      if (handled !== undefined) return handled
-    }
+  if (handler && !preHandler) {
+    const handled = await handler(node, sessionCache, options)
+    if (handled !== undefined) return handled
   }
 
   let clone
@@ -901,7 +896,12 @@ export async function deepClone(node, sessionCache, options) {
     throw err
   }
   let applyInputVisual = null
-  if (isTag(node, 'textarea')) {
+  // The raw localName, as isTag compared it: an XHTML element named 'INPUT' is not an input.
+  const ln = node.localName
+  const isInput = ln === 'input'
+  const isTextarea = ln === 'textarea'
+  const isField = isInput || isTextarea || ln === 'select'
+  if (isTextarea) {
     const { width, height } = getUnscaledDimensions(node)
     const w = width || node.getBoundingClientRect().width || 0
     const h = height || node.getBoundingClientRect().height || 0
@@ -911,7 +911,7 @@ export async function deepClone(node, sessionCache, options) {
     // added again and the field wrapped out of a tight row (#528).
     if (w || h) clone.style.boxSizing = 'border-box'
   }
-  if (isTag(node, 'input')) {
+  if (isInput) {
     const type = (node.type || 'text').toLowerCase()
     const isCheckboxOrRadio = type === 'checkbox' || type === 'radio'
     // Firefox paints no native control inside a foreignObject, hence the replacement. It is
@@ -992,7 +992,7 @@ export async function deepClone(node, sessionCache, options) {
   // was dropped by HTML serialization. Color/opacity ride as custom properties on the
   // clone; PLACEHOLDER_RULE (prepare.js) in the prefix CSS paints them. Putting
   // the rule on __pseudoCSS would bail the diff path on every recapture (diff.js:301).
-  if ((isTag(node, 'input') || isTag(node, 'textarea')) && !node.value && node.placeholder) {
+  if ((isInput || isTextarea) && !node.value && node.placeholder) {
     try {
       const phStyle = window.getComputedStyle(node, '::placeholder')
       const phColor = phStyle && phStyle.color
@@ -1005,17 +1005,17 @@ export async function deepClone(node, sessionCache, options) {
     } catch { /* non-blocking */ }
   }
 
-  if (isTag(node, 'select')) {
+  if (ln === 'select') {
     // Values need not be unique, and excluded options change positional indices. Retain
     // source identity so the selected labels survive both cases and multiple selections.
     pendingSelectedOptions = new Set(Array.from(node.options).filter(option => option.selected))
   }
-  if (isTag(node, 'textarea')) {
+  if (isTextarea) {
     pendingTextAreaValue = node.value
   }
   // Copy form validation/state attributes so :disabled, :required, :read-only,
   // :invalid, :in-range/:out-of-range pseudo-class styles render correctly in the capture.
-  if (isTag(node, 'input') || isTag(node, 'textarea') || isTag(node, 'select')) {
+  if (isField) {
     if (node.disabled) clone.setAttribute('disabled', '')
     if (node.required) clone.setAttribute('required', '')
     if ((/** @type {HTMLInputElement|HTMLTextAreaElement} */ (node)).readOnly) clone.setAttribute('readonly', '')
@@ -1038,7 +1038,7 @@ export async function deepClone(node, sessionCache, options) {
   // clone instead of wrapped in a span.
   if (
     options.captureSelection &&
-    (isTag(node, 'input') || isTag(node, 'textarea'))
+    (isInput || isTextarea)
   ) {
     try {
       inlineTextFieldSelection(node, clone)
@@ -1077,31 +1077,34 @@ export async function deepClone(node, sessionCache, options) {
       if (geometry) copySvgGeometry(node, clone, cs, geometry)
     } catch { }
   }
-  if (node.shadowRoot) {
+  const shadow = node.shadowRoot
+  let assignedToSlot = null
+  if (shadow) {
+    assignedToSlot = new Set()
     // Wire this root into the style-snapshot invalidation. Nothing else can see inside it:
     // the document observer stops at the boundary, so without this a component that
     // re-renders between captures keeps serving its previous frame's snapshots.
-    observeShadowRoot(node.shadowRoot)
+    observeShadowRoot(shadow)
     try {
-      const slots = node.shadowRoot.querySelectorAll('slot')
+      const slots = shadow.querySelectorAll('slot')
       for (const s of slots) {
         // Must NOT flatten: this set is checked against the host's *direct* childNodes.
         // flatten:true resolves nested slots away, so when a light-DOM child is itself a
         // <slot> (a component inside a component) it never lands here and gets cloned twice.
         const assigned = s.assignedNodes?.() || []
-        for (const an of assigned) clonedAssignedNodes.add(an)
+        for (const an of assigned) assignedToSlot.add(an)
       }
     } catch {
     }
     const scopeId = nextShadowScopeId(sessionCache)
     const scopeSelector = `[data-sd="${scopeId}"]`
     sessionCache.shadowScopes ||= new WeakMap()
-    sessionCache.shadowScopes.set(node.shadowRoot, scopeId)
+    sessionCache.shadowScopes.set(shadow, scopeId)
     try {
       clone.setAttribute('data-sd', scopeId)
     } catch {
     }
-    const rawCSS = extractShadowCSS(node.shadowRoot)
+    const rawCSS = extractShadowCSS(shadow)
     // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
     // among them, and a page whose only ::after lives in a shadow root skipped the pass
     // entirely (the pinned shadow ::after that never painted).
@@ -1111,14 +1114,20 @@ export async function deepClone(node, sessionCache, options) {
     const seed = buildSeedCustomPropsRule(node, neededVars, scopeSelector)
     injectScopedStyle(clone, seed + rewritten, scopeId)
     // Children clone concurrently (sibling iframe/canvas work overlaps); a failed child
-    // resolves to null and is dropped — same semantics the promise-wrapper scaffolding had.
+    // resolves to null and is dropped. A leaf is cloned in place, as in the light-DOM loop below.
     const shadowFrag = document.createDocumentFragment()
-    const cloneList = await Promise.all(Array.from(node.shadowRoot.childNodes).map((child) =>
-      (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE')
-        ? null
-        : deepClone(child, sessionCache, options).catch(() => null)
-    ))
-    shadowFrag.append(...cloneList.filter(clonedChild => !!clonedChild))
+    const list = []
+    let pending = false
+    for (const child of Array.from(shadow.childNodes)) {
+      if (child.nodeType === Node.ELEMENT_NODE && child.tagName === 'STYLE') continue
+      if (child.nodeType !== Node.ELEMENT_NODE && (child.nodeType !== Node.TEXT_NODE || !sessionCache.selection)) {
+        list.push(child.cloneNode(true))
+        continue
+      }
+      list.push(deepClone(child, sessionCache, options).catch(() => null))
+      pending = true
+    }
+    for (const c of pending ? await Promise.all(list) : list) if (c) shadowFrag.appendChild(c)
     clone.appendChild(shadowFrag)
   }
   if (node.tagName === 'SLOT') {
@@ -1144,14 +1153,23 @@ export async function deepClone(node, sessionCache, options) {
   // shadow tree has no <slot> at all) is outside the flat tree and paints nothing. Cloning the
   // latter injected content the page never shows, twice over for the common component that
   // reads its own light DOM and renders a copy inside its shadow tree.
-  const skipLightChild = (child) =>
-    clonedAssignedNodes.has(child) || (node.shadowRoot && !child.assignedSlot)
-  const cloneList = await Promise.all(Array.from(node.childNodes).map((child) =>
-    skipLightChild(child)
-      ? null
-      : deepClone(child, sessionCache, options).catch(() => null)
-  ))
-  clone.append(...cloneList.filter(clonedChild => !!clonedChild))
+  //
+  // A text or comment child is cloned here: deepClone returns the same cloneNode(true) for
+  // it, after a slicer check and one promise per node. Selected text still goes through it.
+  // A leaf-only element then appends with no Promise.all and no await. The array snapshot
+  // stays: a resolveNode hook runs inside the loop and may mutate the source.
+  const list = []
+  let pending = false
+  for (const child of Array.from(node.childNodes)) {
+    if (shadow && (assignedToSlot.has(child) || !child.assignedSlot)) continue
+    if (child.nodeType !== Node.ELEMENT_NODE && (child.nodeType !== Node.TEXT_NODE || !sessionCache.selection)) {
+      list.push(child.cloneNode(true))
+      continue
+    }
+    list.push(deepClone(child, sessionCache, options).catch(() => null))
+    pending = true
+  }
+  for (const c of pending ? await Promise.all(list) : list) if (c) clone.appendChild(c)
 
   // Adjust select value after children are cloned
   if (pendingSelectedOptions && isTag(clone, 'select')) {

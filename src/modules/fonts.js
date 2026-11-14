@@ -1304,14 +1304,19 @@ export function collectFontUsage(root, keep) {
     if (!txt) return
     for (const ch of txt) usedCodepoints.add(ch.codePointAt(0))
   }
+  // The four strings fully decide the keys, and a page has a handful of distinct tuples.
+  const seen = new Set()
   const addFromStyle = (cs) => {
+    const ff = cs.fontFamily, fw = cs.fontWeight, fs = cs.fontStyle, fst = cs.fontStretch
+    const sig = ff + FONT_KEY_SEP + fw + FONT_KEY_SEP + fs + FONT_KEY_SEP + fst
+    if (seen.has(sig)) return
+    seen.add(sig)
     // #357: Register ALL families in the fallback chain, not just the primary one.
     // This ensures that if the first font doesn't have a glyph, the fallback font is also embedded.
-    const families = pickAllFamilies(cs.fontFamily)
+    const families = pickAllFamilies(ff)
     if (!families.length) return
-    for (const family of families) {
-      required.add([family, normWeight(cs.fontWeight), normStyle(cs.fontStyle), normStretchPct(cs.fontStretch)].join(FONT_KEY_SEP))
-    }
+    const tail = FONT_KEY_SEP + normWeight(fw) + FONT_KEY_SEP + normStyle(fs) + FONT_KEY_SEP + normStretchPct(fst)
+    for (const family of families) required.add(family + tail)
   }
   // Same selector gate as inlinePseudoElements: skip the two pseudo style resolutions
   // for nodes no collected ::before/::after selector matches (null gate → probe).

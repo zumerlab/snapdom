@@ -491,6 +491,9 @@ function isInvalidXHTMLAttr(name, stripFrameworkDirectives) {
  * the replacer can hand them back untouched \u2014 do not reorder.
  */
 const INVALID_XML_CHARS = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g
+/** Non-global twin of the second alternative above: a test that allocates nothing, so a
+ *  string is rewritten only when it holds one of these. */
+const HAS_INVALID_XML = /[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/
 /* eslint-enable no-control-regex */
 
 /** Drops the XML-illegal chars above, keeping whole surrogate pairs. */
@@ -514,15 +517,20 @@ const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/
 export function sanitizeCloneForXHTML(root, opts = {}) {
   if (!root) return
   const { stripFrameworkDirectives = true } = opts
+  const verdicts = new Map() // attribute name -> drop?, the verdict is pure in (name, flag)
   const scrubEl = (el) => {
-    // Copy first: NamedNodeMap is live
-    for (const attr of Array.from(el.attributes)) {
-      if (isInvalidXHTMLAttr(attr.name, stripFrameworkDirectives)) { el.removeAttribute(attr.name); continue }
+    // Names, not Attr nodes: el.attributes builds a NamedNodeMap and an Attr per attribute
+    // on every clone element. The names array is a snapshot, so removing while looping is safe.
+    for (const name of el.getAttributeNames()) {
+      let bad = verdicts.get(name)
+      if (bad === undefined) verdicts.set(name, bad = isInvalidXHTMLAttr(name, stripFrameworkDirectives))
+      if (bad) { el.removeAttribute(name); continue }
+      const value = el.getAttribute(name)
       // A base64 payload is XML-safe by alphabet: skip the regex over multi-MB inlined images.
-      if (BASE64_DATA_URL.test(attr.value)) continue
-      const cv = stripInvalidXML(attr.value)
-      if (cv !== attr.value) {
-        try { el.setAttribute(attr.name, cv) } catch { /* read-only attr */ }
+      if (value === null || BASE64_DATA_URL.test(value) || !HAS_INVALID_XML.test(value)) continue
+      const cv = stripInvalidXML(value)
+      if (cv !== value) {
+        try { el.setAttribute(name, cv) } catch { /* read-only attr */ }
       }
     }
   }
@@ -539,8 +547,11 @@ export function sanitizeCloneForXHTML(root, opts = {}) {
     } else if (n.nodeType === Node.COMMENT_NODE) {
       comments.push(n) // invalid XML like "--"
     } else {
-      const cv = stripInvalidXML(n.data)
-      if (cv !== n.data) n.data = cv
+      const d = n.data
+      if (HAS_INVALID_XML.test(d)) {
+        const cv = stripInvalidXML(d)
+        if (cv !== d) n.data = cv
+      }
     }
   }
   for (const c of comments) c.remove()

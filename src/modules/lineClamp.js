@@ -12,6 +12,9 @@
 
 import { isSafari } from '../utils/browser.js'
 
+/** The undo every no-op exit returns; one shared function, so the walk can leave it out. */
+const NONE = () => {}
+
 /**
  * Bake text truncation for the element AND all descendants that CSS would
  * truncate: multi-line `-webkit-line-clamp` and single-line
@@ -26,7 +29,7 @@ import { isSafari } from '../utils/browser.js'
  * @returns {() => void} Combined undo function
  */
 export function lineClampTree(el, clipRect) {
-  if (!el) return () => {}
+  if (!el) return NONE
   const undos = []
   // 200px of slack around the clip window, the same margin capture.js gives the font walk.
   const M = 200
@@ -40,13 +43,16 @@ export function lineClampTree(el, clipRect) {
             bottom < clipRect.top - M || r.top > clipRect.bottom + M) return
       }
     }
-    // One computed-style read per node, shared by both passes (hot path).
-    const cs = getComputedStyle(node)
-    const u1 = lineClamp(node, cs)
-    if (u1) undos.push(u1)
-    const u2 = textEllipsis(node, cs)
-    if (u2) undos.push(u2)
-    for (const child of node.children || []) walk(child)
+    // Both passes act only on a plain-text container: no element child, some child node.
+    if (node.firstElementChild === null && node.firstChild !== null) {
+      // One computed-style read per node, shared by both passes (hot path).
+      const cs = getComputedStyle(node)
+      const u1 = lineClamp(node, cs)
+      if (u1 !== NONE) undos.push(u1)
+      const u2 = textEllipsis(node, cs)
+      if (u2 !== NONE) undos.push(u2)
+    }
+    for (let c = node.firstElementChild; c; c = c.nextElementSibling) walk(c)
   }
   walk(el)
   return () => undos.forEach((u) => u())
@@ -63,13 +69,13 @@ export function lineClampTree(el, clipRect) {
  * @returns {() => void} undo function (no-op if nothing changed)
  */
 export function lineClamp(el, cs) {
-  if (!el) return () => {}
+  if (!el) return NONE
   cs = cs || getComputedStyle(el)
 
   const lines = getClamp(cs)
-  if (lines <= 0) return () => {}
+  if (lines <= 0) return NONE
 
-  if (!isPlainTextContainer(el)) return () => {}
+  if (!isPlainTextContainer(el)) return NONE
 
   // Mutates the live element's text nodes in place (never textContent, #485).
   const text = textNodeWriter(el)
@@ -94,7 +100,7 @@ export function lineClamp(el, cs) {
 
   // Already fits in N lines: do nothing, same as the native clamp
   if (el.scrollHeight <= targetH + slack) {
-    return () => {}
+    return NONE
   }
 
   // ==== Binary search over the prefix length that fits with an ellipsis ====
@@ -129,18 +135,18 @@ export function lineClamp(el, cs) {
  * @returns {() => void} undo function (no-op if nothing changed)
  */
 export function textEllipsis(el, cs) {
-  if (!el) return () => {}
+  if (!el) return NONE
   cs = cs || getComputedStyle(el)
 
-  if (cs.textOverflow !== 'ellipsis') return () => {}
+  if (cs.textOverflow !== 'ellipsis') return NONE
   // Single-line ellipsis: content must not wrap and must be clipped.
-  if (cs.whiteSpace !== 'nowrap' && cs.whiteSpace !== 'pre') return () => {}
-  if (cs.overflowX !== 'hidden' && cs.overflowX !== 'clip') return () => {}
+  if (cs.whiteSpace !== 'nowrap' && cs.whiteSpace !== 'pre') return NONE
+  if (cs.overflowX !== 'hidden' && cs.overflowX !== 'clip') return NONE
 
-  if (!isPlainTextContainer(el)) return () => {}
+  if (!isPlainTextContainer(el)) return NONE
 
   // It already fits, so the native clamp would do nothing either.
-  if (el.scrollWidth <= el.clientWidth + 0.5) return () => {}
+  if (el.scrollWidth <= el.clientWidth + 0.5) return NONE
 
   // Mutates the live element's text nodes in place (never textContent, #485).
   const text = textNodeWriter(el)

@@ -154,6 +154,12 @@ describe('an <img> load that lands mid-capture', () => {
 
   it('still memoizes when nothing lands mid-capture', async () => {
     makeHost()
+    // The fixture image's own load event lands some tasks after the mount. Wait it out, or it
+    // is the thing that lands: between the two captures in about 1 run of 40 on each engine.
+    await new Promise((resolve) => {
+      img.addEventListener('load', resolve, { once: true })
+      img.addEventListener('error', resolve, { once: true })
+    })
     const r1 = await snapdom(host, { burst: true })
     const r2 = await snapdom(host, { burst: true })
     expect(r2).toBe(r1)

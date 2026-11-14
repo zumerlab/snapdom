@@ -153,15 +153,25 @@ export function isIOS() {
   return isAppleMobile || isIPadOS
 }
 
+/** The last user agent `isSafari` and `isFirefox` answered for, and their answers. */
+let safariUA, safari, firefoxUA, firefox
+
 /**
  * True for Safari and for every other WebKit shell on iOS: UIWebView and WKWebView inside
  * apps, WeChat and WeCom, the Baidu apps (#295). Chrome and Firefox on iOS are excluded by the
  * first check and included again by the last one, on purpose: they render with WebKit too.
+ *
+ * The answer is kept per user agent string. The style pass asks once per node, and the nine
+ * tests over the string cost the 1,506-node table 0.67 ms of a 43 ms capture. Keyed on the
+ * string and not latched, since tests replace navigator.userAgent.
+ * Pinned by __tests__/utils.browser.more.test.js.
  * @returns {boolean}
  */
 export function isSafari() {
   if (typeof navigator === 'undefined') return false
   const ua = navigator.userAgent || ''
+  if (ua === safariUA) return safari
+  safariUA = ua
   const uaLower = ua.toLowerCase()
 
   // Safari desktop/mobile UA, excluding Chrome iOS, Firefox iOS and Android browsers
@@ -193,16 +203,20 @@ export function isSafari() {
   const isIOSWebKit =
     /ipad|iphone|ipod/.test(uaLower) && isWebKit
 
-  return isSafariUA || isUIWebView || isWeChatUA || isBaiduUA || isIOSWebKit
+  return (safari = isSafariUA || isUIWebView || isWeChatUA || isBaiduUA || isIOSWebKit)
 }
 
 /**
  * True for Firefox on desktop and Android, the Gecko engine. Firefox on iOS (fxios) renders
  * with WebKit, so it answers false here and true to `isSafari`, and the Gecko-only
  * workarounds gated on this (background-clip:text, checkbox rendering) never run on it.
+ * Kept per user agent string like `isSafari`: the snapshot and background passes ask per node.
  * @returns {boolean}
  */
 export function isFirefox() {
   if (typeof navigator === 'undefined') return false
-  return (navigator.userAgent || '').toLowerCase().includes('firefox')
+  const ua = navigator.userAgent || ''
+  if (ua === firefoxUA) return firefox
+  firefoxUA = ua
+  return (firefox = ua.toLowerCase().includes('firefox'))
 }

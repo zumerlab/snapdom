@@ -267,16 +267,17 @@ export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc))
  * True if any single side paints a border. The `border-width`/`border-style` shorthands
  * can't be parsed with parseFloat: a `border-bottom` resolves to "0px 0px 1px 0px", whose
  * first token (top) is 0, so single-side borders were wrongly read as absent (#419).
- * @param {CSSStyleDeclaration} style
+ * @param {CSSStyleDeclaration} s
  * @returns {boolean}
  */
-function hasPaintedBorder(style) {
-  for (const side of ['Top', 'Right', 'Bottom', 'Left']) {
-    const w = parseFloat(style[`border${side}Width`]) || 0
-    const s = style[`border${side}Style`]
-    if (w > 0 && s && s !== 'none' && s !== 'hidden') return true
-  }
-  return false
+function hasPaintedBorder(s) {
+  let st
+  return !!(
+    ((st = s.borderTopStyle) && st !== 'none' && st !== 'hidden' && parseFloat(s.borderTopWidth) > 0) ||
+    ((st = s.borderRightStyle) && st !== 'none' && st !== 'hidden' && parseFloat(s.borderRightWidth) > 0) ||
+    ((st = s.borderBottomStyle) && st !== 'none' && st !== 'hidden' && parseFloat(s.borderBottomWidth) > 0) ||
+    ((st = s.borderLeftStyle) && st !== 'none' && st !== 'hidden' && parseFloat(s.borderLeftWidth) > 0)
+  )
 }
 
 /**
@@ -540,20 +541,22 @@ function resolveQuoteKeywords(raw, node) {
  * Resolve the pseudo's `content` to the text it paints, in this order: alt-text suffix
  * stripped, quote keywords resolved, sibling counter overrides applied (so a sequence stays
  * continuous across siblings), the pseudo's own reset/increment, counter() expansion, then
- * token collapsing so `"..."` pieces join with no gap.
+ * token collapsing so `"..."` pieces join with no gap. Without a counter() in the content
+ * and with no counter-increment, the counter context feeds nothing and is not derived.
  * @param {Element} node
- * @param {'::before'|'::after'} pseudo
+ * @param {CSSStyleDeclaration} ps - the pseudo's computed style
  * @param {{get:Function, getStack:Function}} baseCtx
  * @param {WeakMap<Element, Map<string, number>>} siblingCounters - per-parent overrides, on the session
- * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}> }}
+ * @returns {{ text: string, incs: Array<{name:string,num:number|undefined}>, derived?: {get:Function, getStack:Function} }}
+ *   `derived` is set whenever `incs` is non-empty
  */
-function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
-  let ps
-  try { ps = getStyle(node, pseudo) } catch { }
-  let raw = ps?.content
+function resolvePseudoContentAndIncs(node, ps, baseCtx, siblingCounters) {
+  let raw = ps.content
   if (!raw || raw === 'none' || raw === 'normal') return { text: '', incs: [] }
   raw = stripContentAltText(raw)
   raw = resolveQuoteKeywords(raw, node)
+  const inc = ps.counterIncrement
+  if (!hasCounters(raw) && (!inc || inc === 'none')) return { text: collapseCssContent(raw), incs: [] }
 
   // 1) sibling overrides
   const baseWithSiblings = withSiblingOverrides(node, baseCtx, siblingCounters)
@@ -568,7 +571,7 @@ function resolvePseudoContentAndIncs(node, pseudo, baseCtx, siblingCounters) {
 
   // 4) collapse tokens (drops the gap between "1" and "." -> "1.")
   const text = collapseCssContent(resolved)
-  return { text, incs: derived.__incs || [] }
+  return { text, incs: derived.__incs || [], derived }
 }
 
 /**
@@ -692,31 +695,39 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
       if (gate === '') continue
       try { if (!source.matches(gate)) continue } catch { /* unparsable at match time → probe */ }
     }
+    // The first-letter pass rewrites a non-blank text child of the clone; with none there is
+    // nothing to wrap, so the style probe is skipped.
+    let textNode = null
+    if (pseudo === '::first-letter') {
+      for (let n = clone.firstChild; n && !textNode; n = n.nextSibling) if (n.nodeType === 3 && n.data.trim()) textNode = n
+      if (!textNode) continue
+    }
     try {
       const style = getStyle(source, pseudo)
       if (!style) continue
+      const content = style.content, display = style.display
       // Skip default, visually empty pseudo styles before adding suppression markers.
       const isEmptyPseudo =
-        style.content === 'none' &&
+        content === 'none' &&
         style.backgroundImage === 'none' &&
         (style.backgroundColor === 'transparent' || style.backgroundColor === 'rgba(0, 0, 0, 0)') &&
         !hasPaintedBorder(style) &&
         (!style.transform || style.transform === 'none') &&
-        style.display === 'inline'
+        display === 'inline'
 
       if (isEmptyPseudo) continue
 
       // ::before and ::after do not generate a box when content is none/normal,
       // and no pseudo-element generates a box when display is none. Paint and
       // layout styles cannot make those non-generated boxes visible.
-      const nonGenerated = style.display === 'none' ||
-        (pseudo !== '::first-letter' && (style.content === 'none' || style.content === 'normal'))
+      const nonGenerated = display === 'none' ||
+        (pseudo !== '::first-letter' && (content === 'none' || content === 'normal'))
       if (nonGenerated) {
         // A cloned stylesheet can restart a pseudo animation from a visible
         // keyframe, so suppress the native pseudo even though no replacement
         // node is needed for the currently captured frame.
-        if (pseudo === '::before') clone.dataset.snapdomHasBefore = '1'
-        if (pseudo === '::after') clone.dataset.snapdomHasAfter = '1'
+        if (pseudo === '::before') clone.setAttribute('data-snapdom-has-before', '1')
+        if (pseudo === '::after') clone.setAttribute('data-snapdom-has-after', '1')
         continue
       }
 
@@ -745,11 +756,6 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
           boxDiff('marginBottom') || boxDiff('marginLeft')
         if (!isMeaningful) continue
 
-        const textNode = Array.from(clone.childNodes).find(
-          (n) => n.nodeType === Node.TEXT_NODE && n.textContent?.trim().length > 0
-        )
-        if (!textNode) continue
-
         const text = textNode.textContent
         // Leading white space is not part of ::first-letter and does not stop it (CSS Pseudo
         // §3.2). The pattern was anchored at index 0 with \s excluded from both halves, so
@@ -764,7 +770,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
 
         const span = document.createElement('span')
         span.textContent = first
-        span.dataset.snapdomPseudo = '::first-letter'
+        span.setAttribute('data-snapdom-pseudo', '::first-letter')
         const snapshot = snapshotComputedStyle(style, pseudoUniverseFor(source, sessionCache))
         const key = getStyleKey(snapshot, 'span')
         sessionCache.styleMap.set(span, key)
@@ -777,11 +783,11 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
       }
 
       // ---------- CONTENT (pseudo-aware counters + collapse tokens) ----------
-      const rawContent = style.content ?? ''
+      const rawContent = content ?? ''
 const isNoExplicitContent =
   rawContent === '' || rawContent === 'none' || rawContent === 'normal'
-const { text: cleanContent, incs } =
-  resolvePseudoContentAndIncs(source, pseudo, counterCtx, sessionCache.__siblingCounters)
+const { text: cleanContent, incs, derived } =
+  resolvePseudoContentAndIncs(source, style, counterCtx, sessionCache.__siblingCounters)
 
       const bg = style.backgroundImage
       const bgColor = style.backgroundColor
@@ -810,15 +816,16 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // `text-align-last: justify` spreads the text differently with and without it
       // ("A   B   C" vs "A     B     C"). Block-level 0×0 boxes change nothing and stay dropped.
       const boxGenerating = rawContent !== 'none' && rawContent !== 'normal'
-      const atomicInline = /^inline-/.test(style.display || '')
+      const atomicInline = /^inline-/.test(display || '')
       const hasLayoutBox = boxGenerating &&
         ((parseFloat(style.width) || 0) > 0 || (parseFloat(style.height) || 0) > 0 || atomicInline)
 
       // A box-generating pseudo can paint with box-shadow/outline alone (no bg, border,
       // text or size — a zero-size box with a blur/spread shadow still renders a glow).
       // Gated on boxGenerating: with content:none no box exists and nothing paints live.
-      const hasShadow = boxGenerating && style.boxShadow && style.boxShadow !== 'none'
-      const hasOutline = boxGenerating && style.outlineStyle && style.outlineStyle !== 'none' &&
+      const boxShadow = style.boxShadow, outlineStyle = style.outlineStyle
+      const hasShadow = boxGenerating && boxShadow && boxShadow !== 'none'
+      const hasOutline = boxGenerating && outlineStyle && outlineStyle !== 'none' &&
         (parseFloat(style.outlineWidth) || 0) > 0
 
       const shouldRender =
@@ -855,7 +862,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // positioned, floated or block one lays out its own lines, and pinning it put a 50px
       // tooltip that wraps live onto a single line.
       const isImageContent = cleanContent.startsWith('url(') || /^-?(?:webkit-)?image-set\(/i.test(cleanContent)
-      const onHostLine = style.display === 'inline' && style.cssFloat === 'none' &&
+      const onHostLine = display === 'inline' && style.cssFloat === 'none' &&
         style.position !== 'absolute' && style.position !== 'fixed'
       let pinNowrap = false
       if (hasExplicitContent && !isIconFont2 && cleanContent.length > 1 && !isImageContent && onHostLine) {
@@ -871,7 +878,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       }
 
       const pseudoEl = document.createElement('span')
-      pseudoEl.dataset.snapdomPseudo = pseudo
+      pseudoEl.setAttribute('data-snapdom-pseudo', pseudo)
       // pseudoEl.style.display = 'inline'
       // pseudoEl.style.verticalAlign = 'baseline'
       pseudoEl.style.pointerEvents = 'none'
@@ -949,18 +956,21 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if ('webkitMaskImage' in pseudoEl.style) pseudoEl.style.webkitMaskImage = 'none'
 
       try {
-        pseudoEl.style.backgroundRepeat = style.backgroundRepeat
-        pseudoEl.style.backgroundSize = style.backgroundSize
-        if (style.backgroundPositionX && style.backgroundPositionY) {
-          pseudoEl.style.backgroundPositionX = style.backgroundPositionX
-          pseudoEl.style.backgroundPositionY = style.backgroundPositionY
-        } else {
-          pseudoEl.style.backgroundPosition = style.backgroundPosition
-        }
-        pseudoEl.style.backgroundOrigin = style.backgroundOrigin
         pseudoEl.style.backgroundClip = style.backgroundClip
-        pseudoEl.style.backgroundAttachment = style.backgroundAttachment
-        pseudoEl.style.backgroundBlendMode = style.backgroundBlendMode
+        // Without an image layer these longhands act on nothing (#265 is the image case).
+        if (hasBg) {
+          pseudoEl.style.backgroundRepeat = style.backgroundRepeat
+          pseudoEl.style.backgroundSize = style.backgroundSize
+          if (style.backgroundPositionX && style.backgroundPositionY) {
+            pseudoEl.style.backgroundPositionX = style.backgroundPositionX
+            pseudoEl.style.backgroundPositionY = style.backgroundPositionY
+          } else {
+            pseudoEl.style.backgroundPosition = style.backgroundPosition
+          }
+          pseudoEl.style.backgroundOrigin = style.backgroundOrigin
+          pseudoEl.style.backgroundAttachment = style.backgroundAttachment
+          pseudoEl.style.backgroundBlendMode = style.backgroundBlendMode
+        }
       } catch { }
 
       if (hasBg) {
@@ -1007,8 +1017,6 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // Before inserting: when the pseudo incremented anything, propagate the final value to siblings
       if (incs && incs.length && source.parentElement) {
         const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
-        const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
-        const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
         for (const { name } of incs) {
           if (!name) continue
           const finalVal = derived.get(source, name)
@@ -1021,10 +1029,10 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
 
       // #359: mark parent so we can suppress native ::before/::after in cloned <style> (avoids double render)
       if (pseudo === '::before') {
-        clone.dataset.snapdomHasBefore = '1'
+        clone.setAttribute('data-snapdom-has-before', '1')
         clone.insertBefore(pseudoEl, clone.firstChild)
       } else {
-        clone.dataset.snapdomHasAfter = '1'
+        clone.setAttribute('data-snapdom-has-after', '1')
         clone.appendChild(pseudoEl)
       }
     } catch (e) {
@@ -1036,15 +1044,16 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
   // Recurse – use nodeMap (clone→source) for alignment instead of index,
   // because deepClone filters out NO_CAPTURE_TAGS (script, link, etc.),
   // which causes index mismatch between source.children and clone.children.
-  const cChildren = Array.from(clone.children).filter((child) => !child.dataset.snapdomPseudo)
   if (sessionCache.nodeMap) {
-    for (const cChild of cChildren) {
-      const sChild = sessionCache.nodeMap.get(cChild)
-      if (sChild?.nodeType === 1) {
-        await inlinePseudoElements(sChild, cChild, sessionCache, options, true)
-      }
+    // The pseudo spans inserted above have no nodeMap entry, so the miss skips them. The
+    // attribute test keeps out a source element that carries the marker itself (a page that
+    // inlined an earlier capture), as the filter below does.
+    for (let c = clone.firstElementChild; c; c = c.nextElementSibling) {
+      const sChild = sessionCache.nodeMap.get(c)
+      if (sChild?.nodeType === 1 && !c.hasAttribute('data-snapdom-pseudo')) await inlinePseudoElements(sChild, c, sessionCache, options, true)
     }
   } else {
+    const cChildren = Array.from(clone.children).filter((child) => !child.hasAttribute('data-snapdom-pseudo'))
     const sChildren = Array.from(source.children)
     for (let i = 0; i < Math.min(sChildren.length, cChildren.length); i++) {
       await inlinePseudoElements(sChildren[i], cChildren[i], sessionCache, options, true)

@@ -10,7 +10,7 @@
 import { isSafari, debugWarn } from '../utils'
 import { sessionWarn } from '../utils/debug.js'
 import { rasterize } from '../modules/rasterize'
-import { fixSafariShadows, zoomSvgText, decodeSvgFromDataURL, encodeSvgToDataURL } from './toCanvas.js'
+import { fixSafariShadows, zoomSvgText, decodeSvgFromDataURL, encodeSvgToDataURL, patchSvgHeader } from './toCanvas.js'
 /**
  * Load a capture's data URL into an <img> sized by the shared exporter rule.
  *
@@ -73,21 +73,28 @@ export async function toImg(url, options) {
     }
   }
   // Normal SVG captures declare their natural dimensions in the header. Resolve a scale
-  // before loading, so a large payload is decoded once at its final size. Unusual SVGs with
-  // relative/missing dimensions retain the measured fallback below.
+  // before loading, so a large payload is decoded once at its final size. The root tag is
+  // patched in place in the URL; only a URL that does not start with it, as svg.js writes it,
+  // is decoded. Unusual SVGs with relative/missing dimensions retain the measured fallback below.
   let source = url
   let scaledSvg = false
   if (!hasW && !hasH && scale !== 1 && typeof url === 'string' && url.startsWith('data:image/svg+xml')) {
     try {
-      const svg = decodeSvgFromDataURL(url)
-      const head = (svg.match(/<svg\b[^>]*>/i) || [])[0] || ''
-      const w = Number((head.match(/\bwidth="([\d.]+)"/i) || [])[1])
-      const h = Number((head.match(/\bheight="([\d.]+)"/i) || [])[1])
-      if (w > 0 && h > 0) {
-        const next = head.replace(/\bwidth="[^"]*"/i, `width="${Math.max(1, Math.round(w * scale))}"`)
-          .replace(/\bheight="[^"]*"/i, `height="${Math.max(1, Math.round(h * scale))}"`)
-        source = encodeSvgToDataURL(svg.replace(head, next))
+      const rescale = head => {
+        const w = Number((head.match(/\bwidth="([\d.]+)"/i) || [])[1])
+        const h = Number((head.match(/\bheight="([\d.]+)"/i) || [])[1])
+        if (!(w > 0 && h > 0)) return head
         scaledSvg = true
+        return head.replace(/\bwidth="[^"]*"/i, `width="${Math.max(1, Math.round(w * scale))}"`)
+          .replace(/\bheight="[^"]*"/i, `height="${Math.max(1, Math.round(h * scale))}"`)
+      }
+      const next = patchSvgHeader(url, rescale)
+      if (next) source = next
+      else {
+        const svg = decodeSvgFromDataURL(url)
+        const head = (svg.match(/<svg\b[^>]*>/i) || [])[0] || ''
+        const resized = rescale(head)
+        if (scaledSvg) source = encodeSvgToDataURL(svg.replace(head, resized))
       }
     } catch { /* resolve unusual inputs from the decoded image below */ }
   }

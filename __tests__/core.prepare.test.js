@@ -164,7 +164,7 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
   expect(wrapper.style.transform).toContain('translate(-10px, -20px)')
 })
 
-  it('applies inline styles (no class) for nodes inside ShadowRoot', async () => {
+  it('keeps the inline style of a root captured from inside a ShadowRoot', async () => {
     const host = document.createElement('div')
     const shadow = host.attachShadow({ mode: 'open' })
     const inner = document.createElement('span')
@@ -172,7 +172,7 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
     shadow.appendChild(inner)
 
     const { clone } = await prepareClone(inner)
-    // In shadow DOM branch, it sets inline style string
+    // The author's inline declaration rides on the cloned style attribute.
     expect(clone.getAttribute('style') || '').toMatch(/background/)
   })
 

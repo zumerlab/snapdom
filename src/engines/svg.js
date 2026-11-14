@@ -112,15 +112,18 @@ function internInlineStyles(foString, fo) {
   // literal sequence the attribute regex matches (attribute selectors, content strings).
   // Split the markup into style-element spans and everything else, and transform only the
   // latter. Span 0 ends inside the engine's own style tag, where the rules are injected.
-  const STYLE_SPAN = /<style\b[^>]*>[\s\S]*?<\/style>/g
   const segments = []
   let cursor = styleClose
-  let sm
-  STYLE_SPAN.lastIndex = styleClose
-  while ((sm = STYLE_SPAN.exec(foString))) {
-    segments.push({ text: foString.slice(cursor, sm.index), intern: true })
-    segments.push({ text: sm[0], intern: false })
-    cursor = STYLE_SPAN.lastIndex
+  // The span regex can only match at a literal '<style', which indexOf finds without it.
+  if (foString.indexOf('<style', styleClose) !== -1) {
+    const STYLE_SPAN = /<style\b[^>]*>[\s\S]*?<\/style>/g
+    let sm
+    STYLE_SPAN.lastIndex = styleClose
+    while ((sm = STYLE_SPAN.exec(foString))) {
+      segments.push({ text: foString.slice(cursor, sm.index), intern: true })
+      segments.push({ text: sm[0], intern: false })
+      cursor = STYLE_SPAN.lastIndex
+    }
   }
   segments.push({ text: foString.slice(cursor), intern: true })
   const counts = new Map()

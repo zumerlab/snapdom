@@ -238,6 +238,25 @@ export function peekSvgHeader(u) {
   try { return decodeURIComponent(chunk) } catch { return '' }
 }
 /**
+ * Rewrite the root `<svg>` tag of a data URL without decoding the payload. The tag is read
+ * from the peeked header, `fn` returns its replacement, and the URL's untouched tail is
+ * reused as it is: encodeURIComponent maps character by character and the tag ends at an
+ * ASCII `>`, so the encoding of tag plus tail is the encoding of each. Returns null unless
+ * the payload starts with the canonical encoding of that tag (a prolog, a non-canonical
+ * encoding or a tag longer than the peek), and the caller decodes the whole text instead.
+ * Pinned by __tests__/exporter.patchSvgHeader.test.js.
+ * @param {string} u - data:image/svg+xml URL
+ * @param {(head: string) => string} fn - the new root tag from the old one
+ * @returns {string|null}
+ */
+export function patchSvgHeader(u, fn) {
+  const i = u.indexOf(',') + 1
+  const head = peekSvgHeader(u).match(/<svg\b[^>]*>/i)?.[0]
+  const enc = head && encodeURIComponent(head)
+  if (!enc || !u.startsWith(enc, i)) return null
+  return u.slice(0, i) + encodeURIComponent(fn(head)) + u.slice(i + enc.length)
+}
+/**
  * The inverse of decodeSvgFromDataURL. A data: URL on purpose: Chromium taints a canvas that
  * draws a foreignObject svg fetched from a blob: URL, and a tainted canvas cannot be read.
  * @param {string} svgText
@@ -791,22 +810,28 @@ export async function toCanvas(url, options) {
     const h = parseFloat((head.match(/\bheight="([\d.]+)/i) || [])[1])
     const oversized = Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0 &&
       Math.min(1, MAX_RASTER_SIDE / w, MAX_RASTER_SIDE / h, Math.sqrt(MAX_RASTER_AREA / (w * h))) < 1
-    if (crop || oversized || isSafari()) {
+    const safari = isSafari()
+    if (crop || oversized || safari) {
       try {
-        let svgText = decodeSvgFromDataURL(url)
-        if (crop) svgText = cropSvgText(svgText, crop)
-        if (isSafari()) {
-          const fixed = await fixSafariShadows(svgText)
-          svgText = fixed.svg
-          shadowNaturalOnly = fixed.naturalOnly
-          // Embedded fonts / nested raster images are the resources WebKit paints late
-          // (#219770/#394) — only then is the verified-draw ladder worth waiting on.
-          needsPaintVerify = /@font-face|data:image\//i.test(svgText)
+        // Off WebKit both rewrites touch only the root tag, so the payload is never decoded.
+        const patched = !safari && patchSvgHeader(url, tag => clampSvgTextRasterSize(crop ? cropSvgText(tag, crop, { shiftContent: false }) : tag, options))
+        if (patched) src = patched
+        else {
+          let svgText = decodeSvgFromDataURL(url)
+          if (crop) svgText = cropSvgText(svgText, crop)
+          if (safari) {
+            const fixed = await fixSafariShadows(svgText)
+            svgText = fixed.svg
+            shadowNaturalOnly = fixed.naturalOnly
+            // Embedded fonts / nested raster images are the resources WebKit paints late
+            // (#219770/#394) — only then is the verified-draw ladder worth waiting on.
+            needsPaintVerify = /@font-face|data:image\//i.test(svgText)
+          }
+          // A crop can turn an oversized source into a safe page-sized decode: clamp the
+          // TRANSFORMED header, not the original full document.
+          if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options) // #425: keep within decode limits
+          src = encodeSvgToDataURL(svgText)
         }
-        // A crop can turn an oversized source into a safe page-sized decode: clamp the
-        // TRANSFORMED header, not the original full document.
-        if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options) // #425: keep within decode limits
-        src = encodeSvgToDataURL(svgText)
       } catch (error) {
         if (crop) throw error
         src = url

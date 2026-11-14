@@ -1,5 +1,5 @@
 /** PNG and JPEG file export beyond the canvas/decode limits. Ordinary exports keep the native path. */
-import { toCanvas, peekSvgHeader, cropSvgText, decodeSvgFromDataURL, encodeSvgToDataURL, MAX_RASTER_SIDE, MAX_RASTER_AREA } from './toCanvas.js'
+import { toCanvas, peekSvgHeader, cropSvgText, decodeSvgFromDataURL, MAX_RASTER_SIDE, MAX_RASTER_AREA } from './toCanvas.js'
 import { isSafari } from '../utils/browser.js'
 
 /**
@@ -42,8 +42,18 @@ export function toLargeImage(url, options, format) {
 
   async function encode() {
     const width = Math.max(1, Math.floor(dw)), height = Math.max(1, Math.floor(dh))
-    const svg = decodeSvgFromDataURL(url)
-    const body = svg.slice(svg.indexOf(originalHeader) + originalHeader.length, svg.lastIndexOf('</svg>'))
+    // Every tile carries the same body, so its percent-encoding is taken from the URL once.
+    // The svg engine's encoding is canonical, which makes '%3C%2Fsvg%3E' the closing tag and
+    // nothing else. Any other URL (a prolog before the header) is decoded and encoded here.
+    const i = url.indexOf(',') + 1
+    const encHead = encodeURIComponent(originalHeader)
+    const end = url.lastIndexOf('%3C%2Fsvg%3E')
+    let encBody
+    if (url.startsWith(encHead, i) && end >= i + encHead.length) encBody = url.slice(i + encHead.length, end)
+    else {
+      const svg = decodeSvgFromDataURL(url)
+      encBody = encodeURIComponent(svg.slice(svg.indexOf(originalHeader) + originalHeader.length, svg.lastIndexOf('</svg>')))
+    }
     // Keep the original viewBox so percentage geometry retains its basis. Reproduce its
     // viewport transform explicitly: nesting another SVG would apply author svg opacity,
     // filters and descendant selectors a second time.
@@ -60,7 +70,7 @@ export function toLargeImage(url, options, format) {
     // WebKit shadows require a natural-size SVG draw, then canvas resampling (toCanvas's
     // shadowNaturalOnly path). Scaling inside the SVG would evade that workaround. Keep
     // natural windows on a single pixel grid with one interpolation pixel around each edge.
-    const naturalShadows = isSafari() && /(?:box-shadow|text-shadow)\s*:[^;"}]*px/i.test(svg)
+    const naturalShadows = isSafari() && /(?:box-shadow|text-shadow)\s*:[^;"}]*px/i.test(decodeSvgFromDataURL(url))
     const ux = sw / dw, uy = sh / dh
     // Bound a full-width RGBA row block to ~16 MiB. A wide image uses horizontal tiles too;
     // none of its canvases has the full (oversized) width. Encoded bytes remain in the Blob.
@@ -81,8 +91,10 @@ export function toLargeImage(url, options, format) {
           const transform = `matrix(${ax * sx / bx},0,0,${ay * sy / by},${(ex - left) * sx / bx + vb[0]},${(ey - top) * sy / by + vb[1]})`
           // Captured author styles remain active. The synthetic group must only inherit
           // the root's paint/font properties, never acquire author g opacity or transforms.
-          const windowSvg = `${tileHeader} width="${rw}" height="${rh}" preserveAspectRatio="none"><g style="all:unset!important;transform:${transform}!important;transform-origin:0 0!important">${body}</g></svg>`
-          const canvas = await toCanvas(encodeSvgToDataURL(windowSvg), {
+          const src = 'data:image/svg+xml;charset=utf-8,' +
+            encodeURIComponent(`${tileHeader} width="${rw}" height="${rh}" preserveAspectRatio="none"><g style="all:unset!important;transform:${transform}!important;transform-origin:0 0!important">`) +
+            encBody + '%3C%2Fg%3E%3C%2Fsvg%3E'
+          const canvas = await toCanvas(src, {
             width: rw, height: rh, dpr: 1, backgroundColor: naturalShadows ? null : options.backgroundColor,
             __session: options.__session, __releaseDecodeFrame: true,
           })

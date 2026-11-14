@@ -11,6 +11,43 @@ describe('computePropertyUniverse', () => {
     document.body.innerHTML = ''
   })
 
+  // The counter test reads the declaration list, where it used to ask the four named
+  // properties of every rule. Each case is a way a rule can set a counter.
+  it.each([
+    ['counter-reset', '.zz-leak { counter-reset: n }'],
+    ['counter-increment', '.zz-leak { counter-increment: n }'],
+    ['counter-set', '.zz-leak { counter-set: n 2 }'],
+    ['a counter() in content', '.zz-leak::before { content: counter(n) ". " }'],
+    ['all, which Chromium lists unexpanded', '.zz-leak { all: inherit }'],
+    ['a counter inside @media', '@media (min-width: 1px) { .zz-leak { counter-increment: n } }'],
+  ])('flags a document whose rules count through %s', (_, css) => {
+    const style = document.createElement('style')
+    style.setAttribute('data-scan-test', '')
+    style.textContent = '.zz-plain { color: red; content: "x" }'
+    document.head.appendChild(style)
+    expect(scanAuthorStyles(document).leaksAcrossSubtrees).toBe(false)
+    style.textContent += css
+    expect(scanAuthorStyles(document).leaksAcrossSubtrees).toBe(true)
+  })
+
+  it('answers unreliable past the rule budget without walking a rule', () => {
+    // Two icon-font sheets (30,753 top-level rules) made every scan of the d3 demo walk 20,000
+    // rules before giving up. The top-level count alone already says so.
+    const style = document.createElement('style')
+    style.setAttribute('data-scan-test', '')
+    style.textContent = Array.from({ length: 20001 }, (_, i) => `.zz-b${i}{color:red}`).join('')
+    document.head.appendChild(style)
+    const original = CSSStyleDeclaration.prototype.getPropertyPriority
+    let reads = 0
+    CSSStyleDeclaration.prototype.getPropertyPriority = function (...args) { reads++; return original.apply(this, args) }
+    try {
+      expect(scanAuthorStyles(document).universe).toBeNull()
+    } finally {
+      CSSStyleDeclaration.prototype.getPropertyPriority = original
+    }
+    expect(reads).toBe(0)
+  })
+
   it('includes the always-list and props from style rules, nested at-rules and keyframes', () => {
     const style = document.createElement('style')
     style.setAttribute('data-scan-test', '')

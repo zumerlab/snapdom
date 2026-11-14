@@ -620,8 +620,9 @@ function originalBox(el) {
 export async function compressClonedBackgrounds(clone, options, nodeMap = new Map(), geometry = {}) {
   if (!options.compress) return { count: 0 }
   const els = []
-  // include the root clone itself, then descendants
-  const candidates = [clone, ...clone.querySelectorAll('*')]
+  // include the root clone itself, then descendants. Inlined background data URLs live in the
+  // style attribute, so the selector only skips elements the includes() test would reject.
+  const candidates = [clone, ...clone.querySelectorAll('[style*="data:image"]')]
   for (const el of candidates) {
     const bg = el.style && el.style.backgroundImage
     if (bg && bg.includes('data:image')) els.push(el)

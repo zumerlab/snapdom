@@ -567,32 +567,56 @@ function getWindowForElement(el) {
   return typeof window !== 'undefined' ? window : null
 }
 
+/** A CSSStyleDeclaration-like stand-in that reads empty and iterates nothing. */
+function emptyStyle() {
+  const base = {
+    length: 0,
+    getPropertyValue: () => '',
+    item: () => '',
+  }
+  // Make it iterable: for (let prop of style) { ... }
+  base[Symbol.iterator] = function* () { /* empty */ }
+  return /** @type {any} */ (base)
+}
+
+/** getComputedStyle from the element's own window, the global one for a same-document
+ *  element as a fallback, else emptyStyle(). */
+function computeStyle(el, pseudo) {
+  const win = getWindowForElement(el)
+  let st = null
+  try {
+    st = win && typeof win.getComputedStyle === 'function'
+      ? win.getComputedStyle(el, pseudo)
+      : null
+  } catch { /* ignore */ }
+
+  if (!st && typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
+    try {
+      // Only use global window when the element belongs to the same document (e.g. avoid iframe cross-document call).
+      if (el.ownerDocument === document) {
+        st = window.getComputedStyle(el, pseudo)
+      }
+    } catch {
+      // ignore; handled below
+    }
+  }
+  return st || emptyStyle()
+}
+
 /**
  * Gets the computed style for an element or pseudo-element, with caching.
  *
- * The memo is cache.computedStyle, a WeakMap of element -> Map of pseudo -> declaration. What
- * it holds is the live CSSStyleDeclaration, so a value read later reflects the element's
- * state at that moment, not at the first call. Non-elements bypass the memo.
+ * The memo is cache.computedStyle: element -> its own declaration, and that declaration ->
+ * Map of pseudo -> declaration, made on the first pseudo request. A pseudo-free element (the
+ * clone walk's display test reads every element) gets no Map, and resetting
+ * cache.computedStyle drops both levels. What it holds is the live CSSStyleDeclaration, so a
+ * value read later reflects the element's state at that moment, not at the first call.
+ * Non-elements bypass the memo.
  * @param {Element} el - The element
  * @param {string|null} [pseudo=null] - The pseudo-element
  * @returns {CSSStyleDeclaration} The computed style
  */
 export function getStyle(el, pseudo = null) {
-  /**
-   * Minimal safe fallback CSSStyleDeclaration-like object.
-   * Ensures callers can read properties and iterate length without crashing.
-   */
-  const emptyStyle = () => {
-    const base = {
-      length: 0,
-      getPropertyValue: () => '',
-      item: () => '',
-    }
-    // Make it iterable: for (let prop of style) { ... }
-    base[Symbol.iterator] = function* () { /* empty */ }
-    return /** @type {any} */ (base)
-  }
-
   if ((el?.nodeType !== 1)) {
     const win = typeof window !== 'undefined' ? window : null
     if (win && typeof win.getComputedStyle === 'function') {
@@ -604,39 +628,16 @@ export function getStyle(el, pseudo = null) {
     }
     return emptyStyle()
   }
-  let map = cache.computedStyle.get(el)
-  if (!map) {
-    map = new Map()
-    cache.computedStyle.set(el, map)
-  }
-
-  let style = map.get(pseudo)
-
-  if (!style) {
-    const win = getWindowForElement(el)
-    let st = null
-    try {
-      st = win && typeof win.getComputedStyle === 'function'
-        ? win.getComputedStyle(el, pseudo)
-        : null
-    } catch { /* ignore */ }
-
-    if (!st && typeof window !== 'undefined' && typeof window.getComputedStyle === 'function') {
-      try {
-        // Only use global window when the element belongs to the same document (e.g. avoid iframe cross-document call).
-        if (el.ownerDocument === document) {
-          st = window.getComputedStyle(el, pseudo)
-        }
-      } catch {
-        // ignore; handled below
-      }
-    }
-
-    style = st || emptyStyle()
-    map.set(pseudo, style)
-  }
-
-  return style
+  let style = cache.computedStyle.get(el)
+  if (!style) cache.computedStyle.set(el, style = computeStyle(el, null))
+  if (pseudo === null) return style
+  // Keyed on the element's own declaration, so the pseudo Maps share cache.computedStyle's
+  // reset (cache.js) without a WeakMap of their own.
+  let map = cache.computedStyle.get(style)
+  if (!map) cache.computedStyle.set(style, map = new Map())
+  let ps = map.get(pseudo)
+  if (!ps) map.set(pseudo, ps = computeStyle(el, pseudo))
+  return ps
 }
 
 /**

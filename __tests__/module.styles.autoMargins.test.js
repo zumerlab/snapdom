@@ -89,6 +89,42 @@ describe.skipIf(typeof Element.prototype.computedStyleMap !== 'function')('auto 
     await expectCentered(await snapdom(root, { embedFonts: false, burst: false }), 50)
   })
 
+  it('asks Typed OM once per identity and side, and still restores a twin whose own margin reads zero', async () => {
+    const style = document.createElement('style')
+    style.textContent = '.twin-margin-card{width:200px;height:20px;background:rgb(255,0,0);margin-inline:auto}'
+    document.head.append(style)
+    mounted.push(style)
+    const root = document.createElement('div')
+    root.style.cssText = 'width:300px;background:white'
+    root.innerHTML = '<div class="twin-margin-card"></div>'.repeat(12)
+    document.body.append(root)
+    mounted.push(root)
+    // Only the last twin reports the partial-layout zero: the first eleven never ask about
+    // their inline margins, so the answer cannot come from them.
+    const last = root.lastElementChild
+    const native = window.getComputedStyle.bind(window)
+    vi.spyOn(window, 'getComputedStyle').mockImplementation((el, pseudo) => {
+      const computed = native(el, pseudo)
+      if (el !== last || pseudo) return computed
+      return new Proxy(computed, {
+        get(target, key) {
+          if (key === 'getPropertyValue') return (prop) =>
+            /^(margin-(left|right|inline-start|inline-end))$/.test(prop) ? '0px' : target.getPropertyValue(prop)
+          const value = Reflect.get(target, key, target)
+          return typeof value === 'function' ? value.bind(target) : value
+        },
+      })
+    })
+    const typed = vi.spyOn(Element.prototype, 'computedStyleMap')
+    const result = await snapdom(root, { embedFonts: false, burst: false })
+    // The first twin answers the block sides for all twelve, the last one its own inline sides.
+    expect(typed.mock.contexts.filter((el) => el.classList.contains('twin-margin-card'))).toEqual([root.firstElementChild, last])
+    const canvas = await result.toCanvas({ scale: 1, dpr: 1 })
+    const pixel = (x) => Array.from(canvas.getContext('2d').getImageData(x, 230, 1, 1).data).slice(0, 3)
+    expect(pixel(45)).toEqual([255, 255, 255])
+    expect(pixel(55)).toEqual([255, 0, 0])
+  })
+
   it('does not restore excluded margin properties', async () => {
     const { root, card } = fixture()
     let snapshot

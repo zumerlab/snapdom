@@ -440,6 +440,7 @@ const strutClones = new WeakSet()
 export function pinIconStruts(clones, styleMap, nodeMap, matchers) {
   if (!styleMap?.size) return 0
   const iconic = new Map()
+  const families = new Map()
   const struts = new Map()
   let pinned = 0
   for (const clone of clones) {
@@ -448,7 +449,9 @@ export function pinIconStruts(clones, styleMap, nodeMap, matchers) {
     let icon = iconic.get(key)
     if (icon === undefined) {
       const family = FONT_FAMILY_SIGNATURE.exec(key)?.[1]
-      iconic.set(key, icon = !!family && isIconFont(family, matchers))
+      icon = false
+      if (family && (icon = families.get(family)) === undefined) families.set(family, icon = isIconFont(family, matchers))
+      iconic.set(key, icon)
     }
     if (!icon) continue
     const pseudo = clone.dataset?.snapdomPseudo

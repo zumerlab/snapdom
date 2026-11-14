@@ -11,7 +11,7 @@
  * @module prepare
  */
 
-import { generateCSSClasses, stripTranslate, debugWarn, getStyle, isShadowRoot, shadowHost } from '../utils/index.js'
+import { generateCSSClasses, stripTranslate, debugWarn, getStyle, shadowHost } from '../utils/index.js'
 import { deepClone, finishClipHusks } from './clone.js'
 import { sessionWarn } from '../utils/debug.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
@@ -492,22 +492,15 @@ function liftTopLayerClones(element, clone, nodeMap) {
 }
 
 /**
- * Applies a node's deduped style class (or the shadow-scoped style attribute) plus the
- * per-node fixups that must survive class generation. Shared by prepareClone and burst's
- * differential recapture, which re-derives keyToClass after splicing dirty subtrees.
+ * Applies a node's deduped style class plus the per-node fixups that must survive class
+ * generation. Shared by prepareClone and burst's differential recapture, which re-derives
+ * keyToClass after splicing dirty subtrees.
  * @param {Element} node - clone node (styleMap key)
  * @param {string} key - style signature
  * @param {Map<string,string>} keyToClass
  */
 export function applyStyleClass(node, key, keyToClass) {
   if (node.tagName === 'STYLE') return
-  /* c8 ignore next 4 */
-  if (node.getRootNode && isShadowRoot(node.getRootNode())) {
-    node.setAttribute('style', key.replace(/;/g, '; '))
-    return
-  }
-
-  // Outside shadow DOM: apply the generated class for compression
   const className = keyToClass.get(key)
   if (className) node.classList.add(className)
 

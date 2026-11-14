@@ -47,7 +47,8 @@ class EvictingMap extends Map {
  *  - defaultStyle . per-tag UA defaults from the sandbox (utils/css.js)
  *  - baseStyle .... the base reset CSS per tag set, with the universe it was pruned by (capture.helpers)
  *  - compress ..... downsampled images (compress.js), see below
- *  - computedStyle  getStyle's memo, one CSSStyleDeclaration per element (utils/css.js)
+ *  - computedStyle  getStyle's memo: element -> its CSSStyleDeclaration, and that declaration
+ *                    -> Map of pseudo -> declaration once a pseudo is asked for (utils/css.js)
  *  - measureHints . the clone-in-document measurement (engines/svg.js), see below
  */
 export const cache = {

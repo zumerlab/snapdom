@@ -215,4 +215,12 @@ describe('identity share — layout re-read narrowing', () => {
   it('logical sizes are used values, like width and height', async () => {
     await byteIdentical(twinFixture('inline-size:50%'))
   })
+
+  it('static twins share their offsets: they read as computed values', async () => {
+    await byteIdentical(twinFixture('top:10%;left:5%;inset-inline-end:7%'))
+  })
+
+  it('positioned twins still re-read their offsets, used px per box', async () => {
+    await byteIdentical(twinFixture('position:relative;top:10%;left:5%;inset-inline-end:7%'))
+  })
 })

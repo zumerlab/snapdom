@@ -19,7 +19,7 @@
 import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, isHTMLEl, isShadowRoot, shadowHost, snapshotComputedStyle } from '../utils/index.js'
 import { isFirefox, isSafari } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
-import { scanAuthorStyles, scanSheetProps, addAnimationProps } from './styleScan.js'
+import { scanAuthorStyles, scanSheetProps, addAnimationProps, sheetCensus } from './styleScan.js'
 import { isInternalNode } from '../utils/ownership.js'
 import { snapFetch } from './snapFetch.js'
 
@@ -83,11 +83,11 @@ export function isExternalRecord(rec) {
 }
 
 /** Count mutation sources separately from selector reach. Document minus subtree counts
- *  tells burst whether a local edit coincided with outside work that diff cannot replay. */
+ *  tells burst whether a local edit coincided with outside work that diff cannot replay.
+ *  Takes external records only: the observer callbacks classify each record once. */
 const mutationCounts = new WeakMap()
 function countMutationSources(records) {
   for (const rec of records) {
-    if (!isExternalRecord(rec)) continue
     const doc = rec.target.ownerDocument || document
     mutationCounts.set(doc, (mutationCounts.get(doc) || 0) + 1)
     let el = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement || rec.target.host
@@ -108,11 +108,14 @@ export function getOutsideMutationCount(element) {
 }
 
 /** There is no separate rule epoch, on purpose. The scanned universe and the pseudo gates
- *  derive from the rule text alone, so keying them on __epoch re-scans every sheet after a
- *  plain text mutation. A rule-only epoch was tried and reverted: three rule sources emit no
+ *  derive from the rule text alone, yet their memo is keyed on __epoch, which any external
+ *  mutation moves. A rule-only epoch was tried and reverted: three rule sources emit no
  *  mutation record (adoptedStyleSheets, a <link> finishing its load, insertRule), and staying
- *  correct needed a per-capture census of every sheet, which timed WebKit out under
- *  BROWSER=all. Pinned by __tests__/module.styles.ruleEpoch.test.js. */
+ *  correct needed a census of every sheet on EVERY capture, which timed WebKit out under
+ *  BROWSER=all. What scanFor does now keeps the epoch as the trigger and makes the miss
+ *  cheap: on an epoch miss it compares sheetCensus (styleScan.js) with the one the last scan
+ *  read and keeps that scan while they match, so the census runs only where a full scan ran
+ *  before and never on an unchanged epoch. Pinned by __tests__/module.styles.ruleEpoch.test.js. */
 
 /** Style-ENVIRONMENT epoch: bumps only on <head> mutations and font loads — the events
  *  that change how any element renders without touching it. Consumers (burst) poll it via
@@ -285,12 +288,12 @@ const shadowObserved = new WeakSet()
 const __shadowObservers = []
 
 function onShadowRecords(records) {
-  if (!hasExternalMutation(records)) return
-  countMutationSources(records)
+  const external = records.filter(isExternalRecord)
+  if (!external.length) return
+  countMutationSources(external)
   bumpEpoch()
   const stamped = new Set()
-  for (const rec of records) {
-    if (!isExternalRecord(rec)) continue
+  for (const rec of external) {
     const root = rec.target.getRootNode && rec.target.getRootNode()
     if (!root || root.nodeType !== 11 || stamped.has(root)) continue
     stamped.add(root)
@@ -316,9 +319,13 @@ export function observeShadowRoot(root) {
 /** The DOM observer's callback, also replayed by flushStyleInvalidations on drained records:
  *  one pass answers both "did anything paintable change" and "did the author rules change". */
 function onDomRecords(records) {
-  if (!hasExternalMutation(records)) return
-  countMutationSources(records)
+  // Classified once: the test walks every ancestor of the target, on every mutation the page
+  // makes for as long as the observer lives.
+  const external = records.filter(isExternalRecord)
+  if (!external.length) return
+  countMutationSources(external)
   bumpEpoch()
+  // Every record, not only the external ones: an owned <link> still changes the rules.
   const ruleDoc = ruleSourceDoc(records)
   if (ruleDoc) {
     hasMemo.delete(ruleDoc)
@@ -336,8 +343,7 @@ function onDomRecords(records) {
   // characterData edit plus a childList splice all share a parent), so the undeduped loop
   // ran one querySelectorAll('*') per RECORD over the same neighbourhood.
   const stamped = new Set()
-  for (const rec of records) {
-    if (!isExternalRecord(rec)) continue
+  for (const rec of external) {
     const el = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement
     if (!el) continue
     const doc = el.ownerDocument || document
@@ -588,9 +594,9 @@ export function snapshotFor(source) {
   return snap
 }
 
-/** Per-document memo of the scanned property universe, keyed on __epoch (see the rule-epoch
- *  note above getStyleEnvEpoch for why not something narrower). A capture reads it through
- *  scanOf, never directly. */
+/** Per-document memo of the scanned property universe, keyed on __epoch and kept across an
+ *  epoch miss while the sheet census and the env epoch stand (see the rule-epoch note above
+ *  getStyleEnvEpoch). A capture reads it through scanOf, never directly. */
 const universeCache = new WeakMap()
 /** href -> the rules of a parsed copy, or null while it loads or when it cannot be read. */
 const crossOriginCopies = new Map()
@@ -622,8 +628,18 @@ function crossOriginRules(sheet) {
 function scanFor(doc) {
   let rec = universeCache.get(doc)
   if (!rec || rec.epoch !== __epoch) {
+    // The epoch moves on any DOM mutation, and most touch no stylesheet. While the env epoch
+    // stands (no <style>/<link> node changed, no `invalidate`) an equal census is taken as an
+    // equal scan. A full re-scan also caught, when a DOM mutation happened to follow them, the
+    // CSSOM edits the census cannot see (sheetCensus lists them); those need `invalidate: true`.
+    const census = sheetCensus(doc, crossOriginRules)
+    if (rec && census && rec.env === __envEpoch && rec.census &&
+        rec.census.length === census.length && census.every((v, i) => v === rec.census[i])) {
+      rec.epoch = __epoch
+      return rec
+    }
     const prev = rec && rec.universe
-    rec = { epoch: __epoch, ...scanAuthorStyles(doc, crossOriginRules) }
+    rec = { epoch: __epoch, env: __envEpoch, census, ...scanAuthorStyles(doc, crossOriginRules) }
     // A re-scan that finds the same props keeps the previous Set: its identity keys the base
     // reset memo (assembleCaptureCSS) and any DOM mutation bumps the epoch, so a new Set per
     // scan would rebuild the reset (0.12-0.65 ms) on every capture of a live page.
@@ -828,6 +844,17 @@ export function pseudoGatesFor(el) {
   return scanFor(doc).pseudoGates
 }
 
+const readableCache = new WeakMap()
+/** The universe minus the props shouldIgnoreProp drops, in the Set's order. Rebuilt when the
+ *  Set grows; the universe Sets are only ever added to, so an equal size is an equal Set. */
+function readableProps(universe) {
+  let rec = readableCache.get(universe)
+  if (!rec || rec.size !== universe.size) {
+    readableCache.set(universe, rec = { size: universe.size, list: [...universe].filter((p) => !shouldIgnoreProp(p)) })
+  }
+  return rec.list
+}
+
 /**
  * The full computed-style read for one element: every property in `universe` (all of them
  * when null) plus the element's own inline props, with the fix-ups the snapshot needs. An
@@ -843,9 +870,7 @@ export function pseudoGatesFor(el) {
 function snapshotComputedStyleFull(style, options = {}, el = null, universe = null) {
   const out = {}
   const excludeStyleProps = options.excludeStyleProps
-  const addProp = (prop) => {
-    if (out[prop] !== undefined) return
-    if (shouldIgnoreProp(prop)) return
+  const readProp = (prop) => {
     if (excludeStyleProps) {
       if (excludeStyleProps instanceof RegExp && excludeStyleProps.test(prop)) return
       if (typeof excludeStyleProps === 'function' && excludeStyleProps(prop)) return
@@ -857,10 +882,15 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
     }
     out[prop] = val
   }
+  const addProp = (prop) => {
+    if (out[prop] !== undefined || shouldIgnoreProp(prop)) return
+    readProp(prop)
+  }
   if (universe) {
     // Pruned read: only properties the page's CSS (or this element's inline style) can
     // move off their UA defaults — anything else diffs empty downstream anyway.
-    for (const prop of universe) addProp(prop)
+    const list = readableProps(universe)
+    for (let i = 0; i < list.length; i++) readProp(list[i])
     const inline = el && el.style
     if (inline && inline.length) {
       for (let i = 0; i < inline.length; i++) addProp(inline[i])
@@ -1293,8 +1323,14 @@ function snapshotIsCurrent(rec, el) {
 /* Which shared-snapshot props a twin must RE-READ, refined empirically on all three engines
  * (2026-09-01, twins with %-valued props under different-width parents):
  *  - ALWAYS: the geometry props whose getComputedStyle value is the USED value regardless of
- *    how they were authored — width/height, the box offsets (top/right/bottom/left and the
- *    inset-* logical longhands), transform-origin/perspective-origin.
+ *    how they were authored (width/height, transform-origin/perspective-origin).
+ *  - POSITIONED: the box offsets (top/right/bottom/left and the inset-* logical longhands)
+ *    resolve to used px only on a relative, absolute, fixed or sticky box. On a static one
+ *    they read as the computed value ('10%' stays '10%') on all three engines, equal between
+ *    twins under different-size parents, so they are re-read only when the identity's own
+ *    `position` is not exactly 'static'. A container-query unit (`10cqw`) is the exception:
+ *    it computes per container, so static twins then share a class text that differs from
+ *    their own value, on a property that paints nothing on a static box.
  *  - NEVER: the min and max sizing longhands — their resolved value is the COMPUTED value ('10%' stays '10%',
  *    'auto' stays 'auto' on chromium, firefox AND webkit), and computed values are identical
  *    between identity twins by construction (same matched rules, same inherited inputs).
@@ -1304,7 +1340,8 @@ function snapshotIsCurrent(rec, el) {
  *    track lists only on a grid container (elsewhere they are the specified value), and
  *    `transform` only when the identity has one (`none` cannot hide a % translate) — both
  *    decided from the identity's own read, so a table pays nothing for either. */
-const LAYOUT_ALWAYS_RE = /^(width|height|inline-size|block-size|top|right|bottom|left|transform-origin|perspective-origin)$|^inset-/
+const LAYOUT_ALWAYS_RE = /^(width|height|inline-size|block-size|transform-origin|perspective-origin)$/
+const OFFSET_RE = /^(top|right|bottom|left)$|^inset-/
 const UNSTABLE_INLINE_RE = /(margin|padding)[a-z-]*\s*:[^;]*(%|\bauto\b|calc\(|var\()/i
 const SHARE_SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'OPTGROUP', 'PROGRESS', 'METER', 'BUTTON', 'DATALIST'])
 
@@ -1370,7 +1407,8 @@ function identityFor(el, st) {
 /** The identity's re-read list and base signature, decided once on its first twin (`el`,
  *  whose style attribute is the identity's — the attribute is part of the key) and kept on
  *  the share record: the
- *  always-geometry props, plus the margin/padding families only when the document-level
+ *  always-geometry props, plus the box offsets unless the identity is position:static, the
+ *  margin/padding families only when the document-level
  *  scan or that inline style gives them an unstable value, the grid track lists on a grid
  *  container, and `transform` when the identity has one. The base signature covers the props
  *  twins NEVER re-read plus the re-read prop NAMES: a twin's full signature is base + its own
@@ -1406,9 +1444,11 @@ function shareLists(rec, el) {
   const rrP = !!scan.paddingUnstable || (inlineUnstable && /padding/i.test(attr))
   const rrG = stored.display !== undefined && stored.display.includes('grid')
   const rrT = stored.transform !== undefined && stored.transform !== 'none'
+  // An absent `position` (a pseudo no rule positions, an excluded prop) still re-reads.
+  const rrO = stored.position !== 'static'
   const rrList = []
   for (const k in stored) {
-    if (LAYOUT_ALWAYS_RE.test(k) ||
+    if (LAYOUT_ALWAYS_RE.test(k) || (rrO && OFFSET_RE.test(k)) ||
         (rrG && (k === 'grid-template-columns' || k === 'grid-template-rows')) ||
         (rrT && k === 'transform') ||
         (rrM && k.charCodeAt(0) === 109 && k.startsWith('margin-')) ||
@@ -1539,30 +1579,46 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   // though the box remains centered. Typed OM retains the resolved `auto` keyword;
   // carrying it lets the frozen parent/child dimensions reproduce that alignment.
   // Keep ordinary nonzero used margins unchanged, and respect excluded properties.
+  // The keyword is a computed value, the same for every twin of an identity, so the share
+  // record keeps each answer and Typed OM is asked once per identity and side.
   let restoredAutoMargin = false
   if (typeof el.computedStyleMap === 'function') {
+    const twins = shared || (shareInfo ? shareInfo.st.snaps.get(shareInfo.id) : null)
     let typed
     for (const prop of MARGIN_PROPS) {
       if (snap[prop] !== '0px') continue
-      try {
-        typed ||= el.computedStyleMap()
-        if (typed.get(prop)?.toString() === 'auto') {
-          snap[prop] = 'auto'
-          restoredAutoMargin = true
-        }
-      } catch { /* Typed OM is optional; keep the computed style if unsupported. */ }
+      let auto = twins?.auto?.[prop]
+      if (auto === undefined) {
+        try {
+          typed ||= el.computedStyleMap()
+          auto = typed.get(prop)?.toString() === 'auto'
+        } catch { auto = false /* Typed OM is optional; keep the computed style if unsupported. */ }
+        if (twins) (twins.auto ||= {})[prop] = auto
+      }
+      if (auto) {
+        snap[prop] = 'auto'
+        restoredAutoMargin = true
+      }
     }
   }
   stripHeightForWrappers(el, style, snap)
   // Before the twin signature below: it keys this node's final values.
   const clipped = freezeBorderBox(el, style, snap)
+  // Here and not in inlineAllStyles: a snapshot served from the cache already carries its
+  // gutter, and adding it per capture grew the box by one scrollbar every time.
+  const gutter = addScrollbarGutter(el, style, snap)
   if (dyn !== null) {
     if (restoredAutoMargin) dyn.push('\u0005', ...MARGIN_PROPS.map(prop => snap[prop]))
     if (clipped) dyn.push('\u0006' + clipped)
+    if (gutter) dyn.push('\u0007' + snap.width, snap.height)
     // Seed the signature memo AFTER the strip: it deletes at most height/block-size, and two
     // twins with different strip outcomes must not collide onto one key.
-    __snapshotSig.set(snap, shared.sig + '\u0002' + dyn.join('\u0001') +
-      ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004'))
+    const tail = dyn.join('\u0001') + ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004')
+    __snapshotSig.set(snap, shared.sig + '\u0002' + tail)
+    // The signature is shared.sig + tail, so within one share record the tail alone keys the
+    // class (inlineAllStyles), without hashing the full signature per twin.
+    shareInfo.tail = tail
+    shareInfo.rec = shared
   }
   const hosts = shadowHostsOf(el)
   snapshotCache.set(el, { env: session?.__scanEnv ?? __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex })
@@ -1636,29 +1692,36 @@ const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
  * @param {Element} source
  * @param {Element} clone
  * @param {CSSStyleDeclaration} computed - getComputedStyle(source)
+ * @param {string} attr - the source's style attribute, read once by the caller
  */
-function normalizeInlineStyleToComputed(source, clone, computed) {
-  if (!source.style || source.style.length === 0) return
+function normalizeInlineStyleToComputed(source, clone, computed, attr) {
+  const inline = source.style
+  if (!inline || inline.length === 0) return
   const important = importantPropsFor(source)
-  const canSkip = important != null && !CONTEXT_DEPENDENT_VALUE_RE.test(source.getAttribute('style') || '')
+  const canSkip = important != null && !CONTEXT_DEPENDENT_VALUE_RE.test(attr)
+  // With no `!important` rule in the document only a border width can still differ, and the
+  // loop skips every other prop. `all` expands to the border longhands too.
+  const bordersOnly = canSkip && important.size === 0 && !isTextField(source)
+  if (bordersOnly && !/border|\ball\s*:/i.test(attr)) return
   let sameBorderWidths
-  for (let i = 0; i < source.style.length; i++) {
-    const prop = source.style[i]
+  for (let i = 0, n = inline.length; i < n; i++) {
+    const prop = inline[i]
     // Even px borders are context-dependent: the live device grid snaps a positive
     // width to whole pixels. Keeping an authored 0.05px inline value overrides the
     // snapshot's used width and re-snaps it on the SVG grid (#520).
     const borderWidth = prop.startsWith('border-') && prop.endsWith('-width')
     if (canSkip && borderWidth && sameBorderWidths === undefined) {
-      const authored = source.style.borderWidth
+      const authored = inline.borderWidth
       const previous = snapshotCache.get(source)
       sameBorderWidths = (previous && snapshotIsCurrent(previous, source) &&
         BORDER_WIDTHS.every(p => previous.snapshot[p] === authored)) || computed.borderWidth === authored
+      if (sameBorderWidths && bordersOnly) return
     }
     if (canSkip && !important.has(prop) && (!borderWidth || sameBorderWidths) && !(prop.startsWith('background') && isTextField(source))) continue
     const val = computed.getPropertyValue(prop)
     // A retained <style> can still contain an important ID selector. The live inline
     // !important wins it; dropping that priority here reverses the cascade in the clone.
-    if (val && (!borderWidth || val !== source.style.getPropertyValue(prop))) clone.style.setProperty(prop, val, source.style.getPropertyPriority(prop))
+    if (val && (!borderWidth || val !== inline.getPropertyValue(prop))) clone.style.setProperty(prop, val, inline.getPropertyPriority(prop))
   }
 }
 
@@ -1710,9 +1773,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
 
   // Replace authored inline style with computed values so !important in stylesheets
   // correctly overrides inline styles in the clone (fixes #328)
-  if (source.getAttribute?.('style')) {
-    normalizeInlineStyleToComputed(source, clone, pre)
-  }
+  const styleAttr = source.getAttribute?.('style')
+  if (styleAttr) normalizeInlineStyleToComputed(source, clone, pre, styleAttr)
 
   // A static snapshot must not animate. The generated style class already filters animation
   // props (shouldIgnoreProp), but `animation` can still reach the SVG through the normalized
@@ -1766,9 +1828,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const snap = getSnapshot(source, pre, ctx.options, shareInfo, session)
   // Inline author declarations were normalized above from getComputedStyle too.
   // Override their zero margin (including logical shorthands) with the retained auto.
-  if (source.getAttribute?.('style')) {
-    for (const side of ['top', 'right', 'bottom', 'left']) {
-      const prop = `margin-${side}`
+  if (styleAttr) {
+    for (let i = 0; i < 4; i++) { // the four physical sides
+      const prop = MARGIN_PROPS[i]
       if (snap[prop] === 'auto') clone.style.setProperty(prop, 'auto', 'important')
     }
   }
@@ -1786,9 +1848,10 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     ;(session.bgClipText ||= []).push([source, clone])
   }
 
-  if (isSafari()) strokedTextShadowToFilter(source, clone, pre)
+  // Asked once per capture, on its ctx: per node the check cost the 1,506-node table 0.3 ms.
+  ctx.safari ??= isSafari()
+  if (ctx.safari) strokedTextShadowToFilter(source, clone, pre)
 
-  addScrollbarGutter(source, pre, snap)
   if (clone.style?.length && snap['box-sizing'] === 'border-box' &&
       pre.getPropertyValue('box-sizing') !== 'border-box') syncInlineBorderBox(source, clone, snap)
 
@@ -1847,6 +1910,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // headings, paragraphs…) skip that bookkeeping entirely so the hot path stays untouched.
   let sig = styleSignature(snap, tag)
   let sizedByContent = true
+  let flags = ''
   if (softensWidth(tag, (snap.display || '').toLowerCase())) {
     sizedByContent = hasRenderedContent(source)
     // #484: softening only reproduces the box when its `width` is auto. On a blockified box in
@@ -1859,7 +1923,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     }
     // Fold content/flex into the cache key so soften-eligible elements with identical styles
     // but different shape don't collide on the shared snapshotKeyCache.
-    sig = `${sig}${sizedByContent ? '|c' : ''}${flexItem ? '|f' : ''}`
+    flags = (sizedByContent ? '|c' : '') + (flexItem ? '|f' : '')
+    sig += flags
     // This is the exact condition getStyleKey uses to actually drop the width (the #429/#433/
     // #434 family): tally it so capture.js can suggest `reconcile: true` when it's never used —
     // cheap, since softensWidth/sizedByContent are already computed for this node regardless.
@@ -1869,15 +1934,23 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
       session.reconcileRisk = (session.reconcileRisk || 0) + 1
     }
   }
-  let key = persist.snapshotKeyCache.get(sig)
+  // A twin first asks its share record by tail (see getSnapshot): a few dozen short keys per
+  // identity in place of one lookup by the full signature per node.
+  const memo = shareInfo && shareInfo.tail !== undefined ? (shareInfo.rec.keys ||= new Map()) : null
+  const mk = memo && shareInfo.tail + flags
+  let key = memo ? memo.get(mk) : undefined
   if (key === undefined) {
-    key = getStyleKey(snap, tag, sizedByContent, flexItem)
-    // Bound at INSERTION: evicting only on an epoch bump left the Map unbounded for as long
-    // as the page's styles held still. Map iterates in insertion order, so this is FIFO.
-    if (persist.snapshotKeyCache.size >= MAX_SNAPSHOT_KEY_CACHE) {
-      persist.snapshotKeyCache.delete(persist.snapshotKeyCache.keys().next().value)
+    key = persist.snapshotKeyCache.get(sig)
+    if (key === undefined) {
+      key = getStyleKey(snap, tag, sizedByContent, flexItem)
+      // Bound at INSERTION: evicting only on an epoch bump left the Map unbounded for as long
+      // as the page's styles held still. Map iterates in insertion order, so this is FIFO.
+      if (persist.snapshotKeyCache.size >= MAX_SNAPSHOT_KEY_CACHE) {
+        persist.snapshotKeyCache.delete(persist.snapshotKeyCache.keys().next().value)
+      }
+      persist.snapshotKeyCache.set(sig, key)
     }
-    persist.snapshotKeyCache.set(sig, key)
+    if (memo) memo.set(mk, key)
   }
   session.styleMap.set(clone, key)
 }
@@ -1889,10 +1962,12 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
  * turn steals width from the rows). Add the measured gutters back so the frozen box matches
  * the live one. Border-box values already include the scrollbars; overlay scrollbars
  * (macOS default) measure 0 and change nothing.
+ * Runs once per fresh snapshot (getSnapshot): `snap` is the object the cache keeps.
  * Pinned by __tests__/snapdom.issue498.test.js and __tests__/snapdom.issue508.test.js.
  * @param {Element} source
  * @param {CSSStyleDeclaration} pre
  * @param {Record<string,string>} snap
+ * @returns {boolean|undefined} true when a gutter was added
  */
 export function addScrollbarGutter(source, pre, snap) {
   const ox = pre.getPropertyValue('overflow-x')
@@ -1917,6 +1992,7 @@ export function addScrollbarGutter(source, pre, snap) {
   // narrower than 2px.
   if (vGutter >= 2) { bump('width', vGutter); bump('inline-size', vGutter) }
   if (hGutter >= 2) { bump('height', hGutter); bump('block-size', hGutter) }
+  return vGutter >= 2 || hGutter >= 2
 }
 
 const BORDER_WIDTHS = ['border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width']
@@ -2249,6 +2325,7 @@ function autoContentHeight(el) {
   return bottom === -Infinity ? NaN : bottom - top
 }
 
+const WRAPPER_TAGS = new Set(['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'nav'])
 /**
  * Best-effort: drop height/block-size on transparent flow wrappers so margin collapsing
  * still works, without breaking KaTeX, Orbit, or layouts with an explicit height.
@@ -2260,13 +2337,13 @@ function autoContentHeight(el) {
  * @param {Record<string, any>} snap
  */
 function stripHeightForWrappers(el, cs, snap) {
-  // 1) Respect an author inline height
-  if (isHTMLEl(el) && el.style && el.style.height) return
+  // 1) Only div/section/article/main/aside/header/footer/nav (no ol/ul/li: list layout).
+  // Before the inline-height read: the tag test is a string compare, the read two DOM calls.
+  // toLowerCase, not localName: an XHTML `<DIV>` keeps its uppercase localName.
+  if (!el.tagName || !WRAPPER_TAGS.has(el.tagName.toLowerCase())) return
 
-  // 2) Only div/section/article/main/aside/header/footer/nav (no ol/ul/li: list layout)
-  const tag = el.tagName && el.tagName.toLowerCase()
-  const ALLOWED_TAGS = ['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'nav']
-  if (!tag || !ALLOWED_TAGS.includes(tag)) return
+  // 2) Respect an author inline height
+  if (isHTMLEl(el) && el.style && el.style.height) return
 
   // 2c) aspect-ratio derives the height from the width; keep it
   if (cs.aspectRatio && cs.aspectRatio !== 'none' && cs.aspectRatio !== 'auto') return
