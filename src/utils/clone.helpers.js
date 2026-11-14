@@ -14,11 +14,11 @@
 import { debugWarn, getStyle } from './index.js'
 import { cache, EvictingMap } from '../core/cache.js'
 import { snapFetch } from '../modules/snapFetch.js'
-import { inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
+import { colorToRgba, inlineAllStyles, invalidateSnapshotsUnder } from '../modules/styles.js'
 import { splitTopLevel } from '../modules/styleScan.js'
 import { findRealUrlForPicture, pickSrcsetCandidate, findLazySrcAttr, isPlaceholderSrc } from '../modules/pictureResolver.js'
 import { markInternalNode } from './ownership.js'
-import { isFirefox } from './browser.js'
+import { isFirefox, isSafari } from './browser.js'
 
 /** Add the current scope's slotted exclusion at the rightmost compound. */
 function addNotSlottedRightmost(sel, scopeId) {
@@ -614,21 +614,98 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 // ========== Checkbox/Radio replacement (Firefox fix) ==========
 
 /**
- * The control's accent, as a colour SVG can take. `accent-color` computes to the keyword
- * `auto` when the author never set one — a truthy string, so falling through a `||` chain
- * handed SVG an invalid paint and the control rendered black. The UA's own auto accent is
- * not readable from CSS, so a blue in the range every desktop UA ships stands in for it.
+ * What `accent-color: auto` paints with: the system colours, which resolve inside the capture
+ * to what the page resolves them to (#560, Firefox 160 and Chrome 157). Firefox paints its
+ * controls in them. Chromium does on a light page only. On a dark one its controls are
+ * #99c8ff under a mark in the Field colour, while its AccentColor stays #0075ff (Chrome and
+ * Edge 157). Inside the capture Chromium paints AccentColor only as the whole value of an
+ * attribute, not inside light-dark(), so the scheme is settled here. Without the keywords, a
+ * blue in the range every desktop UA ships.
+ * @param {boolean} dark whether the control is in the dark colour scheme
+ * @returns {{ fill: string, mark: string }}
+ */
+function resolveSystemAccent(dark) {
+  /* c8 ignore next -- every engine the suite runs has both keywords */
+  if (!isColor('AccentColor') || !isColor('AccentColorText')) return { fill: '#0a6ed1', mark: 'white' }
+  if (dark && !isFirefox() && !isSafari()) return { fill: '#99c8ff', mark: 'Field' }
+  return { fill: 'AccentColor', mark: 'AccentColorText' }
+}
+
+/**
+ * The tick or dot that reads on an authored accent: white, or black on a light one. Firefox
+ * 160 switches where white's contrast with the accent falls under 2.4: a grey of 167 keeps
+ * the white tick and 168 gets a dark one.
+ * @param {string} accent a computed colour
+ * @returns {string}
+ */
+function markOn(accent) {
+  try {
+    const linear = (channel) => {
+      const c = channel / 255
+      return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4)
+    }
+    const [r, g, b] = colorToRgba(accent)
+    const luminance = 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+    return 1.05 / (luminance + 0.05) < 2.4 ? 'black' : 'white'
+  } catch { return 'white' } // no canvas
+}
+
+/**
+ * Whether the control is in the dark colour scheme: its color-scheme, or the page's
+ * `<meta name="color-scheme">` when it has none, with the user's preference choosing between
+ * `light dark`.
+ * @param {CSSStyleDeclaration | undefined} cs computed style of the control
+ * @returns {boolean}
+ */
+function usesDarkScheme(cs) {
+  try {
+    let scheme = (cs && cs.colorScheme) || ''
+    if (!scheme || scheme === 'normal') scheme = document.querySelector('meta[name="color-scheme"]')?.content || ''
+    if (!/\bdark\b/.test(scheme)) return false
+    return !/\blight\b/.test(scheme) || matchMedia('(prefers-color-scheme: dark)').matches
+  } catch { return false } // detached or cross-realm
+}
+
+/**
+ * The control's colour scheme, as a declaration for the stand-in's own svg. The capture's base
+ * rule for the tag resets color-scheme on every `<svg>`, the stand-in's included, and the system
+ * colours it is painted in then resolve as on a light page: on a dark one an unchecked box
+ * filled with Field came out white (Firefox 160).
  * @param {CSSStyleDeclaration | undefined} cs computed style of the control
  * @returns {string}
  */
-function resolveAccentColor(cs) {
+function schemeOf(cs) {
+  return `;color-scheme:${usesDarkScheme(cs) ? 'dark' : 'light'}`
+}
+
+/** Whether the engine takes `color` as a colour: an older one lacks some system colours. */
+function isColor(color) {
+  try { return CSS.supports('color', color) } catch { return false }
+}
+
+/**
+ * The paints a drawn control takes: `fill` for a checked or indeterminate box, a checked
+ * radio and a slider's run, `mark` for the tick, dash or ring on it, `rim` for the outline
+ * of a control that is neither, and `text`, the control's text colour, which the UA greys on
+ * a disabled one.
+ * `accent-color` computes to the keyword `auto` when the author never set one, which SVG can't
+ * paint. An accent only shows on a control that is on. Off, Firefox outlines it in
+ * ButtonBorder, in either colour scheme (Firefox 160). Chromium's ButtonBorder is black, so
+ * elsewhere the outline is the text colour.
+ * @param {CSSStyleDeclaration | undefined} cs computed style of the control
+ * @returns {{ fill: string, mark: string, rim: string, text: string }}
+ */
+function resolveAccent(cs) {
+  let accent = ''
+  let text = ''
   try {
-    const accent = cs && cs.accentColor
-    if (accent && accent !== 'auto' && accent !== 'none') return accent
-    const color = cs && cs.color
-    if (color) return color
+    accent = (cs && cs.accentColor) || ''
+    text = (cs && cs.color) || ''
   } catch { /* detached or cross-realm */ }
-  return '#0a6ed1'
+  const authored = accent && accent !== 'auto' && accent !== 'none'
+  const { fill, mark } = authored ? { fill: accent, mark: markOn(accent) } : resolveSystemAccent(usesDarkScheme(cs))
+  const rim = isFirefox() && isColor('ButtonBorder') ? 'ButtonBorder' : text || fill
+  return { fill, mark, rim, text: text || fill }
 }
 
 /**
@@ -679,11 +756,11 @@ export function createRangeReplacement(node) {
   // The thumb is thumb-sized however small the author made the control's box
   // (a styled slider is often a 4px-tall input), overflowing it the way the
   // native one does.
-  svg.style.cssText = `width:${w}px;height:${h}px;overflow:visible` // #516, as in the checkbox below
+  svg.style.cssText = `width:${w}px;height:${h}px;overflow:visible${schemeOf(cs)}` // #516, as in the checkbox below
   box.appendChild(svg)
 
   function applyVisual() {
-    const accent = resolveAccentColor(cs)
+    const accent = resolveAccent(cs).fill
     const disabled = !!node.disabled
     const trackH = Math.max(2, Math.min(4, h))
     const trackY = (h - trackH) / 2
@@ -712,8 +789,15 @@ export function createRangeReplacement(node) {
     const thumb = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
     thumb.setAttribute('cx', String(cx))
     thumb.setAttribute('cy', String(h / 2))
-    thumb.setAttribute('r', String(r))
-    thumb.setAttribute('fill', accent)
+    // Firefox's thumb is grey inside a white rim, whatever the accent and the colour scheme
+    // (Firefox 160). Only the run takes the accent.
+    const firefox = isFirefox()
+    thumb.setAttribute('r', String(firefox ? r - 1 : r))
+    thumb.setAttribute('fill', firefox ? '#676774' : accent)
+    if (firefox) {
+      thumb.setAttribute('stroke', 'white')
+      thumb.setAttribute('stroke-width', '2')
+    }
     svg.appendChild(thumb)
     if (disabled) svg.setAttribute('opacity', '0.5')
 
@@ -746,8 +830,9 @@ export function createCheckboxRadioReplacement(node) {
   let w = Number.isFinite(parsedW) && parsedW > 0 ? Math.round(parsedW) : Math.max(12, rw || 16)
   let h = Number.isFinite(parsedH) && parsedH > 0 ? Math.round(parsedH) : Math.max(12, rh || 16)
   const isCheckbox = (node.type || 'text').toLowerCase() === 'checkbox'
-  const checked = !!node.checked
-  const indeterminate = !!node.indeterminate
+  // An indeterminate checkbox shows the dash whether or not it is checked as well.
+  const indeterminate = isCheckbox && !!node.indeterminate
+  const checked = !!node.checked && !indeterminate
 
   const size = Math.max(Math.min(w, h), 12)
   const s = size
@@ -771,66 +856,50 @@ export function createCheckboxRadioReplacement(node) {
   svg.setAttribute('viewBox', `0 0 ${s} ${s}`)
   // #516: sized by its attributes alone, Firefox painted it at twice the box under the
   // engine's layoutZoom (DPR 2: a 14px checkbox drew 28px over its label); CSS lengths zoom once.
-  svg.style.cssText = `width:${bw}px;height:${bh}px`
+  svg.style.cssText = `width:${bw}px;height:${bh}px${schemeOf(cs)}`
   box.appendChild(svg)
 
   function applyVisual() {
-    const color = resolveAccentColor(cs)
-    const stroke = 2
-    const pad = stroke / 2
-    const inner = s - stroke
+    const accent = resolveAccent(cs)
+    // A disabled control drops its accent: the UA paints it in the grey it gives the control's
+    // text. Dimmed like the slider above. :disabled matches inside a disabled fieldset too.
+    const disabled = node.matches(':disabled')
+    const color = disabled ? accent.text : accent.fill
+    const mark = disabled ? 'white' : accent.mark
+    const draw = (name, attrs) => {
+      const el = document.createElementNS('http://www.w3.org/2000/svg', name)
+      for (const key in attrs) el.setAttribute(key, String(attrs[key]))
+      svg.appendChild(el)
+    }
+    // On, the accent fills the control to its edge. Off, a hairline runs around the field colour.
+    const on = checked || indeterminate
+    const inset = on ? 0 : 0.5
+    const face = on
+      ? { fill: color }
+      : { fill: isColor('Field') ? 'Field' : 'none', stroke: accent.rim, 'stroke-width': 1 }
     svg.innerHTML = ''
     if (isCheckbox) {
-      const rectEl = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-      rectEl.setAttribute('x', String(pad))
-      rectEl.setAttribute('y', String(pad))
-      rectEl.setAttribute('width', String(inner))
-      rectEl.setAttribute('height', String(inner))
-      rectEl.setAttribute('rx', '2')
-      rectEl.setAttribute('ry', '2')
-      rectEl.setAttribute('fill', checked ? color : 'none')
-      rectEl.setAttribute('stroke', color)
-      rectEl.setAttribute('stroke-width', String(stroke))
-      svg.appendChild(rectEl)
+      draw('rect', { x: inset, y: inset, width: s - inset * 2, height: s - inset * 2, rx: 2, ry: 2, ...face })
       if (checked) {
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
-        path.setAttribute('d', `M ${pad + 2} ${s / 2} L ${s / 2 - 1} ${s - pad - 2} L ${s - pad - 2} ${pad + 2}`)
-        path.setAttribute('stroke', 'white')
-        path.setAttribute('stroke-width', String(Math.max(1.5, stroke)))
-        path.setAttribute('fill', 'none')
-        path.setAttribute('stroke-linecap', 'round')
-        path.setAttribute('stroke-linejoin', 'round')
-        svg.appendChild(path)
+        // The tick grows with the box, as the UA's does: about an eighth of it thick.
+        draw('path', {
+          d: `M ${s * 0.2} ${s * 0.53} L ${s * 0.4} ${s * 0.72} L ${s * 0.78} ${s * 0.3}`,
+          stroke: mark, 'stroke-width': Math.max(1.5, s * 0.12), fill: 'none',
+          'stroke-linecap': 'round', 'stroke-linejoin': 'round',
+        })
       } else if (indeterminate) {
-        const dash = document.createElementNS('http://www.w3.org/2000/svg', 'rect')
-        const dw = Math.max(6, inner - 4)
-        dash.setAttribute('x', String((s - dw) / 2))
-        dash.setAttribute('y', String((s - stroke) / 2))
-        dash.setAttribute('width', String(dw))
-        dash.setAttribute('height', String(stroke))
-        dash.setAttribute('fill', color)
-        dash.setAttribute('rx', '1')
-        svg.appendChild(dash)
+        // Firefox's dash is long and thin, Chromium's short and thick (Firefox 160, Chrome 157).
+        const dw = s * (isFirefox() ? 0.82 : 0.6)
+        const dh = isFirefox() ? Math.max(1, s / 16) : Math.max(2, s / 8)
+        draw('rect', { x: (s - dw) / 2, y: (s - dh) / 2, width: dw, height: dh, fill: mark })
       }
     } else {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-      circle.setAttribute('cx', String(s / 2))
-      circle.setAttribute('cy', String(s / 2))
-      circle.setAttribute('r', String((s - stroke) / 2))
-      circle.setAttribute('fill', checked ? color : 'none')
-      circle.setAttribute('stroke', color)
-      circle.setAttribute('stroke-width', String(stroke))
-      svg.appendChild(circle)
-      if (checked) {
-        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        const r = Math.max(2, (s - stroke * 2) * 0.35)
-        dot.setAttribute('cx', String(s / 2))
-        dot.setAttribute('cy', String(s / 2))
-        dot.setAttribute('r', String(r))
-        dot.setAttribute('fill', 'white')
-        svg.appendChild(dot)
-      }
+      draw('circle', { cx: s / 2, cy: s / 2, r: s / 2 - inset, ...face })
+      // Firefox's checked radio: the accent to the edge, with a 2px ring of the mark colour
+      // set 1px in. Neither grows with the control.
+      if (checked) draw('circle', { cx: s / 2, cy: s / 2, r: s / 2 - 2, fill: 'none', stroke: mark, 'stroke-width': 2 })
     }
+    if (disabled) svg.setAttribute('opacity', '0.5')
     // Force dimensions (inlineAllStyles may copy width:0 from native input)
     box.style.setProperty('width', `${bw}px`, 'important')
     box.style.setProperty('height', `${bh}px`, 'important')

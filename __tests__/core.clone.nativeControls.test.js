@@ -2,7 +2,7 @@
 // @frostin/snapdom, element-mirror). Measured on v3 before the change: a Firefox and a WebKit
 // capture of a slider carried 0 pixels of its accent colour, a WebKit colour well painted its
 // hex value as text, and a date field kept its machine value.
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { deepClone } from '../src/core/clone.js'
 import { createRangeReplacement } from '../src/utils/clone.helpers.js'
 import { isFirefox, isSafari } from '../src/utils/browser.js'
@@ -28,6 +28,11 @@ function thumbOf(el) {
   const circle = el.querySelector('circle')
   return { cx: parseFloat(circle.getAttribute('cx')), fill: circle.getAttribute('fill') }
 }
+
+/** The fill of the run up to the value: the second rect, over the track. */
+const runOf = (el) => el.querySelectorAll('rect')[1].getAttribute('fill')
+const FIREFOX_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0'
+const SAFARI_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15'
 
 describe('createRangeReplacement', () => {
   it('places the thumb by value, between min and max', () => {
@@ -58,12 +63,50 @@ describe('createRangeReplacement', () => {
   it('paints the authored accent colour, and never the `auto` keyword', () => {
     const input = mount('<input type="range" value="70" style="accent-color:rgb(255,0,102)">')
     const { el } = createRangeReplacement(input)
-    expect(thumbOf(el).fill).toBe('rgb(255, 0, 102)')
+    expect(runOf(el)).toBe('rgb(255, 0, 102)')
 
     const plain = mount('<input type="range" value="70">')
     const { el: plainEl } = createRangeReplacement(plain)
-    expect(thumbOf(plainEl).fill).not.toBe('auto')
-    expect(CSS.supports('color', thumbOf(plainEl).fill)).toBe(true)
+    for (const fill of [runOf(plainEl), thumbOf(plainEl).fill]) {
+      expect(fill).not.toBe('auto')
+      expect(CSS.supports('color', fill)).toBe(true)
+    }
+  })
+
+  // The two engines that take the drawn slider. Firefox's thumb is grey inside a white rim,
+  // whatever the accent.
+  it('draws the thumb grey in Firefox and in the accent in WebKit', () => {
+    const input = mount('<input type="range" value="70" style="accent-color:rgb(255,0,102)">')
+    const ua = vi.spyOn(navigator, 'userAgent', 'get')
+    try {
+      ua.mockReturnValue(FIREFOX_UA)
+      const firefox = createRangeReplacement(input).el
+      expect(runOf(firefox)).toBe('rgb(255, 0, 102)')
+      expect(thumbOf(firefox).fill).toBe('#676774')
+      expect(firefox.querySelector('circle').getAttribute('stroke')).toBe('white')
+
+      ua.mockReturnValue(SAFARI_UA)
+      const webkit = createRangeReplacement(input).el
+      expect(thumbOf(webkit).fill).toBe('rgb(255, 0, 102)')
+      expect(webkit.querySelector('circle').hasAttribute('stroke')).toBe(false)
+    } finally {
+      ua.mockRestore()
+    }
+  })
+
+  // #560: the filled run of an `auto` slider takes the accent a checked box takes.
+  const systemAccent = CSS.supports('color', 'AccentColor') && CSS.supports('color', 'AccentColorText')
+  it.runIf(systemAccent)('fills the run of an `auto` slider with the system accent', () => {
+    const input = mount('<input type="range" value="70">')
+    const ua = vi.spyOn(navigator, 'userAgent', 'get')
+    try {
+      for (const engine of [FIREFOX_UA, SAFARI_UA]) {
+        ua.mockReturnValue(engine)
+        expect(runOf(createRangeReplacement(input).el)).toBe('AccentColor')
+      }
+    } finally {
+      ua.mockRestore()
+    }
   })
 
   it('dims a disabled slider and keeps the control box', () => {
@@ -164,6 +207,46 @@ describe('the raster carries the control', () => {
     } finally {
       style.remove()
     }
+  })
+
+  // #560: `accent-color: auto` is drawn with the AccentColor keyword, so the keyword has to
+  // resolve inside the capture to what the page resolves it to. An indeterminate box takes the
+  // drawn control on every engine, a checked one on Firefox only.
+  const systemAccent = CSS.supports('color', 'AccentColor')
+  // Probed inside the capture root: a system colour resolves in its element's colour scheme.
+  const systemAccentRgb = () => {
+    const probe = document.createElement('div')
+    probe.style.color = 'AccentColor'
+    mounted.appendChild(probe)
+    const rgb = getComputedStyle(probe).color.match(/[\d.]+/g).slice(0, 3).map(Number)
+    probe.remove()
+    return rgb
+  }
+
+  it.runIf(systemAccent)('paints an indeterminate `auto` box in the system accent', async () => {
+    const input = mount('<input type="checkbox" style="width:30px;height:30px;margin:0">')
+    input.indeterminate = true
+    const canvas = await snapdom.toCanvas(mounted, { dpr: 1, embedFonts: false, burst: false })
+    expect(accentHits(canvas, systemAccentRgb())).toBeGreaterThan(100)
+  })
+
+  it.runIf(systemAccent && isFirefox())('fills a checked `auto` box with the system accent on a dark page', async () => {
+    mount('<input type="checkbox" checked style="width:30px;height:30px;margin:0">')
+    mounted.style.colorScheme = 'dark'
+    mounted.style.background = '#22252b'
+    const canvas = await snapdom.toCanvas(mounted, { dpr: 1, embedFonts: false, burst: false })
+    expect(accentHits(canvas, systemAccentRgb())).toBeGreaterThan(300)
+  })
+
+  // Chromium's own accent on a dark page, which its AccentColor is not (Chrome and Edge 157).
+  // The page's colour scheme has to reach the drawn box for it.
+  it.runIf(!isFirefox() && !isSafari())('paints an indeterminate `auto` box in Chromium\'s lighter blue on a dark page', async () => {
+    const input = mount('<input type="checkbox" style="width:30px;height:30px;margin:0">')
+    input.indeterminate = true
+    mounted.style.colorScheme = 'dark'
+    mounted.style.background = '#22252b'
+    const canvas = await snapdom.toCanvas(mounted, { dpr: 1, embedFonts: false, burst: false })
+    expect(accentHits(canvas, [0x99, 0xc8, 0xff])).toBeGreaterThan(300)
   })
 
   it('paints the colour well on every engine', async () => {

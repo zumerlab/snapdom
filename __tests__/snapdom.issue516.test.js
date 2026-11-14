@@ -84,7 +84,11 @@ describe('#516 Firefox for Android', () => {
       `<div style="display:flex;flex-direction:column"><input type="checkbox" style="${red}"><input type="radio" style="${red}"></div>` +
       `<div style="display:grid"><input type="checkbox" style="${red}"><input type="radio" style="${red}"></div></div>`)
     const inputs = [...el.querySelectorAll('input')]
-    for (const input of inputs) input.indeterminate = true // the replacement on every engine
+    for (const input of inputs) {
+      input.indeterminate = true // the replacement on every engine
+      // An unchecked radio shows none of its accent, and the scan below looks for red.
+      if (input.type === 'radio') input.checked = true
+    }
     const canvas = await (await snapdom(el, { dpr: 1, scale: 1, cache: 'disabled', burst: false })).toCanvas()
     const { data, width } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
     const origin = el.getBoundingClientRect()

@@ -1144,7 +1144,7 @@ let colorProbe
  * @param {string} color
  * @returns {Uint8ClampedArray}
  */
-function colorToRgba(color) {
+export function colorToRgba(color) {
   if (!colorProbe) {
     const c = document.createElement('canvas')
     c.width = c.height = 1
