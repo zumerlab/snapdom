@@ -27,6 +27,7 @@ import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets }
 import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { inlineAllStyles, flexRowOverflows, marginsHold } from '../modules/styles.js'
 import { universeFor, stylesLeakAcrossSubtrees } from '../modules/authorStyles.js'
+import { ONE_LINE_PROP } from '../modules/styleFreeze.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { sanitizeCloneForXHTML, neutralizeRootMarginCollapse } from '../utils/capture.helpers.js'
@@ -148,6 +149,21 @@ function pruneSubtreeFromMaps(oldRoot, R) {
     }
     for (let c = n.firstChild; c; c = c.nextSibling) stack.push(c)
   }
+}
+
+/**
+ * Take the one-line pin of an earlier pass off a retained clone that is about to be read
+ * again (freezeOneLine, styleFreeze.js). The re-read puts it back when the text is still on
+ * one line; left in place, a label whose text grew to two lines stayed on one in the frame.
+ * A clone under a pinned parent keeps it: the pin is the parent's to give.
+ * Pinned by __tests__/core.capture.diff.oneLine.test.js.
+ * @param {Element} source
+ * @param {Element} clone
+ */
+function unpinOneLine(source, clone) {
+  if (clone.style.getPropertyValue(ONE_LINE_PROP) === 'nowrap' &&
+      source.style.getPropertyValue(ONE_LINE_PROP) !== 'nowrap' &&
+      clone.parentElement?.style.getPropertyValue(ONE_LINE_PROP) !== 'nowrap') clone.style.removeProperty(ONE_LINE_PROP)
 }
 
 /** Test/diagnostic counters — how often the fast path was attempted and actually served. */
@@ -418,6 +434,7 @@ async function diffCapture(element, state, context, animated) {
       // float, transform, zoom). A re-read that rewrites it, as an inline `margin: 1em 0`
       // or an `!important` rule makes it do, puts those back.
       const rootStyle = srcN === element ? cloneN.style.cssText : null
+      unpinOneLine(srcN, cloneN)
       await inlineAllStyles(srcN, cloneN, sessionLike, context)
       if (rootStyle !== null && cloneN.style.cssText !== rootStyle) return null
       // An authored inline style holding a context-dependent value (`margin:20px auto`) is
@@ -447,6 +464,7 @@ async function diffCapture(element, state, context, animated) {
     }
     if (floored === flexRowOverflows(row, sessionLike)) continue
     for (const item of items) {
+      unpinOneLine(item, R.srcToClone.get(item))
       await inlineAllStyles(item, R.srcToClone.get(item), sessionLike, context)
       if (zeroed.includes(item)) rezero = true
     }
