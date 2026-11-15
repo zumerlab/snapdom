@@ -9,6 +9,7 @@
  * @module api/snapdom
  */
 import { captureDOM } from '../core/capture.js'
+import { createCaptureSession } from '../core/session.js'
 import { isBlankCanvas } from '../core/clone.js'
 import { createContext } from '../core/context.js'
 import { isSafari, nextFrame, yieldWhenTaskSpent } from '../utils/browser.js'
@@ -176,9 +177,10 @@ async function main(element, userOptions) {
  * @param {HTMLElement} el - The DOM element to capture.
  * @param {object} context - Normalized context options.
  * @param {symbol} _token - Internal security token.
+ * @param {import('../core/session.js').CaptureSession} [session] - this run's session
  * @returns {Promise<object>} Exporter functions.
  */
-snapdom.capture = async (el, context, _token) => {
+snapdom.capture = async (el, context, _token, session = createCaptureSession(context)) => {
   if (_token !== INTERNAL_TOKEN) throw new Error('[SnapDOM] snapdom.capture() is internal; use snapdom(el).')
 
   // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
@@ -242,7 +244,7 @@ snapdom.capture = async (el, context, _token) => {
     }
   }
 
-  const url = await captureDOM(el, context)
+  const url = await captureDOM(el, context, session)
   return buildResult(url, context)
 }
 

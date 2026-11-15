@@ -584,7 +584,7 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
-  // Every capture owns its session from its first synchronous tick (createCaptureSession),
+  // Every capture owns its session from its first synchronous tick (snapdom.capture),
   // so the nested capture can't disturb this one's maps — no save/restore needed.
   let imgEl
   try {

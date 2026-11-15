@@ -14,6 +14,7 @@
 import { generateCSSClasses, stripTranslate, debugWarn, getStyle, shadowHost } from '../utils/index.js'
 import { deepClone, finishClipHusks } from './clone.js'
 import { sessionWarn } from '../utils/debug.js'
+import { createCaptureSession } from './session.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { paintClippedText } from '../modules/bgClipText.js'
 import { flushStyleInvalidations, invalidateHoverChanges, universeFor } from '../modules/styles.js'
@@ -43,7 +44,8 @@ const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important
  * The source is prepared and restored around deepClone (see the module header). Direct
  * callers without a session get fresh maps; captureDOM always passes its own.
  * @param {Element} element - Element to clone
- * @param {Object} [options={}] - the normalized context (createContext), plus `__session`
+ * @param {Object} [options={}] - the normalized context (createContext)
+ * @param {import('./session.js').CaptureSession} [session] - the run's session, whose maps the clone fills
  * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null, standIns: Map<Element, Element>|null}>}
  *   classCSS is the full stylesheet (prefix included); classPrefixCSS is the shadow, pseudo
  *   and suppression part alone, which burst re-prepends after a diff; clipWindow is the
@@ -51,16 +53,13 @@ const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important
  *   husk standing in for it, which nodeMap leaves out; shadowCSS says the prefix carries
  *   shadow-root rules
  */
-export async function prepareClone(element, options = {}) {
+export async function prepareClone(element, options = {}, session = createCaptureSession(options)) {
   // Same-tick DOM/style mutations otherwise reach the clone against a stale epoch
   // (MutationObserver delivery is a microtask) — drain them before any epoch-scoped
   // memo (universe, pseudo gates, isInSvgTemplate) is read.
   flushStyleInvalidations()
   // :hover leaves no record and no event: asked here, once per capture.
   invalidateHoverChanges(element.ownerDocument || document)
-  // captureDOM always provides its own session (createCaptureSession). Direct callers
-  // (tests, embedders) get fresh isolated maps.
-  const session = options.__session || { styleMap: new Map(), styleCache: new WeakMap(), nodeMap: new Map() }
   const sessionCache = {
     styleMap: session.styleMap,
     styleCache: session.styleCache,

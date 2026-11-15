@@ -15,7 +15,7 @@ import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { isSafari } from '../utils/index.js'
 import { createSlicer } from '../utils/browser.js'
 import { embedCustomFonts, collectFontUsage, ensureFontsReady, fontKeyFamily, documentFontFamilies } from '../modules/fonts.js'
-import { cache } from '../core/cache.js'
+import { cache, applyCachePolicy } from '../core/cache.js'
 import { createCaptureSession } from './session.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { lineClampTree } from '../modules/lineClamp.js'
@@ -65,12 +65,15 @@ function collectResolveNodeHooks(options) {
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
  * @param {boolean} [options.burst] - Memoize eligible static captures from the first call. Selection and frame-driven/opaque trees always capture fresh; true overrides only the automatic impure-plugin gate, while false disables memoization.
+ * @param {import('./session.js').CaptureSession} [session] - this run's session (snapdom.capture creates it)
  * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
  *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
  */
-export async function captureDOM(element, options) {
+export async function captureDOM(element, options, session = createCaptureSession(options)) {
   if (!element) throw new Error('[SnapDOM] The element cannot be null or undefined.')
-  options.__session = createCaptureSession(options.cache)
+  applyCachePolicy(options.cache)
+  // ALIAS for published readers (session.js); nothing in this module reads it back.
+  options.__session = session
   delete options.__compressedAssets
   delete options.__compressedSnapshot
   delete options.__compressionDensity
@@ -166,10 +169,10 @@ export async function captureDOM(element, options) {
     try {
       // Keep this capture's own clone→source map — every later pass must use this
       // reference (sessions are per-capture; there is no shared session global).
-      ({ clone, classCSS, classPrefixCSS, shadowCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe } = await prepareClone(state.element, state.options))
+      ({ clone, classCSS, classPrefixCSS, shadowCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe } = await prepareClone(state.element, state.options, session))
 
       if (reconcileRisk > 0 && !options.reconcile) {
-        sessionWarn(options.__session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
+        sessionWarn(session, 'reconcile-risk', 'text in inline/table-cell elements kept natural width and may re-wrap; pass { reconcile: true } for pixel-exact layout')
         if (options.debug && !cache.warnedReconcile) {
           cache.warnedReconcile = true
           debugWarn(options, 'Some text may wrap differently in the capture. Pass { reconcile: true } to fix it (about 2x slower).')
@@ -200,7 +203,12 @@ export async function captureDOM(element, options) {
     // there is no watcher, and the yielding clone stands.
     if (!slicer?.yielded || !options.__tornSinceStart?.()) break
     slicer = null
-    options.__session = createCaptureSession(options.cache)
+    // Renewed in place: burst, the alias and buildResult hold this session object.
+    applyCachePolicy(options.cache)
+    session.styleMap = new Map()
+    session.styleCache = new WeakMap()
+    session.nodeMap = new Map()
+    session.warnings = []
   }
   options.__slicer = null
 
@@ -228,7 +236,7 @@ export async function captureDOM(element, options) {
     try {
       shrinkAutoSizeBoxes(state.element, state.clone, state.styleCache, state.nodeMap)
     } catch (e) {
-      sessionWarn(options.__session, 'shrink-failed', 'shrink pass failed', e)
+      sessionWarn(session, 'shrink-failed', 'shrink pass failed', e)
       debugWarn(options, 'Couldn\'t close the gaps left by removed elements.', e)
     }
   }
@@ -236,8 +244,8 @@ export async function captureDOM(element, options) {
     await ligatureIconToImage(state.clone, state.element, state.nodeMap)
   } catch { /* non-blocking */ }
   try {
-    const styleMap = options.__session?.styleMap
-    if (styleMap) pinIconStruts(styleMap.keys(), styleMap, state.nodeMap, state.options.__iconMatchers)
+    const styleMap = session.styleMap
+    pinIconStruts(styleMap.keys(), styleMap, state.nodeMap, state.options.__iconMatchers)
   } catch { /* non-blocking */ }
 
   // Asset phases are network/decode-bound and independent: images ∥ backgrounds ∥ fonts run
@@ -260,7 +268,7 @@ export async function captureDOM(element, options) {
     try {
       emulateBackdropFilters(state.element, state.clone, state.nodeMap)
     } catch (e) {
-      sessionWarn(options.__session, 'backdrop-filter-failed', 'backdrop-filter emulation failed', e)
+      sessionWarn(session, 'backdrop-filter-failed', 'backdrop-filter emulation failed', e)
       debugWarn(options, 'Couldn\'t reproduce a backdrop-filter; captured without it.', e)
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
@@ -275,7 +283,7 @@ export async function captureDOM(element, options) {
       try {
         applyTextFieldSelectionLayers(state.nodeMap)
       } catch (e) {
-        sessionWarn(options.__session, 'selection-compose-failed', 'field selection compose failed', e)
+        sessionWarn(session, 'selection-compose-failed', 'field selection compose failed', e)
       }
     }
   })()
@@ -368,7 +376,7 @@ export async function captureDOM(element, options) {
   if (typeof options.__retain === 'function') {
     try {
       options.__retain({
-        clone, nodeMap, styleCache, styleMap: options.__session.styleMap,
+        clone, nodeMap, styleCache, styleMap: session.styleMap,
         classPrefixCSS, plainBg, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
         marginZeroed: options.__marginZeroed,
         __compressedAssets: options.__compressedAssets,

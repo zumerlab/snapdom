@@ -90,7 +90,7 @@ export function normalizeCachePolicy(v) {
 
 /**
  * Empties every persistent cache when the policy is 'disabled'. A no-op otherwise.
- * Called once per capture from createCaptureSession, in the same synchronous tick.
+ * Called by captureDOM at its entry and again before a torn clone is retried.
  * @param {"soft"|"disabled"} [policy='soft']
  */
 export function applyCachePolicy(policy = 'soft') {
