@@ -1063,7 +1063,6 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     const eligible = id !== -1 &&
       !SHARE_SKIP_TAGS.has(source.tagName) &&
       !(active && active !== doc.body && active !== doc.documentElement && active === source) &&
-      (!source.getRootNode || source.getRootNode() === doc) &&
       !source.shadowRoot && !source.assignedSlot
     if (eligible) shareInfo = { st, id }
   }

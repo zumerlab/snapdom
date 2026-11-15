@@ -227,7 +227,9 @@ function scanRules(rules, universe, pseudoSels, state) {
       for (const part of splitTopLevel(sel, ',')) {
         const one = part.trim()
         if (one && (container || state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) {
-          state.shareUnsafeSels.add(PSEUDO_ELEMENT_SEL_RE.test(one) ? stripPseudo(one) : one)
+          // `x-card:nth-child(2)::part(title)` splits what two hosts hold: gate it by its host.
+          const bare = one.replace(/::part\([^)]*\)/g, '') || '*'
+          state.shareUnsafeSels.add(PSEUDO_ELEMENT_SEL_RE.test(bare) ? stripPseudo(bare) : bare)
         }
       }
     }
@@ -444,6 +446,14 @@ function composePseudoGates(probe, pseudoSels) {
  *  (href-less anchors differ) but `:visited` need not be — getComputedStyle deliberately
  *  answers with unvisited values for privacy, so it cannot split identical elements. */
 const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-of-type|empty|hover|focus|active|target|checked|indeterminate|disabled|enabled|read-only|read-write|placeholder-shown|autofill|valid|invalid|user-valid|user-invalid|in-range|out-of-range|required|optional|default|link|any-link|scope|defined|modal|fullscreen|picture-in-picture|playing|paused|muted|seeking|buffering|stalled|volume-locked|open|popover-open|state\(|dir\(|lang\(|has\()/
+
+/** What in a shadow root's own CSS can style two nodes of one identity differently, tested
+ *  on the text: the structural and state selectors above, sibling combinators, container
+ *  queries and their units, and the rules that look out of the tree (`:host()`, `::slotted()`).
+ *  Hover, focus and active are left out: styleShare asks the host instead, which matches
+ *  them whenever something in its tree does. A false positive costs the share, nothing else. */
+export const SHADOW_SPLIT_RE = new RegExp(SHARE_UNSAFE_RE.source.replace('hover|focus|active|', '') +
+  '|[+~]|@container|container-|\\dcq[whibm]|:host(?:-context)?\\(|::slotted\\(|sibling-|random\\(')
 
 /**
  * Scans the document's author styles once: every sheet, the adopted sheets, WAAPI keyframes.

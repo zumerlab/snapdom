@@ -112,7 +112,7 @@ export const SHARE_SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION',
 export function shareStateOf(session) {
   let st = session.share
   if (!st) {
-    st = session.share = { ids: new WeakMap(), intern: new Map(), snaps: new Map(), rootSeen: false }
+    st = session.share = { ids: new WeakMap(), intern: new Map(), snaps: new Map(), rootSeen: false, pass: session }
   }
   return st
 }
@@ -127,21 +127,24 @@ export function identityFor(el, st) {
   // constant marker keeps chains comparable). Any LATER node with an unwalked parent is a
   // structure this walk does not understand: refuse to share under it.
   let pid
-  if (!parent) {
-    // The top of a shadow tree below the capture root. Its rules come from the root's own
-    // sheet, which no scan reads and two roots do not share: the `::after` of the benchmark's
+  if (!st.rootSeen) {
+    // The capture root. Inside a shadow tree its rules come from a sheet no gate has read.
+    pid = el.getRootNode() === (el.ownerDocument || document) ? 'R' : -1
+  } else if (parent) {
+    pid = st.ids.get(parent)
+    if (pid === undefined) pid = -1
+  } else {
+    // The top of a shadow tree below the capture root. Its rules are the root's own, so it
+    // chains to its host and to the group of roots that hold the same CSS text (clone.js),
+    // when that text cannot split twins (SHADOW_SPLIT_RE) and nothing in the tree is hovered,
+    // focused or pressed. Chained to a constant instead, the `::after` of the benchmark's
     // shadow scene took the colour of the first root read, on all 150 hosts.
     // Pinned by __tests__/module.styles.shareShadowRoots.test.js.
-    pid = st.rootSeen ? -1 : 'R'
-  } else {
-    pid = st.ids.get(parent)
-    if (pid === undefined) {
-      if (st.rootSeen) {
-        st.ids.set(el, -1)
-        return -1
-      }
-      pid = 'R'
-    }
+    const root = el.getRootNode()
+    const host = root.host
+    const hid = host && st.pass.shadowShare?.has(root) && !host.matches(':hover,:focus-within,:active')
+      ? identityFor(host, st) : -1
+    pid = hid === -1 ? -1 : hid + '~' + st.pass.shadowScopes.get(root)
   }
   st.rootSeen = true
   if (pid === -1) {
@@ -206,8 +209,10 @@ export function shareLists(rec, el) {
   const scan = scanFor(el.ownerDocument || document)
   const attr = (el.getAttribute && el.getAttribute('style')) || ''
   const inlineUnstable = attr && UNSTABLE_INLINE_RE.test(attr)
-  const rrM = !!scan.marginUnstable || (inlineUnstable && /margin/i.test(attr))
-  const rrP = !!scan.paddingUnstable || (inlineUnstable && /padding/i.test(attr))
+  // The scan read the document's sheets: what a shadow sheet gives its margins is unknown.
+  const shadow = el.getRootNode() !== (el.ownerDocument || document)
+  const rrM = shadow || !!scan.marginUnstable || (inlineUnstable && /margin/i.test(attr))
+  const rrP = shadow || !!scan.paddingUnstable || (inlineUnstable && /padding/i.test(attr))
   const rrG = stored.display !== undefined && stored.display.includes('grid')
   const rrT = stored.transform !== undefined && stored.transform !== 'none'
   // An absent `position` (a pseudo no rule positions, an excluded prop) still re-reads.

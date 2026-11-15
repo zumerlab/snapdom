@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { shadowTreeScenario } from '../docs/compare/live/harness.js'
 
@@ -36,5 +36,57 @@ describe('shadow scene bullets keep their per-depth colour', () => {
     expect(n[0]).toBeGreaterThan(0)
     expect(n[1]).toBeGreaterThan(0)
     expect(n[2]).toBeGreaterThan(0)
+  })
+})
+
+// Roots that hold the same CSS text share reads between them (and inside one root). These are
+// the ways two nodes of one identity can still differ there.
+describe('shadow content shares only what cannot differ', () => {
+  let stage
+  const hosts = (css, inner, n = 2, hostStyle = '') => {
+    stage = document.createElement('div')
+    stage.style.cssText = 'position:absolute;left:0;top:0;display:grid;grid-template-columns:100px 300px;align-items:start;background:#fff'
+    for (let i = 0; i < n; i++) {
+      const host = document.createElement('div')
+      if (hostStyle) host.style.cssText = hostStyle
+      const root = host.attachShadow({ mode: 'open' })
+      root.innerHTML = `<style>${css}</style>${inner}`
+      stage.appendChild(host)
+    }
+    document.body.appendChild(stage)
+    return stage
+  }
+  const pixels = async (el) => {
+    const canvas = await (await snapdom(el, { burst: false, scale: 1, dpr: 1 })).toCanvas()
+    const { data, width } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
+    return (x, y) => Array.from(data.slice((y * width + x) * 4, (y * width + x) * 4 + 3)).join(',')
+  }
+  const BOX = '.b{height:20px;background:rgb(0,0,255)}'
+  afterEach(() => stage?.remove())
+
+  it('a structural rule in the shadow sheet', async () => {
+    const at = await pixels(hosts(BOX + '.b:nth-child(odd){background:rgb(255,0,0)}', '<div class="b"></div><div class="b"></div><div class="b"></div>'))
+    // Children 2, 3, 4 of the root (the <style> is the first): blue, red, blue.
+    expect([at(10, 10), at(10, 30), at(10, 50)]).toEqual(['0,0,255', '255,0,0', '0,0,255'])
+    expect([at(110, 10), at(110, 30), at(110, 50)]).toEqual(['0,0,255', '255,0,0', '0,0,255'])
+  })
+
+  it('a percentage padding under hosts of two widths', async () => {
+    const at = await pixels(hosts('.p{padding-left:10%;background:rgb(0,0,255)}.i{height:20px;background:rgb(255,0,0)}', '<div class="p"><div class="i"></div></div>'))
+    // 10% of 100px, then 10% of 300px.
+    expect([at(5, 10), at(15, 10)]).toEqual(['0,0,255', '255,0,0'])
+    expect([at(100 + 25, 10), at(100 + 35, 10)]).toEqual(['0,0,255', '255,0,0'])
+  })
+
+  it('a focused node inside one of the roots', async () => {
+    const el = hosts(BOX + '.b:focus{background:rgb(255,0,0);outline:none}', '<div class="b" tabindex="0"></div>')
+    el.lastElementChild.shadowRoot.querySelector('.b').focus()
+    const at = await pixels(el)
+    expect([at(10, 10), at(110, 10)]).toEqual(['0,0,255', '255,0,0'])
+  })
+
+  it('control: two plain roots of one group paint alike', async () => {
+    const at = await pixels(hosts(BOX, '<div class="b"></div>'))
+    expect([at(10, 10), at(110, 10)]).toEqual(['0,0,255', '0,0,255'])
   })
 })

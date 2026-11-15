@@ -145,6 +145,7 @@ export function createCaptureSession(options = {}, retained = null) {
  *
  * Shadow DOM (#558), written and read by deepClone.
  * @property {WeakMap<ShadowRoot, string>|null} shadowScopes
+ * @property {WeakSet<ShadowRoot>|null} shadowShare - roots whose CSS cannot split identity twins
  * @property {WeakMap<object, string>|null} shadowSheets
  * @property {Array<Map<string, object>>|null} shadowGroups
  * @property {number} shadowScopeSeq
@@ -197,6 +198,7 @@ export function createClonePass(run, options, nodeMap) {
     clip: null,
     selection: null,
     shadowScopes: null,
+    shadowShare: null,
     shadowSheets: null,
     shadowGroups: null,
     shadowScopeSeq: 0,
