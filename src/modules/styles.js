@@ -925,6 +925,7 @@ const CONTEXT_DEPENDENT_VALUE_RE =
   /%|[\d.](?:em|rem|ex|ch|cap|ic|lh|rlh|v[whib]|vmin|vmax|cq[whbi]|cqmin|cqmax)\b|\b(?:calc|var|min|max|clamp|env|attr)\(|\b(?:auto|inherit|initial|unset|revert|currentcolor|-webkit-fill-available|fit-content|min-content|max-content)\b/i
 
 const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
+let firefox
 /**
  * Re-resolves the source's inline declarations through the cascade onto the clone.
  *
@@ -959,6 +960,12 @@ function normalizeInlineStyleToComputed(source, clone, computed, attr, animated)
   // loop skips every other prop. `all` expands to the border longhands too.
   const bordersOnly = canSkip && important.size === 0 && !animated && !isTextField(source)
   if (bordersOnly && !/border|\ball\s*:/i.test(attr)) return
+  // Firefox (141): once the grid-template-columns of one grid container has been read, the
+  // `auto` margins of every other grid container read 0px until its own tracks are read. The
+  // snapshot reads its properties in an order that hides it; this loop came first, and a
+  // right-aligned grid was written at the left on its first capture.
+  // Pinned by __tests__/module.styles.inlineAutoMargin.test.js.
+  if (attr.includes('margin') && (firefox ??= isFirefox())) computed.getPropertyValue('grid-template-columns')
   let sameBorderWidths
   for (let i = 0, n = inline.length; i < n; i++) {
     const prop = inline[i]
