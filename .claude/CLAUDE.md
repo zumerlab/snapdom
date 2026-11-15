@@ -40,11 +40,15 @@ Current line: 3.3.x on npm `latest`. **This clone is the repo.**
 
 Every change must respect these, in this order:
 
-1. **Speed** — no change may regress capture performance. If a fix or feature adds work to the hot path (`captureDOM` and anything it calls per-node), justify the cost and, when in doubt, measure with `npm run test:benchmark` before/after.
-2. **Fidelity** — the rendered capture must match the live DOM. Never trade visual accuracy for convenience. Safari workarounds, bleed math, font embedding, and the clone-in-document measurement pass exist for fidelity reasons; don't "simplify" them without understanding what breaks.
-3. **Minimal code** — no decorative code. No helpers for single callers, no speculative abstractions, no options for hypothetical future needs, no defensive checks for impossible states. The library is deliberately small; keep it that way. If a change adds bytes, it has to pay for them.
+1. **Speed**: no change may regress capture performance. If a fix or feature adds work to the hot path (`captureDOM` and anything it calls per-node), justify the cost and, when in doubt, measure with `npm run test:benchmark` before/after.
+2. **Fidelity**: the rendered capture must match the live DOM. Never trade visual accuracy for convenience. Safari workarounds, bleed math, font embedding, and the clone-in-document measurement pass exist for fidelity reasons; don't "simplify" them without understanding what breaks.
+3. **Elegance**: each concept lives in one place, state travels explicitly (no private `__` fields passed through options or context), each cache declares what it depends on, and no code is decorative: no helpers for single callers, no speculative abstractions, no options for hypothetical future needs, no defensive checks for impossible states. If a change adds bytes, it has to pay for them.
 
-If a proposed change conflicts with (1) or (2), don't ship it — surface the trade-off instead.
+Elegance is there for what it serves: (4) code that can be maintained and extended in small, precise steps, (5) read and understood by a person, and (6) by a model reading it cold. The test for 5 and 6: a fresh model with no context answers "where does X live" or "what invalidates Y" correctly from the file headers alone.
+
+If a change conflicts with (1) or (2), don't ship it; surface the trade-off instead. When elegance conflicts with either, keep the less elegant version and say why in a comment.
+
+**How each goal is checked on a refactor** (the `dev` restructuring, 2026-11): speed with `bench/perf-review/ab.mjs` against `main` on the benchmark scenes and the demo corpus, no scene slower beyond noise; fidelity of a pure refactor by a byte-identical SVG for every demo on all three engines; a behaviour change (the cache redesign) by the truth fuzz at zero wrong recaptures, a green `test:full` and live parity no worse than `main`.
 
 ## Commands
 
