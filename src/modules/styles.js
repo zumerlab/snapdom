@@ -1160,7 +1160,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (key === undefined) {
     key = persist.snapshotKeyCache.get(sig)
     if (key === undefined) {
-      key = getStyleKey(floor ? { ...snap, 'min-width': floor } : snap, tag, sizedByContent, flexItem)
+      key = getStyleKey(snap, tag, sizedByContent, flexItem, floor)
       // Bound at INSERTION: evicting only on an epoch bump left the Map unbounded for as long
       // as the page's styles held still. Map iterates in insertion order, so this is FIFO.
       if (persist.snapshotKeyCache.size >= MAX_SNAPSHOT_KEY_CACHE) {

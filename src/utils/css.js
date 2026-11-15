@@ -326,9 +326,12 @@ export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
  *   (text / child elements). Empty boxes sized by a CSS class keep their width verbatim.
  * @param {boolean} [isFlexItem=false] whether the element is a flex/grid item — those must keep
  *   their natural ability to shrink (#406), so we never give them a synthesized min-width floor.
+ * @param {string} [floor=''] the min-width the key carries in place of the snapshot's (the
+ *   flex floor of inlineAllStyles); an argument, since copying the snapshot to hold it cost the
+ *   first capture of 240 grid items 3%
  * @returns {string}
  */
-export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem = false) {
+export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem = false, floor = '') {
   tagName = String(tagName || '').toLowerCase()
   if (NO_DEFAULTS_TAGS.has(tagName)) {
     return '' // no key => no class
@@ -357,7 +360,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   for (const prop in snapshot) {
     if (shouldIgnoreProp(prop)) continue
     if (isRedundantLogicalProp(prop, snapshot)) continue
-    const value = snapshot[prop]
+    const value = floor && prop === 'min-width' ? floor : snapshot[prop]
     if (HARD_WIDTH_PROPS.has(prop) && MATHML_TOKEN_TAGS.has(tagName)) continue
     if (soften) {
       if (HARD_WIDTH_PROPS.has(prop)) continue // never freeze a content/algorithm width
@@ -414,6 +417,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
     const w = snapshot.width
     if (w && w !== 'auto' && w !== defaults.width) entries.push(`min-width:${w}`)
   }
+  if (floor && !('min-width' in snapshot) && floor !== defaults['min-width']) entries.push(`min-width:${floor}`)
   entries.sort()
   return entries.join(';')
 }
