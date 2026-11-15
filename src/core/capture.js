@@ -87,7 +87,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
   state.element = element
   Object.defineProperty(state, 'options', { value: state, configurable: true })
 
-  let clone, classCSS, classPrefixCSS, shadowCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe
+  let clone, classCSS, classPrefixCSS, shadowCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe, marginZeroed
   let fontsCSS = ''
   // Root transform (scale/skew), kept when outerTransforms is on
   let rootTransform2D = null
@@ -189,7 +189,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
       // content sits flush like the captured border box (no clipping / no offset).
       if (clone) {
         // The list of zeroed elements goes to the retained artifacts below (diff.js).
-        options.__marginZeroed = neutralizeRootMarginCollapse(state.element, clone, nodeMap, standIns)
+        marginZeroed = neutralizeRootMarginCollapse(state.element, clone, nodeMap, standIns)
         // #483: the raster is sized in the root's pre-zoom coordinate space, so an inline
         // `zoom` carried over by cloneNode() would shrink the content and leave blank bands.
         neutralizeRootZoom(state.element, clone)
@@ -380,7 +380,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
       options.__retain({
         clone, nodeMap, styleCache, styleMap: session.styleMap,
         classPrefixCSS, plainBg, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
-        marginZeroed: options.__marginZeroed,
+        marginZeroed,
         __compressedAssets: options.__compressedAssets,
         __compressionDensity: options.__compressionDensity,
       })
