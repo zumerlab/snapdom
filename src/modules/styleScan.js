@@ -161,7 +161,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     const style = rule.style
     // Read once: Gecko and WebKit serialize the selector on every read.
     const sel0 = rule.selectorText
-    let svgGeo = false, svgAnim = false
+    let svgGeo = false, svgAnim = false, container = false
     if (style) {
       const pseudoRule = !!sel0 && PSEUDO_ELEMENT_SEL_RE.test(sel0)
       for (let j = 0; j < style.length; j++) {
@@ -172,6 +172,7 @@ function scanRules(rules, universe, pseudoSels, state) {
           else if (SVG_ANIM_RE.test(prop)) svgAnim = true
         }
         if (pseudoRule) state.pseudoProps.add(prop)
+        if (prop === 'container-type' && style.getPropertyValue(prop) !== 'normal') container = true
         if (style.getPropertyPriority(prop)) state.importantProps.add(prop)
         // Counters restyle retained siblings. The counter longhands have no shorthand, so a
         // rule that sets one lists it here. Chromium lists `all` unexpanded.
@@ -216,11 +217,18 @@ function scanRules(rules, universe, pseudoSels, state) {
     // conservative: a false positive only adds a selector to the gate.
     // A rule inside @container styles by the CONTAINER's size, which twins under
     // different-width parents do not share (measured: the narrow twin's colour painted onto
-    // the wide one), so every selector in there joins the gate too.
-    if (sel && (state.inContainer || SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
+    // the wide one), so every selector in there joins the gate too. So does a rule that MAKES
+    // a query container: twins under two of them resolve `10cqw` against different boxes with
+    // no @container rule anywhere (a 30px padding painted 10px).
+    // A pseudo-element is stripped first. querySelector never matches `li:nth-child(odd)::before`,
+    // so the gate answered "safe" and every `::before` took the first twin's colour.
+    // Pinned by __tests__/module.styles.shareContainerUnits.test.js and sharePseudoGate.test.js.
+    if (sel && (container || state.inContainer || SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
       for (const part of splitTopLevel(sel, ',')) {
         const one = part.trim()
-        if (one && (state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) state.shareUnsafeSels.add(one)
+        if (one && (container || state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) {
+          state.shareUnsafeSels.add(PSEUDO_ELEMENT_SEL_RE.test(one) ? stripPseudo(one) : one)
+        }
       }
     }
     if (svgGeo || svgAnim) addSvgGeometrySel(rule, sel, svgGeo, state)
@@ -234,13 +242,13 @@ function scanRules(rules, universe, pseudoSels, state) {
     } else if (rule.cssRules && rule.cssRules.length) { // @media/@supports/@keyframes/…
       // constructor.name instead of instanceof: a rule from an iframe document belongs to
       // that window's CSSContainerRule, so the parent realm's constructor never claims it.
-      const container = rule.constructor?.name === 'CSSContainerRule'
+      const containerRule = rule.constructor?.name === 'CSSContainerRule'
       const scope = rule.constructor?.name === 'CSSScopeRule'
       // A container that changes size restyles its descendants with no record on them.
-      if (container) { state.inContainer++; state.leaksAcrossSubtrees = true }
+      if (containerRule) { state.inContainer++; state.leaksAcrossSubtrees = true }
       if (scope) state.inScope = (state.inScope || 0) + 1
       const ok = scanRules(rule.cssRules, universe, pseudoSels, state)
-      if (container) state.inContainer--
+      if (containerRule) state.inContainer--
       if (scope) state.inScope--
       if (!ok) return false
     }

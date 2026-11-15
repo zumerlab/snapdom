@@ -825,7 +825,11 @@ function identityFor(el, st) {
   // structure this walk does not understand: refuse to share under it.
   let pid
   if (!parent) {
-    pid = 'R'
+    // The top of a shadow tree below the capture root. Its rules come from the root's own
+    // sheet, which no scan reads and two roots do not share: the `::after` of the benchmark's
+    // shadow scene took the colour of the first root read, on all 150 hosts.
+    // Pinned by __tests__/module.styles.shareShadowRoots.test.js.
+    pid = st.rootSeen ? -1 : 'R'
   } else {
     pid = st.ids.get(parent)
     if (pid === undefined) {
