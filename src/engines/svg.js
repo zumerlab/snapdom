@@ -259,8 +259,10 @@ export async function composeAndSerialize(state, ex) {
   const csEl = getStyle(state.element)
 
   const rect = state.element.getBoundingClientRect()
-  let w0 = Math.max(1, limitDecimals(state.element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
-  let h0 = Math.max(1, limitDecimals(state.element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
+  // rootBox: what prepareClone measured before it restored content-visibility.
+  const box = session?.rootBox
+  let w0 = Math.max(1, limitDecimals(box?.[0] || state.element.offsetWidth || parseFloat(csEl.width) || rect.width || 1))
+  let h0 = Math.max(1, limitDecimals(box?.[1] || state.element.offsetHeight || parseFloat(csEl.height) || rect.height || 1))
   // body/documentElement: measure clone in-document to get true content height (Chrome clamps offset/scroll)
   // Use element's ownerDocument for iframe support (#371)
   const elDoc = state.element.ownerDocument || document

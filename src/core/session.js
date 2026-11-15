@@ -65,6 +65,9 @@
  * @property {(() => boolean)|null} tornSinceStart - burst's watcher, asked by captureDOM after
  *   a yielding clone (fast: false | 'auto'). Written by burst before a full run it starts,
  *   nulled in its finally; null on any other run
+ * @property {[number, number]|null} rootBox - the root's offset size while prepareClone still
+ *   held content-visibility:auto boxes visible, for the engine; null when it forced none and on
+ *   a differential frame, which forces them for its whole run
  * @property {((art: object) => void)|null} retain - burst's hand-off of the artifacts a
  *   differential frame splices onto, called by captureDOM after the svg render. Written by
  *   burst on a run that may become the memo, nulled in its finally; null on any other run
@@ -108,6 +111,7 @@ export function createCaptureSession(options = {}, retained = null) {
     fontUsage: null,
     tornSinceStart: null,
     retain: null,
+    rootBox: null,
     compressedAssets: retained ? retained.compressedAssets : null,
     compressionDensity: retained ? retained.compressionDensity : undefined,
     compressedSnapshot: null,

@@ -21,7 +21,7 @@ import { universeFor } from '../modules/styles.js'
 import { flushStyleInvalidations, invalidateHoverChanges } from './changes.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree, resolveMediaQueries, freezeInflatedFontSizes } from '../utils/clone.helpers.js'
-import { stabilizeLayout, forceContentVisibility } from '../utils/prepare.helpers.js'
+import { stabilizeLayout, forceContentVisibility, FORCED_VISIBILITY } from '../utils/prepare.helpers.js'
 import { prepareSelectionContext } from '../modules/selection.js'
 import { resolveClipRect, freezeViewportPositioned, freezeRootPercentSizes } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
@@ -247,8 +247,16 @@ export async function prepareClone(element, options = {}, session = createCaptur
     debugWarn(sessionCache, 'Capture failed while copying the element.', e)
     throw e
   } finally {
-    undoContentVisibility()
     undoStabilizeLayout()
+    // The root's box while its content-visibility:auto boxes are still visible, for the
+    // engine: once restored, a box the engine is not rendering (off screen, or not laid out
+    // again until the next frame) is empty, and the root measured 40px for a 140px clone.
+    // Pinned by __tests__/core.capture.diff.contentVisibility.test.js.
+    if (session) {
+      session.rootBox = element.matches(FORCED_VISIBILITY) || element.querySelector(FORCED_VISIBILITY)
+        ? [element.offsetWidth, element.offsetHeight] : null
+    }
+    undoContentVisibility()
   }
   freezeInflatedFontSizes(sessionCache.nodeMap, element.ownerDocument || document)
 

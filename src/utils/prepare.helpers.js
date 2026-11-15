@@ -114,9 +114,14 @@ export function stabilizeLayout(element) {
  * __tests__/utils.prepare.helpers.test.js.
  * @param {Element} root
  * @param {{left:number,top:number,right:number,bottom:number}|null} [clipRect]
+ * @param {Element[]|null} [only] - force these and walk nothing (diff.js: the boxes the
+ *   retained clone was read under)
  * @returns {() => void}
  */
-export function forceContentVisibility(root, clipRect = null) {
+/** Matches the boxes forceContentVisibility is holding visible, and their clones. */
+export const FORCED_VISIBILITY = '[style*="content-visibility"]'
+
+export function forceContentVisibility(root, clipRect = null, only = null) {
   const undos = []
   const force = (el) => {
     if (!isHTMLEl(el)) return
@@ -131,7 +136,9 @@ export function forceContentVisibility(root, clipRect = null) {
     }
   }
   try {
-    if (clipRect) {
+    if (only) {
+      for (const el of only) force(el)
+    } else if (clipRect) {
       // Margin mirrors clone.js CLIP_CULL_MARGIN; zero-sized boxes (display:contents,
       // anchors) never prune. Forcing a section before descending gives its children
       // real layout boxes for their own intersection test (nested cv:auto).

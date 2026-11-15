@@ -17,7 +17,7 @@
 import { deepClone } from './clone.js'
 import { createCaptureSession, createClonePass } from './session.js'
 import { lineClampTree } from '../modules/lineClamp.js'
-import { forceContentVisibility } from '../utils/prepare.helpers.js'
+import { forceContentVisibility, FORCED_VISIBILITY } from '../utils/prepare.helpers.js'
 import { composeAndSerialize } from '../engines/svg.js'
 import { applyStyleClass, wrapScrolledClone } from './prepare.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
@@ -165,12 +165,30 @@ export const __diffStats = { attempts: 0, served: 0, reconciled: 0 }
  */
 export async function tryDiffCapture(element, state, context, animated = null) {
   __diffStats.attempts++
+  // The retained clone was read with its content-visibility:auto boxes forced visible, which
+  // their clones still say inline. Reconciled against the page as it stands, a box the engine
+  // is not rendering (off screen, or restored by the capture before and not laid out again
+  // until the next frame) gave its empty height to its ancestors and to the root: a 140px
+  // capture came back 40px tall. Only those boxes are forced, so a page without one pays one
+  // attribute query. Pinned by __tests__/core.capture.diff.contentVisibility.test.js.
+  const R = state.retained
+  const forced = []
+  if (R?.clone && R.nodeMap) {
+    if (R.clone.matches(FORCED_VISIBILITY)) forced.push(element)
+    for (const clone of R.clone.querySelectorAll(FORCED_VISIBILITY)) {
+      const source = R.nodeMap.get(clone)
+      if (source?.isConnected) forced.push(source)
+    }
+  }
+  const undoCV = forced.length ? forceContentVisibility(element, null, forced) : null
   try {
     const out = await diffCapture(element, state, context, animated)
     if (out) __diffStats.served++
     return out
   } catch {
     return null // any failure → full pipeline; the fast path must never cost correctness
+  } finally {
+    undoCV?.()
   }
 }
 
