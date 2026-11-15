@@ -161,7 +161,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // fast: false | 'auto' (#503): lets the clone walks yield to the page (createSlicer).
   let slicer = createSlicer(options.fast)
   for (;;) {
-    options.__slicer = slicer
+    session.slicer = slicer
     const undoClamp = lineClampTree(state.element, preClipRect)
     try {
       // Keep this capture's own clone→source map — every later pass must use this
@@ -207,7 +207,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
     session.nodeMap = new Map()
     session.warnings = []
   }
-  options.__slicer = null
+  session.slicer = null
 
   // AFTERCLONE
   state.clone = clone

@@ -39,6 +39,9 @@
  *   a differential frame, which keeps no log.
  * @property {boolean|undefined} styleShare - the identity-share verdict, seeded with the
  *   context's `__styleShare` override
+ * @property {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} slicer -
+ *   fast: false | 'auto' (#503). Written by captureDOM before each clone attempt, null on the
+ *   torn retry and after the clone stage; null on a differential frame, which never yields
  *
  * Compress outputs, written through the geometry holder captureDOM and diff.js hand to
  * compressCloneAssets (compress.js). A frame starts from burst's retained capture.
@@ -73,6 +76,7 @@ export function createCaptureSession(options = {}, retained = null) {
     nodeMap: retained ? retained.nodeMap : new Map(),
     warnings: retained ? null : [],
     styleShare: options.__styleShare,
+    slicer: null,
     compressedAssets: retained ? retained.compressedAssets : null,
     compressionDensity: retained ? retained.compressionDensity : undefined,
     compressedSnapshot: null,
@@ -97,8 +101,8 @@ export function createCaptureSession(options = {}, retained = null) {
  *   context's `__resolveNodeHooks`
  * @property {Map<Element, Set<string>>|null} animated - declared null; inlineAllStyles reads
  *   the context's `__animated`
- * @property {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} slicer -
- *   fast: false | 'auto' (#503); prepareClone sets it, a diff pass keeps null
+ * @property {CaptureSession['slicer']} slicer - read by deepClone, prepareClone and
+ *   inlinePseudoElements
  *
  * Written by prepareClone before deepClone. Null on a diff pass.
  * @property {{rect: DOMRect, root: Element, husks?: object[], filterReach?: WeakMap<Element, object>, inkReach?: WeakMap<Element, object>}|null} clip
@@ -154,7 +158,7 @@ export function createClonePass(run, options, nodeMap) {
     styleShare: run.styleShare,
     resolveNodeHooks: null,
     animated: null,
-    slicer: null,
+    slicer: run.slicer,
     clip: null,
     selection: null,
     shadowScopes: null,

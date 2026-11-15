@@ -61,9 +61,6 @@ export async function prepareClone(element, options = {}, session = createCaptur
   // :hover leaves no record and no event: asked here, once per capture.
   invalidateHoverChanges(element.ownerDocument || document)
   const sessionCache = createClonePass(session, options, session.nodeMap)
-  // On the pass, not read from options: diff.js clones through a context whose __slicer
-  // belongs to an earlier capture.
-  sessionCache.slicer = options.__slicer || null
 
   let clipWindow = null
   let clipRect = null
