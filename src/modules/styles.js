@@ -607,6 +607,19 @@ function sidesHold(style, frozen, shorthand, sides) {
 }
 
 /**
+ * Whether the margins the element's last snapshot froze still read the same. For the
+ * differential reconcile (diff.js): a key compares what it holds, and a margin of 0px is not
+ * in it. True when no margin was noted (usedValuesOf).
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} style - its live computed style
+ * @returns {boolean}
+ */
+export function marginsHold(el, style) {
+  const margin = snapshotCache.get(el)?.used?.margin
+  return !margin || sidesHold(style, margin, 'margin', MARGIN_PROPS)
+}
+
+/**
  * Note what a fresh snapshot froze that layout can move while the cascade stands still: the
  * node's own box, the offsets of a positioned box, the margins a flex line, a grid area or
  * an absolutely positioned box hands out, and the tracks of a grid. Offsets that all read
@@ -630,9 +643,12 @@ function usedValuesOf(snap, el, flexItem) {
     const inset = frozenSides(snap, INSET_PROPS)
     if (inset && (out || inset !== NO_SIDES)) used.inset = inset
   }
-  if (out || flexItem) {
+  // Without Typed OM (Firefox) an `auto` margin is frozen as the px it resolved to, zero
+  // included, on any box: a centred block whose container widened kept its old margins.
+  const typed = typeof el.computedStyleMap === 'function'
+  if (out || flexItem || !typed) {
     const margin = frozenSides(snap, MARGIN_PROPS)
-    if (margin && (margin !== NO_SIDES || typeof el.computedStyleMap !== 'function')) used.margin = margin
+    if (margin && (margin !== NO_SIDES || !typed)) used.margin = margin
   }
   if ((snap.display || '').includes('grid')) {
     const columns = snap['grid-template-columns'], rows = snap['grid-template-rows']

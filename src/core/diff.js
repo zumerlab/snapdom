@@ -25,7 +25,7 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
-import { inlineAllStyles, flexRowOverflows } from '../modules/styles.js'
+import { inlineAllStyles, flexRowOverflows, marginsHold } from '../modules/styles.js'
 import { universeFor, stylesLeakAcrossSubtrees } from '../modules/authorStyles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
@@ -399,6 +399,10 @@ async function diffCapture(element, state, context, animated) {
       }
       if (!sameFrozenLength(live, frozen[p])) { drifted = true; break }
     }
+    // A margin that was 0px is not in the key: a centred block whose container widened kept
+    // it in Firefox, which freezes `auto` as px (truth fuzz, seeds 13 and 23).
+    // Pinned by __tests__/core.capture.diff.margins.test.js.
+    if (!drifted && !marginsHold(srcN, cs || getComputedStyle(srcN))) drifted = true
     if (drifted) {
       // A retained image was reduced for its old box. Rebuild from the source if that box
       // changes, rather than stretching already-discarded pixels during reconciliation.
