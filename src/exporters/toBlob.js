@@ -16,9 +16,10 @@ import { fileSvgText } from '../utils/helpers.js'
  *   See __tests__/api.export.contract.test.js.
  * @param {number} [options.quality] - Image quality for lossy formats.
  * @param {string} [options.backgroundColor] - Optional background color.
+ * @param {import('./toCanvas.js').ExportEnv} [env]
  * @returns {Promise<Blob>} Resolves with the image Blob.
  */
-export async function toBlob(url, options) {
+export async function toBlob(url, options, env = {}) {
   const format = options.format || options.type || 'svg'
   if (format === 'svg') {
     // An engine:'html-in-canvas' capture is raster from birth: base64-decoding its PNG and
@@ -28,14 +29,14 @@ export async function toBlob(url, options) {
     }
     // A file, not a browser raster: without the layout-zoom wrapper (#552). download('svg')
     // comes through here too.
-    const svgText = fileSvgText(decodeURIComponent(url.split(',')[1]), options.__fileSvg)
+    const svgText = fileSvgText(decodeURIComponent(url.split(',')[1]), env.fileSvg)
     return new Blob([svgText], { type: 'image/svg+xml' })
   }
 
   const codec = format === 'jpg' ? 'jpeg' : format
-  const large = (codec === 'png' || codec === 'jpeg') && toLargeImage(url, options, codec)
+  const large = (codec === 'png' || codec === 'jpeg') && toLargeImage(url, options, codec, env)
   if (large) return large
-  const canvas = await toCanvas(url, { ...options, __encodeFormat: codec }) // backgroundColor inline
+  const canvas = await toCanvas(url, options, { ...env, codec }) // backgroundColor inline
   return new Promise((resolve) =>
     canvas.toBlob((blob) => resolve(blob), `image/${codec}`, options.quality)
   )

@@ -11,10 +11,11 @@ import { isSafari } from '../utils/browser'
  * Rasterize a capture and hand it back as an <img> in the requested format.
  * @param {string|HTMLCanvasElement} url
  * @param {{ format:'png'|'jpeg'|'webp', dpr:number, quality?:number, backgroundColor?:string }} options
+ * @param {import('../exporters/toCanvas.js').ExportEnv} [env]
  * @returns {Promise<HTMLImageElement>}
  */
-export async function rasterize(url, options) {
-  const canvas = await toCanvas(url, { ...options, __encodeFormat: options.format }) // backgroundColor, when set, is already flattened here
+export async function rasterize(url, options, env = {}) {
+  const canvas = await toCanvas(url, options, { ...env, codec: options.format }) // backgroundColor, when set, is already flattened here
 
   // Two encode routes, chosen by output size.
   //

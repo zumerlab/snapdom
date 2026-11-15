@@ -9,9 +9,10 @@ import { isSafari } from '../utils/browser.js'
  * @param {string|HTMLCanvasElement} url
  * @param {object} options
  * @param {'png'|'jpeg'} format
+ * @param {import('./toCanvas.js').ExportEnv} [env] - tiles take only its log
  * @returns {Promise<Blob>|null}
  */
-export function toLargeImage(url, options, format) {
+export function toLargeImage(url, options, format, env = {}) {
   if (typeof url !== 'string' || !url.startsWith('data:image/svg+xml')) return null
   const originalHeader = peekSvgHeader(url).match(/<svg\b[^>]*>/i)?.[0]
   if (!originalHeader) return null
@@ -96,8 +97,7 @@ export function toLargeImage(url, options, format) {
             encBody + '%3C%2Fg%3E%3C%2Fsvg%3E'
           const canvas = await toCanvas(src, {
             width: rw, height: rh, dpr: 1, backgroundColor: naturalShadows ? null : options.backgroundColor,
-            __session: options.__session, __releaseDecodeFrame: true,
-          })
+          }, { warnings: env.warnings, retireDecodeFrame: true })
           let sampled = canvas
           try {
             if (naturalShadows) {

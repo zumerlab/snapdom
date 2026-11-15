@@ -42,11 +42,11 @@ export const WEBP_MAX_SIDE = 16383
  * The SVG carries a viewBox, so shrinking width/height just renders the same content at a
  * lower resolution (no clipping). Operates on decoded text (no re-encode round trips).
  * @param {string} svg - decoded svg text
- * @param {object} options - the export context, read for `__session` and `debug`
+ * @param {object} options - the export options, read for `debug`
+ * @param {ExportEnv} env - its log takes the clamp warning
  * @returns {string}
  */
-function clampSvgTextRasterSize(svg, options) {
-  const session = options.__session
+function clampSvgTextRasterSize(svg, options, env) {
   try {
     const head = svg.match(/<svg\b[^>]*>/i)
     if (!head) return svg
@@ -58,7 +58,7 @@ function clampSvgTextRasterSize(svg, options) {
     if (f >= 1) return svg
     const nw = Math.max(1, Math.floor(w * f))
     const nh = Math.max(1, Math.floor(h * f))
-    sessionWarn(session, 'raster-clamp', `capture ${Math.round(w)}x${Math.round(h)}px exceeds decode limits; downscaled to ${nw}x${nh}px`)
+    sessionWarn(env, 'raster-clamp', `capture ${Math.round(w)}x${Math.round(h)}px exceeds decode limits; downscaled to ${nw}x${nh}px`)
     debugWarn(options,
       `${Math.round(w)}×${Math.round(h)}px is too large for the browser to draw; scaled down to ${nw}×${nh}px. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG or JPEG' : 'a JPEG'} blob, an SVG, or crop.`
     )
@@ -758,6 +758,19 @@ function drawBanded(ctx, img, devW, devH, src) {
 }
 
 /**
+ * What an export takes besides its options. buildResult builds the first three once per
+ * result; toBlob, download and rasterize add `codec`, toLargeImage tiles add
+ * `retireDecodeFrame`. Pinned by __tests__/exporter.toCanvas.decodeFrame.test.js
+ * (retireDecodeFrame) and __tests__/exporter.toCanvas.downscaledBorders.test.js (layoutZoom).
+ * @typedef {object} ExportEnv
+ * @property {Array<{code: string, message: string, detail?: unknown}>|null} [warnings] - the capture's log
+ * @property {number} [layoutZoom] - the grid of the Firefox fine draw (#516); tiles pass none
+ * @property {{zoomed: string[], flat: string[]}|null} [fileSvg] - the layout-zoom wrappers (#552)
+ * @property {string} [codec] - the format the canvas will be encoded to (WebP side limit, #536)
+ * @property {boolean} [retireDecodeFrame] - drop the decode frame once this draw releases it
+ */
+
+/**
  * Rasterize a capture (svg data URL, or any image URL) into a canvas.
  *
  * One sizing rule for every exporter: `width`/`height` are the absolute output size in CSS
@@ -777,9 +790,10 @@ function drawBanded(ctx, img, devW, devH, src) {
  *   crop?:{x:number,y:number,width:number,height:number},
  *   backgroundColor?: string
  * }} options
+ * @param {ExportEnv} [env]
  * @returns {Promise<HTMLCanvasElement>}
  */
-export async function toCanvas(url, options) {
+export async function toCanvas(url, options, env = {}) {
   let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor, crop = null } = options
 
   // engine:'html-in-canvas' hands the painted canvas itself: pixels already in hand, so the
@@ -814,7 +828,7 @@ export async function toCanvas(url, options) {
     if (crop || oversized || safari) {
       try {
         // Off WebKit both rewrites touch only the root tag, so the payload is never decoded.
-        const patched = !safari && patchSvgHeader(url, tag => clampSvgTextRasterSize(crop ? cropSvgText(tag, crop, { shiftContent: false }) : tag, options))
+        const patched = !safari && patchSvgHeader(url, tag => clampSvgTextRasterSize(crop ? cropSvgText(tag, crop, { shiftContent: false }) : tag, options, env))
         if (patched) src = patched
         else {
           let svgText = decodeSvgFromDataURL(url)
@@ -829,7 +843,7 @@ export async function toCanvas(url, options) {
           }
           // A crop can turn an oversized source into a safe page-sized decode: clamp the
           // TRANSFORMED header, not the original full document.
-          if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options) // #425: keep within decode limits
+          if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options, env) // #425: keep within decode limits
           src = encodeSvgToDataURL(svgText)
         }
       } catch (error) {
@@ -863,7 +877,7 @@ export async function toCanvas(url, options) {
     try {
       await startDecode(img, src)
     } catch (retryErr) {
-      releaseDecodeImage(img, options.__releaseDecodeFrame)
+      releaseDecodeImage(img, env.retireDecodeFrame)
       throw retryErr
     }
   }
@@ -944,13 +958,13 @@ export async function toCanvas(url, options) {
     // whole draw so allocation/drawImage don't fail, preserving aspect ratio.
     const devW = outW * dpr, devH = outH * dpr
     const overCanvas = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
-    // The exporters that encode the canvas name the codec in __encodeFormat; a plain
+    // The exporters that encode the canvas name the codec in `env.codec`; a plain
     // toCanvas() is held to the canvas limits only.
-    const overWebp = options.__encodeFormat === 'webp' ? Math.max(devW, devH) / WEBP_MAX_SIDE : 0
+    const overWebp = env.codec === 'webp' ? Math.max(devW, devH) / WEBP_MAX_SIDE : 0
     const over = Math.max(overCanvas, overWebp)
     if (over > 1) {
       const byWebp = overCanvas <= 1
-      sessionWarn(options.__session, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds ${byWebp ? 'WebP' : 'canvas'} limits; downscaled`)
+      sessionWarn(env, 'canvas-clamp', `output ${Math.round(devW)}x${Math.round(devH)}px exceeds ${byWebp ? 'WebP' : 'canvas'} limits; downscaled`)
       debugWarn(options, byWebp
         ? `${Math.round(devW)}×${Math.round(devH)}px is larger than WebP can encode (${WEBP_MAX_SIDE}px per side); scaled down. For full size, export a PNG, an SVG, or crop.`
         : `${Math.round(devW)}×${Math.round(devH)}px is larger than a canvas allows; scaled down. For full size, export ${typeof CompressionStream === 'function' ? 'a PNG or JPEG' : 'a JPEG'} blob, an SVG, or crop.`
@@ -987,7 +1001,7 @@ export async function toCanvas(url, options) {
     // export below it (scale 0.5) lost 18 of 40 edges the same way. Pinned by
     // __tests__/exporter.toCanvas.downscaledBorders.test.js.
     let fine = null
-    const grid = options.__layoutZoom || 1
+    const grid = env.layoutZoom || 1
     if (!srcCanvas && isFirefox()) {
       const f = grid * refW / (outW * dpr)
       const fw = Math.round(outW * dpr * f), fh = Math.round(outH * dpr * f)
@@ -1095,6 +1109,6 @@ export async function toCanvas(url, options) {
     }
     return canvas
   } finally {
-    releaseDecodeImage(img, options.__releaseDecodeFrame)
+    releaseDecodeImage(img, env.retireDecodeFrame)
   }
 }

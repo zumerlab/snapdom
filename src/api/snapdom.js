@@ -306,9 +306,16 @@ async function buildResult(url, context) {
     return originalUrl ??= restoreCompressedAssets(urlOf(), originals)
   }
 
+  // What every export of this result takes besides its options (ExportEnv, toCanvas.js).
+  const env = {
+    warnings: context.__session && context.__session.warnings,
+    layoutZoom: context.__layoutZoom,
+    fileSvg: context.__fileSvg,
+  }
+
   const rasterEngineImage = async (ctx, opts) => {
     const { rasterize } = await import('../modules/rasterize.js')
-    return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'png' })
+    return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'png' }, env)
   }
 
   // Lazy decode: exposing the serialized SVG eagerly would double retained string size
@@ -320,7 +327,7 @@ async function buildResult(url, context) {
     if (engineCanvas) throw new Error('[SnapDOM] html-in-canvas makes a raster capture; there is no SVG string.')
     const i = url.indexOf(',')
     // The svg as text leaves the browser's raster path, so it drops the layout zoom (#552).
-    return i >= 0 ? fileSvgText(decodeURIComponent(url.slice(i + 1)), context.__fileSvg) : ''
+    return i >= 0 ? fileSvgText(decodeURIComponent(url.slice(i + 1)), env.fileSvg) : ''
   }
 
   /**
@@ -342,43 +349,43 @@ async function buildResult(url, context) {
       if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toImg } = await import('../exporters/toImg.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toImg(exportSource(options), options)
+      return toImg(exportSource(options), options, env)
     },
     svg: async (ctx, opts) => {
       if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toSvg } = await import('../exporters/toImg.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toSvg(exportSource(options), options)
+      return toSvg(exportSource(options), options, env)
     },
     canvas: async (ctx, opts) => {
       const { toCanvas } = await import('../exporters/toCanvas.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toCanvas(exportSource(options), options)
+      return toCanvas(exportSource(options), options, env)
     },
     blob: async (ctx, opts) => {
       const { toBlob } = await import('../exporters/toBlob.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toBlob(exportSource(options), options)
+      return toBlob(exportSource(options), options, env)
     },
     png: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
       const options = { ...ctx, ...(opts || {}), format: 'png' }
-      return rasterize(exportSource(options), options)
+      return rasterize(exportSource(options), options, env)
     },
     jpeg: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
       const options = { ...ctx, ...(opts || {}), format: 'jpeg' }
-      return rasterize(exportSource(options), options)
+      return rasterize(exportSource(options), options, env)
     },
     webp: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
       const options = { ...ctx, ...(opts || {}), format: 'webp' }
-      return rasterize(exportSource(options), options)
+      return rasterize(exportSource(options), options, env)
     },
     download: async (ctx, opts) => {
       const { download } = await import('../exporters/download.js')
       const options = { ...ctx, ...(opts || {}) }
-      return download(exportSource(options), options)
+      return download(exportSource(options), options, env)
     },
   }
 
@@ -533,7 +540,7 @@ async function buildResult(url, context) {
     // detail?} entries — image→placeholder, raster/canvas clamps, Safari PNG fallback,
     // reconcile risk. Export-time entries append after the export resolves; burst memo
     // serves retain the originating capture's log.
-    warnings: (context.__session && context.__session.warnings) || [],
+    warnings: env.warnings || [],
     toRaw: () => { if (!rendered) throw absent('toRaw()'); return urlOf() },
     to: (type, opts) => runExport(type, opts),
 

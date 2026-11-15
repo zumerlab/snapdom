@@ -81,7 +81,7 @@ describe('toCanvas — decode host', () => {
 
   it('retires a tiled decode host after drawing, including its concurrent ordinary export', async () => {
     const options = { scale: 1, dpr: 1 }
-    const single = await toCanvas(bulkySvg(64), { ...options, __releaseDecodeFrame: true })
+    const single = await toCanvas(bulkySvg(64), options, { retireDecodeFrame: true })
     expect([...single.getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([255, 0, 0, 255])
     expect(decodeFrames()).toHaveLength(0)
 
@@ -91,7 +91,7 @@ describe('toCanvas — decode host', () => {
     // Start both before awaiting either: retiring the small image must leave the larger
     // in-flight decode's document alive through its final draw.
     const both = await Promise.all([
-      toCanvas(bulkySvg(64), { ...options, __releaseDecodeFrame: true }),
+      toCanvas(bulkySvg(64), options, { retireDecodeFrame: true }),
       toCanvas(blue, options),
     ])
     expect([...both[0].getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([255, 0, 0, 255])
@@ -101,12 +101,13 @@ describe('toCanvas — decode host', () => {
   })
 
   it('retires failed decodes without leaving the next export guarded or unreadable', async () => {
-    const options = { scale: 1, dpr: 1, __releaseDecodeFrame: true }
+    const options = { scale: 1, dpr: 1 }
+    const env = { retireDecodeFrame: true }
     const malformed = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"><broken></svg>')
-    await expect(toCanvas(malformed, options)).rejects.toThrow()
+    await expect(toCanvas(malformed, options, env)).rejects.toThrow()
     expect(decodeFrames()).toHaveLength(0)
 
-    const canvas = await toCanvas(bulkySvg(64), options)
+    const canvas = await toCanvas(bulkySvg(64), options, env)
     expect([...canvas.getContext('2d').getImageData(1, 1, 1, 1).data]).toEqual([255, 0, 0, 255])
     // A leaked in-flight guard would allow drawing but prevent this retirement forever.
     expect(decodeFrames()).toHaveLength(0)
@@ -184,7 +185,7 @@ describe('toCanvas — decode host idle release', () => {
 
   it('a tiled retire still removes the frame immediately and leaves no timer behind', async () => {
     __setDecodeFrameIdleMs(40)
-    await toCanvas(bulkySvg(64), { ...options, __releaseDecodeFrame: true })
+    await toCanvas(bulkySvg(64), options, { retireDecodeFrame: true })
     expect(decodeFrames()).toHaveLength(0)
     await toCanvas(bulkySvg(64), options)
     const frame = decodeFrames()[0]

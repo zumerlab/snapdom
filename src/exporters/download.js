@@ -37,9 +37,10 @@ async function shareFile(blob, filename) {
  * @param {string} options.filename - Download filename.
  * @param {number} [options.quality] - Image quality for lossy formats.
  * @param {string} [options.backgroundColor] - Optional background color.
+ * @param {import('./toCanvas.js').ExportEnv} [env]
  * @returns {Promise<void>}
  */
-export async function download(url, options) {
+export async function download(url, options, env = {}) {
   // `format` is canonical. Deprecated `type` remains a compatibility alias, but only a
   // recognized image-format string may participate in download format selection.
   const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
@@ -58,9 +59,9 @@ export async function download(url, options) {
   nextOptions.dpr = 1
   const foundIOS = isIOS()
 
-  const large = (normalizedFormat === 'png' || normalizedFormat === 'jpeg') && toLargeImage(url, nextOptions, normalizedFormat)
+  const large = (normalizedFormat === 'png' || normalizedFormat === 'jpeg') && toLargeImage(url, nextOptions, normalizedFormat, env)
   if (normalizedFormat === 'svg' || large) {
-    const blob = large ? await large : await toBlob(url, { ...nextOptions, type: 'svg' })
+    const blob = large ? await large : await toBlob(url, { ...nextOptions, type: 'svg' }, env)
     if (foundIOS && await shareFile(blob, filename)) return
     const objectURL = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -74,7 +75,7 @@ export async function download(url, options) {
     return
   }
 
-  const canvas = await toCanvas(url, { ...nextOptions, __encodeFormat: normalizedFormat }) // backgroundColor inline
+  const canvas = await toCanvas(url, nextOptions, { ...env, codec: normalizedFormat }) // backgroundColor inline
 
   if (foundIOS) {
     const mimeType = `image/${normalizedFormat}`

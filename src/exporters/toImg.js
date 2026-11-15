@@ -28,9 +28,10 @@ import { fixSafariShadows, zoomSvgText, decodeSvgFromDataURL, encodeSvgToDataURL
  * @param {number} [options.width] - output width in CSS px
  * @param {number} [options.height] - output height in CSS px
  * @param {object} [options.meta] - capture geometry from the svg engine (vbW/vbH, w0/h0)
+ * @param {import('./toCanvas.js').ExportEnv} [env] - the PNG fallback warns through it and draws with it
  * @returns {Promise<HTMLImageElement>} decoded, with style.width/height set
  */
-export async function toImg(url, options) {
+export async function toImg(url, options, env = {}) {
   const { scale = 1, width, height, meta = {} } = options
   const hasW = Number.isFinite(width)
   const hasH = Number.isFinite(height)
@@ -67,9 +68,9 @@ export async function toImg(url, options) {
       img.style.height = `${cssH}px`
       return img
     } catch (e) {
-      sessionWarn(options.__session, 'safari-png-fallback', 'Safari vector toImg failed; using PNG', e)
+      sessionWarn(env, 'safari-png-fallback', 'Safari vector toImg failed; using PNG', e)
       debugWarn(options, 'Safari couldn\'t show the SVG; used a PNG.', e)
-      return rasterize(url, { ...options, format: 'png', quality: 1, meta })
+      return rasterize(url, { ...options, format: 'png', quality: 1, meta }, env)
     }
   }
   // Normal SVG captures declare their natural dimensions in the header. Resolve a scale
