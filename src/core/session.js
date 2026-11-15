@@ -49,6 +49,9 @@
  * @property {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} slicer -
  *   fast: false | 'auto' (#503). Written by captureDOM before each clone attempt, null on the
  *   torn retry and after the clone stage; null on a differential frame, which never yields
+ * @property {{required: Set<string>, usedCodepoints: Set<number>}|null} fontUsage - the font
+ *   usage the Safari pre-step walked (snapdom.capture), reused by captureDOM's fonts phase on
+ *   a capture without a clip; null elsewhere
  *
  * Compress outputs, written through the geometry holder captureDOM and diff.js hand to
  * compressCloneAssets (compress.js). A frame starts from burst's retained capture.
@@ -86,6 +89,7 @@ export function createCaptureSession(options = {}, retained = null) {
     animated: null,
     styleShare: options.__styleShare,
     slicer: null,
+    fontUsage: null,
     compressedAssets: retained ? retained.compressedAssets : null,
     compressionDensity: retained ? retained.compressionDensity : undefined,
     compressedSnapshot: null,

@@ -213,7 +213,7 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
         // their fontsPhase walk is clip-scoped, and full-subtree usage would regress
         // the clip font-subset optimization.
         const usage = collectFontUsage(el)
-        if (!context.clip) context.__fontUsage = usage
+        if (!context.clip) session.fontUsage = usage
         let required = usage.required
         if (drawn) {
           required = new Set([...required].filter((k) => drawn.has(fontKeyFamily(k).toLowerCase())))

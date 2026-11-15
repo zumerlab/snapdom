@@ -308,7 +308,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
       } : null
       // Safari's pre-step already walked this subtree — reuse its usage (threaded only
       // for non-clip captures; clip needs the clipKeep-scoped walk).
-      const { required, usedCodepoints } = (!preClipRect && options.__fontUsage) || collectFontUsage(state.element, clipKeep)
+      const { required, usedCodepoints } = (!preClipRect && session.fontUsage) || collectFontUsage(state.element, clipKeep)
       // 'auto': embed only when a used family is a webfont the document has drawn with, and
       // leave out declared families it never drew (a later family in a stack whose earlier
       // one covered the text). Warm only drawn webfonts, as the pre-step does: a system
