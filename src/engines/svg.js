@@ -669,7 +669,7 @@ export async function composeAndSerialize(state, ex) {
   // not 21 (playwright-lite #302). The fraction goes to an exact translate on the outer <g>
   // instead, and the fo reaches one more layout pixel left and up so it still covers the
   // viewBox once moved. Not WebKit: it moves no box with its own layer by an ancestor translate
-  // (cropSvgText, toCanvas.js). Pinned by __tests__/core.clip.test.js.
+  // (cropSvgText, svgText.js). Pinned by __tests__/core.clip.test.js.
   const split = clipWindow && !isSafari()
   const shiftX = split ? limitDecimals(offX - Math.floor(offX * layoutZoom + 0.01) / layoutZoom) : 0
   const shiftY = split ? limitDecimals(offY - Math.floor(offY * layoutZoom + 0.01) / layoutZoom) : 0

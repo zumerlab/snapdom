@@ -7,7 +7,7 @@
 // Run with BROWSER=webkit to exercise the engine; the geometry cases hold on every engine.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index'
-import { cropSvgText } from '../src/exporters/toCanvas.js'
+import { cropSvgText } from '../src/exporters/svgText.js'
 
 const added = []
 afterEach(() => { while (added.length) added.pop().remove() })

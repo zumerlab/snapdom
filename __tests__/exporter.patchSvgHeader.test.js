@@ -4,7 +4,7 @@
 // 2.2 ms through the patch (Chromium). The contract is byte equality with that slow path.
 import { describe, it, expect } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { patchSvgHeader, decodeSvgFromDataURL, encodeSvgToDataURL, cropSvgText } from '../src/exporters/toCanvas.js'
+import { patchSvgHeader, decodeSvgFromDataURL, encodeSvgToDataURL, cropSvgText } from '../src/exporters/svgText.js'
 import { isSafari } from '../src/utils/browser.js'
 
 const mounted = []

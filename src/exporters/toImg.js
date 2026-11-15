@@ -10,7 +10,8 @@
 import { isSafari, debugWarn } from '../utils'
 import { sessionWarn } from '../utils/debug.js'
 import { rasterize } from '../modules/rasterize'
-import { fixSafariShadows, zoomSvgText, decodeSvgFromDataURL, encodeSvgToDataURL, patchSvgHeader } from './toCanvas.js'
+import { zoomSvgText, decodeSvgFromDataURL, encodeSvgToDataURL, patchSvgHeader } from './svgText.js'
+import { fixSafariShadows } from './safariShadows.js'
 /**
  * Load a capture's data URL into an <img> sized by the shared exporter rule.
  *

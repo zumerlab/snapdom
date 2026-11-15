@@ -1,5 +1,6 @@
 /** PNG and JPEG file export beyond the canvas/decode limits. Ordinary exports keep the native path. */
-import { toCanvas, peekSvgHeader, cropSvgText, decodeSvgFromDataURL, MAX_RASTER_SIDE, MAX_RASTER_AREA } from './toCanvas.js'
+import { toCanvas, MAX_RASTER_SIDE, MAX_RASTER_AREA } from './toCanvas.js'
+import { peekSvgHeader, cropSvgText, decodeSvgFromDataURL } from './svgText.js'
 import { isSafari } from '../utils/browser.js'
 
 /**
