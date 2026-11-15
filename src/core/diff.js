@@ -427,5 +427,5 @@ async function diffCapture(element, state, context, animated) {
   context.__compressedSnapshot = snapshotCompressedAssets(R.clone, context.__compressedAssets)
   R.__compressedAssets = context.__compressedAssets
   R.__compressionDensity = context.__compressionDensity
-  return { url, session: frame }
+  return url ? { url, session: frame } : null
 }

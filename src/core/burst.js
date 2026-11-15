@@ -963,7 +963,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       let diffRoots = null
       // Differential fast path: only SUBTREES are dirty and the last full capture's
       // artifacts are retained — rebuild just those subtrees and re-serialize. Any doubt
-      // (null url) falls through to the full pipeline; correctness never depends on it.
+      // (a null record) falls through to the full pipeline; correctness never depends on it.
       if (!isOneOff && state.dirty && state.retained && state.dirtyRoots && state.dirtyRoots.size && makeResult) {
         diffRoots = [...state.dirtyRoots]
         // captureDOM reads the animated properties for the full pipeline; the differential
