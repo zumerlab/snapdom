@@ -90,7 +90,8 @@ it('HTML export preserves author raw-text CSS when parsed as HTML', async () => 
   const result = await snapdom(host, { ...opts, plugins: [htmlExport()] })
   const html = await result.toHtml()
   const doc = new DOMParser().parseFromString(html, 'text/html')
-  expect(doc.body.querySelector('style').textContent).toBe(expected)
+  // A kept sheet travels in an anonymous @layer, below the generated classes (#562).
+  expect(doc.body.querySelector('style').textContent).toBe(`@layer{${expected}}`)
 })
 
 it.each(['transform:scale(2)', 'transform:rotate(90deg)', 'rotate:z 90deg', 'rotate:0.25turn', 'rotate:1.570796326794897rad'])('agent map maps the root %s into rendered coordinates', async transform => {

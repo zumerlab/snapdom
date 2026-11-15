@@ -281,15 +281,23 @@ export async function prepareClone(element, options = {}) {
   await resolveBlobUrlsInTree(clone, sessionCache)
 
   // Kept light-DOM <style> clones travel into the SVG, whose own tiny viewport would
-  // re-evaluate their @media conditions — freeze them to the live viewport's state now.
+  // re-evaluate their @media conditions, so they are frozen to the live viewport's state now.
+  // Then each goes into an anonymous @layer, below the unlayered class CSS (#562). The SVG
+  // re-runs their rules in another tree: `:root` is the <svg> there, and a var() set by an
+  // ancestor outside the capture resolves to another value or to nothing, while `.card` tied
+  // the class generated for the card and won by coming later. In the layer they still paint
+  // what no class carries (pseudo-elements, keyframes). @import and @namespace are invalid
+  // inside a layer block and keep the old order. The differential path never splices a
+  // <style> (HEAVY_SUBTREE, diff.js). Pinned by `__tests__/snapdom.issue562.test.js`.
   for (const [cloneNode, srcNode] of sessionCache.nodeMap.entries()) {
     if (srcNode?.tagName === 'STYLE' && cloneNode?.tagName === 'STYLE' && !cloneNode.hasAttribute('data-sd')) {
+      let css = cloneNode.textContent || ''
       try {
         const rules = srcNode.sheet && srcNode.sheet.cssRules
-        if (rules && /@media/i.test(cloneNode.textContent || '')) {
-          cloneNode.textContent = resolveMediaQueries(rules)
-        }
-      } catch { /* unreadable sheet → leave verbatim */ }
+        if (rules && /@media/i.test(css)) css = resolveMediaQueries(rules)
+      } catch { /* unreadable sheet: leave verbatim */ }
+      if (!/@(?:import|namespace)\b/i.test(css)) css = `@layer{${css}}`
+      cloneNode.textContent = css
     }
   }
 
