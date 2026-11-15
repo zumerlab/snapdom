@@ -12,7 +12,7 @@ vi.mock('../src/utils', async (importOriginal) => {
   }
 })
 
-vi.mock('../src/modules/fonts.js', async (importOriginal) => {
+vi.mock('../src/modules/iconFonts.js', async (importOriginal) => {
   const actual = await importOriginal()
   return {
     ...actual,
@@ -29,7 +29,7 @@ vi.mock('../src/modules/counter.js', async (importOriginal) => {
 })
 
 import * as helpers from '../src/utils/index.js'
-import * as fonts from '../src/modules/fonts.js'
+import * as fonts from '../src/modules/iconFonts.js'
 import { buildCounterContext } from '../src/modules/counter.js'
 
 const sessionCache = {

@@ -6,7 +6,7 @@
  * document's stylesheets (same-origin through CSSOM, cross-origin fetched, nested @import
  * flattened), keeps the faces that match a used variant and meet a used codepoint, and emits
  * them with every url() turned into a data: URL. Icon fonts are skipped throughout: their
- * glyphs are drawn to images instead (iconFonts.js, and `iconToImage` below).
+ * glyphs are drawn to images instead (iconFonts.js).
  *
  * Contracts a change must keep. A remote url() never reaches the emitted CSS, it is inert
  * inside a foreignObject. A family the page uses never ends the scan with zero faces (#478).
@@ -25,76 +25,6 @@ import { getStyleEnvEpoch, flushStyleInvalidations } from '../core/changes.js'
 import { nextFrame, fontsSettled } from '../utils/browser.js'
 import { markInternalNode } from '../utils/ownership.js'
 import { debugWarn } from '../utils/debug.js'
-
-/**
- * Draw one icon-font glyph on a canvas at devicePixelRatio and return it as a data URL.
- *
- * The pseudo pass calls this for a single-character `content` in an icon font: icon fonts are
- * never embedded, so inside the svg the glyph would have no font. The size comes from a
- * hidden span measured in the same family the canvas draws with.
- * @param {string} unicodeChar - The unicode character to render
- * @param {string} fontFamily - The font family name
- * @param {string|number} fontWeight - The font weight
- * @param {number} [fontSize=32] - The font size in pixels
- * @param {string} [color="#000"] - The color to use
- * @param {string} [fontStyle="normal"] - The font style
- * @returns {Promise<{dataUrl:string,width:number,height:number,advance:number,descent:number}>} Data
- *   URL, the bitmap's whole-pixel size, the glyph's exact advance, and how far the bitmap's
- *   bottom reaches under the glyph's baseline (0 when unknown)
- */
-export async function iconToImage(unicodeChar, fontFamily, fontWeight, fontSize = 32, color = '#000', fontStyle = 'normal') {
-  fontFamily = fontFamily.replace(/^['"]+|['"]+$/g, '')
-  const dpr = window.devicePixelRatio || 1
-
-  try { await fontsSettled() } catch {}
-
-  const span = document.createElement('span')
-  markInternalNode(span)
-  span.textContent = unicodeChar
-  span.style.position = 'absolute'
-  span.style.visibility = 'hidden'
-  span.style.fontFamily = `"${fontFamily}"`
-  span.style.fontWeight = fontWeight || 'normal'
-  span.style.fontStyle = fontStyle || 'normal'
-  span.style.fontSize = `${fontSize}px`
-  span.style.lineHeight = '1'
-  span.style.whiteSpace = 'nowrap'
-  span.style.padding = '0'
-  span.style.margin = '0'
-  document.body.appendChild(span)
-
-  const rect = span.getBoundingClientRect()
-  const width = Math.ceil(rect.width)
-  const height = Math.ceil(rect.height)
-  document.body.removeChild(span)
-
-  const canvas = document.createElement('canvas')
-  canvas.width = Math.max(1, width * dpr)
-  canvas.height = Math.max(1, height * dpr)
-
-  const ctx = canvas.getContext('2d')
-  ctx.scale(dpr, dpr)
-  ctx.font = `${fontStyle || 'normal'} ${fontWeight || 'normal'} ${fontSize}px "${fontFamily}"`
-  ctx.textAlign = 'left'
-  ctx.textBaseline = 'top'
-  ctx.fillStyle = color
-  ctx.fillText(unicodeChar, 0, 0)
-  // The bitmap is drawn from the em square's top; on the page the glyph sits on the alphabetic
-  // baseline, this far below that top. Read as the gap between the two baselines, since
-  // Chromium reports no emHeightDescent.
-  const fromTop = ctx.measureText(unicodeChar).actualBoundingBoxAscent
-  ctx.textBaseline = 'alphabetic'
-  const fromBaseline = ctx.measureText(unicodeChar).actualBoundingBoxAscent
-  const descent = height - (fromBaseline - fromTop)
-
-  return {
-    dataUrl: canvas.toDataURL(),
-    width,
-    height,
-    advance: rect.width,
-    descent: Number.isFinite(descent) ? descent : 0
-  }
-}
 
 // ---- Font helpers (module-scope; shared by collectors & embedCustomFonts) ----
 

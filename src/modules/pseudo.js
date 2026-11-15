@@ -29,7 +29,7 @@ import {
   getStyleKey,
   debugWarn
 } from '../utils/index.js'
-import { iconToImage } from '../modules/fonts.js'
+import { iconToImage } from './iconFonts.js'
 import { sessionWarn } from '../utils/debug.js'
 import { isIconFont } from '../modules/iconFonts.js'
 import {
