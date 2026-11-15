@@ -31,7 +31,7 @@
  *                            every animation target (light DOM, and the open shadow roots a
  *                            capture has walked) before the clone and after the asset phase,
  *                            so no animated frame outlives its capture, with or without burst.
- *                            What each target animates also travels as `__animated`: it
+ *                            What each target animates travels on the session (animated): it
  *                            outranks the inline declarations, which are then re-resolved
  *  - layout beside a change  no record names the box a neighbour pushed. Below burst, a cached
  *                            style snapshot is served only while the box, offsets, margins

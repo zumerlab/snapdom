@@ -256,7 +256,7 @@ async function diffCapture(element, state, context, animated) {
 
   // The frame's session grows the retained maps in place and keeps no log.
   const frame = createCaptureSession(context, R)
-  context.__animated = animated
+  frame.animated = animated
 
   for (const src of roots) {
     if (src.matches?.(HEAVY_SUBTREE) || src.querySelector?.(HEAVY_SUBTREE)) return null

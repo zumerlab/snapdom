@@ -143,7 +143,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
   }
   dropAnimated()
   // inlineAllStyles re-resolves the inline declarations these animate from computed values.
-  options.__animated = animatedProps(moving)
+  session.animated = animatedProps(moving)
 
   // Identity-share fast path (see styles.js): decided ONCE per capture, before any clone
   // work. Both gates are cheap and both err toward full reads: an unscannable stylesheet or

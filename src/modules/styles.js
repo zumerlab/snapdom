@@ -1971,7 +1971,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // Replace authored inline style with computed values so !important in stylesheets
   // correctly overrides inline styles in the clone (fixes #328)
   const styleAttr = source.getAttribute?.('style')
-  if (styleAttr) normalizeInlineStyleToComputed(source, clone, pre, styleAttr, ctx.options.__animated?.get(source))
+  if (styleAttr) normalizeInlineStyleToComputed(source, clone, pre, styleAttr, session.animated?.get(source))
 
   // A static snapshot must not animate. The generated style class already filters animation
   // props (shouldIgnoreProp), but `animation` can still reach the SVG through the normalized

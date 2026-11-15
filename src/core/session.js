@@ -40,6 +40,9 @@
  * @property {Array<(node: Node, ctx: object) => any>|null} resolveNodeHooks - the plugins'
  *   resolveNode hooks, collected by captureDOM at its entry; null on a differential frame,
  *   which bails on resolveNode plugins
+ * @property {Map<Element, Set<string>>|null} animated - what each animation target animates
+ *   (animatedProps, styles.js). Written by captureDOM before the clone loop, kept on the torn
+ *   retry; on a differential frame, the value burst read before the attempt
  * @property {boolean|undefined} styleShare - the identity-share verdict, seeded with the
  *   context's `__styleShare` override
  * @property {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} slicer -
@@ -79,6 +82,7 @@ export function createCaptureSession(options = {}, retained = null) {
     nodeMap: retained ? retained.nodeMap : new Map(),
     warnings: retained ? null : [],
     resolveNodeHooks: null,
+    animated: null,
     styleShare: options.__styleShare,
     slicer: null,
     compressedAssets: retained ? retained.compressedAssets : null,
@@ -102,8 +106,8 @@ export function createCaptureSession(options = {}, retained = null) {
  *   write through the pass
  * @property {boolean|undefined} styleShare
  * @property {CaptureSession['resolveNodeHooks']} resolveNodeHooks - read by deepClone, per node
- * @property {Map<Element, Set<string>>|null} animated - declared null; inlineAllStyles reads
- *   the context's `__animated`
+ * @property {CaptureSession['animated']} animated - read by inlineAllStyles, per node with a
+ *   style attribute
  * @property {CaptureSession['slicer']} slicer - read by deepClone, prepareClone and
  *   inlinePseudoElements
  *
@@ -160,7 +164,7 @@ export function createClonePass(run, options, nodeMap) {
     warnings: run.warnings,
     styleShare: run.styleShare,
     resolveNodeHooks: run.resolveNodeHooks,
-    animated: null,
+    animated: run.animated,
     slicer: run.slicer,
     clip: null,
     selection: null,
