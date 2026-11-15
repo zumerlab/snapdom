@@ -90,6 +90,25 @@ export function mutate(stamp) {
   }
 }
 
+// Edits one leaf deep inside the scene and nothing else, the case the `recapture` mode cannot
+// show: its marker is a direct child of the root, so its mutation stamps the whole subtree
+// and no style snapshot is ever served. The text keeps its length, so the layout holds.
+export function mutateNested(stamp) {
+  if (!active.leaf) {
+    const leaves = []
+    const walk = (scope) => {
+      for (const el of scope.querySelectorAll('*')) {
+        if (el.shadowRoot) walk(el.shadowRoot)
+        else if (!el.children.length && el.textContent.trim().length > 1) leaves.push(el)
+      }
+    }
+    walk(active.root.lastElementChild)
+    active.leaf = leaves.at(-1)
+  }
+  const text = active.leaf.textContent
+  active.leaf.textContent = text.slice(0, -1) + (stamp % 10)
+}
+
 // Called after timing: output dimensions and a changing painted witness catch stale memo
 // hits, blank images and partial exports. Full native/capture comparisons run separately.
 export function validate(canvas) {
@@ -113,7 +132,7 @@ export function validate(canvas) {
 
 export async function run(snapdom, { scene, mode, samples, round, delayMs = 0 }) {
   const base = { scale: 1, dpr: 1, embedFonts: scene === 'fonts' }
-  if (mode === 'recapture') base.burst = false
+  if (mode.startsWith('recapture')) base.burst = false
   const warmups = mode === 'first' ? 0 : 2
   const ticks = mode.startsWith('poll-') ? 8 : 1
   const count = mode === 'first' ? 1 : samples
@@ -126,6 +145,7 @@ export async function run(snapdom, { scene, mode, samples, round, delayMs = 0 })
       const stamp = round * 1000 + (sample + warmups) * ticks + tick
       if (mode === 'fresh') await mount(scene, stamp)
       else if (mode === 'recapture' || (mode === 'poll-mutating' && tick % 4 === 0)) mutate(stamp)
+      else if (mode === 'recapture-nested') mutateNested(stamp)
       // Layout/fixture construction are outside the stopwatch. No waits on memo-only ticks.
       if (!mode.startsWith('poll-') || tick % 4 === 0) await frame()
       const start = performance.now()
@@ -153,10 +173,11 @@ export async function run(snapdom, { scene, mode, samples, round, delayMs = 0 })
 export async function oracle(snapdom, scene, mode) {
   await mount(scene, 0)
   const options = { scale: 1, dpr: 1, embedFonts: scene === 'fonts' }
-  if (mode === 'recapture') options.burst = false
+  if (mode.startsWith('recapture')) options.burst = false
   let canvas = await snapdom.toCanvas(active.root, options)
   if (mode === 'fresh') await mount(scene, 1)
-  else if (mode !== 'first' && mode !== 'poll-static') mutate(1)
+  else if (mode === 'recapture-nested') mutateNested(1)
+  else if (mode !== 'first' && mode !== 'poll-static' && mode !== 'recapture-idle') mutate(1)
   if (mode !== 'first') canvas = await snapdom.toCanvas(active.root, options)
   validate(canvas)
   return canvas.toDataURL('image/png')
