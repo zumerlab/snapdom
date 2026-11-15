@@ -161,7 +161,7 @@ async function main(element, userOptions) {
   if (burst) {
     return captureWithBurst(
       element, userOptions, context,
-      () => snapdom.capture(element, context, INTERNAL_TOKEN),
+      (session) => snapdom.capture(element, context, INTERNAL_TOKEN, session),
       (url, session) => buildResult(url, context, session)
     )
   }

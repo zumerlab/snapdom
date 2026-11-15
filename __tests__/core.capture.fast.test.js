@@ -201,7 +201,7 @@ describe('fast option', () => {
     const probe = {
       name: 'watch-torn-capture',
       pure: true,
-      beforeClone(ctx) { watched = typeof ctx.__tornSinceStart === 'function' },
+      beforeClone(ctx) { watched = typeof ctx.__session.tornSinceStart === 'function' },
       afterClone() { changedByAfterClone = change.ran },
     }
     const res = await snapdom(el, { fast, cache: 'disabled', dpr: 1, plugins: [probe] })
@@ -245,7 +245,7 @@ describe('fast option', () => {
       name: 'watch-eligibility',
       pure: name !== 'impure plugin',
       beforeClone(ctx) {
-        if (ctx.element === el) hasWatcher = typeof ctx.__tornSinceStart === 'function'
+        if (ctx.element === el) hasWatcher = typeof ctx.__session.tornSinceStart === 'function'
       },
     }
     await snapdom(el, { fast: false, cache: 'disabled', ...options, plugins: [probe] })

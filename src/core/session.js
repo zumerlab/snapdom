@@ -8,8 +8,9 @@
  * everything scoped to one capture lives on the object created here and is threaded
  * explicitly through every stage.
  *
- * The session is an argument: snapdom.capture creates it and hands it to captureDOM, which
- * hands it to prepareClone; direct callers of either get one from a default parameter.
+ * The session is an argument: burst creates it for a full run it starts, snapdom.capture
+ * otherwise, and captureDOM hands it to prepareClone; direct callers of either get one from a
+ * default parameter.
  * A differential frame (diff.js) gets its own, built over burst's retained capture, and
  * hands it to buildResult as the full path does.
  * The factory is pure: captureDOM applies the cache policy at its entry and on the torn
@@ -20,7 +21,8 @@
  * it. createClonePass declares every slot, so a pass keeps one shape however the walk fills it.
  *
  * `context.__session` is an ALIAS of the session of a full capture, set by captureDOM.
- * Published reader: packages/vector/src/adapters/snapdom.js (styleMap, in beforeRender).
+ * Published readers: packages/vector/src/adapters/snapdom.js (styleMap, in beforeRender),
+ * __tests__/core.capture.fast.test.js and scripts/safari-release-smoke.mjs (tornSinceStart).
  * Nothing in src reads it: the engines take the session as an argument. A frame sets none.
  *
  * Never name a ClonePass slot `session` or `persist`: _resolveCtx (styles.js) tells a ready
@@ -52,6 +54,12 @@
  * @property {{required: Set<string>, usedCodepoints: Set<number>}|null} fontUsage - the font
  *   usage the Safari pre-step walked (snapdom.capture), reused by captureDOM's fonts phase on
  *   a capture without a clip; null elsewhere
+ * @property {(() => boolean)|null} tornSinceStart - burst's watcher, asked by captureDOM after
+ *   a yielding clone (fast: false | 'auto'). Written by burst before a full run it starts,
+ *   nulled in its finally; null on any other run
+ * @property {((art: object) => void)|null} retain - burst's hand-off of the artifacts a
+ *   differential frame splices onto, called by captureDOM after the svg render. Written by
+ *   burst on a run that may become the memo, nulled in its finally; null on any other run
  *
  * Compress outputs, written through the geometry holder captureDOM and diff.js hand to
  * compressCloneAssets (compress.js). A frame starts from burst's retained capture.
@@ -90,6 +98,8 @@ export function createCaptureSession(options = {}, retained = null) {
     styleShare: options.__styleShare,
     slicer: null,
     fontUsage: null,
+    tornSinceStart: null,
+    retain: null,
     compressedAssets: retained ? retained.compressedAssets : null,
     compressionDensity: retained ? retained.compressionDensity : undefined,
     compressedSnapshot: null,

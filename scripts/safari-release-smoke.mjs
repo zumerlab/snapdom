@@ -152,7 +152,7 @@ async function smoke() {
       }
       const probe = {
         name: 'safari-slice-probe', pure: true,
-        beforeClone(ctx) { watched = typeof ctx.__tornSinceStart === 'function' },
+        beforeClone(ctx) { watched = typeof ctx.__session.tornSinceStart === 'function' },
         afterClone() { ranByAfterClone = ran },
       }
       try {

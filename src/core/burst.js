@@ -51,7 +51,7 @@
  *                            construction and the frame is torn
  *  - yielding captures ..... fast: false | 'auto' read the page across several tasks; the
  *                            two judgements above run again when the clone stage ends
- *                            (context.__tornSinceStart), and a torn clone is redone in one task
+ *                            (session.tornSinceStart), and a torn clone is redone in one task
  *  - shadow DOM ............ one observer per open root, plus the composed:false listeners
  *                            and the <img> tracker (querySelectorAll does not cross
  *                            the boundary either), rescanned per capture so a root attached
@@ -81,6 +81,7 @@ import {
   animatedProps,
 } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
+import { createCaptureSession } from './session.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
 import { yieldWhenTaskSpent } from '../utils/browser.js'
 
@@ -807,7 +808,9 @@ function optionsSignature(userOptions, plugins) {
  * @param {Element} element
  * @param {object} userOptions - the raw options passed to this call (pre-normalization)
  * @param {object} context - normalized capture context (reads context.invalidate)
- * @param {() => Promise<object>} runCapture - performs the actual full capture + export build
+ * @param {(session?: import('./session.js').CaptureSession) => Promise<object>} runCapture -
+ *   performs the actual full capture + export build, on the session burst hands it (with its
+ *   watcher and, unless a one-off, its retain hand-off), or on a fresh one when none is given
  * @param {(url: string, session: object) => Promise<object>} [makeResult] - builds an export result from a
  *   differential frame's URL and session
  * @returns {Promise<object>} the memoized or freshly captured result
@@ -957,6 +960,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
 
     state.capturing = true
     let pendingRetained = null
+    let session = null
     try {
       let result = null
       let usedDiff = false
@@ -977,10 +981,11 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
         }
       }
       if (!result) {
+        session = createCaptureSession(context)
         // Retain this full capture's artifacts for future differential recaptures, into a
         // local that is published below with the rest of the memo.
         if (!isOneOff) {
-          context.__retain = (art) => {
+          session.retain = (art) => {
             const srcToClone = new Map()
             for (const [cloneNode, srcNode] of art.nodeMap.entries()) srcToClone.set(srcNode, cloneNode)
             pendingRetained = { ...art, srcToClone }
@@ -988,12 +993,12 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
         }
         // A yielding capture (fast: false | 'auto') asks this when its clone stage ends: the
         // judgement the finally below makes, over what has landed so far.
-        context.__tornSinceStart = () => {
+        session.tornSinceStart = () => {
           for (const o of state.observers) for (const rec of o.takeRecords()) state.pending.push(rec)
           flushStyleInvalidations()
           return state.torn || hasTornMutation(state.pending) || getOutsideMutationCount(element) !== outsideMutations
         }
-        result = await runCapture()
+        result = await runCapture(session)
       }
       // COMMIT, and only now: clearing the dirty flags before awaiting the capture marked
       // the element clean on a capture that then threw, and the next call served the
@@ -1046,8 +1051,12 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       }
       return result
     } finally {
-      context.__retain = undefined
-      context.__tornSinceStart = undefined
+      // The alias (context.__session) keeps the session for the result's life; these
+      // closures would pin this capture's retained artifacts with it.
+      if (session) {
+        session.retain = null
+        session.tornSinceStart = null
+      }
       for (const o of state.observers) for (const rec of o.takeRecords()) state.pending.push(rec)
       // Drain self-undoing preparation now, so it cannot appear as fresh outside work on the
       // next call. A real outside mutation during the capture still tears this frame.

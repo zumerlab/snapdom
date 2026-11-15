@@ -65,7 +65,7 @@ function collectResolveNodeHooks(options) {
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
  * @param {boolean} [options.burst] - Memoize eligible static captures from the first call. Selection and frame-driven/opaque trees always capture fresh; true overrides only the automatic impure-plugin gate, while false disables memoization.
- * @param {import('./session.js').CaptureSession} [session] - this run's session (snapdom.capture creates it)
+ * @param {import('./session.js').CaptureSession} [session] - this run's session (burst or snapdom.capture creates it)
  * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
  *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
  */
@@ -201,7 +201,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
     // every change a frame can show (burst.js, mid-capture edits and events), and when one
     // landed the clone may mix two states: run the stage again, in one task. Without burst
     // there is no watcher, and the yielding clone stands.
-    if (!slicer?.yielded || !options.__tornSinceStart?.()) break
+    if (!slicer?.yielded || !session.tornSinceStart?.()) break
     slicer = null
     // Renewed in place: burst, the alias and buildResult hold this session object.
     applyCachePolicy(options.cache)
@@ -373,10 +373,10 @@ export async function captureDOM(element, options, session = createCaptureSessio
   session.compressedSnapshot = snapshotCompressedAssets(renderedClone, session.compressedAssets)
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential
   // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty
-  // subtrees). Internal-only; absent for plain captures.
-  if (typeof options.__retain === 'function') {
+  // subtrees). Internal-only; burst sets it on the session, absent for plain captures.
+  if (session.retain) {
     try {
-      options.__retain({
+      session.retain({
         clone, nodeMap, styleCache, styleMap: session.styleMap,
         classPrefixCSS, plainBg, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
         marginZeroed,
