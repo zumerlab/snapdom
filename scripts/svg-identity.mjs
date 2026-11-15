@@ -137,7 +137,11 @@ const UNSTABLE = {
   // img.naturalWidth || 100` on the same tick; whether Firefox has decoded the data URL by
   // then decides whether width/height attributes are written (and 100 when it has not).
   // 1 run in 5 for each.
-  'd15-cors-fonts-test': { firefox: { only: 'second', cause: 'snapdom: images.js reads img.width before Firefox decoded the cached data URL (recapture)' } },
+  // WebKit too, 2 runs in 4 with identical bundles (2026-11-15), same 75 characters.
+  'd15-cors-fonts-test': {
+    firefox: { only: 'second', cause: 'snapdom: images.js reads img.width before Firefox decoded the cached data URL (recapture)' },
+    webkit: { only: 'second', cause: 'snapdom: images.js reads img.width before WebKit decoded the cached data URL (recapture)' },
+  },
   'd1-divegood-visual-demos': { firefox: { only: 'second', cause: 'snapdom: images.js reads img.width before Firefox decoded the cached data URL (recapture)' } },
   // Firefox, 1 full run in 3, live fingerprint identical: the embedded Unbounded 400 face is
   // two different woff2 files (51,152 and 39,888 bytes in the header), one with the MIME
