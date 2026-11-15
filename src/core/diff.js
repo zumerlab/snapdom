@@ -15,7 +15,7 @@
  */
 
 import { deepClone } from './clone.js'
-import { createCaptureSession } from './session.js'
+import { createCaptureSession, createClonePass } from './session.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { forceContentVisibility } from '../utils/prepare.helpers.js'
 import { composeAndSerialize } from '../engines/svg.js'
@@ -271,7 +271,7 @@ async function diffCapture(element, state, context, animated) {
     // sharing the retained styleMap/styleCache (class dedup accumulates) with a fresh
     // delta nodeMap so subtree-scoped passes see only their own nodes.
     const delta = new Map()
-    const sessionCache = { styleMap: frame.styleMap, styleCache: frame.styleCache, nodeMap: delta, options: context }
+    const sessionCache = createClonePass(frame, context, delta)
     // The same live-DOM prep the full pipeline runs before ITS deepClone (capture.js,
     // prepare.js): clamp/ellipsis text to its rendered lines and un-skip content-visibility.
     // A bare deepClone spliced un-clamped text into the retained frame.
@@ -331,7 +331,7 @@ async function diffCapture(element, state, context, animated) {
   // measured sizes). One pass over the retained pairs refreshes the style key of every box
   // whose computed geometry drifted — the same values a full pipeline would snapshot at the
   // current epoch, so byte-fidelity holds without bailing on layout-changing mutations.
-  const sessionLike = { styleMap: frame.styleMap, styleCache: frame.styleCache, nodeMap: frame.nodeMap, options: context }
+  const sessionLike = createClonePass(frame, context, frame.nodeMap)
   const resizedParents = new WeakSet()
   let rezero = false
   for (const [cloneN, srcN] of R.nodeMap.entries()) {

@@ -14,7 +14,7 @@
 import { generateCSSClasses, stripTranslate, debugWarn, getStyle, shadowHost } from '../utils/index.js'
 import { deepClone, finishClipHusks } from './clone.js'
 import { sessionWarn } from '../utils/debug.js'
-import { createCaptureSession } from './session.js'
+import { createCaptureSession, createClonePass } from './session.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { paintClippedText } from '../modules/bgClipText.js'
 import { flushStyleInvalidations, invalidateHoverChanges, universeFor } from '../modules/styles.js'
@@ -60,15 +60,10 @@ export async function prepareClone(element, options = {}, session = createCaptur
   flushStyleInvalidations()
   // :hover leaves no record and no event: asked here, once per capture.
   invalidateHoverChanges(element.ownerDocument || document)
-  const sessionCache = {
-    styleMap: session.styleMap,
-    styleCache: session.styleCache,
-    nodeMap: session.nodeMap,
-    options,
-    // On the session, not read from options: diff.js clones through a context whose
-    // __slicer belongs to an earlier capture.
-    slicer: options.__slicer || null
-  }
+  const sessionCache = createClonePass(session, options, session.nodeMap)
+  // On the pass, not read from options: diff.js clones through a context whose __slicer
+  // belongs to an earlier capture.
+  sessionCache.slicer = options.__slicer || null
 
   let clipWindow = null
   let clipRect = null
