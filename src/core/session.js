@@ -37,6 +37,9 @@
  *   degradation log, exposed as result.warnings: entries pushed by the curated failure
  *   branches (image placeholder, raster clamp, Safari PNG fallback, reconcile risk). Null on
  *   a differential frame, which keeps no log.
+ * @property {Array<(node: Node, ctx: object) => any>|null} resolveNodeHooks - the plugins'
+ *   resolveNode hooks, collected by captureDOM at its entry; null on a differential frame,
+ *   which bails on resolveNode plugins
  * @property {boolean|undefined} styleShare - the identity-share verdict, seeded with the
  *   context's `__styleShare` override
  * @property {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} slicer -
@@ -75,6 +78,7 @@ export function createCaptureSession(options = {}, retained = null) {
     styleCache: retained ? retained.styleCache : new WeakMap(),
     nodeMap: retained ? retained.nodeMap : new Map(),
     warnings: retained ? null : [],
+    resolveNodeHooks: null,
     styleShare: options.__styleShare,
     slicer: null,
     compressedAssets: retained ? retained.compressedAssets : null,
@@ -97,8 +101,7 @@ export function createCaptureSession(options = {}, retained = null) {
  * @property {CaptureSession['warnings']} warnings - the run's log, which clone.js and pseudo.js
  *   write through the pass
  * @property {boolean|undefined} styleShare
- * @property {Array<Function>|null} resolveNodeHooks - declared null; deepClone reads the
- *   context's `__resolveNodeHooks`
+ * @property {CaptureSession['resolveNodeHooks']} resolveNodeHooks - read by deepClone, per node
  * @property {Map<Element, Set<string>>|null} animated - declared null; inlineAllStyles reads
  *   the context's `__animated`
  * @property {CaptureSession['slicer']} slicer - read by deepClone, prepareClone and
@@ -156,7 +159,7 @@ export function createClonePass(run, options, nodeMap) {
     nodeMap,
     warnings: run.warnings,
     styleShare: run.styleShare,
-    resolveNodeHooks: null,
+    resolveNodeHooks: run.resolveNodeHooks,
     animated: null,
     slicer: run.slicer,
     clip: null,

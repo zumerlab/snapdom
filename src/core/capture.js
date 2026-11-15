@@ -74,7 +74,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
   applyCachePolicy(options.cache)
   // ALIAS for published readers (session.js); nothing in this module reads it back.
   options.__session = session
-  options.__resolveNodeHooks = collectResolveNodeHooks(options)
+  session.resolveNodeHooks = collectResolveNodeHooks(options)
   // ONE context for the whole capture: hooks receive the normalized option bag itself, so
   // `ctx.scale` / `ctx.backgroundColor` / … are the very values the pipeline reads and the
   // documented "mutate ctx in beforeSnap" actually lands. Per-stage fields are written onto

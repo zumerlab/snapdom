@@ -766,8 +766,8 @@ export async function deepClone(node, sessionCache, options) {
   // Per-node plugin hook: the first plugin whose resolveNode returns a value wins
   // (Node = finished replacement clone, null = skip node, undefined = continue).
   // Hooks are collected once per capture in captureDOM; zero cost when unused.
-  if (options.__resolveNodeHooks) {
-    for (const hook of options.__resolveNodeHooks) {
+  if (sessionCache.resolveNodeHooks) {
+    for (const hook of sessionCache.resolveNodeHooks) {
       let out
       try { out = await hook(node, options) } catch (e) {
         debugWarn(sessionCache, 'A plugin\'s resolveNode hook threw; ignored it.', e)
