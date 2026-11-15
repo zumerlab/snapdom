@@ -3,10 +3,11 @@
  * sees it and what it moves. One observer stack per document, shared by the style snapshot
  * cache (styles.js), the memo (burst.js), the pseudo preflight and the CSSVar memo.
  *
- * Two epochs and the per-node stamps. `__epoch` moves on any external mutation, `__envEpoch`
- * only on what changes rendering with no mutation on the node (head, fonts, resize), a stamp
- * on what a selector can reach from a mutation, and `nodeClock` whenever any stamp or a
- * record-less layout source moved. CSSOM edits no observer can see go through
+ * One sequence, `seq`, and the versions cut from it. `epoch` is the last external mutation,
+ * `env` the last change that restyles with no mutation on the node (head, fonts, resize), a
+ * node's stamp the last change a selector can carry to it. A reader keeps `stampOf` and
+ * compares. `seq` itself moving means some box may have moved: used values are probed
+ * again. CSSOM edits no observer can see go through
  * `invalidateStyleCaches`. The document scan lives here because its memo is keyed on the
  * epochs and its result decides how far a mutation is stamped (`canNarrow`).
  *
@@ -19,8 +20,13 @@ import { scanAuthorStyles, sheetCensus } from '../modules/styleScan.js'
 import { isInternalNode } from '../utils/ownership.js'
 import { snapFetch } from '../modules/snapFetch.js'
 
-export let __epoch = 0
-export function bumpEpoch() { __epoch++ }
+/** One sequence orders every change. Each version below is the value of `seq` at the last
+ *  change of its kind, so a reader keeps one integer and compares it with the newest version
+ *  among the sources it depends on (`stampOf`). */
+export let seq = 0
+/** `seq` at the last external change of any kind. */
+export let epoch = 0
+export function bumpEpoch() { epoch = ++seq }
 
 /** Bumps the style epoch by hand. Nothing in src calls it; tests use it to force a re-snapshot. */
 export function notifyStyleEpoch() { bumpEpoch() }
@@ -91,7 +97,7 @@ export function getOutsideMutationCount(element) {
 }
 
 /** There is no separate rule epoch, on purpose. The scanned universe and the pseudo gates
- *  derive from the rule text alone, yet their memo is keyed on __epoch, which any external
+ *  derive from the rule text alone, yet their memo is keyed on epoch, which any external
  *  mutation moves. A rule-only epoch was tried and reverted: three rule sources emit no
  *  mutation record (adoptedStyleSheets, a <link> finishing its load, insertRule), and staying
  *  correct needed a census of every sheet on EVERY capture, which timed WebKit out under
@@ -104,17 +110,18 @@ export function getOutsideMutationCount(element) {
  *  that change how any element renders without touching it. Consumers (burst) poll it via
  *  getStyleEnvEpoch() instead of wiring their own observers/listeners: one shared stack,
  *  and polling can't root anything (a subscriber callback would leak its closure). */
-export let __envEpoch = 0
+export let env = 0
+function bumpEnv() { epoch = env = ++seq }
 export function getStyleEnvEpoch(doc = document) {
   setupInvalidationOnce(doc)
-  return __envEpoch
+  return env
 }
 
 /** Current style epoch — bumps on any external DOM/head/font mutation. Consumers use it
  *  to scope per-epoch memos (e.g. isInSvgTemplate) that DOM restructuring must invalidate. */
 export function getStyleEpoch() {
   setupInvalidationOnce()
-  return __epoch
+  return epoch
 }
 
 /** The scoped stamp used by the style snapshot cache. Burst reads the capture root's stamp
@@ -134,8 +141,7 @@ export function getStyleStamp(element) {
  *  `burst: false`, because the memos live below burst. Bumps BOTH epochs so the escape
  *  hatch has no exceptions. */
 export function invalidateStyleCaches() {
-  bumpEpoch()
-  __envEpoch++
+  bumpEnv()
 }
 
 /** Per-node style stamps: how far a DOM mutation is allowed to reach.
@@ -165,24 +171,25 @@ export function invalidateStyleCaches() {
  *  Pinned by __tests__/module.styles.usedValues.test.js.
  *
  *  Everything that is genuinely document-wide keeps its epoch: rule and head changes, font
- *  loads, viewport resizes, and the invalidate escape hatch all bump __envEpoch, which the
+ *  loads, viewport resizes, and the invalidate escape hatch all bump env, which the
  *  snapshot cache reads alongside the stamp. */
 const nodeStamp = new WeakMap()
-export let nodeClock = 0
-/** Moves the clock for a change no stamp names (an animation, a resource load). */
-export function bumpClock() { nodeClock++ }
+/** Moves the sequence for a change no stamp names (an animation, a resource load): cached
+ *  used values are probed again. */
+export function bumpSeq() { seq++ }
 /** Bumped instead of the stamps when narrowing is unsound (a `:has()` document), which
  *  invalidates every snapshot at once — exactly the old behaviour. */
-let __allStamp = 0
+let allStamp = 0
+function stampAll() { allStamp = ++seq }
 
-export function stampNode(el) { nodeStamp.set(el, ++nodeClock) }
+export function stampNode(el) { nodeStamp.set(el, ++seq) }
 
 export function stampSubtree(root) {
   if (!root || root.nodeType !== 1) return
-  nodeClock++
-  nodeStamp.set(root, nodeClock)
+  const v = ++seq
+  nodeStamp.set(root, v)
   const all = root.querySelectorAll('*')
-  for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], nodeClock)
+  for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], v)
 }
 
 /** Invalidate everything a change at `el` can restyle (see the note above). */
@@ -193,9 +200,9 @@ function invalidateAround(el) {
 
 /** The stamp a node's cached snapshot was taken at. */
 export function stampOf(el, hosts = null) {
-  let stamp = nodeStamp.get(el) || 0
+  let stamp = Math.max(env, allStamp, nodeStamp.get(el) || 0)
   if (hosts) for (const host of hosts) stamp = Math.max(stamp, nodeStamp.get(host) || 0)
-  return __allStamp * 1e9 + stamp
+  return stamp
 }
 
 /** Shadow styles inherit through their hosts. Keep that dependency on the snapshot so a
@@ -217,9 +224,9 @@ export function shadowHostsOf(el) {
 
 /** Whether narrowing is sound for this document: no author rule uses `:has()`.
  *
- *  Memoized on __envEpoch, NOT __epoch, and that distinction is the whole fix. The answer
+ *  Memoized on env, NOT epoch, and that distinction is the whole fix. The answer
  *  derives from rule TEXT alone, but it used to read straight through scanFor, whose memo IS
- *  keyed on __epoch — and onDomRecords bumps __epoch immediately BEFORE asking. The entry
+ *  keyed on epoch — and onDomRecords bumps epoch immediately BEFORE asking. The entry
  *  therefore missed on every batch, so once any capture had wired the observer, EVERY
  *  external mutation in the host page (a React commit, a virtualised scroll) paid a full
  *  scanAuthorStyles — every rule in every sheet plus a document-wide getAnimations — with no
@@ -227,7 +234,7 @@ export function shadowHostsOf(el) {
  *  Hoisting the call above the bump does not help: the PREVIOUS batch's bump already
  *  invalidated the entry, so it saves exactly one scan, not one per batch.
  *
- *  __envEpoch covers the rule changes that matter here: <head> mutations, font loads,
+ *  env covers the rule changes that matter here: <head> mutations, font loads,
  *  resizes and the `invalidate` escape hatch. The one source it misses is a <style>/<link>
  *  mounted outside <head>, which onDomRecords closes below by dropping this entry.
  *  A failed scan answers "cannot narrow" — the document-wide behaviour, always sound. */
@@ -235,17 +242,17 @@ const hasMemo = new WeakMap()
 function canNarrow(doc) {
   doc = doc || document
   let h = hasMemo.get(doc)
-  if (!h || h.env !== __envEpoch) {
+  if (!h || h.env !== env) {
     let usesHas = true
     try { usesHas = scanFor(doc).usesHas } catch { /* unreadable sheets — stay pessimistic */ }
-    h = { env: __envEpoch, usesHas }
+    h = { env, usesHas }
     hasMemo.set(doc, h)
   }
   return !h.usesHas
 }
 
 /** A <style>/<link> mounted, removed or rewritten OUTSIDE <head>: the head observer never
- *  sees it, so nothing bumps __envEpoch and canNarrow's memo would keep answering from
+ *  sees it, so nothing bumps env and canNarrow's memo would keep answering from
  *  before those rules existed — including a `:has()` rule, which would leave narrowing
  *  wrongly enabled. Cheap tag test; it only has to be conservative. */
 function ruleSourceDoc(records) {
@@ -293,9 +300,9 @@ function onShadowRecords(records) {
     if (!root || root.nodeType !== 11 || stamped.has(root)) continue
     stamped.add(root)
     if (root.host) stampSubtree(root.host)
-    else nodeClock++
+    else seq++
     const all = root.querySelectorAll('*')
-    for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], nodeClock)
+    for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], seq)
   }
 }
 
@@ -344,8 +351,7 @@ function onDomRecords(records) {
     hasMemo.delete(ruleDoc)
     // A stylesheet node may live in <body>; its CSS still reaches the entire document.
     // Local stamping at the node's parent would leave distant captures on old snapshots.
-    __envEpoch++
-    __allStamp++
+    bumpEnv()
     return
   }
   // The epoch above still invalidates the memos that key off DOM structure (isInSvgTemplate,
@@ -360,10 +366,10 @@ function onDomRecords(records) {
     const el = rec.target.nodeType === 1 ? rec.target : rec.target.parentElement
     if (!el) continue
     const doc = el.ownerDocument || document
-    if (!canNarrow(doc)) { __allStamp++; return }
+    if (!canNarrow(doc)) { stampAll(); return }
     // A class or custom-property flip on <html> or <body> reaches the whole document, which
     // is what the all-stamp is for.
-    if (el === doc.documentElement || el === doc.body) { __allStamp++; return }
+    if (el === doc.documentElement || el === doc.body) { stampAll(); return }
     const root = el.parentElement || el
     if (stamped.has(root)) continue
     stamped.add(root)
@@ -387,7 +393,7 @@ const __wiredDocs = new WeakSet()
  *  last document answers essentially every call, and the WeakSet is only consulted when the
  *  document actually changes — which happens once per iframe, not once per node. */
 let __lastWiredDoc = null
-/** Every observer we wired, in any document. `env` ones also bump the environment epoch.
+/** Every observer we wired, in any document. `head` ones also bump the environment epoch.
  *  Entries carry their document so dead ones can be dropped: flushStyleInvalidations walks
  *  this list on EVERY capture, and an <iframe> that is created, captured and removed — which
  *  a test suite or an SPA does constantly — would otherwise leave its two observers here
@@ -404,20 +410,19 @@ export function setupInvalidationOnce(doc = document) {
   const view = doc.defaultView
   const onEnvRecords = (records) => {
     if (hasExternalMutation(records)) {
-      bumpEpoch()
-      __envEpoch++
+      bumpEnv()
     }
   }
-  const onFonts = () => { bumpEpoch(); __envEpoch++ }
+  const onFonts = bumpEnv
   try {
     const o = new MutationObserver(onDomRecords)
     o.observe(doc.documentElement, { subtree: true, childList: true, characterData: true, attributes: true })
-    __observers.push({ o, env: false, doc })
+    __observers.push({ o, head: false, doc })
   } catch { }
   try {
     const o = new MutationObserver(onEnvRecords)
     o.observe(doc.head, { subtree: true, childList: true, characterData: true, attributes: true })
-    __observers.push({ o, env: true, doc })
+    __observers.push({ o, head: true, doc })
   } catch { }
   try {
     // Viewport resizes flip media queries — computed styles change with no DOM mutation.
@@ -438,9 +443,9 @@ export function setupInvalidationOnce(doc = document) {
       const t = event.composedPath?.()[0] || event.target
       if (t && t.nodeType === 1 && !isOwnedNode(t)) {
         if (canNarrow(t.ownerDocument || doc)) invalidateAround(t)
-        else __allStamp++
+        else stampAll()
       } else {
-        __allStamp++
+        stampAll()
       }
     }
     doc.addEventListener('focusin', onInteraction, { capture: true, passive: true })
@@ -456,12 +461,12 @@ export function setupInvalidationOnce(doc = document) {
     // Native top-layer state (`showPopover`) is a property, not an authored attribute.
     doc.addEventListener('beforetoggle', onInteraction, { capture: true, passive: true })
     doc.addEventListener('toggle', onInteraction, { capture: true, passive: true })
-    view?.addEventListener('hashchange', () => { bumpEpoch(); __allStamp++ }, { passive: true })
+    view?.addEventListener('hashchange', () => { bumpEpoch(); stampAll() }, { passive: true })
     // An image that finishes loading resizes the boxes around it with no record: a lazy one
     // loads when it scrolls into view, which is no record either. Not snapdom's own nodes:
     // WebKit's paint probe (toCanvas) is an <img> in the document on every export, and the
     // clock would never rest.
-    doc.addEventListener('load', (event) => { if (!isOwnedNode(event.target)) nodeClock++ }, { capture: true, passive: true })
+    doc.addEventListener('load', (event) => { if (!isOwnedNode(event.target)) seq++ }, { capture: true, passive: true })
   } catch { }
   try {
     const f = doc.fonts
@@ -493,15 +498,15 @@ function invalidateHoverScope(scope, doc) {
     // Shadow selectors cannot escape this tree except through :host/::slotted. Stamp the
     // whole root and host; this also reaches a capture whose root itself lives in shadow DOM.
     if (scope.host) stampSubtree(scope.host)
-    else nodeClock++
-    for (const el of scope.querySelectorAll('*')) nodeStamp.set(el, nodeClock)
+    else seq++
+    for (const el of scope.querySelectorAll('*')) nodeStamp.set(el, seq)
     return
   }
   const changed = prev.filter((n) => !now.includes(n)).concat(now.filter((n) => !prev.includes(n)))
   for (const el of changed) {
     if (!el.isConnected) continue
     if (canNarrow(doc)) invalidateAround(el)
-    else { __allStamp++; return }
+    else { stampAll(); return }
   }
 }
 
@@ -528,7 +533,7 @@ export function flushStyleInvalidations() {
   setupInvalidationOnce()
   try {
     for (let i = __observers.length - 1; i >= 0; i--) {
-      const { o, env, doc } = __observers[i]
+      const { o, head, doc } = __observers[i]
       // A detached document — an <iframe> removed from the page — has a null defaultView and
       // can never paint again, so it has nothing left to invalidate. Drop it here rather than
       // paying for it on every future capture.
@@ -541,7 +546,7 @@ export function flushStyleInvalidations() {
       }
       const r = o.takeRecords()
       if (!r.length) continue
-      if (env) { if (hasExternalMutation(r)) { bumpEpoch(); __envEpoch++ } }
+      if (head) { if (hasExternalMutation(r)) bumpEnv() }
       else onDomRecords(r)
     }
     for (let i = __shadowObservers.length - 1; i >= 0; i--) {
@@ -558,7 +563,7 @@ export function flushStyleInvalidations() {
   } catch { }
 }
 
-/** Per-document memo of the scanned property universe, keyed on __epoch and kept across an
+/** Per-document memo of the scanned property universe, keyed on epoch and kept across an
  *  epoch miss while the sheet census and the env epoch stand (see the rule-epoch note above
  *  getStyleEnvEpoch). A capture reads it through scanOf, never directly. */
 const universeCache = new WeakMap()
@@ -583,27 +588,26 @@ function crossOriginRules(sheet) {
     const copy = new CSSStyleSheet()
     copy.replaceSync(res.data)
     crossOriginCopies.set(href, copy.cssRules)
-    bumpEpoch()
-    __envEpoch++
+    bumpEnv()
   }).catch(() => { })
   return null
 }
 
 export function scanFor(doc) {
   let rec = universeCache.get(doc)
-  if (!rec || rec.epoch !== __epoch) {
+  if (!rec || rec.epoch !== epoch) {
     // The epoch moves on any DOM mutation, and most touch no stylesheet. While the env epoch
     // stands (no <style>/<link> node changed, no `invalidate`) an equal census is taken as an
     // equal scan. A full re-scan also caught, when a DOM mutation happened to follow them, the
     // CSSOM edits the census cannot see (sheetCensus lists them); those need `invalidate: true`.
     const census = sheetCensus(doc, crossOriginRules)
-    if (rec && census && rec.env === __envEpoch && rec.census &&
+    if (rec && census && rec.env === env && rec.census &&
         rec.census.length === census.length && census.every((v, i) => v === rec.census[i])) {
-      rec.epoch = __epoch
+      rec.epoch = epoch
       return rec
     }
     const prev = rec && rec.universe
-    rec = { epoch: __epoch, env: __envEpoch, census, ...scanAuthorStyles(doc, crossOriginRules) }
+    rec = { epoch, env, census, ...scanAuthorStyles(doc, crossOriginRules) }
     // A re-scan that finds the same props keeps the previous Set: its identity keys the base
     // reset memo (assembleCaptureCSS) and any DOM mutation bumps the epoch, so a new Set per
     // scan would rebuild the reset (0.12-0.65 ms) on every capture of a live page.
@@ -634,7 +638,7 @@ export function scanOf(doc, session) {
   if (!session) return scanFor(doc)
   if (!session.scan) {
     session.scan = scanFor(doc)
-    session.scanEnv = __envEpoch
+    session.scanEnv = env
   }
   return session.scan
 }

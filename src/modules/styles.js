@@ -19,7 +19,7 @@ import { isFirefox, isSafari } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
 import { scanSheetProps, addAnimationProps } from './styleScan.js'
 import {
-  __epoch, __envEpoch, nodeClock, bumpEpoch, bumpClock, stampNode, stampSubtree, stampOf,
+  seq, epoch, env, bumpEpoch, bumpSeq, stampNode, stampSubtree, stampOf,
   shadowHostsOf, setupInvalidationOnce, scanFor, scanOf,
 } from '../core/changes.js'
 
@@ -30,8 +30,8 @@ export {
   invalidateHoverChanges, flushStyleInvalidations,
 } from '../core/changes.js'
 
-/** element -> { env, stamp, snapshot, embedFonts, excludeStyleProps }. Cross-capture; a hit
- *  needs the env epoch and the node's stamp unchanged (snapshotIsCurrent). */
+/** element -> { v, checked, hosts, snapshot, embedFonts, excludeStyleProps, used }.
+ *  Cross-capture; a hit needs `v` unchanged (snapshotIsCurrent) and the used values to hold. */
 const snapshotCache = new WeakMap()
 const MARGIN_PROPS = [
   'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
@@ -50,7 +50,7 @@ const MAX_SNAPSHOT_KEY_CACHE = 2000
 export function invalidateSnapshotsUnder(root) {
   if (!root || root.nodeType !== 1) return
   // An animated box pushes the boxes beside it, which keep their snapshots and their stamps.
-  bumpClock()
+  bumpSeq()
   snapshotCache.delete(root)
   try {
     const tw = (root.ownerDocument || document).createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
@@ -246,7 +246,7 @@ function shadowUniverseOf(el, root, doc, session) {
       st.roots.add(r)
       for (const sheet of [...r.styleSheets, ...(r.adoptedStyleSheets || [])]) {
         let rec = sheetPropsCache.get(sheet)
-        if (!rec || rec.epoch !== __epoch) sheetPropsCache.set(sheet, rec = { epoch: __epoch, props: scanSheetProps(sheet) })
+        if (!rec || rec.epoch !== epoch) sheetPropsCache.set(sheet, rec = { epoch, props: scanSheetProps(sheet) })
         if (!rec.props) return false
         for (const p of rec.props) st.universe.add(p)
       }
@@ -741,10 +741,10 @@ function styleSignature(snap, tag) {
   __snapshotSig.set(snap, sig)
   return sig
 }
-/** A cached snapshot is current while nothing document-wide happened (env epoch) and nothing
- *  a selector could follow to this node did (its stamp). */
+/** A cached snapshot is current while its version is still the newest among what it depends
+ *  on: the environment and whatever a selector could follow to this node (changes.js). */
 function snapshotIsCurrent(rec, el) {
-  return rec.env === __envEpoch && rec.stamp === stampOf(el, rec.hosts)
+  return rec.v === stampOf(el, rec.hosts)
 }
 
 /**
@@ -1088,8 +1088,8 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   const style = preStyle || getComputedStyle(el)
   if (typeof ex !== 'function' && rec && snapshotIsCurrent(rec, el) &&
       rec.embedFonts === ef && rec.excludeStyleProps === ex &&
-      (rec.clock === nodeClock || usedValuesHold(rec.used, el, style))) {
-    rec.clock = nodeClock
+      (rec.checked === seq || usedValuesHold(rec.used, el, style))) {
+    rec.checked = seq
     return rec.snapshot
   }
   let snap
@@ -1204,7 +1204,9 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
       }
     }
   }
-  snapshotCache.set(el, { env: session?.scanEnv ?? __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex, used, clock: nodeClock })
+  // Read under a scan the page has since moved past: never current (see scanOf).
+  const v = (session?.scanEnv ?? env) !== env ? -1 : stampOf(el, hosts)
+  snapshotCache.set(el, { v, checked: seq, hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex, used })
   return snap
 }
 
@@ -1391,7 +1393,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     Object.defineProperty(stub, '__needsBgInline', { value: computeNeedsBgInline(pre), enumerable: false })
     const hosts = shadowHostsOf(source)
     snapshotCache.set(source, {
-      env: __envEpoch, stamp: stampOf(source, hosts), hosts, snapshot: stub,
+      v: stampOf(source, hosts), hosts, snapshot: stub,
       embedFonts: !!(ctx.options && ctx.options.embedFonts),
       excludeStyleProps: (ctx.options && ctx.options.excludeStyleProps) || null,
     })
