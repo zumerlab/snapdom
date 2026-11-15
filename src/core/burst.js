@@ -808,7 +808,8 @@ function optionsSignature(userOptions, plugins) {
  * @param {object} userOptions - the raw options passed to this call (pre-normalization)
  * @param {object} context - normalized capture context (reads context.invalidate)
  * @param {() => Promise<object>} runCapture - performs the actual full capture + export build
- * @param {(url: string) => Promise<object>} [makeResult] - builds an export result from a URL (differential path)
+ * @param {(url: string, session: object) => Promise<object>} [makeResult] - builds an export result from a
+ *   differential frame's URL and session
  * @returns {Promise<object>} the memoized or freshly captured result
  */
 export function captureWithBurst(element, userOptions, context, runCapture, makeResult = null) {
@@ -874,8 +875,6 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     const liveRenderState = renderStateOf(element, state)
     const animations = animationsInScopes(element, state)
     liveRenderState.animation = animationSignature(animations)
-    // captureDOM sets this for the full pipeline; the differential path never enters it.
-    context.__animated = animatedProps(animations)
     if (state.renderState) {
       const styleChanged = !sameRenderState(state.renderState, liveRenderState, 'style')
       if (styleChanged) {
@@ -967,11 +966,13 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       // (null url) falls through to the full pipeline; correctness never depends on it.
       if (!isOneOff && state.dirty && state.retained && state.dirtyRoots && state.dirtyRoots.size && makeResult) {
         diffRoots = [...state.dirtyRoots]
-        const url = await tryDiffCapture(element, state, context)
-        if (url) {
+        // captureDOM reads the animated properties for the full pipeline; the differential
+        // path never enters it, so they travel as an argument.
+        const out = await tryDiffCapture(element, state, context, animatedProps(animations))
+        if (out) {
           // buildResult is async (plugin defineExports may reject). Do not publish a clean
           // memo until that work has actually succeeded.
-          result = await makeResult(url)
+          result = await makeResult(out.url, out.session)
           usedDiff = true
         }
       }

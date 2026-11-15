@@ -15,6 +15,7 @@
  */
 
 import { deepClone } from './clone.js'
+import { createCaptureSession } from './session.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { forceContentVisibility } from '../utils/prepare.helpers.js'
 import { composeAndSerialize } from '../engines/svg.js'
@@ -151,20 +152,22 @@ function pruneSubtreeFromMaps(oldRoot, R) {
 export const __diffStats = { attempts: 0, served: 0, reconciled: 0 }
 
 /**
- * Attempts a differential recapture. Returns the fresh SVG data URL, or null when the
- * fast path doesn't apply (caller must run the full pipeline). A throw inside counts as
- * null too, and bumps nothing but `attempts`.
+ * Attempts a differential recapture. Returns the fresh SVG data URL with the frame's
+ * session, or null when the fast path doesn't apply (caller must run the full pipeline).
+ * A throw inside counts as null too, and bumps nothing but `attempts`.
  * @param {Element} element - burst-tracked capture root
  * @param {object} state - burst state (retained artifacts + dirtyRoots)
  * @param {object} context - normalized capture context
- * @returns {Promise<string|null>}
+ * @param {Map<Element, Set<string>>|null} [animated] - what each animation target animates,
+ *   read by burst before the attempt (animatedProps, styles.js)
+ * @returns {Promise<{url: string, session: import('./session.js').CaptureSession}|null>}
  */
-export async function tryDiffCapture(element, state, context) {
+export async function tryDiffCapture(element, state, context, animated = null) {
   __diffStats.attempts++
   try {
-    const url = await diffCapture(element, state, context)
-    if (url) __diffStats.served++
-    return url
+    const out = await diffCapture(element, state, context, animated)
+    if (out) __diffStats.served++
+    return out
   } catch {
     return null // any failure → full pipeline; the fast path must never cost correctness
   }
@@ -177,7 +180,7 @@ export async function tryDiffCapture(element, state, context) {
  * __tests__/core.capture.diff.test.js; that it engages at all, by
  * __tests__/core.capture.diff.engagement.test.js.
  */
-async function diffCapture(element, state, context) {
+async function diffCapture(element, state, context, animated) {
   const R = state.retained
   if (!R || !R.clone || !R.styleMap || !R.srcToClone) return null
   // Root/whole-tree coupled features: their passes read or reshape the entire clone.
@@ -251,6 +254,9 @@ async function diffCapture(element, state, context) {
   }
   const bottomEdge = zeroed.indexOf(null)
 
+  // The frame's session grows the retained maps in place and keeps no log.
+  const frame = createCaptureSession(context, R)
+  context.__animated = animated
   context.__compressedAssets = R.__compressedAssets
   context.__compressionDensity = R.__compressionDensity
   context.__compressionRootTransform = R.rootTransform2D
@@ -265,7 +271,7 @@ async function diffCapture(element, state, context) {
     // sharing the retained styleMap/styleCache (class dedup accumulates) with a fresh
     // delta nodeMap so subtree-scoped passes see only their own nodes.
     const delta = new Map()
-    const sessionCache = { styleMap: R.styleMap, styleCache: R.styleCache, nodeMap: delta, options: context }
+    const sessionCache = { styleMap: frame.styleMap, styleCache: frame.styleCache, nodeMap: delta, options: context }
     // The same live-DOM prep the full pipeline runs before ITS deepClone (capture.js,
     // prepare.js): clamp/ellipsis text to its rendered lines and un-skip content-visibility.
     // A bare deepClone spliced un-clamped text into the retained frame.
@@ -325,7 +331,7 @@ async function diffCapture(element, state, context) {
   // measured sizes). One pass over the retained pairs refreshes the style key of every box
   // whose computed geometry drifted — the same values a full pipeline would snapshot at the
   // current epoch, so byte-fidelity holds without bailing on layout-changing mutations.
-  const sessionLike = { styleMap: R.styleMap, styleCache: R.styleCache, nodeMap: R.nodeMap, options: context }
+  const sessionLike = { styleMap: frame.styleMap, styleCache: frame.styleCache, nodeMap: frame.nodeMap, options: context }
   const resizedParents = new WeakSet()
   let rezero = false
   for (const [cloneN, srcN] of R.nodeMap.entries()) {
@@ -421,5 +427,5 @@ async function diffCapture(element, state, context) {
   context.__compressedSnapshot = snapshotCompressedAssets(R.clone, context.__compressedAssets)
   R.__compressedAssets = context.__compressedAssets
   R.__compressionDensity = context.__compressionDensity
-  return url
+  return { url, session: frame }
 }

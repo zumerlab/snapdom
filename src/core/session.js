@@ -10,6 +10,8 @@
  *
  * The session is an argument: snapdom.capture creates it and hands it to captureDOM, which
  * hands it to prepareClone; direct callers of either get one from a default parameter.
+ * A differential frame (diff.js) gets its own, built over burst's retained capture, and
+ * hands it to buildResult as the full path does.
  * The factory is pure: captureDOM applies the cache policy at its entry and on the torn
  * retry, the two ticks the factory used to apply it in.
  *

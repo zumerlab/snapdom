@@ -4,8 +4,8 @@
  * Owns what happens around a capture, not the capture itself (core/capture.js): option
  * normalization, the per-capture plugin list, the Safari pre-step, the burst decision, and
  * `buildResult`, which turns a data URL into the result object with its export queue and
- * hooks. Burst's differential path calls buildResult straight from the context, so nothing
- * a result needs may live only inside captureDOM.
+ * hooks. Burst's differential path calls buildResult straight from the context and the
+ * frame's session, so nothing a result needs may live only inside captureDOM.
  * @module api/snapdom
  */
 import { captureDOM } from '../core/capture.js'
@@ -162,7 +162,7 @@ async function main(element, userOptions) {
     return captureWithBurst(
       element, userOptions, context,
       () => snapdom.capture(element, context, INTERNAL_TOKEN),
-      (url) => buildResult(url, context)
+      (url, session) => buildResult(url, context, session)
     )
   }
   // The burst queue asks the same before each capture it runs.
@@ -245,7 +245,7 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
   }
 
   const url = await captureDOM(el, context, session)
-  return buildResult(url, context)
+  return buildResult(url, context, session)
 }
 
 /**
@@ -253,8 +253,13 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
  * to<Format> helpers, hooks). Shared by snapdom.capture and burst's differential
  * recapture, which produces a fresh URL without re-running captureDOM.
  * @private
+ * @param {string|HTMLCanvasElement|null} url - the capture: an svg data URL, the
+ *   html-in-canvas bitmap, or null when the stage stopped before the render
+ * @param {object} context - normalized capture context
+ * @param {import('../core/session.js').CaptureSession} session - the run that made `url`
+ * @returns {Promise<object>}
  */
-async function buildResult(url, context) {
+async function buildResult(url, context, session) {
   // A capture that stopped at 'clone' has no render artifact. Every door to one
   // throws the SAME error, naming the plugins that lowered the stage: silently
   // re-capturing would hand back pixels of a different instant (stages.js).
@@ -310,7 +315,7 @@ async function buildResult(url, context) {
 
   // What every export of this result takes besides its options (ExportEnv, toCanvas.js).
   const env = {
-    warnings: context.__session && context.__session.warnings,
+    warnings: session.warnings,
     layoutZoom: context.__layoutZoom,
     fileSvg: context.__fileSvg,
   }
