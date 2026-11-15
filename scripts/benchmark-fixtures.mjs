@@ -1,6 +1,6 @@
 import { complexCardHTML, bigTableHTML, cssHeavyScenario, shadowTreeScenario, deepTreeScenario, dashboardScenario } from '/harness.js'
 
-export const scenes = ['card', 'table', 'css', 'shadow', 'images', 'fonts', 'deep', 'dashboard']
+export const scenes = ['card', 'table', 'css', 'shadow', 'images', 'fonts', 'deep', 'dashboard', 'bigsheet', 'layout']
 let active
 let fontsReady
 const templates = new Map()
@@ -31,6 +31,35 @@ export async function mount(name, stamp) {
     const root = document.createElement('div')
     root.style.cssText = 'width:800px;background:white;font:14px/1.4 Arial,sans-serif'
     if (name === 'card') { root.style.width = '520px'; root.innerHTML = complexCardHTML() }
+    else if (name === 'bigsheet') {
+      // A small card beside a sheet of 10,000 rules that match nothing: what a recapture
+      // pays for the page's CSS when one node changed. The sheet stays for the context.
+      if (!templates.has(name)) {
+        const style = document.createElement('style')
+        style.textContent = Array.from({ length: 10000 }, (_, i) => `.bs-${i} .bs-x{color:#${(i % 4096).toString(16).padStart(3, '0')}}`).join('')
+        document.head.appendChild(style)
+        templates.set(name, style)
+      }
+      root.style.width = '520px'
+      root.innerHTML = complexCardHTML() + complexCardHTML()
+    } else if (name === 'layout') {
+      // Grids and positioned boxes, styled by class: every card holds used values (tracks,
+      // offsets) the snapshot cache has to probe before it serves.
+      if (!templates.has(name)) {
+        const style = document.createElement('style')
+        style.textContent = `.lg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+          .lc{position:relative;display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto 1fr auto;gap:4px;padding:8px;min-height:90px;border:1px solid #ccd;border-radius:6px}
+          .lb{position:absolute;top:4px;right:4px;padding:0 6px;border-radius:8px;background:#e33;color:#fff;font-size:11px}
+          .li{width:24px;height:24px;border-radius:50%;background:#99c}
+          .lt{font-weight:bold}.ld{grid-column:1/3;color:#555;font-size:12px}
+          .lf{position:absolute;left:8px;bottom:4px;font-size:10px;color:#888}
+          .lh{position:relative;height:28px}.lh span{position:absolute;right:0;top:4px}`
+        document.head.appendChild(style)
+        templates.set(name, style)
+      }
+      root.innerHTML = '<div class="lh"><b>Board</b><span>80 cards</span></div><div class="lg">' + Array.from({ length: 80 }, (_, i) =>
+        `<div class="lc"><div class="li"></div><div class="lt">Card ${i}</div><div class="ld">Detail line ${i} of the card</div><span class="lb">${i % 9}</span><span class="lf">id ${1000 + i}</span></div>`).join('') + '</div>'
+    }
     else if (name === 'table') root.innerHTML = bigTableHTML(250)
     else if (name === 'images') {
       root.style.cssText += ';display:grid;grid-template-columns:repeat(5,1fr);gap:8px'
@@ -90,6 +119,19 @@ export function mutate(stamp) {
   }
 }
 
+// A user typing in a field outside the capture root: pointer and key events, no mutation.
+function typeOutside() {
+  if (!active.outside) {
+    active.outside = document.createElement('input')
+    active.outside.style.cssText = 'position:fixed;right:0;bottom:0'
+    document.body.appendChild(active.outside)
+    const cleanup = active.cleanup
+    active.cleanup = () => { active.outside.remove(); cleanup() }
+  }
+  for (const type of ['pointerdown', 'pointerup']) active.outside.dispatchEvent(new PointerEvent(type, { bubbles: true, composed: true }))
+  for (const type of ['keydown', 'keyup']) active.outside.dispatchEvent(new KeyboardEvent(type, { bubbles: true, composed: true, key: 'a' }))
+}
+
 // Edits one leaf deep inside the scene and nothing else, the case the `recapture` mode cannot
 // show: its marker is a direct child of the root, so its mutation stamps the whole subtree
 // and no style snapshot is ever served. The text keeps its length, so the layout holds.
@@ -144,7 +186,8 @@ export async function run(snapdom, { scene, mode, samples, round, delayMs = 0 })
     for (let tick = 0; tick < ticks; tick++) {
       const stamp = round * 1000 + (sample + warmups) * ticks + tick
       if (mode === 'fresh') await mount(scene, stamp)
-      else if (mode === 'recapture' || (mode === 'poll-mutating' && tick % 4 === 0)) mutate(stamp)
+      else if (mode === 'recapture' || ((mode === 'poll-mutating' || mode === 'poll-events') && tick % 4 === 0)) mutate(stamp)
+      if (mode === 'poll-events') typeOutside()
       else if (mode === 'recapture-nested') mutateNested(stamp)
       // Layout/fixture construction are outside the stopwatch. No waits on memo-only ticks.
       if (!mode.startsWith('poll-') || tick % 4 === 0) await frame()
