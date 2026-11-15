@@ -310,7 +310,7 @@ async function diffCapture(element, state, context, animated) {
       pinIconStruts([sub, ...sub.querySelectorAll('*')], R.styleMap, delta, context.__iconMatchers)
     } catch { /* parity with full: non-blocking */ }
     await Promise.all([
-      inlineImages(sub, context),
+      inlineImages(sub, context, frame),
       inlineBackgroundImages(src, sub, R.styleCache, context, delta, R.plainBg),
     ])
     if (context.compress) {

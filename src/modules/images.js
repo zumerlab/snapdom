@@ -69,10 +69,12 @@ function extractImageDimensions(img) {
  * Also runs on the differential path (diff.js) for the rebuilt subtree.
  * Pinned by __tests__/modules.images.test.js.
  * @param {Element} clone - the clone, or the <img> itself when that is the capture root
- * @param {object} [options={}] - capture context; reads useProxy, fallbackURL, placeholders, __session
+ * @param {object} [options={}] - capture context; reads useProxy, fallbackURL, placeholders
+ * @param {{warnings?: Array|null}|null} [session=null] - the run that takes the warning; a
+ *   differential frame passes its own, which keeps no log
  * @returns {Promise<void>}
  */
-export async function inlineImages(clone, options = {}) {
+export async function inlineImages(clone, options = {}, session = null) {
   // querySelectorAll only matches descendants: when the capture root is itself an
   // <img>, it must be included or its src stays external and svg-as-image won't load it.
   const imgs = Array.from(clone.querySelectorAll('img'))
@@ -154,7 +156,7 @@ export async function inlineImages(clone, options = {}) {
     // tile a no-CORS host refused piled up at the map origin and half the map came out empty.
     let mark = ''
     if (options.placeholders !== false) {
-      sessionWarn(options.__session, 'image-fallback', `image failed to inline, using placeholder: ${src}`)
+      sessionWarn(session, 'image-fallback', `image failed to inline, using placeholder: ${src}`)
       mark = '<rect width="100%" height="100%" fill="#ccc"/><text x="50%" y="50%" fill="#666" font-family="sans-serif" font-size="12" text-anchor="middle" dominant-baseline="central">img</text>'
     }
     img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${fbW}" height="${fbH}">${mark}</svg>`)}`

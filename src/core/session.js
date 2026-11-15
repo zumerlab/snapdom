@@ -65,7 +65,8 @@ export function createCaptureSession(options = {}, retained = null) {
  * @property {Map<Element, string>} styleMap
  * @property {WeakMap<Element, CSSStyleDeclaration>} styleCache
  * @property {Map<Node, Node>} nodeMap - the run's map, or a fresh delta for a diff root
- * @property {CaptureSession['warnings']} warnings
+ * @property {CaptureSession['warnings']} warnings - the run's log, which clone.js and pseudo.js
+ *   write through the pass
  * @property {boolean|undefined} styleShare
  * @property {Array<Function>|null} resolveNodeHooks - declared null; deepClone reads the
  *   context's `__resolveNodeHooks`

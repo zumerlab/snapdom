@@ -1038,7 +1038,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         clone.appendChild(pseudoEl)
       }
     } catch (e) {
-      sessionWarn(options.__session, 'pseudo-failed', `${pseudo} could not be copied`, source)
+      sessionWarn(sessionCache, 'pseudo-failed', `${pseudo} could not be copied`, source)
       debugWarn(options, `Couldn't copy the ${pseudo} of`, [source, e])
     }
   }

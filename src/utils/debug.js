@@ -27,7 +27,8 @@ const MAX_SESSION_WARNINGS = 50
 /**
  * Record a capture degradation on the session's warnings log, surfaced as result.warnings.
  * Nothing reaches the console from here: pair it with debugWarn when the console should hear it too.
- * @param {{warnings?: Array}|undefined} session
+ * @param {{warnings?: Array|null}|null|undefined} session - a CaptureSession, a ClonePass or an
+ *   ExportEnv: each carries the run's log, or null where the run keeps none
  * @param {string} code - stable machine-readable code (e.g. 'image-fallback')
  * @param {string} message
  * @param {unknown} [detail]

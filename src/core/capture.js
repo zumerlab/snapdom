@@ -260,7 +260,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
 
   const assetsPhase = (async () => {
     await Promise.all([
-      runIdle(() => inlineImages(state.clone, state.options)),
+      runIdle(() => inlineImages(state.clone, state.options, session)),
       runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options, state.nodeMap, plainBg)),
     ])
     // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it

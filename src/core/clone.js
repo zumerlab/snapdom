@@ -1246,7 +1246,7 @@ async function cloneIframe(node, sessionCache, options) {
       const wrapper = await rasterizeIframe(node, sessionCache, options)
       return wrapper
     } catch (err) {
-      sessionWarn(options.__session, 'iframe-failed', 'same-origin iframe failed to rasterize', err)
+      sessionWarn(sessionCache, 'iframe-failed', 'same-origin iframe failed to rasterize', err)
       debugWarn(options, 'Couldn\'t capture an iframe, so it was left out.', err)
       // fall through
     }
@@ -1256,7 +1256,7 @@ async function cloneIframe(node, sessionCache, options) {
   // so what lands in the capture is the striped placeholder below; only mention the opt-out,
   // never suggest enabling an option that is already on.
   if (!sameOrigin) {
-    sessionWarn(options.__session, 'iframe-cross-origin', `cross-origin iframe replaced by ${options.placeholders ? 'a placeholder' : 'a spacer'}`, node)
+    sessionWarn(sessionCache, 'iframe-cross-origin', `cross-origin iframe replaced by ${options.placeholders ? 'a placeholder' : 'a spacer'}`, node)
     debugWarn(options, options.placeholders
       ? 'Can\'t capture a cross-origin iframe; showing a placeholder. Set placeholders: false to hide it.'
       : 'Can\'t capture a cross-origin iframe; left it out.', node)
@@ -1417,7 +1417,7 @@ async function cloneCanvas(node, sessionCache, options) {
     // tiles) is tainted: no page can read it back, and it renders blank. In 1.9.8 the throw
     // failed the whole capture, and uMap dropped snapdom over it; blank and quiet, it still
     // read as a snapdom bug.
-    sessionWarn(options?.__session, 'canvas-tainted', 'a canvas tainted by cross-origin images cannot be read; it renders blank', node)
+    sessionWarn(sessionCache, 'canvas-tainted', 'a canvas tainted by cross-origin images cannot be read; it renders blank', node)
     debugWarn(sessionCache, 'Couldn\'t read the pixels of a canvas; used its fallback content.', e)
   }
 
@@ -1571,7 +1571,7 @@ async function cloneObjectEmbed(node, sessionCache, options) {
     } catch { /* fall through */ }
   }
   if (url) {
-    sessionWarn(options.__session, 'embed-fallback', `<${node.localName}> not capturable, using its fallback content: ${url}`)
+    sessionWarn(sessionCache, 'embed-fallback', `<${node.localName}> not capturable, using its fallback content: ${url}`)
     debugWarn(options, `Couldn't capture <${node.localName}>${type ? ` (${type})` : ''}; showing its fallback content.`)
   }
   return undefined // generic clone: fallback children render, matching the no-plugin browser behavior
