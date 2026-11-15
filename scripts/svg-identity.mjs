@@ -139,6 +139,12 @@ const UNSTABLE = {
   // 1 run in 5 for each.
   'd15-cors-fonts-test': { firefox: { only: 'second', cause: 'snapdom: images.js reads img.width before Firefox decoded the cached data URL (recapture)' } },
   'd1-divegood-visual-demos': { firefox: { only: 'second', cause: 'snapdom: images.js reads img.width before Firefox decoded the cached data URL (recapture)' } },
+  // snapdom, not the page. A capture forces `content-visibility: auto` boxes visible and
+  // restores them; until the next rendering update the engine has not decided the restored
+  // box is on screen and lays it out empty (the column reads 64px for 124px). A recapture in
+  // that window through the differential path, which reconciles against the live box, keeps
+  // the 64px. Whether the frame has passed differs between loads.
+  'd-visibility-modes': { chromium: { only: 'mutated', cause: 'snapdom: right after a capture restores content-visibility:auto the live box is unrendered until the next frame, and the differential path reads it' }, webkit: { only: 'mutated', cause: 'snapdom: right after a capture restores content-visibility:auto the live box is unrendered until the next frame, and the differential path reads it' } },
   // Firefox, 1 full run in 3, live fingerprint identical: the embedded Unbounded 400 face is
   // two different woff2 files (51,152 and 39,888 bytes in the header), one with the MIME
   // text/html. Not isolated: Google Fonts answering two subsets, or the fonts phase picking
