@@ -290,9 +290,9 @@ async function diffCapture(element, state, context, animated) {
     await inlinePseudoElements(src, sub, sessionCache, context)
     // Newly-appearing scoped ::marker/::first-line rules can't be spliced into the
     // retained prefix CSS byte-faithfully → full pipeline.
-    if (sessionCache.__pseudoCSS) return null
+    if (sessionCache.pseudoCSS) return null
     // The first placeholder input needs PLACEHOLDER_RULE, absent from the retained prefix.
-    if (sessionCache.__usesPlaceholder && !R.classPrefixCSS?.includes('[data-sd-ph]')) return null
+    if (sessionCache.usesPlaceholder && !R.classPrefixCSS?.includes('[data-sd-ph]')) return null
     await resolveBlobUrlsInTree(sub, sessionCache)
     // The #426 zeroes of the rebuilt nodes, written where the full pipeline writes them:
     // after the clone passes, before the assets.

@@ -326,7 +326,7 @@ export async function prepareClone(element, options = {}, session = createCaptur
   const PSEUDO_SUPPRESS = '[data-snapdom-has-after]::after,[data-snapdom-has-before]::before{content:none!important;display:none!important}'
   // prepend shadow CSS so variables/rules are available for everything; scoped
   // ::marker/::first-line rules (emitScopedPseudoRule) ride along with it
-  const classPrefixCSS = shadowScopedCSS + PSEUDO_SUPPRESS + (sessionCache.__usesPlaceholder ? PLACEHOLDER_RULE : '') + (sessionCache.__pseudoCSS || '')
+  const classPrefixCSS = shadowScopedCSS + PSEUDO_SUPPRESS + (sessionCache.usesPlaceholder ? PLACEHOLDER_RULE : '') + (sessionCache.pseudoCSS || '')
   classCSS = classPrefixCSS + classCSS
 
   for (const [node, key] of sessionCache.styleMap.entries()) {

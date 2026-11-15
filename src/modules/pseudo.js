@@ -7,7 +7,7 @@
  * paint, #359). This pass reads each pseudo's computed style off the live element and builds
  * it: `::before`, `::after` and `::first-letter` become a <span> with a style snapshot (icon
  * glyphs drawn to <img>, `content: url()` fetched, counters resolved); `::marker` and
- * `::first-line` become a scoped rule on `sessionCache.__pseudoCSS`, folded into the class
+ * `::first-line` become a scoped rule on `sessionCache.pseudoCSS`, folded into the class
  * prefix CSS by prepareClone, since a span can neither re-fragment a first line nor replace
  * a native marker.
  *
@@ -450,7 +450,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
       return getStackDerived(name)
     },
     /** The pseudo's own increments, so the caller can carry them to the next sibling. */
-    __incs: incs
+    incs
   }
 }
 
@@ -469,7 +469,7 @@ const FIRST_LINE_PROPS = [
 
 /** Emits `[data-sd-pN]::marker{…}` / `…::first-line{…}` for elements an author selector
  *  matches, with only the properties that differ from the element's own computed style
- *  (plus non-normal marker content). Rules accumulate on sessionCache.__pseudoCSS;
+ *  (plus non-normal marker content). Rules accumulate on sessionCache.pseudoCSS;
  *  prepareClone folds them into the class prefix CSS. */
 function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) {
   try {
@@ -500,10 +500,10 @@ function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) 
       if (c && c !== 'normal' && c !== 'none') decls += `content:${c};`
     }
     if (!decls) return
-    const n = sessionCache.__pseudoRuleSeq = (sessionCache.__pseudoRuleSeq || 0) + 1
+    const n = sessionCache.pseudoRuleSeq = (sessionCache.pseudoRuleSeq || 0) + 1
     const attr = `data-sd-p${n}`
     clone.setAttribute(attr, '')
-    sessionCache.__pseudoCSS = (sessionCache.__pseudoCSS || '') + `[${attr}]${pseudo}{${decls}}`
+    sessionCache.pseudoCSS = (sessionCache.pseudoCSS || '') + `[${attr}]${pseudo}{${decls}}`
   } catch { /* fidelity extra — never blocks the capture */ }
 }
 
@@ -571,7 +571,7 @@ function resolvePseudoContentAndIncs(node, ps, baseCtx, siblingCounters) {
 
   // 4) collapse tokens (drops the gap between "1" and "." -> "1.")
   const text = collapseCssContent(resolved)
-  return { text, incs: derived.__incs || [], derived }
+  return { text, incs: derived.incs || [], derived }
 }
 
 /**
@@ -589,7 +589,7 @@ function resolvePseudoContentAndIncs(node, ps, baseCtx, siblingCounters) {
  *  - a `null` gate — the scan could not be trusted (cross-origin CSS), so nothing may be ruled out;
  *  - a shadow root in the capture whose own CSS declares a pseudo — those sheets are never
  *    scanned, so `pseudoGatesFor` returns null gates per node there and the walk probes them.
- *    `__shadowPseudo` is set by deepClone, which always runs first (prepare.js) and reads
+ *    `shadowPseudo` is set by deepClone, which always runs first (prepare.js) and reads
  *    every shadow root's CSS anyway; diff.js bails on shadow content before this pass. (It
  *    used to test `shadowScopes.size`, which is a WeakMap: always undefined, never a bail —
  *    the pinned shadow ::after was skipped right here.) A shadow root that declares no
@@ -601,7 +601,7 @@ function resolvePseudoContentAndIncs(node, ps, baseCtx, siblingCounters) {
  * @returns {boolean}
  */
 function canSkipPseudoWalk(source, sessionCache) {
-  if (sessionCache.__shadowPseudo) return false
+  if (sessionCache.shadowPseudo) return false
   const gates = pseudoGatesFor(source)
   const sels = []
   for (const kind of ['before', 'after', 'firstLetter', 'marker', 'firstLine']) {
@@ -634,7 +634,7 @@ function canSkipPseudoWalk(source, sessionCache) {
  * module.pseudo.twinShare, module.pseudo.unreliableScan and module.pseudo.adoptedReplace.
  * @param {Element} source - live element
  * @param {Element} clone - its clone, from deepClone
- * @param {object} sessionCache - the capture session (styleMap, nodeMap, __pseudoCSS, counters)
+ * @param {object} sessionCache - the capture session (styleMap, nodeMap, pseudoCSS, counters)
  * @param {object} options - capture context
  * @param {boolean} [isDescendant=false] - true on the recursive calls; gates the once-per-capture work
  * @returns {Promise<void>}
@@ -652,10 +652,10 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
   // Once per capture, on the ROOT call: the recursion below reaches every node, and the
   // preflight's fingerprint is a document-wide querySelectorAll plus a walk of every sheet —
   // per node that was quadratic (deep tree with a ::before per leaf: 64 ms of a 295 ms
-  // capture went to querySelectorAll, on a page holding one <style>). `__shadowPseudo`: a
+  // capture went to querySelectorAll, on a page holding one <style>). `shadowPseudo`: a
   // shadow root in the capture declares a pseudo (deepClone reads its CSS); the
   // document-level preflight cannot see it.
-  if (!isDescendant && !preflightWithFp(doc, sessionCache) && !sessionCache.__shadowPseudo) {
+  if (!isDescendant && !preflightWithFp(doc, sessionCache) && !sessionCache.shadowPseudo) {
     return
   }
   // Asked once, on the root call only: the recursion below is exactly what this skips.
@@ -664,16 +664,16 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
   // Sibling-counter overrides are per-capture state: they live on sessionCache (whose
   // lifetime is exactly one capture), not on a module global — a concurrently starting
   // capture used to wipe the shared global mid-traversal via an epoch bump.
-  if (!sessionCache.__siblingCounters) sessionCache.__siblingCounters = new WeakMap()
+  if (!sessionCache.siblingCounters) sessionCache.siblingCounters = new WeakMap()
 
   // buildCounterContext walks the whole document once — defer it behind a lazy
   // wrapper so that cost is only paid the first time a pseudo actually declares
   // counter-reset/-increment or a counter()/counters() content value (every real
   // call site below is already gated that way), not on every element's pseudo check.
-  if (!sessionCache.__counterCtx) {
-    sessionCache.__counterCtx = lazyCounterContext(source.ownerDocument || document, sessionCache)
+  if (!sessionCache.counterCtx) {
+    sessionCache.counterCtx = lazyCounterContext(source.ownerDocument || document, sessionCache)
   }
-  const counterCtx = sessionCache.__counterCtx
+  const counterCtx = sessionCache.counterCtx
 
   // Selector gate from the stylesheet scan: only nodes a collected selector matches pay
   // the 3-pseudo getComputedStyle probe. '' = no author rules for that kind, null =
@@ -787,7 +787,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
 const isNoExplicitContent =
   rawContent === '' || rawContent === 'none' || rawContent === 'normal'
 const { text: cleanContent, incs, derived } =
-  resolvePseudoContentAndIncs(source, style, counterCtx, sessionCache.__siblingCounters)
+  resolvePseudoContentAndIncs(source, style, counterCtx, sessionCache.siblingCounters)
 
       const bg = style.backgroundImage
       const bgColor = style.backgroundColor
@@ -835,18 +835,18 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if (!shouldRender) {
         // Even with no box rendered, a pseudo that had increments must propagate to siblings
         if (incs && incs.length && source.parentElement) {
-          const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
+          const map = sessionCache.siblingCounters.get(source.parentElement) || new Map()
           // For each counter the pseudo incremented, store the final resolved value
           for (const { name } of incs) {
             if (!name) continue
             // Rebuild the final value from `derived` by asking for it again, using
             // withSiblingOverrides + derive so it stays consistent with the read above
-            const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.__siblingCounters)
+            const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.siblingCounters)
             const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
             const finalVal = derived.get(source, name)
             map.set(name, finalVal)
           }
-          sessionCache.__siblingCounters.set(source.parentElement, map)
+          sessionCache.siblingCounters.set(source.parentElement, map)
         }
         continue
       }
@@ -1018,13 +1018,13 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
 
       // Before inserting: when the pseudo incremented anything, propagate the final value to siblings
       if (incs && incs.length && source.parentElement) {
-        const map = sessionCache.__siblingCounters.get(source.parentElement) || new Map()
+        const map = sessionCache.siblingCounters.get(source.parentElement) || new Map()
         for (const { name } of incs) {
           if (!name) continue
           const finalVal = derived.get(source, name)
           map.set(name, finalVal)
         }
-        sessionCache.__siblingCounters.set(source.parentElement, map)
+        sessionCache.siblingCounters.set(source.parentElement, map)
       }
 
       if (!hasVisibleBox) continue

@@ -735,11 +735,11 @@ function scanFor(doc) {
  *  @param {object|null} [session] - the capture's sessionCache; none reads the current scan */
 function scanOf(doc, session) {
   if (!session) return scanFor(doc)
-  if (!session.__scan) {
-    session.__scan = scanFor(doc)
-    session.__scanEnv = __envEpoch
+  if (!session.scan) {
+    session.scan = scanFor(doc)
+    session.scanEnv = __envEpoch
   }
-  return session.__scan
+  return session.scan
 }
 /** Whether author CSS can restyle outside a dirty subtree. Shares the property-universe
  *  scan, including imports, fetched cross-origin rules, and the same epoch invalidation.
@@ -843,12 +843,12 @@ const sheetPropsCache = new WeakMap()
  * @returns {Set<string>|null}
  */
 function shadowUniverseOf(el, root, doc, session) {
-  let st = session.__shadowUniverse
+  let st = session.shadowUniverse
   if (st === null) return null
   if (!st) {
     const base = scanOf(doc, session).universe
-    if (!base) return (session.__shadowUniverse = null)
-    st = session.__shadowUniverse = { universe: new Set(base), roots: new Set() }
+    if (!base) return (session.shadowUniverse = null)
+    st = session.shadowUniverse = { universe: new Set(base), roots: new Set() }
   }
   const join = (r) => {
     for (; isShadowRoot(r) && !st.roots.has(r); r = r.host.getRootNode()) {
@@ -865,7 +865,7 @@ function shadowUniverseOf(el, root, doc, session) {
   }
   let ok = join(root) && (!el.shadowRoot || join(el.shadowRoot))
   for (let slot = el.assignedSlot; ok && slot; slot = slot.assignedSlot) ok = join(slot.getRootNode())
-  if (!ok) return (session.__shadowUniverse = null)
+  if (!ok) return (session.shadowUniverse = null)
   return st.universe
 }
 
@@ -1415,9 +1415,9 @@ const SHARE_SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'OPTGR
 /** The capture's share state, made on first use: identity ids per node, the intern table,
  *  one snapshot record per identity. Lives on the session, so it dies with the capture. */
 function shareStateOf(session) {
-  let st = session.__styleShare
+  let st = session.share
   if (!st) {
-    st = session.__styleShare = { ids: new WeakMap(), intern: new Map(), snaps: new Map(), rootSeen: false }
+    st = session.share = { ids: new WeakMap(), intern: new Map(), snaps: new Map(), rootSeen: false }
   }
   return st
 }
@@ -1550,7 +1550,7 @@ function shareLists(rec, el) {
  * @returns {Record<string, string>}
  */
 export function pseudoSnapshotFor(source, pseudo, style, session, options) {
-  const st = options && options.__styleShare ? session && session.__styleShare : null
+  const st = options && options.__styleShare ? session && session.share : null
   const id = st ? st.ids.get(source) : undefined
   // Same shadow-host and slotted escape as the element share (`:host(:nth-child(2))::before`).
   if (id === undefined || id === -1 || source.shadowRoot || source.assignedSlot) return snapshotComputedStyle(style, pseudoUniverseFor(source, session))
@@ -1813,7 +1813,7 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
       }
     }
   }
-  snapshotCache.set(el, { env: session?.__scanEnv ?? __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex, used, clock: nodeClock })
+  snapshotCache.set(el, { env: session?.scanEnv ?? __envEpoch, stamp: stampOf(el, hosts), hosts, snapshot: snap, embedFonts: ef, excludeStyleProps: ex, used, clock: nodeClock })
   return snap
 }
 
@@ -1825,8 +1825,8 @@ function _resolveCtx(sessionOrCtx, opts) {
   if (sessionOrCtx && (sessionOrCtx.styleMap || sessionOrCtx.styleCache || sessionOrCtx.nodeMap)) {
     // Amortize to one ctx allocation per capture: deepClone calls this per node with the
     // same sessionCache + options references.
-    let ctx = sessionOrCtx.__ctx
-    if (!ctx || sessionOrCtx.__ctxOpts !== opts) {
+    let ctx = sessionOrCtx.stylesCtx
+    if (!ctx || sessionOrCtx.stylesCtxOpts !== opts) {
       ctx = {
         session: sessionOrCtx,
         persist: {
@@ -1839,8 +1839,8 @@ function _resolveCtx(sessionOrCtx, opts) {
         },
         options: opts || {},
       }
-      sessionOrCtx.__ctx = ctx
-      sessionOrCtx.__ctxOpts = opts
+      sessionOrCtx.stylesCtx = ctx
+      sessionOrCtx.stylesCtxOpts = opts
     }
     return ctx
   }
@@ -1950,10 +1950,10 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // observers and watched a document the captured element does not live in.
   if (resetMode !== 'disabled') setupInvalidationOnce(source.ownerDocument)
 
-  if (resetMode === 'disabled' && !ctx.session.__bumpedForDisabled) {
+  if (resetMode === 'disabled' && !ctx.session.bumpedForDisabled) {
     bumpEpoch()
     snapshotKeyCache.clear()
-    ctx.session.__bumpedForDisabled = true
+    ctx.session.bumpedForDisabled = true
   }
 
   const { session, persist } = ctx
@@ -2335,7 +2335,7 @@ export const ONE_LINE_PROP = typeof CSS !== 'undefined' && CSS.supports?.('text-
 function freezeOneLine(source, clone, snap, flexItem, session) {
   const mode = snap['text-wrap-mode'] || snap['white-space'] || ''
   const noWrap = mode === 'nowrap' || mode === 'pre' || (ONE_LINE_PROP === 'white-space' && mode !== 'normal')
-  const pinned = session.__oneLine ||= new WeakSet()
+  const pinned = session.oneLine ||= new WeakSet()
   // Parents are cloned before their children, so the parent alone says whether the box is
   // under a pin. A box that cannot wrap live carries its own mode in its class rule.
   if (pinned.has(source.parentElement)) {
@@ -2399,7 +2399,7 @@ function textOnOneLine(el, snap, session) {
     }
   }
   if (!first) return false
-  const axes = axesOf(el, session.__axes ||= new WeakMap())
+  const axes = axesOf(el, session.axes ||= new WeakMap())
   if (axes === SKEWED) return runs === 1 && rects === 1 && !el.childElementCount
   // Runs are measured in page pixels, the content box in layout pixels.
   const scale = axes === SCALED && el.offsetHeight ? el.getBoundingClientRect().height / el.offsetHeight : 1

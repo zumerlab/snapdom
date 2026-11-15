@@ -991,13 +991,13 @@ export async function deepClone(node, sessionCache, options) {
   // #512: a <style> child of the void <input> left Safari's serialized SVG unclosed and
   // was dropped by HTML serialization. Color/opacity ride as custom properties on the
   // clone; PLACEHOLDER_RULE (prepare.js) in the prefix CSS paints them. Putting
-  // the rule on __pseudoCSS would bail the diff path on every recapture (diff.js:301).
+  // the rule on pseudoCSS would bail the diff path on every recapture (diffCapture, diff.js).
   if ((isInput || isTextarea) && !node.value && node.placeholder) {
     try {
       const phStyle = window.getComputedStyle(node, '::placeholder')
       const phColor = phStyle && phStyle.color
       if (phColor && phColor !== 'rgba(0, 0, 0, 0)') {
-        sessionCache.__usesPlaceholder = true
+        sessionCache.usesPlaceholder = true
         clone.setAttribute('data-sd-ph', '')
         clone.style.setProperty('--sd-ph', phColor)
         clone.style.setProperty('--sd-ph-o', phStyle.opacity || '1')
@@ -1121,7 +1121,7 @@ export async function deepClone(node, sessionCache, options) {
       // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
       // among them, and a page whose only ::after lives in a shadow root skipped the pass
       // entirely (the pinned shadow ::after that never painted).
-      if (!sessionCache.__shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.__shadowPseudo = true
+      if (!sessionCache.shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.shadowPseudo = true
       rewritten = rewriteShadowCSS(rawCSS, `[data-sd~="${ownId}"]`, ownId)
     }
     const hostId = group.id === ownId ? ownId : `${ownId} ${group.id}`

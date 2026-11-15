@@ -286,7 +286,7 @@ describe('differential recapture', () => {
     }
   })
 
-  // #512: a per-node ::placeholder rule on __pseudoCSS made every recapture of a subtree
+  // #512: a per-node ::placeholder rule on pseudoCSS made every recapture of a subtree
   // that contains an empty placeholder input bail to the full pipeline (diff.js:301).
   // Color now rides as custom properties on the clone; the prefix rule is static.
   it('serves a mutation in a subtree that contains a placeholder input (#512)', async () => {

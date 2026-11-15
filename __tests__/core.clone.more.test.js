@@ -818,8 +818,8 @@ describe('deepClone – Tier 2 fixes', () => {
     expect(clone.hasAttribute('data-sd-ph')).toBe(true)
     expect(clone.style.getPropertyValue('--sd-ph')).toBe(phColor)
     expect(clone.style.getPropertyValue('--sd-ph-o')).toBeTruthy()
-    // A per-node rule on __pseudoCSS would bail the diff path on recapture.
-    expect(session.__pseudoCSS).toBeFalsy()
+    // A per-node rule on pseudoCSS would bail the diff path on recapture.
+    expect(session.pseudoCSS).toBeFalsy()
   })
 })
 
