@@ -580,7 +580,8 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   // against the iframe's own window.
   // `__pinned`: the svg engine captures this documentElement at the pinned viewport, not
   // at scrollHeight (#449); the flag lives here and not on the frame's <html>, see the pin.
-  const nested = { ...options, scale: 1, clip: null, __pinned: true }
+  // `__styleShare`: the parent's share verdict, which the nested capture takes as its override.
+  const nested = { ...options, scale: 1, clip: null, __pinned: true, __styleShare: sessionCache.styleShare }
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)

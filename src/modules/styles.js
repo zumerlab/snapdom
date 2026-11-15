@@ -1376,7 +1376,8 @@ function snapshotIsCurrent(rec, el) {
  *  - document: no author selector that can split identical identities (structural position,
  *    sibling combinators, interaction/UA state, :has — styleShareSafe above), and no running
  *    animation/transition under the capture root (computed styles differ per frame). Decided
- *    once per capture in captureDOM → options.__styleShare.
+ *    once per capture in captureDOM, which writes it to the session (styleShare), and read
+ *    from the clone pass.
  *  - element: never for form controls (UA styles their state without author CSS), never for
  *    the focused element (UA :focus-visible ring), never for shadow-root content (its sheets
  *    are outside the document scan the share gate comes from), and never for a shadow host
@@ -1545,12 +1546,11 @@ function shareLists(rec, el) {
  * @param {string} pseudo '::before' | '::after'
  * @param {CSSStyleDeclaration} style getComputedStyle(source, pseudo)
  * Pinned by __tests__/module.pseudo.twinShare.test.js.
- * @param {Object} session the capture's sessionCache
- * @param {Object} options capture options (carries __styleShare)
+ * @param {Object} session the clone pass (carries the styleShare verdict and the share tables)
  * @returns {Record<string, string>}
  */
-export function pseudoSnapshotFor(source, pseudo, style, session, options) {
-  const st = options && options.__styleShare ? session && session.share : null
+export function pseudoSnapshotFor(source, pseudo, style, session) {
+  const st = session && session.styleShare ? session.share : null
   const id = st ? st.ids.get(source) : undefined
   // Same shadow-host and slotted escape as the element share (`:host(:nth-child(2))::before`).
   if (id === undefined || id === -1 || source.shadowRoot || source.assignedSlot) return snapshotComputedStyle(style, pseudoUniverseFor(source, session))
@@ -1937,7 +1937,7 @@ function normalizeInlineStyleToComputed(source, clone, computed, attr, animated)
  * @param {Element} clone
  * @param {object} [sessionOrCtx] - the session cache (styleMap / styleCache / nodeMap), a
  *   ready ctx, or nothing for an isolated one-off call
- * @param {object} [opts] - capture options: cache, embedFonts, excludeStyleProps, __styleShare
+ * @param {object} [opts] - capture options: cache, embedFonts, excludeStyleProps
  */
 export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (source.tagName === 'STYLE') return
@@ -2009,7 +2009,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   }
 
   let shareInfo = null
-  if (ctx.options && ctx.options.__styleShare && session.styleMap) {
+  if (session.styleShare && session.styleMap) {
     const st = shareStateOf(session)
     const id = identityFor(source, st)
     const doc = source.ownerDocument || document

@@ -886,7 +886,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // A host freezeOneLine pinned (styles.js) carries the pin to the span like to any element
       // under it: the base reset's `span{white-space:normal}` beats what the span inherits.
       else if (clone.style.getPropertyValue(ONE_LINE_PROP) === 'nowrap') pseudoEl.style.setProperty(ONE_LINE_PROP, 'nowrap')
-      const snapshot = pseudoSnapshotFor(source, pseudo, style, sessionCache, options)
+      const snapshot = pseudoSnapshotFor(source, pseudo, style, sessionCache)
       // #452: mirror the styles.js width-softening flags. An empty pseudo box sized by
       // CSS (width/height, content:'') is the #433 "empty box" case — its width must be
       // kept verbatim, otherwise a blockified flex-item dot collapses to 0 and a

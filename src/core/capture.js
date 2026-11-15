@@ -149,14 +149,17 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // work. Both gates are cheap and both err toward full reads: an unscannable stylesheet or
   // any selector that can split identical identities answers unsafe, and one running
   // animation/transition anywhere under the root (computed styles differ per frame) turns
-  // it off wholesale. Respect an explicit override so tests can pin the slow path.
-  if (options.__styleShare === undefined) {
+  // it off wholesale. Respect an explicit override so tests can pin the slow path; it is
+  // read here, after the hooks, and the verdict goes to the session, never to the context.
+  let share = options.__styleShare
+  if (share === undefined) {
     try {
-      options.__styleShare = styleShareSafe(state.element) && animations?.length === 0
+      share = styleShareSafe(state.element) && animations?.length === 0
     } catch {
-      options.__styleShare = false
+      share = false
     }
   }
+  session.styleShare = share
 
   // fast: false | 'auto' (#503): lets the clone walks yield to the page (createSlicer).
   let slicer = createSlicer(options.fast)

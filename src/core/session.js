@@ -44,7 +44,8 @@
  *   (animatedProps, styles.js). Written by captureDOM before the clone loop, kept on the torn
  *   retry; on a differential frame, the value burst read before the attempt
  * @property {boolean|undefined} styleShare - the identity-share verdict, seeded with the
- *   context's `__styleShare` override
+ *   context's `__styleShare` override. Written by captureDOM after beforeClone, kept on the
+ *   torn retry; a differential frame keeps the seed, so sharing stays off there
  * @property {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} slicer -
  *   fast: false | 'auto' (#503). Written by captureDOM before each clone attempt, null on the
  *   torn retry and after the clone stage; null on a differential frame, which never yields
@@ -104,7 +105,8 @@ export function createCaptureSession(options = {}, retained = null) {
  * @property {Map<Node, Node>} nodeMap - the run's map, or a fresh delta for a diff root
  * @property {CaptureSession['warnings']} warnings - the run's log, which clone.js and pseudo.js
  *   write through the pass
- * @property {boolean|undefined} styleShare
+ * @property {CaptureSession['styleShare']} styleShare - read by inlineAllStyles,
+ *   pseudoSnapshotFor and rasterizeIframe, which hands it to the nested capture
  * @property {CaptureSession['resolveNodeHooks']} resolveNodeHooks - read by deepClone, per node
  * @property {CaptureSession['animated']} animated - read by inlineAllStyles, per node with a
  *   style attribute
