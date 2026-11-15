@@ -960,12 +960,6 @@ function normalizeInlineStyleToComputed(source, clone, computed, attr, animated)
   // loop skips every other prop. `all` expands to the border longhands too.
   const bordersOnly = canSkip && important.size === 0 && !animated && !isTextField(source)
   if (bordersOnly && !/border|\ball\s*:/i.test(attr)) return
-  // Firefox (141): once the grid-template-columns of one grid container has been read, the
-  // `auto` margins of every other grid container read 0px until its own tracks are read. The
-  // snapshot reads its properties in an order that hides it; this loop came first, and a
-  // right-aligned grid was written at the left on its first capture.
-  // Pinned by __tests__/module.styles.inlineAutoMargin.test.js.
-  if (attr.includes('margin') && (firefox ??= isFirefox())) computed.getPropertyValue('grid-template-columns')
   let sameBorderWidths
   for (let i = 0, n = inline.length; i < n; i++) {
     const prop = inline[i]
@@ -1033,6 +1027,12 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     session.styleCache.set(source, computed || getComputedStyle((source.ownerDocument || document).documentElement))
   }
   const pre = session.styleCache.get(source)
+  // Firefox (141): once the grid-template-columns of one grid container has been read, the
+  // `auto` margins of every other grid container read 0px until its own tracks are read. So
+  // a grid's tracks are read first, before the inline declarations and the snapshot: a
+  // right-aligned grid was captured at the left.
+  // Pinned by __tests__/module.styles.inlineAutoMargin.test.js.
+  if ((firefox ??= isFirefox()) && pre.display.includes('grid')) pre.getPropertyValue('grid-template-columns')
 
   // Replace authored inline style with computed values so !important in stylesheets
   // correctly overrides inline styles in the clone (fixes #328)
