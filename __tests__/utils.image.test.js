@@ -76,14 +76,14 @@ describe('inlineSingleBackgroundEntry', () => {
     const url = 'https://cors.example.com/img.png'
     const encoded = safeEncodeURI(resolveURL(url))
 
-    // No-proxy attempt previously failed → null remembered under the no-proxy key.
-    cache.background.set(`|${encoded}`, null)
-
-    // The no-proxy path still short-circuits to 'none' from its own cached failure.
+    // The no-proxy attempt fails. Nothing is stored for it: snapFetch remembers the failure
+    // under its own key, which holds the proxy, for its errorTTL.
+    globalThis.fetch = vi.fn(async () => { throw new TypeError('Failed to fetch') })
     expect(await inlineSingleBackgroundEntry(`url("${url}")`)).toBe('none')
+    expect(cache.background.has(`|${encoded}`)).toBe(false)
 
     // A capture WITH a working proxy uses a distinct key, so it fetches fresh instead of
-    // inheriting the poisoned null — the recoverable image is not silently dropped.
+    // inheriting the failure: the recoverable image is not silently dropped.
     globalThis.fetch = vi.fn(async () => ({
       ok: true,
       status: 200,

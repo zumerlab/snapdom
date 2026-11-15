@@ -39,29 +39,15 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
   const absoluteUrl = resolveURL(rawUrl)
   // Normalize / encode the URL string for fetch
   const encodedUrl = safeEncodeURI(absoluteUrl)
-  // Cache key includes the proxy: a CORS failure under one proxy setting must not poison
-  // a later capture of the same URL with a working proxy (a `null` would mask a recoverable
-  // image). Successes are also keyed per proxy, which is constant in practice.
+  // Keyed per proxy, and successes only. A failure is remembered by snapFetch alone, for its
+  // errorTTL: kept here it had no expiry, and a background whose fetch failed once stayed
+  // blank for the life of the page. Pinned by __tests__/utils.image.test.js.
   const cacheKey = (options.useProxy || '') + '|' + encodedUrl
-  // Fast path: cached success
-  if (cache.background.has(cacheKey)) {
-    const dataUrl = cache.background.get(cacheKey)
-    return dataUrl ? `url("${dataUrl}")` : 'none'
-  }
-  // Try to inline; never throw — degrade to "none" on failure
-  try {
-    const dataUrl = await snapFetch(encodedUrl, { as: 'dataURL', useProxy: options.useProxy, debug: options.debug })
-    // Guard: ensure it actually looks like an image data URL
-    if (dataUrl.ok) {
-      cache.background.set(cacheKey, dataUrl.data)
-      return `url("${dataUrl.data}")`
-    }
-    // Unexpected format → degrade safely
-    cache.background.set(cacheKey, null)
-    return 'none'
-  } catch {
-    // On any error (404/CORS/timeout/tainted/etc.), don't break the capture
-    cache.background.set(cacheKey, null) // remember failure to avoid loops
-    return 'none'
-  }
+  const hit = cache.background.get(cacheKey)
+  if (hit) return `url("${hit}")`
+  // snapFetch never throws: a failure degrades the layer to "none".
+  const dataUrl = await snapFetch(encodedUrl, { as: 'dataURL', useProxy: options.useProxy, debug: options.debug })
+  if (!dataUrl.ok) return 'none'
+  cache.background.set(cacheKey, dataUrl.data)
+  return `url("${dataUrl.data}")`
 }
