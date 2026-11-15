@@ -607,6 +607,19 @@ function sidesHold(style, frozen, shorthand, sides) {
 }
 
 /**
+ * Whether the size the element's last snapshot froze still reads the same, as computed
+ * values. For the differential reconcile (diff.js), on a box whose key holds no width: the
+ * size sits in its inline style then, which no key comparison sees.
+ * @param {Element} el
+ * @param {CSSStyleDeclaration} style - its live computed style
+ * @returns {boolean}
+ */
+export function sizeHolds(el, style) {
+  const used = snapshotCache.get(el)?.used
+  return !used || used.box === false || (style.getPropertyValue('width') === used.w && style.getPropertyValue('height') === used.h)
+}
+
+/**
  * Whether the margins the element's last snapshot froze still read the same. For the
  * differential reconcile (diff.js): a key compares what it holds, and a margin of 0px is not
  * in it. True when no margin was noted (usedValuesOf).

@@ -25,7 +25,7 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
-import { inlineAllStyles, flexRowOverflows, marginsHold } from '../modules/styles.js'
+import { inlineAllStyles, flexRowOverflows, marginsHold, sizeHolds } from '../modules/styles.js'
 import { universeFor, stylesLeakAcrossSubtrees } from '../modules/authorStyles.js'
 import { ONE_LINE_PROP } from '../modules/styleFreeze.js'
 import { generateCSSClasses } from '../utils/index.js'
@@ -419,6 +419,9 @@ async function diffCapture(element, state, context, animated) {
     // it in Firefox, which freezes `auto` as px (truth fuzz, seeds 13 and 23).
     // Pinned by __tests__/core.capture.diff.margins.test.js.
     if (!drifted && !marginsHold(srcN, cs || getComputedStyle(srcN))) drifted = true
+    // A width normalized into the inline style (an authored `width: auto` on a grid) is in no
+    // key either: the box kept its old width and transform origin (truth fuzz, seed 190).
+    if (!drifted && !frozen.width && !frozen['min-width'] && !sizeHolds(srcN, cs || getComputedStyle(srcN))) drifted = true
     if (drifted) {
       // A retained image was reduced for its old box. Rebuild from the source if that box
       // changes, rather than stretching already-discarded pixels during reconciliation.
