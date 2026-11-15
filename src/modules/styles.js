@@ -1127,9 +1127,8 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
       // Stored by REFERENCE, with the riders it already carries: the copy that used to be
       // made here, plus a re-read list and a base signature per identity, cost 27 ms of a
       // 134 ms pipeline on a tree whose nodes are all unique (the deep-tree scene: 1,936
-      // leaves, each with its own inline background) for lists no twin ever read. Two
-      // passes mutate this object after it is stored, and both are deterministic for the
-      // twins: the flex-item min-width floor writes the value every twin gets too, and
+      // leaves, each with its own inline background) for lists no twin ever read. One
+      // pass mutates this object after it is stored:
       // stripHeightForWrappers judges this node's OWN children, so it may delete height /
       // block-size that a twin keeps — the flags let shareLists put them back on the
       // re-read list, where the twin reads its own.
@@ -1454,10 +1453,15 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // for flex/grid items. Explicitly set min-width:0 on flex/grid items that have
   // the default auto value, so the generated CSS class includes it and we don't
   // need a blanket foreignObject *{min-width:0} rule (which breaks inline-flex+gap).
+  // The floor goes into the key, never into `snap`: the snapshot outlives this capture and is
+  // shared with its twins, and whether a row overflows belongs to neither. Written into the
+  // snapshot, an item kept the floor of the first twin read, or of the capture before its row
+  // overflowed. Pinned by __tests__/module.styles.flexFloor.test.js.
+  let floor = ''
   if (flexItem) {
     const mw = pre.getPropertyValue('min-width')
     if (!mw || mw === 'auto' || mw === '0px') {
-      snap['min-width'] = '0px'
+      floor = '0px'
       const ox = pre.getPropertyValue('overflow-x')
       const parent = source.parentElement
       if (mw === 'auto' && (ox === 'visible' || ox === 'clip') && parent &&
@@ -1492,8 +1496,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
           }
           floors.set(parent, overflow)
         }
-        if (overflow) snap['min-width'] = snap.width
+        if (overflow) floor = snap.width
       }
+      if (snap['min-width'] === floor) floor = ''
     }
   }
 
@@ -1502,7 +1507,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // headings, paragraphs…) skip that bookkeeping entirely so the hot path stays untouched.
   let sig = styleSignature(snap, tag)
   let sizedByContent = true
-  let flags = ''
+  let flags = floor && '|m' + floor
   if (softensWidth(tag, (snap.display || '').toLowerCase())) {
     sizedByContent = hasRenderedContent(source)
     // #484: softening only reproduces the box when its `width` is auto. On a blockified box in
@@ -1515,8 +1520,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     }
     // Fold content/flex into the cache key so soften-eligible elements with identical styles
     // but different shape don't collide on the shared snapshotKeyCache.
-    flags = (sizedByContent ? '|c' : '') + (flexItem ? '|f' : '')
-    sig += flags
+    flags += (sizedByContent ? '|c' : '') + (flexItem ? '|f' : '')
     // This is the exact condition getStyleKey uses to actually drop the width (the #429/#433/
     // #434 family): tally it so capture.js can suggest `reconcile: true` when it's never used —
     // cheap, since softensWidth/sizedByContent are already computed for this node regardless.
@@ -1526,6 +1530,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
       session.reconcileRisk = (session.reconcileRisk || 0) + 1
     }
   }
+  sig += flags
   // A twin first asks its share record by tail (see getSnapshot): a few dozen short keys per
   // identity in place of one lookup by the full signature per node.
   const memo = shareInfo && shareInfo.tail !== undefined ? (shareInfo.rec.keys ||= new Map()) : null
@@ -1534,7 +1539,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   if (key === undefined) {
     key = persist.snapshotKeyCache.get(sig)
     if (key === undefined) {
-      key = getStyleKey(snap, tag, sizedByContent, flexItem)
+      key = getStyleKey(floor ? { ...snap, 'min-width': floor } : snap, tag, sizedByContent, flexItem)
       // Bound at INSERTION: evicting only on an epoch bump left the Map unbounded for as long
       // as the page's styles held still. Map iterates in insertion order, so this is FIFO.
       if (persist.snapshotKeyCache.size >= MAX_SNAPSHOT_KEY_CACHE) {
