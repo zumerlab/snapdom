@@ -114,9 +114,10 @@ function mountClone(clone, css, width, height) {
  *
  * @param {object} state - capture state: `clone`, `element`, and the assembled CSS strings
  * @param {object} context - normalized capture context
+ * @param {import('../core/session.js').CaptureSession} session - receives `artifacts` on success
  * @returns {Promise<HTMLCanvasElement|null>}
  */
-export async function tryCanvasEngine(state, context) {
+export async function tryCanvasEngine(state, context, session) {
   const drawApi = detectDrawApi()
   if (!drawApi) return null
 
@@ -251,7 +252,7 @@ export async function tryCanvasEngine(state, context) {
   Object.defineProperty(context, 'meta', {
     value: meta, enumerable: true, writable: false, configurable: true,
   })
-  context.__artifacts = {
+  session.artifacts = {
     classCSS: state.classCSS || '',
     fontsCSS: state.fontsCSS || '',
     baseCSS: state.baseCSS || '',

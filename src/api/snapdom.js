@@ -316,9 +316,11 @@ async function buildResult(url, context, session) {
   // What every export of this result takes besides its options (ExportEnv, toCanvas.js).
   const env = {
     warnings: session.warnings,
-    layoutZoom: context.__layoutZoom,
-    fileSvg: context.__fileSvg,
+    layoutZoom: session.layoutZoom,
+    fileSvg: session.fileSvg,
   }
+  // The CSS strings export plugins read, written by whichever engine rendered.
+  const artifacts = session.artifacts
 
   const rasterEngineImage = async (ctx, opts) => {
     const { rasterize } = await import('../modules/rasterize.js')
@@ -427,7 +429,7 @@ async function buildResult(url, context, session) {
   const viewOf = (extra) =>
     Object.defineProperty({ ...context, ...extra }, 'options', { value: context, configurable: true })
 
-  const _defineCtx = viewOf({ artifacts: context.__artifacts || null, export: exportFacade(), exports: _pluginExports })
+  const _defineCtx = viewOf({ artifacts, export: exportFacade(), exports: _pluginExports })
 
   const providedMaps = await runAll('defineExports', _defineCtx)
   // Local-first: earlier plugins in the list (locals) win over later (globals).
@@ -496,7 +498,7 @@ async function buildResult(url, context, session) {
       const work = exportsMap[type]
       if (!work) throw new Error(`[SnapDOM] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, requestedOptions)
-      const ctx = viewOf({ artifacts: context.__artifacts || null, export: exportFacade({ type, options: nextOpts, requestedOptions }) })
+      const ctx = viewOf({ artifacts, export: exportFacade({ type, options: nextOpts, requestedOptions }) })
       // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
       // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
       // Both hooks OBSERVE: what an export returns is decided by `work`, and no hook return

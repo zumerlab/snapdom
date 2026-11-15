@@ -356,7 +356,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
   if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks) {
     const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
     assembleCaptureCSS(state, fontsCSS, universe)
-    const canvas = await tryCanvasEngine(state, state.options)
+    const canvas = await tryCanvasEngine(state, state.options, session)
     // The painted bitmap itself, not a data URL: encoding it eagerly costs 15-22x what the
     // pixel exports need (toDataURL+decode vs direct draw: 62 vs 4 ms on a card, 4.2 s vs
     // 210 ms at 29 Mpx, measured 2026-09-03) — without this handoff the engine is SLOWER
@@ -368,7 +368,9 @@ export async function captureDOM(element, options, session = createCaptureSessio
   if (slicer?.due()) await slicer.pause()
   const renderedClone = state.clone
   numberCompressedAssets(renderedClone, options.__compressedAssets)
-  const url = await composeAndSerialize(state, { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe })
+  const url = await composeAndSerialize(state, {
+    clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe, session, signatures: session.styleMap
+  })
   options.__compressedSnapshot = snapshotCompressedAssets(renderedClone, options.__compressedAssets)
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential
   // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty

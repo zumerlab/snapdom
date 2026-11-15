@@ -225,14 +225,18 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
  * recapture, which rebuilds only dirty subtrees and re-enters here with retained state.
  * `state` is the capture context itself or, from diff, a wrapper carrying element/options/
  * plugins/clone/classCSS/styleCache/nodeMap that is folded back onto that context. On the
- * way out it writes `options.meta` (the public geometry) and `options.__artifacts` (the CSS
- * strings export plugins read), then drops the clone and maps from the context.
+ * way out it writes `options.meta` (the public geometry) on the context, and `layoutZoom`,
+ * `fileSvg` and `artifacts` (the CSS strings export plugins read) on `ex.session`, then drops
+ * the clone and maps from the context. `ex.signatures` is the clone-to-style-key map that
+ * filters the body-room bleed and anchors page-positioned boxes: captureDOM passes its
+ * session's styleMap, a differential frame passes null, so a frame measures every node and
+ * does not re-anchor.
  * @param {object} state - capture context, or diff's wrapper around one
- * @param {{clipWindow: object|null, outerTransforms: boolean, outerShadows: boolean|'subtree', rootTransform2D: object|null, fontsCSS: string, universe: Set<string>|null}} ex
+ * @param {{clipWindow: object|null, outerTransforms: boolean, outerShadows: boolean|'subtree', rootTransform2D: object|null, fontsCSS: string, universe: Set<string>|null, session: import('../core/session.js').CaptureSession, signatures: Map<Element, string>|null}} ex
  * @returns {Promise<string>} SVG data URL
  */
 export async function composeAndSerialize(state, ex) {
-  const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe } = ex
+  const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe, session, signatures } = ex
   const options = state.options
   // ONE context: burst's differential recapture hands a wrapper carrying the rebuilt clone,
   // so fold it onto the capture context and keep every hook below on that single object.
@@ -322,11 +326,10 @@ export async function composeAndSerialize(state, ex) {
         // a shadow, Chromium, 2026-10-23) walking every node cost 1.9 ms of a 57 ms capture,
         // five computed-style reads each; filtered by signature it costs 0.5 ms. A node
         // without a signature is measured as before.
-        const styleMap = state.__session?.styleMap
         const inked = new Map()
         const candidates = new Map()
         for (const [clone, source] of state.nodeMap) {
-          const key = styleMap?.get(clone)
+          const key = signatures?.get(clone)
           if (key) {
             let has = inked.get(key)
             if (has === undefined) inked.set(key, has = OUTER_INK_SIGNATURE.test(key))
@@ -438,7 +441,7 @@ export async function composeAndSerialize(state, ex) {
         'svg{overflow:visible;} foreignObject{overflow:visible;}' + state.classCSS
       reconcileCloneLayout(state.element, state.clone, cssAll, state.nodeMap, w0, h0)
     } catch (e) {
-      sessionWarn(state.options.__session, 'reconcile-failed', 'reconcile pass failed', e)
+      sessionWarn(session, 'reconcile-failed', 'reconcile pass failed', e)
       debugWarn(state.options, 'reconcile couldn\'t run; captured without it.', e)
     }
   }
@@ -657,7 +660,7 @@ export async function composeAndSerialize(state, ex) {
   const view = elDoc.defaultView || window
   const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? liveLayoutZoom(view) : 1
   // toCanvas rasterizes Firefox exports smaller than this grid at it first (#516).
-  options.__layoutZoom = layoutZoom
+  session.layoutZoom = layoutZoom
   // fo x/y and padding are layout, and layout snaps them to a whole layout pixel. A clip whose
   // output grid is finer than that (device emulation reports dpr 2 and lays out at 1x, #526;
   // or scale 2) lost the fraction: a window from x 10.5 at dpr 2 began at device pixel 20,
@@ -720,8 +723,8 @@ export async function composeAndSerialize(state, ex) {
     ';direction:ltr !important' +
     (bodyRoom ? canvasBackground(elDoc) : '')
 
-  if (bodyRoom && (padL !== bodyRoom.left || padT !== bodyRoom.top) && state.__session) {
-    anchorPagePositioned(state.element, state.nodeMap, state.__session.styleMap, state.styleCache,
+  if (bodyRoom && (padL !== bodyRoom.left || padT !== bodyRoom.top) && signatures) {
+    anchorPagePositioned(state.element, state.nodeMap, signatures, state.styleCache,
       padL - bodyRoom.left, padT - bodyRoom.top)
   }
 
@@ -790,9 +793,8 @@ export async function composeAndSerialize(state, ex) {
   // svgString) therefore swap the zoomed wrapper for the one Safari and 1x screens get. Only
   // the wrapper differs: positions are the same CSS pixels, so the clone markup between the
   // wrapper tags is shared and only these few short tags are kept. Shallow clones serialize
-  // the tags the way the full pass did. Cleared at zoom 1 so a reused options bag never
-  // carries a previous capture's tags. Pinned by __tests__/engine.svg.layoutZoom.test.js.
-  options.__fileSvg = null
+  // the tags the way the full pass did. Left null at zoom 1: a session starts without them.
+  // Pinned by __tests__/engine.svg.layoutZoom.test.js.
   if (layoutZoom !== 1) {
     const openTag = (el) => {
       const s = serializer.serializeToString(el.cloneNode(false))
@@ -807,7 +809,7 @@ export async function composeAndSerialize(state, ex) {
     flatContainer.style.removeProperty('zoom')
     const flatGroup = shiftX || shiftY ? `translate(${shiftX} ${shiftY})` : ''
     const flatHeader = svgHeader.slice(0, svgHeader.indexOf('>') + 1) + (flatGroup ? `<g transform="${flatGroup}">` : '')
-    options.__fileSvg = {
+    session.fileSvg = {
       zoomed: [svgHeader + openTag(fo), openTag(container), svgFooter],
       flat: [flatHeader + openTag(flatFo), openTag(flatContainer), flatGroup ? '</g></svg>' : '</svg>'],
     }
@@ -818,7 +820,7 @@ export async function composeAndSerialize(state, ex) {
   // Render artifacts for export plugins (toHtml et al) — the CSS strings the pipeline
   // already holds, so export code never reverse-parses its own data URL. svgString stays
   // OUT (it doubles retained memory): exporters decode it lazily from the url.
-  options.__artifacts = {
+  session.artifacts = {
     classCSS: state.classCSS || '',
     fontsCSS: state.fontsCSS || '',
     baseCSS: state.baseCSS || '',
@@ -829,7 +831,7 @@ export async function composeAndSerialize(state, ex) {
   // Release the heavy stage fields once the last render hook has seen them: the result closes
   // over this context, so retaining the clone tree plus a second copy of the SVG source would
   // double what a live result holds. Export hooks never reached them anyway (the context did
-  // not carry them before), and they read `url` / `__artifacts` instead.
+  // not carry them before), and they read `url` / `artifacts` instead.
   state.clone = state.nodeMap = state.styleCache = state.svgString = null
 
   // The id is public and may belong to the page. Duplicate ids are possible while our

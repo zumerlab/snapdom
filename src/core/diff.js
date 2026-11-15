@@ -421,7 +421,9 @@ async function diffCapture(element, state, context, animated) {
       outerShadows: R.outerShadows,
       rootTransform2D: R.rootTransform2D,
       fontsCSS: R.fontsCSS || '',
-      universe
+      universe,
+      session: frame,
+      signatures: null
     }
   )
   context.__compressedSnapshot = snapshotCompressedAssets(R.clone, context.__compressedAssets)

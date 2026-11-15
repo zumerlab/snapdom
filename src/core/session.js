@@ -21,6 +21,7 @@
  *
  * `context.__session` is an ALIAS of the session of a full capture, set by captureDOM.
  * Published reader: packages/vector/src/adapters/snapdom.js (styleMap, in beforeRender).
+ * Nothing in src reads it: the engines take the session as an argument. A frame sets none.
  *
  * Never name a ClonePass slot `session` or `persist`: _resolveCtx (styles.js) tells a ready
  * styles ctx from a pass by those two keys.
@@ -38,6 +39,14 @@
  *   a differential frame, which keeps no log.
  * @property {boolean|undefined} styleShare - the identity-share verdict, seeded with the
  *   context's `__styleShare` override
+ *
+ * Render outputs, written by the engine that rendered (svg.js, htmlInCanvas.js), read by
+ * buildResult.
+ * @property {number} layoutZoom - the #508 grid, into ExportEnv
+ * @property {{zoomed: string[], flat: string[]}|null} fileSvg - the #552 wrappers, written by
+ *   the svg engine only when layoutZoom is not 1
+ * @property {{classCSS: string, fontsCSS: string, baseCSS: string, scrollbarCSS: string}|null} artifacts -
+ *   the CSS strings export plugins read as `ctx.artifacts`
  */
 
 /**
@@ -54,6 +63,9 @@ export function createCaptureSession(options = {}, retained = null) {
     nodeMap: retained ? retained.nodeMap : new Map(),
     warnings: retained ? null : [],
     styleShare: options.__styleShare,
+    layoutZoom: 1,
+    fileSvg: null,
+    artifacts: null,
   }
 }
 
