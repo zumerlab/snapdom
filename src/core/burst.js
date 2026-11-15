@@ -621,6 +621,29 @@ function targetScope(element, state, target) {
 }
 
 /**
+ * What burst keeps of the last full capture for diff.js (`state.retained`, `R` there). Built
+ * from captureDOM's retain payload; burst adds the last two fields. diff.js grows the maps
+ * and the clone in place and writes the compress fields back after a served frame.
+ * @typedef {object} RetainedCapture
+ * @property {Element} clone
+ * @property {Map<Node, Node>} nodeMap - clone to source
+ * @property {WeakMap<Element, CSSStyleDeclaration>} styleCache
+ * @property {Map<Element, string>} styleMap - clone to style key
+ * @property {string} classPrefixCSS
+ * @property {boolean} plainBg
+ * @property {string} fontsCSS
+ * @property {object|null} clipWindow
+ * @property {boolean} outerTransforms
+ * @property {boolean|'subtree'} outerShadows
+ * @property {object|null} rootTransform2D
+ * @property {Array<Element|null>|undefined} marginZeroed - the #426 list (capture.helpers.js)
+ * @property {WeakMap<Node, object>|null|undefined} compressedAssets
+ * @property {number|undefined} compressionDensity
+ * @property {Map<Node, Node>} srcToClone - source to clone, built by burst
+ * @property {boolean|undefined} usesBackdropFilter - diff's lazy memo, undefined until read
+ */
+
+/**
  * Build the tracking state for one element: the scoped MutationObserver, the capture-phase
  * listeners for the record-less half of the matrix, and the shadow and image
  * trackers. Runs once per element; captureWithBurst keeps the result in burstStates.
@@ -631,7 +654,7 @@ function createState(element) {
     pending: [],           // records seen while capturing, judged by hasTornMutation after
     torn: false,           // a record-less interaction/scroll event landed mid-capture
     dirtyRoots: new Set(), // scoped dirty subtree roots; null = everything is dirty
-    retained: null,        // artifacts from the last full capture (clone, maps, css) for diff
+    retained: null,        // RetainedCapture of the last full capture, for diff
     retainedFrameDriven: false, // animated fetched assets classified once on full commit
     disposed: false,
     capturing: false,
@@ -988,7 +1011,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
           session.retain = (art) => {
             const srcToClone = new Map()
             for (const [cloneNode, srcNode] of art.nodeMap.entries()) srcToClone.set(srcNode, cloneNode)
-            pendingRetained = { ...art, srcToClone }
+            pendingRetained = { ...art, srcToClone, usesBackdropFilter: undefined }
           }
         }
         // A yielding capture (fast: false | 'auto') asks this when its clone stage ends: the

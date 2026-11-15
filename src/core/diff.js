@@ -53,13 +53,14 @@ function hasTopLayerControls(element) {
  *  the whole prepared tree. A splice would leave that copied backdrop at the previous frame.
  *  The retained style keys preserve the live computed value from before pre-composition. */
 const BACKDROP_FILTER_RE = /(?:^|;)\s*(?:-webkit-)?backdrop-filter:\s*(?!none(?:\s*!important)?(?:;|$))[^;]+/i
+/** @param {import('./burst.js').RetainedCapture} R */
 function retainedUsesBackdropFilter(R) {
-  if (R.__usesBackdropFilter !== undefined) return R.__usesBackdropFilter
+  if (R.usesBackdropFilter !== undefined) return R.usesBackdropFilter
   let found = false
   for (const key of R.styleMap.values()) {
     if (BACKDROP_FILTER_RE.test(key)) { found = true; break }
   }
-  R.__usesBackdropFilter = found
+  R.usesBackdropFilter = found
   return found
 }
 
