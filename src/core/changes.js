@@ -17,7 +17,7 @@
 
 import { shadowHost } from '../utils/index.js'
 import { scanAuthorStyles, sheetCensus } from '../modules/styleScan.js'
-import { isInternalNode } from '../utils/ownership.js'
+import { isInternalNode, isSelfWrite } from '../utils/ownership.js'
 import { snapFetch } from '../modules/snapFetch.js'
 
 /** One sequence orders every change. Each version below is the value of `seq` at the last
@@ -62,6 +62,17 @@ export function hasExternalMutation(records) {
  *  @returns {boolean} */
 export function isExternalRecord(rec) {
   if (isOwnedNode(rec.target)) return false
+  // snapdom's own edit of a page node, or its undo (ownership.js). Taken for the page's, each
+  // capture stamped the neighbourhood of every clamped or content-visibility box and the next
+  // one read it all again: 12,839 computed reads for 889 on a 300-node page, and no frame of
+  // such a page was ever served by the memo or the differential path. The sequence still
+  // moves, so what was read beside the forced box has its used values probed.
+  // Pinned by __tests__/core.changes.selfWrites.test.js.
+  if (rec.type === 'characterData' ? isSelfWrite(rec.target, rec.target.data)
+    : rec.attributeName === 'style' && isSelfWrite(rec.target, rec.target.style.cssText)) {
+    seq++
+    return false
+  }
   if (rec.type === 'childList') {
     let allOwned = true
     for (const n of rec.addedNodes) if (!isOwnedNode(n)) { allOwned = false; break }

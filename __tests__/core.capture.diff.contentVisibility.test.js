@@ -47,9 +47,9 @@ describe('content-visibility: auto boxes the engine is not rendering', () => {
         '<div style="height:160px"><p style="margin:0"><span>label 0</span></p></div></div>')
       const right = { red: 100, green: 100, height: 160 }
       expect(await read(el)).toEqual(right)
-      // Forcing and restoring the box are edits of the page: burst takes the capture that
-      // follows them through the full pipeline. The one after that is a memo hit, and then an
-      // edit is a differential frame.
+      // This box has no contain-intrinsic-size, so forcing it resizes the root: burst sees the
+      // root's box differ from the frame it kept and runs the full pipeline once more. The
+      // capture after that is a memo hit, and then an edit is a differential frame.
       expect(await read(el)).toEqual(right)
       expect(await read(el)).toEqual(right)
       el.querySelector('span').textContent = 'label 1'

@@ -11,6 +11,7 @@
  */
 
 import { isSafari } from '../utils/browser.js'
+import { noteSelfWrite } from '../utils/ownership.js'
 
 /** The undo every no-op exit returns; one shared function, so the walk can leave it out. */
 const NONE = () => {}
@@ -226,6 +227,7 @@ function textNodeWriter(el) {
     write(value) {
       nodes[0].data = value
       for (let i = 1; i < nodes.length; i++) nodes[i].data = ''
+      for (let i = 0; i < nodes.length; i++) noteSelfWrite(nodes[i], original[i], nodes[i].data)
     },
     restore() {
       for (let i = 0; i < nodes.length; i++) nodes[i].data = original[i]

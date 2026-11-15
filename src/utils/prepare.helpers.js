@@ -7,6 +7,7 @@
  */
 
 import { isHTMLEl } from './helpers.js'
+import { noteSelfWrite } from './ownership.js'
 
 const activeBorders = new WeakMap()
 const activeVisibility = new WeakMap()
@@ -30,6 +31,7 @@ function transientStyles(element, declarations, active) {
       return entry
     })
     patch = { users: 0, saved, originalCSS, forcedCSS: style.cssText, hadStyle }
+    if (active === activeVisibility) noteSelfWrite(element, originalCSS, patch.forcedCSS)
     active.set(element, patch)
   }
   patch.users++
