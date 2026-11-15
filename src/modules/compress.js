@@ -12,6 +12,9 @@
  * already at or below it are left alone. Resampling can still change pixels. PNG encoding stays
  * lossless; JPEG/WebP encoding uses LOSSY_QUALITY, including when the source WebP was lossless.
  * Originals are retained privately for later result exports that need a higher resolution.
+ * The caller hands each compressCloneAssets call a geometry holder: the run's session, which
+ * receives the registry of originals and the density, plus the clip and root transform the
+ * density is resolved against.
  *
  * Covers every inlined raster in the capture: <img> (incl. cloned canvas/video), CSS
  * background-image (no-repeat only — tiled backgrounds need their natural tile resolution), and
@@ -28,10 +31,18 @@ const ASSET_ATTRIBUTE = 'data-snapdom-asset'
 const XLINK_NS = 'http://www.w3.org/1999/xlink'
 let assetSequence = 0
 
+/**
+ * What one compressCloneAssets call reads and writes besides the clone. `session` receives
+ * `compressedAssets` and `compressionDensity` (CaptureSession); `value` is the geometry the
+ * three passes resolve once, lazily.
+ * @typedef {{session: {compressedAssets?: WeakMap<Node, {token: string, properties: object[]}>|null, compressionDensity?: number}, clip?: {width: number, height: number}|null, rootTransform?: object|null, value?: object}} CompressGeometry
+ */
+
 /** Remember only assets that actually shrink. Weak node keys let a differential capture
- * discard removed subtrees; result snapshots below retain bytes, never live DOM nodes. */
-function rememberOriginal(node, kind, name, original, compressed, options) {
-  const registry = options.__compressedAssets ||= new WeakMap()
+ * discard removed subtrees; result snapshots below retain bytes, never live DOM nodes.
+ * The registry is the run's `compressedAssets` (session.js), created on the first shrink. */
+function rememberOriginal(node, kind, name, original, compressed, session) {
+  const registry = session.compressedAssets ||= new WeakMap()
   let entry = registry.get(node)
   if (!entry) {
     entry = { token: String(++assetSequence), properties: [] }
@@ -109,11 +120,12 @@ function matrixStretch(m) {
 
 /** Resolve output density before the serializer's final bleed measurement. Root/clip
  * dimensions are a conservative lower bound on its viewBox, so shadows only retain extra
- * pixels. Never guess when an explicit output size has no measurable input basis. */
-function compressionGeometry(clone, options) {
+ * pixels. Never guess when an explicit output size has no measurable input basis.
+ * Writes the density to `geometry.session.compressionDensity`. */
+function compressionGeometry(clone, options, geometry) {
   const root = options.element || clone
   const cs = root.isConnected ? getStyle(root) : root.style
-  const basis = options.__compressionClip
+  const basis = geometry.clip
   const svgLength = (node, name) => {
     try { return node[name]?.baseVal?.value || 0 } catch { return 0 } // detached relative SVG lengths
   }
@@ -125,8 +137,8 @@ function compressionGeometry(clone, options) {
     // A shrinking/rotated root can have a viewBox smaller than its layout box. Resolve
     // that bbox too; using only offsetWidth would then understate the requested density.
     try {
-      const m = options.outerTransforms === false && options.__compressionRootTransform
-        ? options.__compressionRootTransform
+      const m = options.outerTransforms === false && geometry.rootTransform
+        ? geometry.rootTransform
         : readTotalTransformMatrix({ baseTransform: cs?.transform, rotate: cs?.rotate, scale: cs?.scale, width: rootW, height: rootH })
       if (m.is2D === false) { rootW = 0; rootH = 0 }
       else {
@@ -141,7 +153,7 @@ function compressionGeometry(clone, options) {
     ? Math.max(hasW ? (rootW ? options.width / rootW : Infinity) : 0,
       hasH ? (rootH ? options.height / rootH : Infinity) : 0)
     : (options.scale || 1)) * (options.dpr || 1)
-  options.__compressionDensity = density
+  geometry.session.compressionDensity = density
   const stretches = new WeakMap()
   const stretch = (node) => {
     if (!node || node.nodeType !== 1) return 1
@@ -551,10 +563,10 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
  * @param {Element} clone
  * @param {object} options - normalized capture context, including output sizing and compress
  * @param {Map<Node, Node>} [nodeMap] - Session clone-to-source map for live geometry
- * @param {object} [geometry] - Shared holder for lazy geometry across compression passes
+ * @param {CompressGeometry} [geometry] - the call's holder, shared by the three passes
  * @returns {Promise<{count:number, before:number, after:number}>} bytes before/after (for debug)
  */
-export async function compressClonedImages(clone, options, nodeMap = new Map(), geometry = {}) {
+export async function compressClonedImages(clone, options, nodeMap = new Map(), geometry = { session: {} }) {
   if (!options.compress) return { count: 0, before: 0, after: 0 }
   // querySelectorAll never matches clone itself — a capture root that IS the <img> (#461)
   // was inlined but never downsampled, so compress:true silently did nothing for it.
@@ -568,7 +580,7 @@ export async function compressClonedImages(clone, options, nodeMap = new Map(), 
     const cssW = parseFloat(img.dataset.snapdomWidth) || parseFloat(img.style.width) || img.width || 0
     const cssH = parseFloat(img.dataset.snapdomHeight) || parseFloat(img.style.height) || img.height || 0
     if (!cssW || !cssH) return
-    const resolved = geometry.value ||= compressionGeometry(clone, options)
+    const resolved = geometry.value ||= compressionGeometry(clone, options, geometry)
     const eff = resolved.density * resolved.stretch(nodeMap.get(img) || img)
     const out = await downsampleDataURL(src, cssW * eff, cssH * eff, img.__snapdomBlob)
     if (out) {
@@ -576,7 +588,7 @@ export async function compressClonedImages(clone, options, nodeMap = new Map(), 
       before += src.length
       after += out.length
       img.setAttribute('src', out)
-      rememberOriginal(img, 'attribute', 'src', src, out, options)
+      rememberOriginal(img, 'attribute', 'src', src, out, geometry.session)
     }
   }
 
@@ -618,10 +630,10 @@ function originalBox(el) {
  * @param {Element} clone
  * @param {object} options
  * @param {Map<Node, Node>} [nodeMap] - Session clone-to-source map; unmapped backgrounds are skipped
- * @param {object} [geometry] - Shared holder for lazy geometry across compression passes
+ * @param {CompressGeometry} [geometry] - the call's holder, shared by the three passes
  * @returns {Promise<{count:number}>}
  */
-export async function compressClonedBackgrounds(clone, options, nodeMap = new Map(), geometry = {}) {
+export async function compressClonedBackgrounds(clone, options, nodeMap = new Map(), geometry = { session: {} }) {
   if (!options.compress) return { count: 0 }
   const els = []
   // include the root clone itself, then descendants. Inlined background data URLs live in the
@@ -649,7 +661,7 @@ export async function compressClonedBackgrounds(clone, options, nodeMap = new Ma
     // A 200% layer paints at twice the box resolution. The largest percentage across
     // layers is conservative and keeps multi-layer replacement independent of parsing.
     const percent = Math.max(1, ...(size.match(/\d+(?:\.\d+)?%/g) || []).map(v => parseFloat(v) / 100))
-    const resolved = geometry.value ||= compressionGeometry(clone, options)
+    const resolved = geometry.value ||= compressionGeometry(clone, options, geometry)
     const eff = resolved.density * resolved.stretch(orig) * percent
     const tw = boxW * eff, th = boxH * eff
 
@@ -664,7 +676,7 @@ export async function compressClonedBackgrounds(clone, options, nodeMap = new Ma
     }
     if (newBg !== bg) {
       el.style.setProperty('background-image', newBg, el.style.getPropertyPriority('background-image'))
-      rememberOriginal(el, 'style', 'background-image', bg, el.style.backgroundImage, options)
+      rememberOriginal(el, 'style', 'background-image', bg, el.style.backgroundImage, geometry.session)
     }
   }
 
@@ -681,10 +693,10 @@ export async function compressClonedBackgrounds(clone, options, nodeMap = new Ma
  * @param {Element} clone
  * @param {object} options
  * @param {Map<Node, Node>} [nodeMap] - Session clone-to-source map for live geometry
- * @param {object} [geometry] - Shared holder for lazy geometry across compression passes
+ * @param {CompressGeometry} [geometry] - the call's holder, shared by the three passes
  * @returns {Promise<{count:number}>}
  */
-export async function compressClonedSvgImages(clone, options, nodeMap = new Map(), geometry = {}) {
+export async function compressClonedSvgImages(clone, options, nodeMap = new Map(), geometry = { session: {} }) {
   if (!options.compress) return { count: 0 }
   const imgs = Array.from(clone.querySelectorAll('image'))
   if (clone.localName === 'image') imgs.unshift(clone)
@@ -712,15 +724,15 @@ export async function compressClonedSvgImages(clone, options, nodeMap = new Map(
     const w = usedLength('width', wAttr)
     const h = usedLength('height', hAttr)
     if (!w || !h) return
-    const resolved = geometry.value ||= compressionGeometry(clone, options)
+    const resolved = geometry.value ||= compressionGeometry(clone, options, geometry)
     const eff = resolved.density * resolved.stretch(original || el)
     const out = await downsampleDataURL(href, w * eff, h * eff)
     if (out) {
       el.setAttribute('href', out)
-      rememberOriginal(el, 'attribute', 'href', href, out, options)
+      rememberOriginal(el, 'attribute', 'href', href, out, geometry.session)
       if (el.hasAttribute('xlink:href')) {
         el.setAttributeNS(XLINK_NS, 'xlink:href', out)
-        rememberOriginal(el, 'attribute', 'xlink:href', href, out, options)
+        rememberOriginal(el, 'attribute', 'xlink:href', href, out, geometry.session)
       }
       count++
     }
@@ -741,13 +753,14 @@ export async function compressClonedSvgImages(clone, options, nodeMap = new Map(
  * @param {object} options
  * @param {Map<Node, Node>} [nodeMap] - Session clone-to-source map; pass the capture's own
  *   reference so geometry comes from the matching source nodes, including nested captures.
+ * @param {CompressGeometry} [geometry] - a fresh holder per call: its `value` is resolved
+ *   once for this clone, so a diff root never reuses another root's
  * @returns {Promise<void>}
  */
-export async function compressCloneAssets(clone, options, nodeMap) {
+export async function compressCloneAssets(clone, options, nodeMap, geometry = { session: {} }) {
   if (!options.compress) return
   const since = ++pass
   const before = stored
-  const geometry = {}
   await compressClonedImages(clone, options, nodeMap, geometry)
   await compressClonedBackgrounds(clone, options, nodeMap, geometry)
   await compressClonedSvgImages(clone, options, nodeMap, geometry)

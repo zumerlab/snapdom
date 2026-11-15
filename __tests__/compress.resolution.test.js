@@ -104,8 +104,9 @@ describe('compression uses output resolution', () => {
     img.dataset.snapdomWidth = img.dataset.snapdomHeight = '100'
     clone.append(img)
     const context = { compress: true, dpr: 1, scale: 1 }
-    await compressClonedImages(clone, context)
-    const snapshot = snapshotCompressedAssets(clone, context.__compressedAssets)
+    const session = {}
+    await compressClonedImages(clone, context, undefined, { session })
+    const snapshot = snapshotCompressedAssets(clone, session.compressedAssets)
     expect(snapshot.size).toBe(1)
     const url = () => `data:image/svg+xml;charset=utf-8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg"><foreignObject>' + new XMLSerializer().serializeToString(clone) + '</foreignObject></svg>')}`
     const restored = restoreCompressedAssets(url(), snapshot)
@@ -114,7 +115,7 @@ describe('compression uses output resolution', () => {
     img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg"/%3E'
     expect(restoreCompressedAssets(url(), snapshot)).toBe(url())
     img.remove()
-    expect(snapshotCompressedAssets(clone, context.__compressedAssets).size).toBe(0)
+    expect(snapshotCompressedAssets(clone, session.compressedAssets).size).toBe(0)
     expect(snapshot.size).toBe(1) // prior results retain their own immutable instant
   })
 
@@ -156,10 +157,11 @@ describe('compression uses output resolution', () => {
     try {
       const clone = original.cloneNode(true)
       const context = { compress: true, dpr: 1, scale: 1, element: original }
-      const stats = await compressClonedBackgrounds(clone, context, new Map([[clone, original]]))
+      const session = {}
+      const stats = await compressClonedBackgrounds(clone, context, new Map([[clone, original]]), { session })
       expect(stats.count).toBe(1)
       expect(clone.style.getPropertyPriority('background-image')).toBe('important')
-      const snapshot = snapshotCompressedAssets(clone, context.__compressedAssets)
+      const snapshot = snapshotCompressedAssets(clone, session.compressedAssets)
       const serialized = '<svg xmlns="http://www.w3.org/2000/svg"><style>#compression-important-background{background-image:none!important}</style><foreignObject>' + new XMLSerializer().serializeToString(clone) + '</foreignObject></svg>'
       const restored = restoreCompressedAssets(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`, snapshot)
       const parsed = new DOMParser().parseFromString(decodeURIComponent(restored.slice(restored.indexOf(',') + 1)), 'image/svg+xml')
@@ -182,8 +184,9 @@ describe('compression uses output resolution', () => {
     image.setAttribute('height', '100')
     svg.append(image)
     const context = { compress: true, dpr: 1, scale: 1 }
-    expect((await compressClonedSvgImages(svg, context)).count).toBe(1)
-    const snapshot = snapshotCompressedAssets(svg, context.__compressedAssets)
+    const session = {}
+    expect((await compressClonedSvgImages(svg, context, undefined, { session })).count).toBe(1)
+    const snapshot = snapshotCompressedAssets(svg, session.compressedAssets)
     const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`
     const restored = restoreCompressedAssets(url, snapshot)
     const parsed = new DOMParser().parseFromString(decodeURIComponent(restored.slice(restored.indexOf(',') + 1)), 'image/svg+xml')
@@ -203,9 +206,10 @@ describe('compression uses output resolution', () => {
       clone.append(img)
     }
     const context = { compress: true, dpr: 1, scale: 1 }
-    expect((await compressClonedImages(clone, context)).count).toBe(2)
+    const session = {}
+    expect((await compressClonedImages(clone, context, undefined, { session })).count).toBe(2)
     expect(clone.children[0].getAttribute('src')).toBe(clone.children[1].getAttribute('src'))
-    const snapshot = snapshotCompressedAssets(clone, context.__compressedAssets)
+    const snapshot = snapshotCompressedAssets(clone, session.compressedAssets)
     const serialized = '<svg xmlns="http://www.w3.org/2000/svg"><foreignObject>' + new XMLSerializer().serializeToString(clone) + '</foreignObject></svg>'
     const restored = restoreCompressedAssets(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`, snapshot)
     const parsed = new DOMParser().parseFromString(decodeURIComponent(restored.slice(restored.indexOf(',') + 1)), 'image/svg+xml')

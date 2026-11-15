@@ -40,6 +40,15 @@
  * @property {boolean|undefined} styleShare - the identity-share verdict, seeded with the
  *   context's `__styleShare` override
  *
+ * Compress outputs, written through the geometry holder captureDOM and diff.js hand to
+ * compressCloneAssets (compress.js). A frame starts from burst's retained capture.
+ * @property {WeakMap<Node, {token: string, properties: object[]}>|null|undefined} compressedAssets -
+ *   the originals of the assets compress shrank, created on the first one. buildResult nulls
+ *   it: the registry stays with burst
+ * @property {number|undefined} compressionDensity - the output density compress resolved
+ * @property {Map<string, ReadonlyArray<object>>|null} compressedSnapshot - the originals still
+ *   in the rendered clone, which the result keeps for exports that need more resolution
+ *
  * Render outputs, written by the engine that rendered (svg.js, htmlInCanvas.js), read by
  * buildResult.
  * @property {number} layoutZoom - the #508 grid, into ExportEnv
@@ -52,8 +61,9 @@
 /**
  * Creates the session of one run of the pipeline.
  * @param {object} [options] - the context; only its `__styleShare` override is read
- * @param {{styleMap: Map<Element, string>, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>}|null} [retained]
- *   burst's retained capture, for a differential frame: the frame grows its maps and keeps no log
+ * @param {{styleMap: Map<Element, string>, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, compressedAssets?: WeakMap<Node, object>|null, compressionDensity?: number}|null} [retained]
+ *   burst's retained capture, for a differential frame: the frame grows its maps, keeps no log
+ *   and starts compress from it
  * @returns {CaptureSession}
  */
 export function createCaptureSession(options = {}, retained = null) {
@@ -63,6 +73,9 @@ export function createCaptureSession(options = {}, retained = null) {
     nodeMap: retained ? retained.nodeMap : new Map(),
     warnings: retained ? null : [],
     styleShare: options.__styleShare,
+    compressedAssets: retained ? retained.compressedAssets : null,
+    compressionDensity: retained ? retained.compressionDensity : undefined,
+    compressedSnapshot: null,
     layoutZoom: 1,
     fileSvg: null,
     artifacts: null,

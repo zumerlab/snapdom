@@ -282,10 +282,9 @@ async function buildResult(url, context, session) {
 
   // Keep the captured originals, not live DOM, for exports whose resolution grows later.
   // Clone registries stay with burst; a result only owns its frozen string records.
-  const originals = context.__compressedSnapshot
-  const density = context.__compressionDensity
-  delete context.__compressedSnapshot
-  delete context.__compressedAssets
+  const originals = session.compressedSnapshot
+  const density = session.compressionDensity
+  session.compressedAssets = null
   let originalUrl
   const meta = context.meta || {}
   const hasCaptureSize = Number.isFinite(context.width) || Number.isFinite(context.height)

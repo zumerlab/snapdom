@@ -257,9 +257,6 @@ async function diffCapture(element, state, context, animated) {
   // The frame's session grows the retained maps in place and keeps no log.
   const frame = createCaptureSession(context, R)
   context.__animated = animated
-  context.__compressedAssets = R.__compressedAssets
-  context.__compressionDensity = R.__compressionDensity
-  context.__compressionRootTransform = R.rootTransform2D
 
   for (const src of roots) {
     if (src.matches?.(HEAVY_SUBTREE) || src.querySelector?.(HEAVY_SUBTREE)) return null
@@ -314,7 +311,9 @@ async function diffCapture(element, state, context, animated) {
       inlineBackgroundImages(src, sub, R.styleCache, context, delta, R.plainBg),
     ])
     if (context.compress) {
-      try { await compressCloneAssets(sub, context, delta) } catch { /* parity with full */ }
+      try {
+        await compressCloneAssets(sub, context, delta, { session: frame, rootTransform: R.rootTransform2D })
+      } catch { /* parity with full */ }
     }
     for (const [cloneNode, srcNode] of delta.entries()) wrapScrolledClone(cloneNode, srcNode, delta, R.styleCache)
 
@@ -371,7 +370,7 @@ async function diffCapture(element, state, context, animated) {
     if (drifted) {
       // A retained image was reduced for its old box. Rebuild from the source if that box
       // changes, rather than stretching already-discarded pixels during reconciliation.
-      if (context.__compressedAssets?.has(cloneN)) return null
+      if (frame.compressedAssets?.has(cloneN)) return null
       // A changed container can stop overflowing even when its items' used widths
       // stay constant; refresh their synthesized floors too. nodeMap is parent-first.
       resizedParents.add(srcN)
@@ -404,7 +403,7 @@ async function diffCapture(element, state, context, animated) {
   // universe than `universe`, which the reset is built from (#554).
   if (universeFor(element) !== universe) return null
 
-  numberCompressedAssets(R.clone, context.__compressedAssets)
+  numberCompressedAssets(R.clone, frame.compressedAssets)
   const url = await composeAndSerialize(
     {
       element,
@@ -426,8 +425,8 @@ async function diffCapture(element, state, context, animated) {
       signatures: null
     }
   )
-  context.__compressedSnapshot = snapshotCompressedAssets(R.clone, context.__compressedAssets)
-  R.__compressedAssets = context.__compressedAssets
-  R.__compressionDensity = context.__compressionDensity
+  frame.compressedSnapshot = snapshotCompressedAssets(R.clone, frame.compressedAssets)
+  R.compressedAssets = frame.compressedAssets
+  R.compressionDensity = frame.compressionDensity
   return url ? { url, session: frame } : null
 }

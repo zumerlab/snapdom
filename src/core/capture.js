@@ -74,9 +74,6 @@ export async function captureDOM(element, options, session = createCaptureSessio
   applyCachePolicy(options.cache)
   // ALIAS for published readers (session.js); nothing in this module reads it back.
   options.__session = session
-  delete options.__compressedAssets
-  delete options.__compressedSnapshot
-  delete options.__compressionDensity
   options.__resolveNodeHooks = collectResolveNodeHooks(options)
   // ONE context for the whole capture: hooks receive the normalized option bag itself, so
   // `ctx.scale` / `ctx.backgroundColor` / … are the very values the pipeline reads and the
@@ -273,9 +270,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
     }
     // Perceptual image downsampling (on by default via `compress`). No-op when off.
     if (options.compress) {
-      options.__compressionClip = clipWindow
-      options.__compressionRootTransform = rootTransform2D
-      await runIdle(() => compressCloneAssets(state.clone, state.options, state.nodeMap))
+      const geometry = { session, clip: clipWindow, rootTransform: rootTransform2D }
+      await runIdle(() => compressCloneAssets(state.clone, state.options, state.nodeMap, geometry))
     }
     // Field-selection highlights compose last: the background pass above rewrites a field's
     // background longhands, and an inlined url() background has to end up under the highlight.
@@ -367,11 +363,11 @@ export async function captureDOM(element, options, session = createCaptureSessio
 
   if (slicer?.due()) await slicer.pause()
   const renderedClone = state.clone
-  numberCompressedAssets(renderedClone, options.__compressedAssets)
+  numberCompressedAssets(renderedClone, session.compressedAssets)
   const url = await composeAndSerialize(state, {
     clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe, session, signatures: session.styleMap
   })
-  options.__compressedSnapshot = snapshotCompressedAssets(renderedClone, options.__compressedAssets)
+  session.compressedSnapshot = snapshotCompressedAssets(renderedClone, session.compressedAssets)
   // Hand this capture's artifacts to whoever wants to retain them (burst's differential
   // recapture keeps the clone + maps alive and re-enters composeAndSerialize on dirty
   // subtrees). Internal-only; absent for plain captures.
@@ -381,8 +377,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
         clone, nodeMap, styleCache, styleMap: session.styleMap,
         classPrefixCSS, plainBg, fontsCSS, clipWindow, outerTransforms, outerShadows, rootTransform2D,
         marginZeroed,
-        __compressedAssets: options.__compressedAssets,
-        __compressionDensity: options.__compressionDensity,
+        compressedAssets: session.compressedAssets,
+        compressionDensity: session.compressionDensity,
       })
     } catch { /* retention is best-effort */ }
   }
