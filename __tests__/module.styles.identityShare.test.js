@@ -3,7 +3,7 @@
 // here is asserted in PIXELS or in bytes — never on the flag itself.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { flushStyleInvalidations } from '../src/modules/styles.js'
+import { flushStyleInvalidations } from '../src/core/changes.js'
 import { bigTableHTML } from './category.libs.js'
 
 const mounted = []

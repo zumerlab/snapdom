@@ -7,7 +7,7 @@
 // colour.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { flushStyleInvalidations } from '../src/modules/styles.js'
+import { flushStyleInvalidations } from '../src/core/changes.js'
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })

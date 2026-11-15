@@ -283,7 +283,7 @@ describe('inlineAllStyles – branches y firmas', () => {
     // This test verifies the MAX_SNAPSHOT_KEY_CACHE=2000 eviction guard.
     // We fill the cache with many unique style signatures by bumping the epoch
     // (which triggers bumpEpoch) repeatedly. After eviction the cache should be empty.
-    const { notifyStyleEpoch } = await import('../src/modules/styles.js')
+    const { notifyStyleEpoch } = await import('../src/core/changes.js')
 
     // Bump epoch enough times to trigger eviction if the cache were overfull.
     // Since we can't directly fill the Map from outside, we verify that

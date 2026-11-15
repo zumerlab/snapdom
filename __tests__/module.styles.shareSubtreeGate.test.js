@@ -9,7 +9,7 @@
 // (the read counts come out equal); dropping the querySelector half turns the second red.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { flushStyleInvalidations } from '../src/modules/styles.js'
+import { flushStyleInvalidations } from '../src/core/changes.js'
 import { bigTableHTML } from './category.libs.js'
 
 const mounted = []

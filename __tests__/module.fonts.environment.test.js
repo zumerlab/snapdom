@@ -2,7 +2,7 @@ import { it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { embedCustomFonts, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
-import { invalidateStyleCaches } from '../src/modules/styles.js'
+import { invalidateStyleCaches } from '../src/core/changes.js'
 
 const mounted = []
 const originalAdopted = document.adoptedStyleSheets

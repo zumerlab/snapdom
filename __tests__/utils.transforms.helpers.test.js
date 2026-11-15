@@ -1,6 +1,6 @@
 // __tests__/utils.transforms.helpers.test.js – transforms.helpers.js coverage
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import * as snapdomStyles from '../src/modules/styles.js'
+import * as snapdomStyles from '../src/core/changes.js'
 import {
   parseBoxShadow,
   parseTextShadow,

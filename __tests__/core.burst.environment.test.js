@@ -5,7 +5,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { isAutoBurstSafe } from '../src/core/burst.js'
 import { __diffStats } from '../src/core/diff.js'
-import { flushStyleInvalidations, getOutsideMutationCount, observeShadowRoot } from '../src/modules/styles.js'
+import { flushStyleInvalidations, getOutsideMutationCount, observeShadowRoot } from '../src/core/changes.js'
 
 const mounted = []
 afterEach(() => {

@@ -10,7 +10,7 @@
 // epoch. Removing iframe from the automatic safety boundary makes the read assertion red.
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { snapdom } from '../src/index.js'
-import { getStyleEnvEpoch } from '../src/modules/styles.js'
+import { getStyleEnvEpoch } from '../src/core/changes.js'
 
 let wrap = null
 afterEach(() => { wrap?.remove(); wrap = null; vi.restoreAllMocks() })

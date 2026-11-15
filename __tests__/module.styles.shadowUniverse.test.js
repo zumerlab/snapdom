@@ -5,7 +5,7 @@
 // a rule reaches a node from a root that is not its own.
 import { describe, it, expect, afterEach } from 'vitest'
 import { commands } from 'vitest/browser'
-import { universeFor } from '../src/modules/styles.js'
+import { universeFor } from '../src/modules/authorStyles.js'
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })

@@ -1,7 +1,7 @@
 // Public data attributes are diagnostics/compatibility surface, not proof that snapdom owns a
 // node. Author content using the same names must still invalidate style and burst caches.
 import { describe, it, expect } from 'vitest'
-import { hasExternalMutation } from '../src/modules/styles.js'
+import { hasExternalMutation } from '../src/core/changes.js'
 
 function recordsFor(el) {
   const observer = new MutationObserver(() => {})

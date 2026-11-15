@@ -28,16 +28,6 @@ import {
   isFlexOrGridItem, BORDER_WIDTHS,
 } from './styleFreeze.js'
 
-// Old homes of what moved out, for the test files that import it from here.
-export * from './authorStyles.js'
-export { styleShareSafe, pseudoSnapshotFor } from './styleShare.js'
-export { addScrollbarGutter, ONE_LINE_PROP } from './styleFreeze.js'
-export {
-  notifyStyleEpoch, hasExternalMutation, isExternalRecord, getOutsideMutationCount,
-  getStyleEnvEpoch, getStyleEpoch, getStyleStamp, invalidateStyleCaches, observeShadowRoot,
-  invalidateHoverChanges, flushStyleInvalidations,
-} from '../core/changes.js'
-
 /** element -> { v, checked, hosts, snapshot, embedFonts, excludeStyleProps, used }.
  *  Cross-capture; a hit needs `v` unchanged (snapshotIsCurrent) and the used values to hold. */
 const snapshotCache = new WeakMap()

@@ -18,7 +18,8 @@
 import { it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { isFirefox } from '../src/utils/browser.js'
-import { universeFor, notifyStyleEpoch } from '../src/modules/styles.js'
+import { universeFor } from '../src/modules/authorStyles.js'
+import { notifyStyleEpoch } from '../src/core/changes.js'
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })

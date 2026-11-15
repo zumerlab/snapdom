@@ -14,7 +14,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { prepareClone } from '../src/core/prepare.js'
 import { inlinePseudoElements } from '../src/modules/pseudo.js'
-import { addScrollbarGutter, snapshotFor } from '../src/modules/styles.js'
+import { addScrollbarGutter } from '../src/modules/styleFreeze.js'
+import { snapshotFor } from '../src/modules/styles.js'
 import { snapdom } from '../src/index.js'
 
 const mounted = []

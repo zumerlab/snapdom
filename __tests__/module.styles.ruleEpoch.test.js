@@ -16,7 +16,8 @@
 // So: do not narrow this memo again without measuring the invalidation cost under load, not
 // just the scan cost in isolation. These tests pin the cases that must keep working.
 import { describe, it, expect, afterEach } from 'vitest'
-import { universeFor, pseudoGatesFor, flushStyleInvalidations, invalidateStyleCaches } from '../src/modules/styles.js'
+import { universeFor, pseudoGatesFor } from '../src/modules/authorStyles.js'
+import { flushStyleInvalidations, invalidateStyleCaches } from '../src/core/changes.js'
 
 const trash = []
 afterEach(() => {

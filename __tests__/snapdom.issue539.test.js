@@ -3,7 +3,7 @@ import { commands } from 'vitest/browser'
 import { snapdom } from '../src/api/snapdom.js'
 import { __diffStats } from '../src/core/diff.js'
 import { scanAuthorStyles } from '../src/modules/styleScan.js'
-import { universeFor } from '../src/modules/styles.js'
+import { universeFor } from '../src/modules/authorStyles.js'
 
 const mounted = []
 const urls = []
