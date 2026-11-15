@@ -104,7 +104,7 @@ export function styleShareSafe(el) {
  *    decided from the identity's own read, so a table pays nothing for either. */
 const LAYOUT_ALWAYS_RE = /^(width|height|inline-size|block-size|transform-origin|perspective-origin)$/
 const OFFSET_RE = /^(top|right|bottom|left)$|^inset-/
-const UNSTABLE_INLINE_RE = /(margin|padding)[a-z-]*\s*:[^;]*(%|\bauto\b|calc\(|var\()/i
+export const UNSTABLE_INLINE_RE = /(margin|padding)[a-z-]*\s*:[^;]*(%|\bauto\b|calc\(|var\()/i
 export const SHARE_SKIP_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT', 'OPTION', 'OPTGROUP', 'PROGRESS', 'METER', 'BUTTON', 'DATALIST'])
 
 /** The capture's share state, made on first use: identity ids per node, the intern table,
@@ -196,7 +196,7 @@ export function identityFor(el, st) {
  *  @param {{snap: object, rr: string[]|null, sig: string|null, h: boolean, b: boolean}} rec
  *  @param {Element} el the identity's first twin
  *  @returns {string[]} the re-read list, also stored on `rec.rr` */
-export function shareLists(rec, el) {
+export function shareLists(rec, el, st) {
   // Re-copied once here, riders included: the identity's own object was built by keyed
   // stores (dictionary mode in V8) and every twin spreads it — off a spread-made copy the
   // 500-row table's twins clone 6 ms faster, and only identities WITH twins pay the copy.
@@ -209,8 +209,9 @@ export function shareLists(rec, el) {
   const scan = scanFor(el.ownerDocument || document)
   const attr = (el.getAttribute && el.getAttribute('style')) || ''
   const inlineUnstable = attr && UNSTABLE_INLINE_RE.test(attr)
-  // The scan read the document's sheets: what a shadow sheet gives its margins is unknown.
-  const shadow = el.getRootNode() !== (el.ownerDocument || document)
+  // The scan read the document's sheets. For shadow content the answer is its root's, taken
+  // from the root's own CSS text when the clone grouped it (clone.js).
+  const shadow = st.pass.shadowShare?.get(el.getRootNode())
   const rrM = shadow || !!scan.marginUnstable || (inlineUnstable && /margin/i.test(attr))
   const rrP = shadow || !!scan.paddingUnstable || (inlineUnstable && /padding/i.test(attr))
   const rrG = stored.display !== undefined && stored.display.includes('grid')
@@ -262,7 +263,7 @@ export function pseudoSnapshotFor(source, pseudo, style, session) {
   const rec = snaps.get(key)
   if (rec) {
     const snap = { ...rec.snap }
-    const rr = rec.rr || shareLists(rec, source)
+    const rr = rec.rr || shareLists(rec, source, st)
     for (let i = 0; i < rr.length; i++) {
       const v = style.getPropertyValue(rr[i])
       if (v) snap[rr[i]] = v

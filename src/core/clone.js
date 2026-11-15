@@ -15,6 +15,7 @@ import { inlineAllStyles } from '../modules/styles.js'
 import { pseudoGatesFor, svgGeometryFor, svgGeometryReaches } from '../modules/authorStyles.js'
 import { observeShadowRoot } from './changes.js'
 import { SHADOW_SPLIT_RE } from '../modules/styleScan.js'
+import { UNSTABLE_INLINE_RE } from '../modules/styleShare.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
 import { debugWarn, getStyle, isPasswordInput, maskValue, isTag, isSVGEl } from '../utils/index.js'
@@ -1119,7 +1120,7 @@ export async function deepClone(node, sessionCache, options) {
     let group = rawCSS && groups.get(rawCSS)
     let rewritten = ''
     if (!group) {
-      group = { id: ownId, vars: collectCustomPropsFromCSS(rawCSS), share: !SHADOW_SPLIT_RE.test(rawCSS) }
+      group = { id: ownId, vars: collectCustomPropsFromCSS(rawCSS), share: !SHADOW_SPLIT_RE.test(rawCSS), unstable: UNSTABLE_INLINE_RE.test(rawCSS) }
       if (rawCSS) groups.set(rawCSS, group)
       // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
       // among them, and a page whose only ::after lives in a shadow root skipped the pass
@@ -1129,8 +1130,9 @@ export async function deepClone(node, sessionCache, options) {
     }
     const hostId = group.id === ownId ? ownId : `${ownId} ${group.id}`
     scopes.set(shadow, group.id)
-    // Roots of one group hold the same rules, so their content can share reads (styleShare.js).
-    if (group.share) (sessionCache.shadowShare ||= new WeakSet()).add(shadow)
+    // Roots of one group hold the same rules, so their content can share reads (styleShare.js),
+    // re-reading margins and paddings when the text gives one a value that follows the box.
+    if (group.share) (sessionCache.shadowShare ||= new WeakMap()).set(shadow, group.unstable)
     try {
       clone.setAttribute('data-sd', hostId)
     } catch {

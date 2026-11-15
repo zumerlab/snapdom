@@ -145,7 +145,8 @@ export function createCaptureSession(options = {}, retained = null) {
  *
  * Shadow DOM (#558), written and read by deepClone.
  * @property {WeakMap<ShadowRoot, string>|null} shadowScopes
- * @property {WeakSet<ShadowRoot>|null} shadowShare - roots whose CSS cannot split identity twins
+ * @property {WeakMap<ShadowRoot, boolean>|null} shadowShare - roots whose CSS cannot split
+ *   identity twins, with whether it gives a margin or a padding a box-relative value
  * @property {WeakMap<object, string>|null} shadowSheets
  * @property {Array<Map<string, object>>|null} shadowGroups
  * @property {number} shadowScopeSeq

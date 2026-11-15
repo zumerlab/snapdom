@@ -716,7 +716,7 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     // self-time on the 500-row table, profiled). The values feed `dyn`, which composes this
     // twin's snapshotKeyCache signature from the identity's base signature — styleSignature
     // re-hashed the whole snapshot per twin for another 11ms otherwise.
-    const rrList = shared.rr || shareLists(shared, el)
+    const rrList = shared.rr || shareLists(shared, el, shareInfo.st)
     dyn = []
     for (let i = 0; i < rrList.length; i++) {
       const p = rrList[i]
