@@ -20,6 +20,14 @@
  * per dirty root and one for its reconcile. Every memo of the clone walk lives and dies with
  * it. createClonePass declares every slot, so a pass keeps one shape however the walk fills it.
  *
+ * Not here: options (context.js, including the private ones decided before the pipeline and
+ * only read after it: __iconMatchers, __explicitFormat, __pinned, __subpixel, the
+ * __styleShare override, __needsLoweredBy), the plugin stage fields on the context
+ * (PLUGIN_SPEC.md), return values (prepareClone's record, the url), arguments (the render
+ * input, the compress geometry, ExportEnv), cross-capture caches (cache.js and module
+ * caches), burst's per-element state and burst's retained capture (RetainedCapture,
+ * burst.js), node and snapshot expandos.
+ *
  * `context.__session` is an ALIAS of the session of a full capture, set by captureDOM.
  * Published readers: packages/vector/src/adapters/snapdom.js (styleMap, in beforeRender),
  * __tests__/core.capture.fast.test.js and scripts/safari-release-smoke.mjs (tornSinceStart).

@@ -41,17 +41,19 @@ const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important
 /**
  * Clone an element for capture and return the clone with everything the render step needs.
  *
- * The source is prepared and restored around deepClone (see the module header). Direct
- * callers without a session get fresh maps; captureDOM always passes its own.
+ * The source is prepared and restored around deepClone (see the module header). Each call is
+ * one clone attempt: it makes one ClonePass (session.js) over the session's maps, and every
+ * memo of the walk dies with the call. Direct callers without a session get fresh maps;
+ * captureDOM always passes its own.
  * @param {Element} element - Element to clone
  * @param {Object} [options={}] - the normalized context (createContext)
  * @param {import('./session.js').CaptureSession} [session] - the run's session, whose maps the clone fills
- * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null, standIns: Map<Element, Element>|null}>}
+ * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, shadowCSS: boolean, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null, standIns: Map<Element, Element>|null, universe: Set<string>|null}>}
  *   classCSS is the full stylesheet (prefix included); classPrefixCSS is the shadow, pseudo
  *   and suppression part alone, which burst re-prepends after a diff; clipWindow is the
  *   clip rect in the root's own layout pixels; standIns maps each culled source to the
  *   husk standing in for it, which nodeMap leaves out; shadowCSS says the prefix carries
- *   shadow-root rules
+ *   shadow-root rules; universe is what the snapshots were pruned by, for the base reset
  */
 export async function prepareClone(element, options = {}, session = createCaptureSession(options)) {
   // Same-tick DOM/style mutations otherwise reach the clone against a stale epoch
@@ -443,7 +445,7 @@ export async function prepareClone(element, options = {}, session = createCaptur
     clipWindow,
     standIns,
     // What the snapshots were pruned by, for the base reset (assembleCaptureCSS): the scan
-    // pinned on this session, or the capture's shadow union when the root lives in a shadow
+    // pinned on this pass, or the capture's shadow union when the root lives in a shadow
     // root. When the reset read the document's scan by itself, it could read a later scan
     // than the snapshots did (#554), and under a shadow root it read every property, so its
     // resolved black text fill painted every glyph black from 3.1.0 on.
