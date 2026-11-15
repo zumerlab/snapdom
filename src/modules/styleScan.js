@@ -210,7 +210,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     // DIFFERENTLY: structural position, sibling relationships, interaction/UA state, and
     // :has() (content-dependent). Collected, not flagged: whether one of them can split a
     // pair of twins is a question about the CAPTURED SUBTREE at capture time
-    // (styleShareSafe in styles.js asks it with one querySelector), not about the document.
+    // (styleShareSafe in styleShare.js asks it with one querySelector), not about the document.
     // A document-wide flag turned the fast path off on every real page — `.btn:hover` or
     // `.faq p + p` in the host CSS, matching nothing inside the captured table, cost a 500-row
     // capture 536k computed-style reads instead of 77k. A substring test, deliberately

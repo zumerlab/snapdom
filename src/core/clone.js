@@ -11,7 +11,8 @@
  * @module clone
  */
 
-import { inlineAllStyles, pseudoGatesFor, svgGeometryFor, svgGeometryReaches } from '../modules/styles.js'
+import { inlineAllStyles } from '../modules/styles.js'
+import { pseudoGatesFor, svgGeometryFor, svgGeometryReaches } from '../modules/authorStyles.js'
 import { observeShadowRoot } from './changes.js'
 import { NO_CAPTURE_TAGS } from '../utils/css.js'
 import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'

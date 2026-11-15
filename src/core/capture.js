@@ -20,7 +20,8 @@ import { createCaptureSession } from './session.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
-import { styleShareSafe, invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
+import { invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
+import { styleShareSafe } from '../modules/styleShare.js'
 import { addShadowAnimations } from './changes.js'
 import { stageReaches, DEFAULT_STAGE } from './stages.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
@@ -146,7 +147,7 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // inlineAllStyles re-resolves the inline declarations these animate from computed values.
   session.animated = animatedProps(moving)
 
-  // Identity-share fast path (see styles.js): decided ONCE per capture, before any clone
+  // Identity-share fast path (see styleShare.js): decided ONCE per capture, before any clone
   // work. Both gates are cheap and both err toward full reads: an unscannable stylesheet or
   // any selector that can split identical identities answers unsafe, and one running
   // animation/transition anywhere under the root (computed styles differ per frame) turns

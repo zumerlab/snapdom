@@ -39,7 +39,9 @@ import {
   counterPairs
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
-import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, ONE_LINE_PROP } from './styles.js'
+import { pseudoGatesFor, pseudoUniverseFor } from './authorStyles.js'
+import { pseudoSnapshotFor } from './styleShare.js'
+import { ONE_LINE_PROP } from './styleFreeze.js'
 import { flushStyleInvalidations, invalidateStyleCaches } from '../core/changes.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
@@ -864,7 +866,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // pseudoEl.style.verticalAlign = 'baseline'
       pseudoEl.style.pointerEvents = 'none'
       if (pinNowrap) pseudoEl.style.whiteSpace = 'nowrap'
-      // A host freezeOneLine pinned (styles.js) carries the pin to the span like to any element
+      // A host freezeOneLine pinned (styleFreeze.js) carries the pin to the span like to any element
       // under it: the base reset's `span{white-space:normal}` beats what the span inherits.
       else if (clone.style.getPropertyValue(ONE_LINE_PROP) === 'nowrap') pseudoEl.style.setProperty(ONE_LINE_PROP, 'nowrap')
       const snapshot = pseudoSnapshotFor(source, pseudo, style, sessionCache)
