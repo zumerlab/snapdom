@@ -25,7 +25,7 @@ import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
-import { inlineAllStyles } from '../modules/styles.js'
+import { inlineAllStyles, flexRowOverflows } from '../modules/styles.js'
 import { universeFor, stylesLeakAcrossSubtrees } from '../modules/authorStyles.js'
 import { generateCSSClasses } from '../utils/index.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
@@ -352,6 +352,18 @@ async function diffCapture(element, state, context, animated) {
   // current epoch, so byte-fidelity holds without bailing on layout-changing mutations.
   const sessionLike = createClonePass(frame, context, frame.nodeMap)
   const resizedParents = new WeakSet()
+  // What may have changed a flex row's overflow: every ancestor of a rebuilt or re-read box
+  // (scrollWidth counts what a descendant spills), and a re-read box itself. See the pass
+  // over `rows` below.
+  const rows = new Set()
+  const touch = (node) => {
+    for (let p = node.parentElement; p && !rows.has(p); p = p.parentElement) {
+      rows.add(p)
+      if (p === element) break
+    }
+  }
+  roots.forEach(touch)
+  const reread = new Set(roots)
   let rezero = false
   for (const [cloneN, srcN] of R.nodeMap.entries()) {
     if (!srcN || srcN.nodeType !== 1 || !srcN.isConnected) continue
@@ -394,6 +406,9 @@ async function diffCapture(element, state, context, animated) {
       // A changed container can stop overflowing even when its items' used widths
       // stay constant; refresh their synthesized floors too. nodeMap is parent-first.
       resizedParents.add(srcN)
+      rows.add(srcN)
+      touch(srcN)
+      reread.add(srcN)
       __diffStats.reconciled++
       // The root's inline style also holds what prepareClone took off it (margin, offsets,
       // float, transform, zoom). A re-read that rewrites it, as an inline `margin: 1em 0`
@@ -404,6 +419,32 @@ async function diffCapture(element, state, context, animated) {
       // An authored inline style holding a context-dependent value (`margin:20px auto`) is
       // rewritten from the computed one, margin included, which undoes a #426 zero.
       if (zeroed.includes(srcN)) rezero = true
+    }
+  }
+  // A flex row that starts or stops overflowing flips the min-width floor of all its items
+  // (inlineAllStyles), and only the item that changed drifts above: the others keep their
+  // width, and a floor of 0px is not even in their key. So each row a change touched is asked
+  // again, and its items are read again when the answer is not the one their keys were made
+  // under. A span given a width pushed its row into overflow and its siblings kept shrinking
+  // in the frame; a box taken out of the flow ended an overflow two rows up and the items
+  // there kept their floors (diff fuzz, seeds 347 and 10).
+  // Pinned by __tests__/core.capture.diff.flexFloor.test.js.
+  for (const row of rows) {
+    if (!row.isConnected || !getComputedStyle(row).display.includes('flex')) continue
+    const items = []
+    let floored = false
+    for (let item = row.firstElementChild; item; item = item.nextElementSibling) {
+      const cloneN = R.srcToClone.get(item)
+      const key = cloneN && !reread.has(item) && R.styleMap.get(cloneN)
+      if (!key) continue
+      items.push(item)
+      const floor = !floored && geomOfKey(key)?.['min-width']
+      if (floor && floor !== '0px' && getComputedStyle(item).minWidth === 'auto') floored = true
+    }
+    if (floored === flexRowOverflows(row, sessionLike)) continue
+    for (const item of items) {
+      await inlineAllStyles(item, R.srcToClone.get(item), sessionLike, context)
+      if (zeroed.includes(item)) rezero = true
     }
   }
   // In the order of the full pipeline, styles first and then the zeroes, on the same nodes.

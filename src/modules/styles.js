@@ -817,6 +817,49 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   return snap
 }
 
+/**
+ * Whether the items of a flex container overflow it along its inline axis, once per pass.
+ * Decides the min-width floor of its items (inlineAllStyles): an item of an overflowing row
+ * keeps its used width, any other can shrink (#406). The differential path asks again for the
+ * rows a change touched (diff.js).
+ * @param {Element} parent - a flex container
+ * @param {import('../core/session.js').ClonePass} session
+ * @returns {boolean}
+ */
+export function flexRowOverflows(parent, session) {
+  const floors = session.flexOverflow || (session.flexOverflow = new WeakMap())
+  let overflow = floors.get(parent)
+  if (overflow === undefined) {
+    overflow = parent.scrollWidth > parent.clientWidth
+    if (!overflow) {
+      // scrollWidth/clientWidth are integers. Sum used, untransformed boxes once
+      // per container to retain fractional overflow too, without per-item reflows.
+      const ps = getStyle(parent)
+      const px = p => parseFloat(ps.getPropertyValue(p)) || 0
+      const available = px('width') - (ps.boxSizing === 'border-box'
+        ? px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width') : 0)
+      const horizontal = ps.flexDirection.startsWith('row') === (ps.writingMode === 'horizontal-tb')
+      const row = horizontal && ps.flexWrap === 'nowrap'
+      let used = 0, count = 0
+      for (const child of parent.children) {
+        if (!session.styleCache.has(child)) session.styleCache.set(child, getComputedStyle(child))
+        const cs = session.styleCache.get(child)
+        if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') continue
+        const n = p => parseFloat(cs.getPropertyValue(p)) || 0
+        const width = n('width') + n('margin-left') + n('margin-right') + (cs.boxSizing === 'border-box'
+          ? 0 : n('padding-left') + n('padding-right') + n('border-left-width') + n('border-right-width'))
+        used = row ? used + width : Math.max(used, width)
+        count++
+      }
+      // Used flex tracks can round up by one layout unit each (1/60px in
+      // Gecko, 1/64px in Blink/WebKit). That alone is not content overflow.
+      overflow = used + (row ? Math.max(0, count - 1) * px('column-gap') : 0) > available + count / 60
+    }
+    floors.set(parent, overflow)
+  }
+  return overflow
+}
+
 /** Turns whatever inlineAllStyles was given into `{ session, persist, options }`: a ready ctx
  *  as is, a session cache with one ctx memoized on it per options object, or nothing, which
  *  gets throwaway maps so a direct caller never touches the global session. */
@@ -1074,36 +1117,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
       const parent = source.parentElement
       if (mw === 'auto' && (ox === 'visible' || ox === 'clip') && parent &&
           getStyle(parent).display.includes('flex')) {
-        const floors = session.flexOverflow || (session.flexOverflow = new WeakMap())
-        let overflow = floors.get(parent)
-        if (overflow === undefined) {
-          overflow = parent.scrollWidth > parent.clientWidth
-          if (!overflow) {
-            // scrollWidth/clientWidth are integers. Sum used, untransformed boxes once
-            // per container to retain fractional overflow too, without per-item reflows.
-            const ps = getStyle(parent)
-            const px = p => parseFloat(ps.getPropertyValue(p)) || 0
-            const available = px('width') - (ps.boxSizing === 'border-box'
-              ? px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width') : 0)
-            const horizontal = ps.flexDirection.startsWith('row') === (ps.writingMode === 'horizontal-tb')
-            const row = horizontal && ps.flexWrap === 'nowrap'
-            let used = 0, count = 0
-            for (const child of parent.children) {
-              if (!session.styleCache.has(child)) session.styleCache.set(child, getComputedStyle(child))
-              const cs = session.styleCache.get(child)
-              if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') continue
-              const n = p => parseFloat(cs.getPropertyValue(p)) || 0
-              const width = n('width') + n('margin-left') + n('margin-right') + (cs.boxSizing === 'border-box'
-                ? 0 : n('padding-left') + n('padding-right') + n('border-left-width') + n('border-right-width'))
-              used = row ? used + width : Math.max(used, width)
-              count++
-            }
-            // Used flex tracks can round up by one layout unit each (1/60px in
-            // Gecko, 1/64px in Blink/WebKit). That alone is not content overflow.
-            overflow = used + (row ? Math.max(0, count - 1) * px('column-gap') : 0) > available + count / 60
-          }
-          floors.set(parent, overflow)
-        }
+        const overflow = flexRowOverflows(parent, session)
         if (overflow) floor = snap.width
       }
       if (snap['min-width'] === floor) floor = ''
