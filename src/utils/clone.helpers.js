@@ -504,7 +504,7 @@ export function pinIframeViewport(doc, w, h) {
     doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, sheet]
     unmount = () => { doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter(s => s !== sheet) }
   } catch {
-    // Owned, so the frame document's invalidation observer (styles.js, wired per document)
+    // Owned, so the frame document's invalidation observer (changes.js, wired per document)
     // ignores the style's arrival and removal: as an unmarked <head> mutation it bumped the
     // shared environment epoch twice per capture, which is an unconditional dirtyAll on the
     // OUTER element's burst memo. The viewport flag itself travels as the nested capture's

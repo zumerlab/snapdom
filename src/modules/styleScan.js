@@ -189,7 +189,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     let sel = sel0
     // `:has()` is the one selector whose reach a DOM mutation cannot be walked back from — it
     // restyles ancestors AND, combined with a combinator, their other descendants. A document
-    // that uses it keeps document-wide style invalidation (see nodeStamp in styles.js).
+    // that uses it keeps document-wide style invalidation (see nodeStamp in changes.js).
     if (sel && sel.includes(':has(')) state.usesHas = true
     // A class change can shift filtered nth positions without dirtying the siblings.
     // Keep the existing conservative combinator check (including An+B's '+').
@@ -439,7 +439,7 @@ const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-
 
 /**
  * Scans the document's author styles once: every sheet, the adopted sheets, WAAPI keyframes.
- * Pure; styles.js memoizes it per document and style epoch, and keeps a scan across epochs
+ * Pure; changes.js memoizes it per document and style epoch, and keeps a scan across epochs
  * while sheetCensus reads the same (scanFor).
  *
  * Everything in the result rides the same rule walk, so none of it costs a second pass:

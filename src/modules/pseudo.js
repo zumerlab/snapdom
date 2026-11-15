@@ -39,7 +39,8 @@ import {
   counterPairs
 } from '../modules/counter.js'
 import { snapFetch } from './snapFetch.js'
-import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, flushStyleInvalidations, invalidateStyleCaches, ONE_LINE_PROP } from './styles.js'
+import { pseudoGatesFor, pseudoUniverseFor, pseudoSnapshotFor, ONE_LINE_PROP } from './styles.js'
+import { flushStyleInvalidations, invalidateStyleCaches } from '../core/changes.js'
 
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()

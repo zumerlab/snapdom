@@ -11,7 +11,7 @@
  * @module CSSVar
  */
 
-import { getStyleEpoch } from './styles.js'
+import { getStyleEpoch } from '../core/changes.js'
 
 /** SVG containers whose content `<use>` instantiates: the use site's custom properties
  *  cascade into that shadow tree, so a var() inside must survive the clone unresolved. */

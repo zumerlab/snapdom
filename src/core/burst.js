@@ -9,7 +9,7 @@
  *  - DOM mutations ......... scoped MutationObserver (+ takeRecords flush pre-serve), below
  *  - opaque/frame sources .. video/canvas/iframe/SMIL and known animated images bypass burst
  *  - <img> loads/srcset .... pending load/error listeners plus currentSrc/dimensions signature
- *  - font loads ............ style-environment epoch (styles.js getStyleEnvEpoch)
+ *  - font loads ............ style-environment epoch (changes.js getStyleEnvEpoch)
  *  - scroll ................ capture-phase scroll listener per element (no records exist),
  *                            PLUS one per open shadow root: scroll is composed:false, so it
  *                            stops at the boundary; known offsets are also sampled so a
@@ -19,7 +19,7 @@
  *                            synchronous signature for programmatic writes. `change` is
  *                            composed:false, hence the per-shadow-root listener
  *  - :hover ................ scoped document/shadow signatures before a possible memo serve
- *  - outside selector state  root style stamp from styles.js after a synchronous flush
+ *  - outside selector state  root style stamp from changes.js after a synchronous flush
  *                            (ancestors/siblings/:has()/container dependencies)
  *  - window resize ......... env epoch (media queries flip with no mutation)
  *  - <head> CSS ............ env epoch (head observer)
@@ -77,9 +77,8 @@ import {
   flushStyleInvalidations,
   invalidateHoverChanges,
   invalidateStyleCaches,
-  invalidateSnapshotsUnder,
-  animatedProps,
-} from '../modules/styles.js'
+} from './changes.js'
+import { invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
 import { tryDiffCapture } from './diff.js'
 import { createCaptureSession } from './session.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
@@ -667,7 +666,7 @@ function createState(element) {
     scannedImages: null,
     scrollNodes: [],
     controls: [],
-    envEpoch: getStyleEnvEpoch(), // shared head+fonts environment epoch (styles.js)
+    envEpoch: getStyleEnvEpoch(), // shared head+fonts environment epoch (changes.js)
     styleEpoch: getStyleEpoch(),
     styleStamp: getStyleStamp(element),
     outsideMutations: getOutsideMutationCount(element),

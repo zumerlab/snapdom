@@ -552,7 +552,7 @@ function getMeasureHost() {
   n.setAttribute('aria-hidden', 'true')
   // Marks the host as snapdom-owned BEFORE it is mounted, so neither the mount record nor
   // the append/remove pair readTotalTransformMatrix does inside it reads as an external
-  // mutation (styles.js isExternalRecord). Without it every capture of a transformed root
+  // mutation (changes.js isExternalRecord). Without it every capture of a transformed root
   // bumped the style epoch and re-stamped the whole document, dropping the author-style
   // scan memo and every cached snapshot on the page.
   markInternalNode(n)
