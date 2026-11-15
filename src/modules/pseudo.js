@@ -49,29 +49,6 @@ const __preflightMemo = new WeakMap()
 const CSS_RULE_SCAN_BUDGET = 1000
 
 /**
- * The document-level preflight, memoized on the session by style fingerprint so one capture
- * asks it once. Without a session it still drains pending style records first.
- * @param {Document} doc
- * @param {Map|Object} sessionCache
- * @returns {boolean}
- */
-function preflightWithFp(doc, sessionCache) {
-  const fp = styleFingerprint(doc)
-  if (!sessionCache) {
-    flushStyleInvalidations()
-    return shouldProcessPseudos(doc, fp)
-  }
-  // Recompute when the fingerprint changes
-  if (sessionCache.__pseudoPreflightFp !== fp) {
-    // Styles changed (or first visit this capture): drain pending observer records so the
-    // scanned universe/pseudo-gates can't be read against a stale epoch (same-tick <style>).
-    flushStyleInvalidations()
-    sessionCache.__pseudoPreflight = shouldProcessPseudos(doc, fp)
-    sessionCache.__pseudoPreflightFp = fp
-  }
-  return !!sessionCache.__pseudoPreflight
-}
-/**
  * Safely returns cssRules for a stylesheet, or null when cross-origin/blocked.
  * @param {CSSStyleSheet} sheet
  * @returns {CSSRuleList | null}
@@ -655,11 +632,14 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
   // capture went to querySelectorAll, on a page holding one <style>). `shadowPseudo`: a
   // shadow root in the capture declares a pseudo (deepClone reads its CSS); the
   // document-level preflight cannot see it.
-  if (!isDescendant && !preflightWithFp(doc, sessionCache) && !sessionCache.shadowPseudo) {
-    return
+  if (!isDescendant) {
+    // Drain pending observer records first, so the scanned universe and pseudo gates are not
+    // read against a stale epoch (a <style> added in the same tick).
+    flushStyleInvalidations()
+    if (!shouldProcessPseudos(doc) && !sessionCache.shadowPseudo) return
+    // Asked once, on the root call only: the recursion below is exactly what this skips.
+    if (canSkipPseudoWalk(source, sessionCache)) return
   }
-  // Asked once, on the root call only: the recursion below is exactly what this skips.
-  if (!isDescendant && canSkipPseudoWalk(source, sessionCache)) return
 
   // Sibling-counter overrides are per-capture state: they live on sessionCache (whose
   // lifetime is exactly one capture), not on a module global — a concurrently starting
