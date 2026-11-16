@@ -1276,10 +1276,12 @@ async function cloneCanvas(node, sessionCache, options) {
   img.width = node.width
   img.height = node.height
 
-  // keep the CSS box so layout is not broken, using pre-transform dimensions
+  // Keep the CSS box, from pre-transform dimensions. They are border-box sizes: on a
+  // content-box canvas the border and padding were added again, as on a textarea (#528).
   const { width, height } = getUnscaledDimensions(node)
   if (width > 0) img.style.width = `${width}px`
   if (height > 0) img.style.height = `${height}px`
+  img.style.boxSizing = 'border-box'
 
   sessionCache.nodeMap.set(img, node)
   inlineAllStyles(node, img, sessionCache, options)
@@ -1328,6 +1330,7 @@ async function cloneVideo(node, sessionCache, options) {
   const { width, height } = getUnscaledDimensions(node)
   if (width > 0) img.style.width = `${width}px`
   if (height > 0) img.style.height = `${height}px`
+  img.style.boxSizing = 'border-box'
   img.style.objectFit = 'contain'
 
   sessionCache.nodeMap.set(img, node)
@@ -1384,6 +1387,7 @@ async function cloneObjectEmbed(node, sessionCache, options) {
     const { width, height } = getUnscaledDimensions(node)
     if (width > 0) img.style.width = `${width}px`
     if (height > 0) img.style.height = `${height}px`
+    img.style.boxSizing = 'border-box'
     sessionCache.nodeMap.set(img, node)
     inlineAllStyles(node, img, sessionCache, options)
     return img // fallback children dropped on purpose, or both would paint
