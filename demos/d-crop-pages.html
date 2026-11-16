@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo: toCanvas({ crop }) — paginado sobre una sola captura</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .lede { font-size: 13px; color: #475569; margin: 0 0 20px; max-width: 760px; line-height: 1.5; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+    /* #target es lo que compara el harness visual: documento vivo + páginas recortadas. */
+    #target {
+      display: flex;
+      gap: 28px;
+      align-items: flex-start;
+      background: #f1f5f9;
+      padding: 12px;
+      width: max-content;
+    }
+    .col-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #64748b;
+      margin: 0 0 8px;
+    }
+
+    /* ── El "documento" de origen: 320 x 900, tres franjas de 300px ─────────── */
+    #source {
+      width: 320px;
+      background: #fff;
+      border: 1px solid #cbd5e1;
+    }
+    .band { height: 300px; padding: 18px; position: relative; }
+    .band + .band { border-top: 2px dashed #94a3b8; }
+    .band h2 { margin: 0 0 10px; font-size: 20px; }
+    .band p { margin: 0 0 10px; font-size: 13px; line-height: 1.5; }
+    .band .corner {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+      background: #0f172a;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    /* Marcas en las cuatro esquinas de cada franja: un offset de crop equivocado
+       parte una marca por la mitad y salta a la vista en el diff. */
+    .band .tick {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 3px solid currentColor;
+    }
+    .band .tick.tl { top: 0; left: 0; border-right: 0; border-bottom: 0; }
+    .band .tick.tr { top: 0; right: 0; border-left: 0; border-bottom: 0; }
+    .band .tick.bl { bottom: 0; left: 0; border-right: 0; border-top: 0; }
+    .band .tick.br { bottom: 0; right: 0; border-left: 0; border-top: 0; }
+
+    .band.one { background: #fee2e2; color: #b91c1c; }
+    .band.two { background: #dcfce7; color: #15803d; }
+    .band.three { background: #dbeafe; color: #1d4ed8; }
+    .band h2, .band p { color: #0f172a; }
+
+    /* ── Las páginas rasterizadas ────────────────────────────────────────────── */
+    #pages { display: flex; flex-direction: column; gap: 12px; }
+    .page {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      padding: 6px;
+    }
+    .page figcaption {
+      font-size: 11px;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 5px;
+      font-variant-numeric: tabular-nums;
+    }
+    .page canvas { display: block; }
+    #error {
+      color: #b91c1c;
+      font-size: 13px;
+      font-weight: 700;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>toCanvas({ crop }) — tres páginas de una sola captura</h1>
+  <p class="lede">
+    El documento se captura <strong>una sola vez</strong>. Después se piden tres canvas con
+    <code>crop</code> en coordenadas del viewBox, calculadas a partir de <code>result.meta</code>.
+    Cada página decodifica solo su franja: nunca se asigna el bitmap de altura completa.
+    Las tres páginas apiladas tienen que reconstruir el documento de la izquierda exactamente.
+  </p>
+
+  <div id="target">
+    <div>
+      <p class="col-label">Documento vivo (320 × 900)</p>
+      <div id="source">
+        <section class="band one">
+          <span class="tick tl"></span><span class="tick tr"></span>
+          <span class="tick bl"></span><span class="tick br"></span>
+          <h2>Página uno</h2>
+          <p>Primera franja de 300px. El recorte tiene que empezar justo en el borde
+             superior del contenido, no en el borde del viewBox.</p>
+          <p>Si <code>contentY</code> se ignora, esta franja aparece corrida.</p>
+          <span class="corner">PAGE 1 / 3</span>
+        </section>
+        <section class="band two">
+          <span class="tick tl"></span><span class="tick tr"></span>
+          <span class="tick bl"></span><span class="tick br"></span>
+          <h2>Página dos</h2>
+          <p>Segunda franja. Comparte borde con la primera y con la tercera, así que
+             cualquier error de un píxel deja una banda visible en el diff.</p>
+          <p>El fondo verde no debe filtrarse a las páginas vecinas.</p>
+          <span class="corner">PAGE 2 / 3</span>
+        </section>
+        <section class="band three">
+          <span class="tick tl"></span><span class="tick tr"></span>
+          <span class="tick bl"></span><span class="tick br"></span>
+          <h2>Página tres</h2>
+          <p>Última franja. Toca el borde inferior del contenido, donde el recorte se
+             intersecta con el viewBox.</p>
+          <p>Acá se ve si el clamp de tamaño se aplicó sobre el header recortado.</p>
+          <span class="corner">PAGE 3 / 3</span>
+        </section>
+      </div>
+    </div>
+
+    <div>
+      <p class="col-label">Páginas vía crop</p>
+      <div id="pages"></div>
+      <div id="error"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs'
+
+    const PAGES = 3
+
+    async function paginate() {
+      const source = document.getElementById('source')
+      const out = document.getElementById('pages')
+
+      // Una sola captura para todo el documento.
+      const result = await snapdom(source, { scale: 1, dpr: 1, embedFonts: true })
+
+      // meta traduce "el contenido" a coordenadas del viewBox del SVG serializado.
+      // contentX/contentY son el origen exacto de la caja de contenido dentro del
+      // viewBox, que incluye padding y bleed: sin eso el recorte sale corrido.
+      const { contentX, contentY, w0, h0 } = result.meta
+      const pageH = h0 / PAGES
+
+      for (let page = 0; page < PAGES; page++) {
+        const canvas = await result.toCanvas({
+          crop: { x: contentX, y: contentY + page * pageH, width: w0, height: pageH },
+        })
+        const fig = document.createElement('figure')
+        fig.className = 'page'
+        const cap = document.createElement('figcaption')
+        cap.textContent = `crop y=${Math.round(contentY + page * pageH)} · ${canvas.width}×${canvas.height}`
+        fig.appendChild(cap)
+        fig.appendChild(canvas)
+        out.appendChild(fig)
+      }
+    }
+
+    // Expuesto para que el setup() del harness visual espere el paginado antes de capturar.
+    window.__ready = paginate().catch((err) => {
+      document.getElementById('error').textContent = String(err && err.message || err)
+      throw err
+    })
+  </script>
+</body>
+</html>
