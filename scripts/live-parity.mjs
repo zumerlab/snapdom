@@ -89,6 +89,9 @@ const LIMITS = {
   'd508-snapped-borders': 'a fractional zoom on an ancestor: compared after rescaling, off by sub-pixels',
   'd11-toblob-test': 'a fixed element outside #target paints over its box in the reference',
   'd42-nested-line-clamp': "a native button; Chromium's svg images ignore per-language default fonts",
+  'd-rtl-body': "Chromium's reference screenshot of a right-to-left body starts 228px in; the capture holds the whole body",
+  'd8-nested-elements': "Playwright's WebKit draws box-shadow in an svg image off its box (safariShadows.js); real Safari is checked by hand",
+  'd-compress': "Playwright's WebKit draws box-shadow in an svg image off its box (safariShadows.js); real Safari is checked by hand",
 }
 
 const MIME = {
