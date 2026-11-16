@@ -83,3 +83,66 @@ describe('an oversized <img> the page has decoded', () => {
     expect(crisp).toBeGreaterThan(1400)
   })
 })
+
+describe('an image the decoded path must leave to the passes', () => {
+  /** Every value written to an img `src` while the element is captured, and the canvas. */
+  async function srcWrites(html, opts = OPTS) {
+    host = document.createElement('div')
+    host.style.cssText = 'position:absolute;left:0;top:0;width:400px;background:#fff'
+    host.innerHTML = html
+    document.body.appendChild(host)
+    await host.querySelector('img').decode().catch(() => {})
+    const own = Element.prototype.setAttribute
+    const writes = []
+    Element.prototype.setAttribute = function (name, value) { if (name === 'src' && this.localName === 'img') writes.push(String(value)); return own.call(this, name, value) }
+    let canvas
+    try { canvas = await (await snapdom(host, opts)).toCanvas() } finally { Element.prototype.setAttribute = own }
+    const at = (x, y) => Array.from(canvas.getContext('2d').getImageData(x, y, 1, 1).data.slice(0, 3))
+    return { writes, at }
+  }
+  const drawn = (writes) => writes.filter((v) => /^data:image\/(?:png|jpeg|webp)/.test(v))
+
+  it('an SVG stays vector', async () => {
+    const svg = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800"><rect width="800" height="800" fill="#f00"/><rect x="800" width="800" height="800" fill="#00f"/></svg>')
+    const { writes, at } = await srcWrites(`<img src="${svg}" style="display:block;width:400px;height:200px">`)
+    expect(drawn(writes)).toEqual([])
+    expect(at(100, 100)[0]).toBeGreaterThan(200)
+    expect(at(300, 100)[2]).toBeGreaterThan(200)
+  })
+
+  // Left to compress, which has always turned an oversized GIF into a still of its first frame.
+  it('a GIF is still captured', async () => {
+    const { at } = await srcWrites('<img src="data:image/gif;base64,R0lGODdhQABAAIEAAP8AAAAA/wAAAAAAACwAAAAAQABAAEAI2AABCBxIsKDBgwQDKFzIsKHDhwwRSpxYEKLFiw0papSIsaPFjSArehwZMaRJkigDmDyZcuTKkC1dvtwY0+NMmjUx3tSYU+fOiT0v/gQaFOJQjkUfHkWYVOlSg00dPoUateTUgVWtXgWQdeFWrF1VfuUadizZrmbDiv2qNm3ZsW3hvmU7d2tcumjl5sWb1e1eu3Wv3gX8V3DgqYMNF0Z8+GlixosdN176WHJkypOPVsZ8WXPmoZs9dwb9+Wdo0qNNl955WnVq1qtvtob9WnbsmbNt18Z9+6XagAA7" style="display:block;width:16px;height:16px">')
+    expect(at(3, 8)[0]).toBeGreaterThan(200)
+    expect(at(12, 8)[2]).toBeGreaterThan(200)
+  })
+
+  it('an image shown at its own size is not redrawn', async () => {
+    const c = document.createElement('canvas')
+    c.width = 400; c.height = 200
+    const x = c.getContext('2d')
+    x.fillStyle = '#f00'; x.fillRect(0, 0, 200, 200)
+    x.fillStyle = '#00f'; x.fillRect(200, 0, 200, 200)
+    const src = c.toDataURL('image/png')
+    const { writes, at } = await srcWrites(`<img src="${src}" style="display:block;width:400px;height:200px">`)
+    expect(writes.filter((v) => v !== src)).toEqual([])
+    expect(at(100, 100)[0]).toBeGreaterThan(200)
+    expect(at(300, 100)[2]).toBeGreaterThan(200)
+  })
+
+  it('a canvas that cannot be read falls back, and the image is still captured', async () => {
+    const own = HTMLCanvasElement.prototype.toDataURL
+    let refused = 0
+    // What a cross-origin image without CORS does to the canvas it was drawn on.
+    HTMLCanvasElement.prototype.toDataURL = function (...args) {
+      if (!refused && this.width === 400 && this.height === 200) { refused++; throw new DOMException('Tainted canvases may not be exported.', 'SecurityError') }
+      return own.apply(this, args)
+    }
+    try {
+      const { at } = await srcWrites(`<img src="${await photo()}" style="display:block;width:400px;height:200px">`)
+      expect(refused).toBe(1)
+      expect(at(100, 10)[0]).toBeGreaterThan(200)
+      expect(at(300, 10)[2]).toBeGreaterThan(200)
+    } finally { HTMLCanvasElement.prototype.toDataURL = own }
+  })
+})

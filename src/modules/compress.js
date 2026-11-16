@@ -526,8 +526,8 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
  * again on every capture.
  *
  * Taken only for a loaded <img> that compress would shrink, whose pixels a canvas may read:
- * same origin, blob:, data:, or cross-origin with a `crossorigin` attribute. SVG stays vector
- * and a GIF keeps its file. Anything else is left to the passes as before.
+ * same origin, blob:, data:, or cross-origin with a `crossorigin` attribute. SVG stays vector.
+ * Anything else, a GIF included, is left to the passes as before.
  *
  * The original is still owed to a later export at a higher density (exportSource, snapdom.js):
  * its read starts here, unawaited, and the promise stands where the string would.
