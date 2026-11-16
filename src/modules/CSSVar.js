@@ -1,13 +1,12 @@
 /**
  * var() materialization for inline styles and attributes.
  *
- * A custom property resolves where the element lives. Inside the foreignObject the cascade
- * above the capture root is gone, so a `var(--x)` left in an inline style would take its
- * fallback, or nothing. `resolveCSSVars` writes the computed value onto the clone instead.
- * The one place that must NOT happen is an SVG template (`<symbol>`, or a shape in `<defs>`):
- * its content renders through `<use>`, where the consumer's custom properties cascade in,
- * so freezing the value there freezes the fallback (#408). Paint servers and the other
- * `url(#...)` targets are not templates: they inherit from their own position (#515).
+ * Inside the foreignObject the cascade above the capture root is gone, so a `var(--x)` left in
+ * an inline style takes its fallback, or nothing; `resolveCSSVars` writes the computed value
+ * onto the clone. Never inside an SVG template (`<symbol>`, or a shape in `<defs>`): it renders
+ * through `<use>`, where the consumer's custom properties cascade in, so freezing it freezes the
+ * fallback (#408). Paint servers and other `url(#...)` targets are not templates: they inherit
+ * from their own position (#515).
  * @module CSSVar
  */
 
@@ -24,8 +23,8 @@ const SVG_IN_PLACE_TAGS = new Set([
   'mask', 'clipPath', 'linearGradient', 'radialGradient', 'pattern', 'marker', 'filter'
 ])
 /** Per-element memo, scoped to the style epoch so DOM restructuring invalidates it.
- *  Each ancestor resolves once per epoch — the old uncached walk was O(depth) per node
- *  and ran 3× per SVG element (resolveCSSVars + two clone.js sites). */
+ *  Each ancestor resolves once per epoch instead of an O(depth) walk per node, three times
+ *  per SVG element (resolveCSSVars and two clone.js sites). */
 let __tplMemo = new WeakMap()
 let __tplEpoch = -1
 /**
@@ -96,9 +95,8 @@ export function resolveCSSVars(sourceEl, cloneEl) {
   if (hasVar) {
     const author = sourceEl.style
     if (author && author.length) {
-      // visitedProps guards against duplicate property names in the iteration
-      // (can happen with browser quirks or malformed style attributes) which
-      // would otherwise re-resolve and re-set the same property redundantly.
+      // visitedProps skips duplicate property names (browser quirks or a malformed style
+      // attribute), which would re-resolve and re-set the same property.
       const visitedProps = new Set()
       for (let i = 0; i < author.length; i++) {
         const prop = author[i]

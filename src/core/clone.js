@@ -4,10 +4,9 @@
  *
  * Owns what cloneNode cannot copy: exclusion and clip culling, the per-tag strategies for
  * iframe, canvas, video, audio and object/embed, form-control state (properties, not
- * attributes), shadow roots and slots. One contract holds the later passes together: every
- * element clone is registered in `sessionCache.nodeMap` as clone -> source. A replacement
- * that skips the map is invisible to the pseudo, background and image passes, and a culled
- * subtree skips it on purpose.
+ * attributes), shadow roots and slots. The contract: every element clone is registered in
+ * `sessionCache.nodeMap`, keyed clone to source. A replacement outside the map is invisible to
+ * the pseudo, background and image passes; a culled subtree stays out of it on purpose.
  * @module clone
  */
 
@@ -65,11 +64,10 @@ const SVG_MOVERS = new Set(['transform', 'translate', 'rotate', 'scale'])
 const svgGeometryLists = new WeakMap()
 const SVG_GEOMETRY_ALL = new Map()
 
-/** The properties to copy for this SVG element: its tag's list, cut down to the ones some
- *  document rule or animation declares (styleScan's svgGeometry), memoized per scan. null
- *  when there are none, or when none of the rules declaring them matches this element: on
- *  a page whose CSS never names them, or names them only for other elements (a
- *  `button:hover { transform }`), that is every SVG element, for one matches() each. */
+/** The properties to copy for this SVG element: its tag's list, cut to those some document
+ *  rule or animation declares (styleScan's svgGeometry), memoized per scan. null when none
+ *  is declared or no declaring rule matches the element (a `button:hover { transform }`
+ *  page answers null for every SVG element, one matches() each). */
 function svgGeometryList(node) {
   const tag = node.localName
   const own = SVG_GEOMETRY_BY_TAG[tag]
@@ -152,17 +150,14 @@ function copySvgGeometry(node, clone, cs, list) {
 }
 
 /**
- * Build a hidden, layout-preserving spacer matching a node's unscaled box, used when a node is
- * excluded/filtered in 'hide' mode. Forces at most one getBoundingClientRect (the inline form
- * could read it twice per node in the hot path).
+ * Build a hidden spacer matching a node's unscaled box, for exclude/filter in 'hide' mode.
+ * Reads getBoundingClientRect at most once.
  * @param {Element} node
  * @returns {HTMLDivElement|null}
  */
 function makeHideSpacer(node) {
-  // A display:none node occupies nothing live, so ANY spacer shifts the layout; and a
-  // hardcoded inline-block spacer for a block-level node adds a whole line box (baseline
-  // + descender) on top of its height. `exclude` is the redaction feature, routinely
-  // pointed at selectors that also match hidden elements — both cases moved content down.
+  // A display:none node occupies nothing, so ANY spacer shifts the layout, and an inline-block
+  // spacer for a block adds a line box. `exclude` selectors often match hidden elements too.
   const style = getStyle(node)
   const display = style.display
   if (display === 'none') return null
@@ -216,8 +211,8 @@ const HIDDEN_CLONED_TAGS = new Set(['style', 'option', 'optgroup'])
  *  inkReach decides per box (#525). */
 const CLIP_CULL_MARGIN = 200
 
-/** Replaced elements are atomic inline boxes, so a fixed-size husk holds their flow slot
- *  even at display:inline — and culling offscreen <img>/<canvas> skips fetch/encode work. */
+/** Replaced elements are atomic inline boxes, so a fixed-size husk holds their flow slot even
+ *  at display:inline, and culling an offscreen <img>/<canvas> skips its fetch or encode. */
 const CLIP_REPLACED_TAGS = new Set(['img', 'canvas', 'video', 'iframe', 'object', 'embed'])
 
 /** Sum of every px length in a computed value: an upper bound on how far its shadows reach. */
@@ -333,8 +328,8 @@ function isOutsideClip(node, clip) {
     box.left = Math.min(box.left, r.right - sw)
   }
   if (reachesClip(node, cs, box, clip)) return false
-  // Escape scan: any descendant whose painted box reaches the window (gBCR reads only —
-  // no style/clone/inline work) vetoes the cull; deeper levels then cull its siblings.
+  // Escape scan: a descendant whose painted box reaches the window (gBCR reads only) vetoes
+  // the cull; deeper levels then cull its siblings.
   const tw = (node.ownerDocument || document).createTreeWalker(node, NodeFilter.SHOW_ELEMENT)
   while (tw.nextNode()) {
     const d = /** @type {Element} */ (tw.currentNode)
@@ -406,13 +401,11 @@ function nextInFlow(a, b) {
   return false
 }
 
-/** The live distance from a box to its previous (dir -1) or next (dir 1) in-flow sibling,
- *  which is the margin block flow collapsed between them; null when there is none, the
- *  margins overlap, a line box sits between (text or an inline-level box), or the sibling's
- *  rect is not its layout box. A display:contents wrapper (all zeros) or a stuck sticky
- *  panel read as the next box gave a culled toolbar a 463px margin on a page scrolled 549px,
- *  and the window showed content from above it. Read across a line, the gap was the line's
- *  height, and the line moved down by it. */
+/** The live distance to the previous (dir -1) or next (dir 1) in-flow sibling, the margin
+ *  block flow collapsed between them. null when there is none, the margins overlap, a line
+ *  box sits between, or the sibling's rect is not its layout box: a display:contents wrapper
+ *  or a stuck sticky panel gave a culled toolbar a 463px margin on a page scrolled 549px, and
+ *  a gap read across a line moved the line down by its height. */
 function siblingGap(el, r, dir) {
   let sib = dir < 0 ? el.previousSibling : el.nextSibling
   for (; sib; sib = dir < 0 ? sib.previousSibling : sib.nextSibling) {
@@ -431,13 +424,11 @@ function siblingGap(el, r, dir) {
 }
 
 /**
- * Fold the runs of culled block siblings under one clone parent. The first husk of a run
- * becomes a spacer as tall as the live run, a plain block whatever author rule still matches
- * its element: made a block formatting context by `overflow:hidden`, it could not overlap a
- * float, and the window landed one float lower. The rest are dropped, or kept as empty
- * display:none shells when author styles travel with the clone, so their sibling selectors
- * match the same elements. Whitespace and comments between them go too, since the span
- * already holds whatever they laid out.
+ * Fold the runs of culled block siblings under one clone parent. A run's first husk becomes a
+ * spacer as tall as the live run, a plain block whatever author rule matches it: an author
+ * `overflow:hidden` made it a BFC that dodged a float and dropped the window one float lower.
+ * The rest are dropped, or kept as display:none shells when author styles travel with the
+ * clone, so sibling selectors match the same elements. Whitespace and comments between go too.
  * @param {Element} parent - a clone parent of husks
  * @param {Map<Element, Element>} husks - husk -> culled source; folded husks are removed
  * @param {boolean} shells - keep the folded husks as display:none shells
@@ -492,12 +483,10 @@ function foldClipRuns(parent, husks, shells, standIns) {
 
 /**
  * Give every husk deepClone left its layout slot, once the whole tree is cloned. A run of
- * culled block siblings folds into one spacer measured on the live page (foldClipRuns), so
- * a long page costs one styled box per run instead of one per card. A 100x40 clip inside
- * the middle of 3,200 cards spent 52 of its 124 ms dressing culled cards (#549); the
- * 800-card scene in __tests__/clip.benchmark.js went from 19.6 to 7.8 ms. The live span
- * also keeps the fractions offset sizes round away, where 200 culled 30.4px blocks moved
- * the window 80px. Every other husk gets the original's computed style and a frozen box.
+ * culled block siblings folds into one spacer measured live (foldClipRuns), one box per run
+ * instead of per card (#549): the 800-card scene in __tests__/clip.benchmark.js went from
+ * 19.6 to 7.8 ms. The live span also keeps the fractions offset sizes round away, where 200
+ * culled 30.4px blocks moved the window 80px. Other husks go through dressClipHusk.
  * Pinned by __tests__/core.clip.test.js.
  * @param {Element|null} clone - the root clone
  * @param {Object} sessionCache
@@ -526,12 +515,10 @@ const PLAIN_HUSK_DISPLAY = /^(block|flow-root|list-item|flex|grid|inline-block|i
 /**
  * Layout-preserving husk: a frozen box, hidden. A plain in-flow box (PLAIN_HUSK_DISPLAY, no
  * float or clearance, counters, anchor name, zoom or vertical writing mode) gets only what
- * places it in its parent: display, margins, what makes it a block formatting context
- * (overflow, contain, columns; one avoids floats), baseline alignment and its grid/flex slot.
- * Its full computed style took 2.6 of the 5.9 ms a window of the Zumly board cost (47 culled
- * grid tiles, 1280x800 at dpr 2); without it the window takes 3.5 ms and its SVG drops from
- * 79 to 33 KB, pixel-identical on all three engines. Every other husk gets the original's
- * computed style. Pinned by __tests__/core.clip.test.js.
+ * places it: display, margins, what makes it a BFC (overflow, contain, columns), baseline
+ * alignment and its grid/flex slot. A Zumly board window (47 culled grid tiles) went from
+ * 5.9 ms to 3.5 ms and 79 to 33 KB, pixel-identical on all three engines. Every other husk
+ * gets the original's computed style. Pinned by __tests__/core.clip.test.js.
  * @param {Element} husk
  * @param {Element} node
  * @param {Object} sessionCache
@@ -570,19 +557,12 @@ function dressClipHusk(husk, node, sessionCache, options) {
     husk.style.maxHeight = `${height}px`
   }
   husk.style.visibility = 'hidden'
-  // Deliberately NOT overflow:hidden — that manufactures a BFC the original may not
-  // have had, un-collapsing its margins with neighbors: 68 husks drifted deep-scroll
-  // Wikipedia +812px, shifting the whole clip window one viewport. The husk is empty
-  // (shallow clone), so there is nothing to clip anyway; it keeps the original's own
-  // computed overflow.
-  // Escaped-margin compensation: an empty husk can't reproduce the child margins that
-  // collapsed THROUGH the original's edges (Wikipedia loses 16px per husked <section>
-  // — the whole flow drifts). Assign the LIVE measured gap to both husk edges: since
-  // adjoining margins collapse to their max and the live gap already IS that max,
-  // husk↔husk and husk↔content spacing land exactly on the live layout. In-flow block
-  // boxes in block flow only. Flex/grid/table parents don't collapse margins, a float's
-  // margins never collapse, an inline-level box sits in a line, and there the computed
-  // margins already inlined are correct.
+  // Do NOT add overflow:hidden: a BFC un-collapses margins with neighbours, and 68 husks moved
+  // deep-scroll Wikipedia +812px. The husk is empty anyway.
+  // An empty husk loses the child margins that collapsed THROUGH its edges (16px per husked
+  // Wikipedia <section>), so both edges take the LIVE gap: adjoining margins collapse to their
+  // max, which the live gap already is. In-flow blocks in block flow only; flex/grid/table
+  // parents, floats and inline-level boxes do not collapse, and their inlined margins hold.
   const parentDisplay = node.parentElement ? getStyle(node.parentElement).display : ''
   if (!/flex|grid|table/.test(parentDisplay) && !cs.display.startsWith('inline') && cs.float === 'none' &&
       (cs.position === 'static' || cs.position === 'relative')) {
@@ -598,11 +578,10 @@ function dressClipHusk(husk, node, sessionCache, options) {
 
 /**
  * Clone one node and its subtree for capture, inlining each element's computed style.
- *
- * Returns null for what the capture drops (the sandbox, NO_CAPTURE_TAGS, excluded nodes in
- * 'remove' mode, a nested foreignObject, a <picture>'s <source>), a spacer or husk for nodes
- * that keep their box but not their content, a DocumentFragment for a <slot>, and otherwise
- * the clone. Children are cloned concurrently; a child whose clone throws is dropped.
+ * Returns null for what the capture drops (the sandbox, NO_CAPTURE_TAGS, 'remove' exclusions,
+ * a nested foreignObject, a <picture>'s <source>), a spacer or husk for a node that keeps its
+ * box but not its content, a DocumentFragment for a <slot>, otherwise the clone. Children
+ * clone concurrently; a child whose clone throws is dropped.
  * @param {Node} node
  * @param {object} sessionCache - the per-capture maps, built by prepareClone
  * @param {object} options - the capture context
@@ -610,10 +589,9 @@ function dressClipHusk(husk, node, sessionCache, options) {
  */
 export async function deepClone(node, sessionCache, options) {
   if (!node) throw new Error('[SnapDOM] The element cannot be null or undefined.')
-  // fast: false | 'auto' (#503). At entry, before any work, so paused nodes resume in order.
-  // A loop, not an if: siblings clone concurrently and share one wait, so they all resume in
-  // the same task and each must check the slice again. With an if, 3000 sibling spans at 4x CPU
-  // kept a 132 ms task; with the loop the longest was 58. Pinned by core.capture.fast.test.js.
+  // fast: false | 'auto' (#503), at entry so paused nodes resume in order. A loop, not an if:
+  // concurrent siblings share one wait and resume in one task, so each checks the slice again
+  // (3000 sibling spans at 4x CPU: longest task 132 ms to 58). Pinned by core.capture.fast.test.js.
   while (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   let pendingSelectedOptions = null
   let pendingTextAreaValue = null
@@ -625,11 +603,9 @@ export async function deepClone(node, sessionCache, options) {
     if (internal && (node.id === 'snapdom-sandbox' || node.hasAttribute('data-snapdom-sandbox'))) {
       return null
     }
-    // snapdom's own scaffolding below the root. The decode <iframe> that toCanvas keeps in
-    // document.body outlives its capture, and a later capture of <body> reached it through
-    // cloneIframe and rasterized snapdom's own empty document with a nested toPng (+10 ms per
-    // warm capture and 27.5k extra getPropertyValue reads on liquidGL's home, 2026-09-03).
-    // The root itself is exempt: fromString captures its own marked mount on purpose.
+    // snapdom's own scaffolding below the root: a <body> capture reached toCanvas's decode
+    // <iframe> and rasterized it with a nested toPng (+10 ms per warm capture on liquidGL's
+    // home). The root is exempt: fromString captures its own marked mount on purpose.
     // Pinned by `__tests__/core.clone.internalNodes.test.js`.
     if (node !== options.element && internal) {
       return null
@@ -637,19 +613,15 @@ export async function deepClone(node, sessionCache, options) {
     if (NO_CAPTURE_TAGS.has(tag)) {
       return null
     }
-    // SVG spec: foreignObject cannot be nested inside another foreignObject.
-    // The capture output already wraps everything in an outer foreignObject, so any
-    // foreignObject found in the captured DOM would become doubly nested → silently
-    // skipped by browsers. Detect via closest() on the source DOM and skip.
+    // A foreignObject cannot nest in another, and the capture already wraps everything in
+    // one, so browsers would skip it silently.
     if (tag === 'foreignobject' && node.parentElement?.closest?.('foreignObject')) {
       debugWarn(sessionCache, 'Skipped a nested <foreignObject>; it can\'t be captured.')
       return null
     }
-    // A <picture>'s <source> out-ranks its <img>'s own src, so it survives into the export
-    // still pointing at an external URL — and svg-as-image may not load external resources,
-    // so the picture rasterizes blank no matter how well the <img> was inlined. The <img>
-    // clone is already frozen to the variant the live page chose (freezeImgSrcset), so the
-    // sources carry nothing we still need: drop them and let that src win.
+    // A <picture>'s <source> out-ranks the <img> src and keeps an external URL, which
+    // svg-as-image will not load: the picture rasterizes blank. The <img> is already frozen to
+    // the live choice (freezeImgSrcset), so drop the sources.
     if (tag === 'source' && node.parentElement?.localName === 'picture') {
       return null
     }
@@ -688,8 +660,7 @@ export async function deepClone(node, sessionCache, options) {
       }
     }
   }
-  // Unified exclude predicates ((el) => true excludes). Split from selectors once in
-  // createContext — zero typeof dispatch per node.
+  // Exclude predicates ((el) => true excludes), split from selectors once in createContext.
   if (options.excludePredicates) {
     for (const pred of options.excludePredicates) {
       try {
@@ -714,15 +685,13 @@ export async function deepClone(node, sessionCache, options) {
       debugWarn(options, 'Your filter function threw; the element was kept.', err)
     }
   }
-  // #507: nothing under a display:none element can paint, yet every descendant was cloned,
-  // styled and had its images fetched. Clip mode never pruned it either (0x0 box). A menu of
-  // 800 hidden items under 40 visible cards: 40.4 -> 5.8 ms (clip 'viewport' 47.4 -> 8.0),
-  // SVG 233 -> 20 KB, 0 px diff; the reporter measured YouTube 10.6 -> 2.1 s in a background
-  // tab. The emptied shell keeps the tag in place for :nth-child and sibling rules of the
-  // <style> clones kept inside it, which travel into the SVG (prepare.js). Exempt: <style> itself, display:none in every UA sheet;
-  // <option>, whose hidden selected placeholder is the label its <select> paints; and SVG,
-  // where a shell keeping an id would stop svgDefs from copying the def a <use> points at.
-  // Like the clip husk, not in nodeMap. Pinned by `__tests__/core.clone.hiddenSubtree.test.js`.
+  // #507: nothing under display:none paints, and clip mode never prunes it (0x0 box). A menu of
+  // 800 hidden items under 40 visible cards: 40.4 ms to 5.8 ms, 0 px diff. The emptied shell
+  // keeps the tag for :nth-child and sibling rules, and keeps its <style> clones, which travel
+  // into the SVG (prepare.js). Exempt: <style>, display:none in every UA sheet; <option>,
+  // whose hidden selected placeholder is its <select>'s label; and SVG, where a shell keeping
+  // an id stops svgDefs copying the def a <use> points at. Like the clip husk, not in nodeMap.
+  // Pinned by `__tests__/core.clone.hiddenSubtree.test.js`.
   if (node !== options.element && !HIDDEN_CLONED_TAGS.has(node.localName) && !isSVGEl(node) &&
       getStyle(node).display === 'none') {
     const shell = node.cloneNode(false)
@@ -737,8 +706,8 @@ export async function deepClone(node, sessionCache, options) {
     }
     return shell
   }
-  // Clip mode: prune subtrees painting entirely outside the window (before any plugin
-  // hooks or tag handlers — no per-node work is spent on culled content).
+  // Clip mode: prune subtrees painting entirely outside the window, before any plugin hook or
+  // tag handler spends work on them.
   if (sessionCache.clip && isOutsideClip(node, sessionCache.clip)) {
     return makeClipHusk(node, sessionCache.clip)
   }
@@ -789,22 +758,18 @@ export async function deepClone(node, sessionCache, options) {
     sessionCache.nodeMap.set(clone, node)
     if (node.tagName === 'IMG') {
       freezeImgSrcset(node, clone, options)
-      // Record original image dimensions (pre-transform) for fallback usage when inlining fails.
-      // #498: keep them fractional. `offsetWidth` is an integer, and the `min-width` written below
-      // from a rounded-up value (25.6px → 26px) beats the frozen `width`, grows the image and
-      // pushes the text after it past its frozen container (last word wraps). The computed
-      // style carries the used size at 1/1000px; offset/attribute/natural sizes stay as fallback.
+      // Record the pre-transform size, the fallback when inlining fails. #498: keep it
+      // fractional: a `min-width` rounded up (25.6px to 26px) beats the frozen `width` and wraps
+      // the last word after the image. The computed style carries the used size at 1/1000px;
+      // offset/attribute/natural sizes are only the fallback.
       try {
         const cs = window.getComputedStyle(node)
         let width = parseFloat(cs.width)
         let height = parseFloat(cs.height)
         if (!(width > 0) || !(height > 0)) {
-          // getUnscaledDimensions is the BORDER box (offsetWidth); width/height and min-* resolve
-          // against the CONTENT box unless box-sizing is border-box, so with padding or a border
-          // the frozen box was too large by exactly that much and the picture rendered scaled
-          // inside it (measured against the live element: 18–34% of pixels differ with 20px
-          // padding + a 5px border, 0% without either). The computed style above is already the
-          // content box; only this fallback needs the correction.
+          // getUnscaledDimensions is the BORDER box; width/height and min-* are the CONTENT box
+          // unless box-sizing is border-box. Uncorrected, 20px padding and a 5px border scaled
+          // the picture inside a box too large (18-34% of pixels off the live element).
           const dims = getUnscaledDimensions(node)
           const px = (p) => parseFloat(cs.getPropertyValue(p)) || 0
           const bb = cs.getPropertyValue('box-sizing') === 'border-box'
@@ -854,9 +819,7 @@ export async function deepClone(node, sessionCache, options) {
           // When object-fit is active, minWidth/minHeight can distort the image
           // Only set min dimensions if no object-fit override is in play
         } else {
-          // Extra shielding: stops a class added later from overriding the fix. Content-box
-          // values (see above): an earlier attempt corrected only this floor, saw no change on
-          // a fixture whose freeze above still wrote the border box, and was reverted.
+          // Stops a class added later from overriding the fix. Content-box values, as above.
           if (w > 0) clone.style.minWidth = `${w}px`
           if (h > 0) clone.style.minHeight = `${h}px`
         }
@@ -888,24 +851,18 @@ export async function deepClone(node, sessionCache, options) {
   if (isInput) {
     const type = (node.type || 'text').toLowerCase()
     const isCheckboxOrRadio = type === 'checkbox' || type === 'radio'
-    // Firefox paints no native control inside a foreignObject, hence the replacement. It is
-    // ALSO the only faithful path for an INDETERMINATE checkbox on any engine: that state
-    // lives in a DOM property, XMLSerializer cannot emit it, and the cloned native control
-    // therefore renders as plain unchecked. Measured on the same 30px box (dark pixels,
-    // unchecked / indeterminate / checked): chromium 116 / 116 / 778 and webkit 10 / 10 / 57
-    // — the middle state was indistinguishable from unchecked — against firefox 224 / 272 /
-    // 826, where the replacement already drew the dash. An approximated dash is closer to the
-    // truth than a checkbox that silently reads as "off".
+    // Firefox paints no native control inside a foreignObject. The replacement is also the only
+    // way to show an INDETERMINATE checkbox anywhere: the state is a DOM property XMLSerializer
+    // cannot emit, so a native clone paints unchecked (dark pixels on a 30px box, unchecked /
+    // indeterminate: chromium 116 / 116, webkit 10 / 10).
     if (isCheckboxOrRadio && (isFirefox() || node.indeterminate)) {
       const { el: replacement, applyVisual } = createCheckboxRadioReplacement(node)
       sessionCache.nodeMap.set(replacement, node)
       applyInputVisual = applyVisual
       clone = replacement
     } else if (type === 'range' && (isFirefox() || isSafari())) {
-      // Same reason as the checkbox above: Firefox paints no native control inside a
-      // foreignObject, so a cloned slider lost its track, its fill and its thumb. WebKit is
-      // included beyond the fork's Firefox-only gate because it paints the slider without any
-      // of its accent either (measured: 0 accent-coloured pixels on both engines).
+      // Firefox paints no native slider in a foreignObject, and WebKit paints it without its
+      // accent (0 accent-coloured pixels on both), so WebKit joins the fork's Firefox gate.
       const { el: replacement, applyVisual } = createRangeReplacement(node)
       sessionCache.nodeMap.set(replacement, node)
       applyInputVisual = applyVisual
@@ -943,10 +900,8 @@ export async function deepClone(node, sessionCache, options) {
       clone.setAttribute('value', shown)
       /* c8 ignore stop */
     } else {
-      // Password only, and only because the mask is fidelity-NEUTRAL: the control already
-      // paints bullets, so a same-length bullet mask renders identically while the typed
-      // secret stays out of the serialized SVG. Values the browser shows in plain text are
-      // captured as-is; redacting those is the `redactInputs` plugin's job, not core's.
+      // Password only, because the mask is fidelity-NEUTRAL (see isPasswordInput). Plain-text
+      // values are captured as-is; redacting them is the `redactInputs` plugin's job.
       const safeValue = isPasswordInput(node) ? maskValue(node.value) : node.value
       clone.value = safeValue
       clone.setAttribute('value', safeValue)
@@ -961,11 +916,10 @@ export async function deepClone(node, sessionCache, options) {
     }
   }
 
-  // #315: Preserve ::placeholder color for inputs/textareas showing placeholder text.
-  // #512: a <style> child of the void <input> left Safari's serialized SVG unclosed and
-  // was dropped by HTML serialization. Color/opacity ride as custom properties on the
-  // clone; PLACEHOLDER_RULE (prepare.js) in the prefix CSS paints them. Putting
-  // the rule on pseudoCSS would bail the diff path on every recapture (diffCapture, diff.js).
+  // #315: keep the ::placeholder colour. #512: a <style> child of the void <input> left
+  // Safari's SVG unclosed, so colour and opacity ride as custom properties that
+  // PLACEHOLDER_RULE (prepare.js) paints. On pseudoCSS the rule would bail the diff path on
+  // every recapture (diffCapture, diff.js).
   if ((isInput || isTextarea) && !node.value && node.placeholder) {
     try {
       const phStyle = window.getComputedStyle(node, '::placeholder')
@@ -1020,11 +974,9 @@ export async function deepClone(node, sessionCache, options) {
       debugWarn(sessionCache, 'Couldn\'t copy the selection of a text field.', e)
     }
   }
-  // #365: SVG painting elements — CSS rules override presentation attributes but aren't captured
-  // via the class-based mechanism (NO_DEFAULTS_TAGS returns '' key). Copy key SVG presentation
-  // properties from computed style as inline styles to ensure CSS-driven fills/strokes survive.
-  // #408: skip <use> templates (<symbol>, shapes in <defs>): their var() must resolve at the <use> site,
-  // not be materialized to the (dead) template's fallback computed value.
+  // #365: SVG shapes get no class snapshot (NO_DEFAULTS_TAGS returns '' key), so the paint
+  // properties a rule sets are copied inline. #408: not inside <use> templates (<symbol>,
+  // shapes in <defs>), whose var() must resolve at the <use> site.
   if (isSVGEl(node) && !isInSvgTemplate(node)) {
     const SVG_PAINT_PROPS = [
       'fill', 'stroke', 'stroke-width', 'stroke-dasharray', 'stroke-dashoffset',
@@ -1066,15 +1018,12 @@ export async function deepClone(node, sessionCache, options) {
       for (const an of s.assignedNodes?.() || []) assignedToSlot.add(an)
     }
     const scopes = sessionCache.shadowScopes ||= new WeakMap()
-    // #558: design systems hand the same sheet to every component, and each root used to get
-    // its own rewritten copy. Sixteen components on one 5,000-rule sheet made a 9.9 MB svg that
-    // took 104 ms to raster. Now they share one copy, carried as a group token in `data-sd`, and
-    // the svg is 0.6 MB, rastered in 4 ms and captured in 9 instead of 116 (with the sheet memo
-    // in extractShadowCSS). Each host keeps its own custom-property seed, keyed on its whole
-    // `data-sd`. Only hosts at the same depth share, depth being the shadow hosts above.
-    // prepare.js writes the blocks shallow first, so a host's own rules still come after the
-    // ones that reach it from above, and two hosts of one group are never nested, so a slotted
-    // mark means one thing. Pinned by __tests__/core.clone.issue558.test.js.
+    // #558: roots with the same sheet share one rewritten copy, a group token in `data-sd`
+    // (sixteen components on one 5,000-rule sheet: svg 9.9 MB to 0.6 MB, capture 116 ms to 9).
+    // Each host keeps its own custom-property seed, keyed on its whole `data-sd`. Only hosts
+    // at the same depth (shadow hosts above) share: prepare.js writes shallow first, so a
+    // host's own rules follow those from above, and two hosts of a group never nest, so a
+    // slotted mark means one thing. Pinned by __tests__/core.clone.issue558.test.js.
     let depth = 0
     for (let p = node; (p = p.assignedSlot || p.parentNode || (p.nodeType === 11 ? p.host : null));) {
       if (p.shadowRoot && scopes.has(p.shadowRoot)) depth++
@@ -1087,9 +1036,8 @@ export async function deepClone(node, sessionCache, options) {
     if (!group) {
       group = { id: ownId, vars: collectCustomPropsFromCSS(rawCSS), share: !SHADOW_SPLIT_RE.test(rawCSS), unstable: UNSTABLE_INLINE_RE.test(rawCSS) }
       if (rawCSS) groups.set(rawCSS, group)
-      // The pseudo pass's preflight reads the DOCUMENT's sheets; a `<style>` in here is not
-      // among them, and a page whose only ::after lives in a shadow root skipped the pass
-      // entirely (the pinned shadow ::after that never painted).
+      // The pseudo pass's preflight reads only the DOCUMENT's sheets, so a page whose only
+      // ::after lives in a shadow root skipped the pass.
       if (!sessionCache.shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.shadowPseudo = true
       rewritten = rewriteShadowCSS(rawCSS, `[data-sd~="${ownId}"]`, ownId)
     }
@@ -1134,16 +1082,12 @@ export async function deepClone(node, sessionCache, options) {
     return fragment
   }
 
-  // A shadow host renders its light DOM only through slots: a child already cloned at its slot
-  // is skipped here, and a child that no slot accepted (its slot="name" matches nothing, or the
-  // shadow tree has no <slot> at all) is outside the flat tree and paints nothing. Cloning the
-  // latter injected content the page never shows, twice over for the common component that
-  // reads its own light DOM and renders a copy inside its shadow tree.
-  //
-  // A text or comment child is cloned here: deepClone returns the same cloneNode(true) for
-  // it, after a slicer check and one promise per node. Selected text still goes through it.
-  // A leaf-only element then appends with no Promise.all and no await. The array snapshot
-  // stays: a resolveNode hook runs inside the loop and may mutate the source.
+  // A shadow host renders its light DOM only through slots: skip a child cloned at its slot
+  // and one no slot accepted, which paints nothing (cloned, it showed content the page never
+  // shows, twice for a component that copies its light DOM into its shadow tree).
+  // Text and comment children clone in place, saving deepClone's slicer check and promise;
+  // selected text still goes through it. The array snapshot stays: a resolveNode hook in the
+  // loop may mutate the source.
   const list = []
   let pending = false
   for (const child of Array.from(node.childNodes)) {
@@ -1178,27 +1122,17 @@ export async function deepClone(node, sessionCache, options) {
       clone.appendChild(empty)
     }
   }
-  // Same reason as the select above, and the ordering is load-bearing: a textarea's child
-  // nodes ARE its default value, so the recursion cloned that text and the append above just
-  // put it back. Assigning here wipes those children and leaves exactly the live value.
-  //
-  // Move this up next to the other textarea handling, where it reads like it belongs, and it
-  // runs BEFORE that append: the default text then lands after the value and the capture
-  // shows the content twice. Verified, not assumed — that edit makes
-  // core.clone.textarea.test.js report "expected 2 to be 1". Invisible on a textarea without
-  // default content, which is most of them.
-  //
-  // Empty string is a real value, so the guard tests against null: `if (value)` would fall
-  // through on a cleared textarea and leak the default back.
+  // Must stay AFTER the children append: a textarea's child nodes ARE its default value, and
+  // assigning here replaces them with the live value. Moved up beside the other textarea code,
+  // it shows the content twice (core.clone.textarea.test.js: "expected 2 to be 1").
+  // Test against null: '' is a real value, and `if (value)` leaks the default back.
   if (pendingTextAreaValue !== null && isTag(clone, 'textarea')) {
     clone.textContent = pendingTextAreaValue
   }
   return clone
 }
 
-/* ────────────────────────────────────────────────────────────────────────────
- * Built-in tag handlers (extracted from the former inline branches)
- * ──────────────────────────────────────────────────────────────────────────── */
+/* Built-in tag handlers */
 
 /** A same-origin iframe is rasterized to an <img>. A cross-origin one keeps its box as a
  *  striped placeholder, or an invisible spacer with `placeholders: false`. */
@@ -1241,10 +1175,9 @@ async function cloneIframe(node, sessionCache, options) {
 }
 
 /**
- * Whether nothing has been drawn into this canvas yet (fully transparent).
- * Sampled through a small scratch canvas so the check stays O(1) regardless of the source
- * size. Reading FROM the source with drawImage binds no context to it, which is what lets
- * cloneCanvas decide whether probing the source is safe at all.
+ * Whether nothing has been drawn into this canvas yet (fully transparent). Sampled through a
+ * small scratch canvas, O(1) at any size. drawImage FROM the source binds no context to it,
+ * which is what lets cloneCanvas decide whether probing the source is safe.
  * @param {HTMLCanvasElement} node
  * @returns {boolean}
  */
@@ -1275,11 +1208,9 @@ export function isBlankCanvas(node) {
 const FRAME_QUALITY = 0.95
 
 /**
- * Whether every pixel of a drawn frame is opaque. A downscaled probe cannot prove this: a
- * small transparent island can disappear completely during resampling. The exact alpha scan
- * measured 0.9-1 ms at 1280x720 and 7-10 ms at 3840x2160 across Chromium, Firefox and WebKit
- * (2026-09-04); that cost applies only while freezing a video frame and prevents lossy JPEG
- * from erasing real alpha.
+ * Whether every pixel of a drawn frame is opaque. A downscaled probe can lose a small
+ * transparent island, so the scan is exact: 0.9-1 ms at 1280x720 on all three engines, paid
+ * only when freezing a video frame, so lossy JPEG never erases real alpha.
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} width
  * @param {number} height
@@ -1296,9 +1227,8 @@ function frameIsOpaque(ctx, width, height) {
 }
 
 /**
- * Whether a canvas that reads as drawn holds a WebGL buffer the browser clears after every
- * composite. Only asked of a canvas with content, which therefore has a context: getContext
- * then returns that context, or null for another kind, and creates nothing.
+ * Whether a canvas that reads as drawn holds a WebGL buffer cleared after every composite.
+ * Asked only of a canvas with content, which has a context, so getContext creates nothing.
  * Pinned by __tests__/core.clone.webglOpaque.test.js.
  */
 function clearsEachFrame(node) {
@@ -1314,25 +1244,16 @@ async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
   try {
-    // Read the canvas BEFORE asking it for a context. getContext('2d') on a canvas the page
-    // has not initialized yet does not just answer the question — it CREATES the context and
-    // permanently fixes the element's mode, so the page's own later getContext('webgl')
-    // returns null and its renderer never starts. Snapdom must not be able to break the host
-    // that way. isBlankCanvas reads through a scratch canvas (drawImage FROM the source),
-    // which binds nothing to it.
-    //
-    // The discriminator: a canvas with content necessarily HAS a context, because nothing can
-    // be drawn without one. So once it reads non-blank, getContext is safe by construction —
-    // it returns the existing 2d context, or null when the context is WebGL/WebGPU.
+    // Read the canvas BEFORE asking for a context: getContext('2d') on an uninitialized canvas
+    // CREATES one and fixes its mode, so the page's later getContext('webgl') returns null.
+    // isBlankCanvas reads through a scratch canvas, which binds nothing. A canvas with content
+    // already has a context, so getContext is then safe: the 2d one, or null for WebGL/WebGPU.
     let blank = isBlankCanvas(node)
     if (blank) {
-      // Blank means one of two things, and one frame separates them. A WebGL/WebGPU canvas
-      // with preserveDrawingBuffer:false has its drawing buffer cleared as soon as the frame
-      // composites, so a read from a plain task (a click handler, say) comes back fully
-      // transparent; awaiting rAF resumes inside the frame, right after the app's own render
-      // callback, while the buffer is still intact (#480). A canvas nobody has drawn into
-      // stays blank across that frame — and it has nothing to capture, so it never needs the
-      // poke that would have locked it.
+      // A WebGL/WebGPU canvas with preserveDrawingBuffer:false is cleared once the frame
+      // composites, so a read from a click handler is transparent; rAF resumes inside the
+      // frame, after the app renders, with the buffer intact (#480). A canvas nobody drew into
+      // stays blank and never gets the poke that would lock it.
       await nextFrame()
       blank = isBlankCanvas(node)
     } else if (clearsEachFrame(node)) {
@@ -1341,9 +1262,8 @@ async function cloneCanvas(node, sessionCache, options) {
       // (d-plugin-webgl-live-dom's WebGL panel, Chromium and Firefox).
       await nextFrame()
     }
-    // WebKit needs a frame for the 2D poke to materialize the backing store; on other engines
-    // toDataURL is synchronous with issued commands, so an unconditional rAF cost a serialized
-    // frame (>=16ms) per canvas — dashboards with N 2D charts paid N frames.
+    // WebKit needs a frame for the 2D poke to materialize the backing store. Elsewhere
+    // toDataURL is synchronous, and a frame (>=16ms) per canvas would cost N frames for N charts.
     let ctx = null
     if (!blank) {
       ctx = node.getContext('2d', { willReadFrequently: true })
@@ -1372,17 +1292,14 @@ async function cloneCanvas(node, sessionCache, options) {
       }
     }
   } catch (e) {
-    // A canvas that drew an image from a host without CORS headers (an OpenLayers map, its
-    // tiles) is tainted: no page can read it back, and it renders blank. In 1.9.8 the throw
-    // failed the whole capture, and uMap dropped snapdom over it; blank and quiet, it still
-    // read as a snapdom bug.
+    // A canvas that drew a non-CORS image (an OpenLayers map's tiles) is tainted and renders
+    // blank. Warn: a throw failed the whole capture in 1.9.8, and quiet it reads as our bug.
     sessionWarn(sessionCache, 'canvas-tainted', 'a canvas tainted by cross-origin images cannot be read; it renders blank', node)
     debugWarn(sessionCache, 'Couldn\'t read the pixels of a canvas; used its fallback content.', e)
   }
 
-  // #486: a capture fired before the canvas has drawn anything (an animation still loading, a
-  // chart rendered on the next frame) serializes a perfectly valid, perfectly empty PNG — the
-  // capture "silently fails". Say so under debug, where it costs nothing in normal runs.
+  // #486: a capture before the canvas's first draw serializes a valid, empty PNG and seems to
+  // fail silently. Say so under debug.
   if (options && options.debug && url && isBlankCanvas(node)) {
     debugWarn(sessionCache, 'Empty canvas; capture after its first frame', node)
   }
@@ -1410,10 +1327,9 @@ async function cloneCanvas(node, sessionCache, options) {
  *  element is still showing it. */
 async function cloneVideo(node, sessionCache, options) {
   let url = ''
-  // The screen shows the poster until playback first starts or a seek (the "show poster
-  // flag"), whatever frames are already decoded: drawImage would paint frame 0 on
-  // Chromium/Firefox and nothing on WebKit, and even a blank canvas serializes to a valid
-  // PNG that shadowed the poster. Read the flag from what it leaves behind instead.
+  // The screen shows the poster until first playback or a seek (the "show poster flag"),
+  // whatever is decoded: drawImage would paint frame 0 on Chromium/Firefox and nothing on
+  // WebKit, over the poster. Read the flag from what it leaves behind.
   const showPoster = node.poster && node.paused && !node.currentTime && !node.played.length
   const img = document.createElement('img')
   try { img.decoding = 'sync'; img.loading = 'eager' } catch {}
@@ -1425,16 +1341,12 @@ async function cloneVideo(node, sessionCache, options) {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
-        // A decoded frame has no codec to preserve: the video was lossy before it was ever
-        // drawn, so an opaque frame goes out as JPEG. Measured 2026-09-03 on a 1280x720 VP9
-        // frame: encode 3.9 vs 9.3 ms, 153 vs 709 KB, and the svg decodes and draws it in
-        // 1.7 vs 7 ms. A frame with alpha keeps PNG. Pinned by
-        // __tests__/core.clone.videoFrame.test.js.
-        // Encoded here, synchronously, and not in the compress worker pool: the pool's reply
-        // rides the main thread's task queue, and on a page with a render loop of its own
-        // that is a frame per reply (liquidGL's home, 2026-09-03: 48 ms idle per capture
-        // waiting on three replies whose encodes took 0.4 to 4.7 ms). toBlob is idle-
-        // scheduled in every engine and starves the same way.
+        // The video was lossy already, so an opaque frame goes out as JPEG (1280x720 VP9
+        // frame: 153 KB against 709 KB). A frame with alpha keeps PNG.
+        // Pinned by __tests__/core.clone.videoFrame.test.js.
+        // Encoded synchronously, not in the compress pool: on a page with its own render loop
+        // each pool reply waits a frame (liquidGL's home: 48 ms idle per capture). toBlob is
+        // idle-scheduled in every engine and starves the same way.
         url = canvas.toDataURL(frameIsOpaque(ctx, canvas.width, canvas.height) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
         if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
       }
@@ -1463,10 +1375,8 @@ async function cloneVideo(node, sessionCache, options) {
 }
 
 async function cloneAudio(node, sessionCache, options) {
-  // The native <audio controls> UI is a UA shadow-DOM widget that can't be
-  // serialized, so a plain clone renders blank. Draw a representative player
-  // sized to the element (#444). Without `controls` the native element is
-  // display:none, so we leave those to the generic (invisible) clone.
+  // The native <audio controls> UI cannot be serialized and clones blank, so draw a player
+  // sized to the element (#444). Without `controls` it is display:none: generic clone.
   if (!node.controls) return undefined
   const { width, height } = getUnscaledDimensions(node)
   const w = Math.round(width || node.offsetWidth || 300)
@@ -1498,12 +1408,10 @@ async function cloneAudio(node, sessionCache, options) {
   return img
 }
 
-/** <object>/<embed>: no handler meant their external data/src survived into the
- *  svg-as-image output, where external loads and nested browsing contexts are blocked —
- *  they rendered blank (or painted the object's FALLBACK children instead of the embedded
- *  content). Image-typed embeds become an <img> that inlineImages fetches like any source;
- *  same-origin embedded documents reuse the iframe rasterizer; the rest fall through to
- *  the generic clone (fallback children are the honest output there). */
+/** <object>/<embed>: svg-as-image blocks their external data/src, so they render blank or
+ *  paint their FALLBACK children. An image type becomes an <img> for inlineImages; a
+ *  same-origin document goes through the iframe rasterizer; the rest take the generic clone,
+ *  where the fallback children are the honest output. */
 async function cloneObjectEmbed(node, sessionCache, options) {
   const url = node.getAttribute('data') || node.getAttribute('src') || ''
   const type = (node.getAttribute('type') || '').toLowerCase()

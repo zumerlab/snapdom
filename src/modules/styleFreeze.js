@@ -9,13 +9,11 @@
 import { getStyle, isHTMLEl, shadowHost } from '../utils/index.js'
 
 /**
- * #498: on a content-box scroll container `getComputedStyle().width/height` return the box
- * MINUS its classic (non-overlay) scrollbars — the live element is that much bigger. Freezing
- * the bare value shrinks the box by the scrollbar size, the content no longer fits, and a
- * vertical scrollbar that does not exist in the live page appears in the capture (which in
- * turn steals width from the rows). Add the measured gutters back so the frozen box matches
- * the live one. Border-box values already include the scrollbars; overlay scrollbars
- * (macOS default) measure 0 and change nothing.
+ * #498: on a content-box scroll container `getComputedStyle().width/height` leave out its
+ * classic (non-overlay) scrollbars. Frozen bare, the box shrinks by the scrollbar, the content
+ * no longer fits, and a vertical scrollbar the live page does not have steals width from the
+ * rows. The measured gutters go back in. Border-box values already include them; overlay
+ * scrollbars (macOS default) measure 0.
  * Runs once per fresh snapshot (getSnapshot): `snap` is the object the cache keeps.
  * Pinned by __tests__/snapdom.issue498.test.js and __tests__/snapdom.issue508.test.js.
  * @param {Element} source
@@ -56,27 +54,23 @@ const BOX_SIZES = ['width', 'inline-size', 'height', 'block-size']
  * Freeze the BORDER box of a content-box element whose borders the live page snapped to a
  * fractional CSS width.
  *
- * Browsers snap border widths to whole device pixels, and getComputedStyle reports the
- * snapped width: at devicePixelRatio 2.625 a `1px` border reads `0.761905px` and `3px` reads
- * `2.666667px` (Chrome and WebKit, measured). The svg image lays out at 1x and snaps those
- * again, to 1px and 2px, so a frozen content-box size moved every outer edge by the
- * difference. In #508, fifty stacked `border: 1px` rows grew 24px on a phone and the last one
- * fell out of its container. With box-sizing: border-box the outer edges stay where the live
- * page has them; only the content box absorbs the sub-pixel difference. Integer borders, the
- * whole of a 1x or 2x page with ordinary CSS, never enter. On Chromium and Firefox the svg
- * engine also lays out at the live devicePixelRatio (`layoutZoom`, engines/svg.js), which
- * snaps these exactly as the page did; this pass is what keeps WebKit right.
+ * Browsers snap borders to whole device pixels: at devicePixelRatio 2.625 a `1px` border reads
+ * `0.761905px` and `3px` reads `2.666667px` (Chrome and WebKit). The svg image lays out at 1x
+ * and snaps them again, to 1px and 2px, so a frozen content-box size moves every outer edge
+ * (#508: fifty stacked `border: 1px` rows grew 24px on a phone). Under border-box only the
+ * content box absorbs the difference. Integer borders (all of a 1x or 2x page with ordinary
+ * CSS) never enter. Chromium and Firefox also
+ * lay out at the live devicePixelRatio (`layoutZoom`, engines/svg.js); this pass is what
+ * keeps WebKit right.
  *
- * An identity twin copies an already converted snapshot and re-reads its own width/height
- * (LAYOUT_ALWAYS_RE), so it converts exactly once. Min and max sizes are not re-read for
- * twins and change meaning under border-box, so any value other than the neutral one leaves
- * the element as it was.
+ * A twin copies a converted snapshot and re-reads its own width/height (LAYOUT_ALWAYS_RE), so
+ * it converts once. Min and max sizes are not re-read for twins and change meaning under
+ * border-box, so any non-neutral value leaves the element as it was.
  *
- * The content box ends up to a pixel smaller than the content it held live, and an `auto`
- * scroller shows a scrollbar for that sliver (Chrome painted one under every #508 row). An
- * axis the live box had nothing to scroll on is clipped as `hidden` instead, which paints
- * the same without the bar. That depends on the node's content, not its identity, so the
- * decision is returned for the twin signature.
+ * The content box ends up to a pixel smaller than its live content, so an `auto` scroller
+ * shows a bar for that sliver (Chrome painted one under every #508 row). An axis with nothing
+ * to scroll live is clipped as `hidden` instead. That depends on content, not identity, so
+ * the decision is returned for the twin signature.
  * Pinned by __tests__/snapdom.issue508.test.js.
  * @param {Element} el
  * @param {CSSStyleDeclaration} style - the live computed style
@@ -170,17 +164,16 @@ export const ONE_LINE_PROP = typeof CSS !== 'undefined' && CSS.supports?.('text-
 /**
  * Keep a shrink-to-fit box on one line in the clone when its text is on one line live.
  *
- * #516: such a box is frozen at the width of its own text, so a capture that lays the text out
- * a hair wider wraps it. Firefox at devicePixelRatio 2.727 did, by under 1/60px: "aa bb" broke
- * inside its inline-block, the box's baseline dropped a line and every box below it slid out of
- * its frozen parent. Widening the frozen box instead accumulates across a row inside a
- * shrink-to-fit parent (#491); a 1/60px nudge wrapped rows of two. With no soft wrap live,
- * `nowrap` is faithful and the drift can only overflow sub-pixel, the #474 trade. Every
- * element under a pinned box gets the same inline pin and is not measured again: the box's
- * descendants would inherit it, but the base reset restates `white-space:normal` per tag
- * (ALWAYS_PROPS), and a type selector beats inheritance, so each `<a>` of a pinned row wrapped
- * on its own and "Home" broke into "Hom / e" (conciv-dev/conciv#764). Pinned by
- * __tests__/snapdom.issue516.test.js and __tests__/regression.oneLinePinDescendants.test.js.
+ * #516: the box is frozen at the width of its own text, so a capture that lays the text out a
+ * hair wider wraps it (Firefox at devicePixelRatio 2.727, by under 1/60px: "aa bb" broke and
+ * every box below slid out of its frozen parent). Do not widen the box instead: across a row
+ * in a shrink-to-fit parent that accumulates (#491), and a 1/60px nudge wrapped rows of two.
+ * With no soft wrap live, `nowrap` is faithful and the drift can only overflow sub-pixel, the
+ * #474 trade. Every element under a pinned box gets its own inline pin, unmeasured: inheriting
+ * it is not enough, because the base reset restates `white-space:normal` per tag
+ * (ALWAYS_PROPS) and "Home" in a pinned row broke into "Hom / e" (conciv-dev/conciv#764).
+ * Pinned by __tests__/snapdom.issue516.test.js and
+ * __tests__/regression.oneLinePinDescendants.test.js.
  * @param {Element} source
  * @param {Element} clone
  * @param {Record<string,string>} snap
@@ -306,17 +299,13 @@ export function isFlexOrGridItem(el) {
 }
 
 /**
- * Is there in-flow content? Fast version:
- *  - A direct, non-empty text node -> true (triggers no layout).
- *  - An immediate <br> -> true.
- *  - Any in-flow element child -> true.
+ * Whether the element has in-flow content of its own: a direct non-empty text node (no
+ * layout), an immediate <br>, or an in-flow element child.
  *
- * Both questions are about THIS element's own flow, so neither `textContent` nor a
- * scrollHeight probe can answer them: `textContent` also sees text inside absolutely
- * positioned descendants, and scrollHeight is floored at clientHeight, so a wrapper whose
- * children are all out of flow still reports its own used height. Trusting either one made
- * stripHeightForWrappers drop the height of such a wrapper, which then collapsed to 0 inside
- * the foreignObject — every following section shifted up over it.
+ * Neither `textContent` nor scrollHeight can answer it: `textContent` sees text inside
+ * absolutely positioned descendants, and scrollHeight is floored at clientHeight. Trusting
+ * either let stripHeightForWrappers drop the height of a wrapper whose children are all out of
+ * flow; it collapsed to 0 in the foreignObject and every later section shifted up over it.
  * @param {Element} el
  */
 function hasFlowFast(el) {
@@ -339,18 +328,14 @@ function hasFlowFast(el) {
 }
 
 /**
- * Height this block would take with `height: auto`, measured from the live layout — or NaN
+ * Height this block would take with `height: auto`, measured from the live layout, or NaN
  * when nothing in flow could be measured.
  *
- * Only called once every other guard in stripHeightForWrappers has passed, so the element is
- * a plain block box with no vertical padding/border and `overflow: visible`: its content-box
- * top coincides with its border-box top, and the top/bottom margins of its first/last in-flow
- * children collapse straight through it. The auto height is therefore the distance from the
- * element's own top edge down to the lowest bottom edge among its in-flow contents.
- *
- * Out-of-flow (absolute/fixed) and floated children are skipped: neither contributes to the
- * auto height of a visible-overflow block. Direct text nodes are measured with a Range, which
- * reports real line boxes without touching the DOM.
+ * Called only after every other guard in stripHeightForWrappers passed, so the element is a
+ * plain block with no vertical padding/border and `overflow: visible`: its content top is its
+ * border top and its children's margins collapse through it. The auto height is the distance
+ * from its top edge to the lowest in-flow bottom edge; absolute, fixed and floated children do
+ * not count. Direct text nodes are measured with a Range, which leaves the DOM alone.
  *
  * @param {Element} el
  * @returns {number}
@@ -406,12 +391,8 @@ export function stripHeightForWrappers(el, cs, snap) {
   const disp = cs.display || ''
   if (disp.includes('flex') || disp.includes('grid')) return
 
-  // 4) Positioned, transformed, painted, or a flex/grid item: leave it
-  //
-  // (The replaced-element guard lived here and was removed: it is unreachable.
-  // The allow-list in (2) only admits div/section/article/main/aside/header/footer/nav,
-  // and none of those can be an img/canvas/video/iframe/svg/object/embed: the check was
-  // false by construction, not by luck.)
+  // 4) Positioned, transformed, painted, or a flex/grid item: leave it. No replaced-element
+  // guard: the tag allow-list in (1) admits no img/canvas/video/iframe/svg/object/embed.
 
   const pos = cs.position
   if (pos === 'absolute' || pos === 'fixed' || pos === 'sticky') return
@@ -432,20 +413,13 @@ export function stripHeightForWrappers(el, cs, snap) {
   // 6) Only wrappers with in-flow content of their own
   if (!hasFlowFast(el)) return
 
-  // 6b) Last filter: only drop the height when the used height is what the element would
-  // have with `height: auto`. If it differs, the author set it, wherever it came from
-  // (stylesheet, <style>, CSSOM, inline attribute), and it has to be respected.
-  //
-  // This check used to read `el.scrollHeight`, which CANNOT answer that question:
-  // scrollHeight returns the padding-box height when the content is shorter than the box,
-  // so a `height: 400px` around one line of text gives scrollHeight === 400 === used
-  // height, a difference of 0, and the height was dropped. It only caught fixed heights
-  // SMALLER than the content (the rare case), never the usual one: the child collapsed to
-  // its content height and the rest of the canvas came out blank.
-  //
-  // Deliberately last: by this point we know there is no vertical padding/border and no
-  // overflow (hasBox), which is what makes the autoContentHeight measurement valid, and
-  // only the few nodes that clear every guard pay for measuring.
+  // 6b) Last filter: drop the height only when it equals what `height: auto` would give.
+  // Otherwise the author set it, wherever it came from (stylesheet, <style>, CSSOM, inline),
+  // and it stays. Not `el.scrollHeight`: it returns the padding-box height when the content
+  // is shorter, so a `height: 400px` around one line of text read as auto, was dropped, and
+  // the rest of the canvas came out blank. Last on purpose: hasBox has ruled out vertical
+  // padding/border and overflow, which makes autoContentHeight valid, and only the few nodes
+  // that clear every guard pay for the measurement.
   const usedH = parseFloat(cs.height)
   const autoH = autoContentHeight(el)
   const TOL = 2

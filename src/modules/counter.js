@@ -59,8 +59,7 @@ function formatCounter(value, style) {
       return (value < 0 ? '-' : '') + (abs < 10 ? '0' : '') + String(abs)
     }
     // `lower-latin`/`upper-latin` are exact aliases of the -alpha forms (CSS Counter Styles
-    // §6.1). Falling through to the decimal default rendered digits where the page shows
-    // letters — an `a. b. c.` list captured as `1. 2. 3.`.
+    // §6.1); without them an `a. b. c.` list captured as `1. 2. 3.`.
     case 'lower-alpha': case 'lower-latin': return alpha(value, false)
     case 'upper-alpha': case 'upper-latin': return alpha(value, true)
     case 'lower-roman': return roman(value, false)
@@ -77,11 +76,9 @@ function formatCounter(value, style) {
 
 /**
  * Tokenizes a counter-reset / -set / -increment declaration into [name, value] pairs.
- * The grammar is `[<counter-name> <integer>?]+` — WHITESPACE-separated. Splitting on commas
- * (which are not part of it) collapsed `counter-reset: chapter 0 section 0` into a single
- * part and silently dropped every counter after the first. Counter names are custom-idents
- * and cannot start with a digit, so a numeric token is unambiguously the preceding name's
- * value. Commas are tolerated as separators rather than parsed, costing nothing.
+ * The grammar is `[<counter-name> <integer>?]+`, WHITESPACE-separated: splitting on commas
+ * kept only the first counter of `chapter 0 section 0`. A name cannot start with a digit, so a
+ * numeric token is the preceding name's value. Commas are tolerated as separators.
  * @param {string} decl
  * @param {number} dflt - value when a name carries no integer (0 for reset/set, 1 for increment)
  * @returns {Array<[string, number]>}
@@ -101,18 +98,11 @@ export function counterPairs(decl, dflt) {
 }
 
 /**
- * Build a counter context by walking the DOM once.
- * It stores, for each Element, a Map<counterName, number[]> (stack).
- *
- * Rules:
- * - counter-reset on element:
- *    * if parent had that counter -> push (nest)
- *    * else -> replace (start a fresh stack with [value])
- * - counter-increment on element: add to top, creating top=0 if needed
- * - list-item: sets 'list-item' value for LI in OL/UL (supports start, li[value])
- *
- * Built once per capture, lazily (pseudo.js lazyCounterContext), so a page with no counter
- * in any pseudo never pays the walk. Pinned by __tests__/module.counter.test.js.
+ * Build a counter context by walking the DOM once: per Element, a Map<counterName, number[]>
+ * (stack). counter-reset pushes (nests) when the parent has that counter and starts a fresh
+ * stack otherwise; counter-increment adds to the top, creating top=0; list-item numbers an LI
+ * in OL/UL (start, li[value]). Built lazily once per capture (pseudo.js lazyCounterContext),
+ * so a page with no counter in a pseudo never walks. Pinned by __tests__/module.counter.test.js.
  * @param {Document|Element} root
  * @returns {{ get(node: Element, name: string): number, getStack(node: Element, name: string): number[] }}
  */
@@ -207,10 +197,8 @@ export function buildCounterContext(root) {
       nextCarry = childCarry
     }
 
-    // Sibling carry: strip depth added by counter-reset on this element.
-    // counter-reset creates a scope local to this subtree; it must not leak
-    // to the next sibling. Truncate each counter back to the depth it had in
-    // the incoming carryMap, preserving increments but discarding new scopes.
+    // A counter-reset scope stays in this subtree: cut each counter back to its incoming
+    // depth for the next sibling, keeping increments and dropping new scopes.
     const siblingCarry = new Map()
     for (const [name, inStack] of carryMap) {
       const depth = inStack.length
@@ -264,9 +252,8 @@ const COUNTER_ARG = /(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^,"'])+/g
 /**
  * Resolves counter()/counters() calls inside a content string for a specific node,
  * returning the content with counter() expanded but quoted-string tokens preserved.
- * The caller (pseudo.js) is responsible for joining tokens and stripping quotes —
- * keeping quotes here lets its tokenizer work so source whitespace between adjacent
- * tokens (e.g. `counter(x) ")"`) doesn't leak into the rendered text.
+ * pseudo.js joins the tokens and strips the quotes; with the quotes kept its tokenizer
+ * drops the source whitespace between tokens (`counter(x) ")"`).
  *
  * @param {string} raw
  * @param {Element} node

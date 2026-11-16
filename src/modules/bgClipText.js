@@ -1,15 +1,13 @@
 /**
- * Gradient text (`background-clip: text`) for Firefox, which paints no clipped background
- * inside an SVG foreignObject image (Firefox 141 and 157: 0 painted pixels for a hand-written
- * one). The style pass first swaps such text to the average of its gradient
- * (applyBgClipTextFallback in styles.js); this module then repaints it faithfully where it can.
+ * Gradient text (`background-clip: text`) for Firefox, which paints no clipped background inside
+ * an SVG foreignObject image (Firefox 141 and 157: 0 painted pixels for a hand-written one). The
+ * style pass swaps such text to its gradient's average (applyBgClipTextFallback in styles.js);
+ * this module repaints it faithfully where it can.
  *
- * Every glyph is placed where the live layout put it, read through a Range, so wrapping,
- * alignment and letter-spacing need no re-layout. The glyphs become one SVG <text> per text
- * node, filled with a pattern whose image is the element's own CSS background painted in a
- * nested svg, so any gradient or layer stack comes through as authored. The clone keeps its
- * text, transparent, to hold the layout. On any doubt the solid fallback stays. #530, pinned
- * by __tests__/module.styles.bgClipText.test.js.
+ * Each glyph goes where the live layout put it (read through a Range, so no re-layout), in one
+ * SVG <text> per text node filled with a pattern of the element's own CSS background painted in
+ * a nested svg. The clone keeps its text, transparent, to hold the layout. On any doubt the
+ * solid fallback stays. #530, pinned by __tests__/module.styles.bgClipText.test.js.
  * @module bgClipText
  */
 

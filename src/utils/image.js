@@ -26,9 +26,8 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
   if (isGradient || entry.trim() === 'none') {
     return entry // leave as is
   }
-  // image-set()/-webkit-image-set(): pick the candidate matching the live device's pixel
-  // ratio instead of always grabbing whichever url() the generic regex sees first (which
-  // silently discarded resolution — e.g. always inlining the 1x candidate on a 2x display).
+  // image-set()/-webkit-image-set(): pick the candidate for the live device pixel ratio. The
+  // first url() the generic regex sees can be the 1x candidate on a 2x display.
   const rawUrl = resolveImageSetURL(entry, (typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1) ??
     extractURL(entry)
   if (!rawUrl) {

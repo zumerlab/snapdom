@@ -103,11 +103,9 @@ function rewriteSvgBoxShadowToDropShadow(svgText) {
   )
   return svgText
 }
-// Modern WebKit paints box-shadow natively inside svg-as-image (correct blur and
-// spread — the drop-shadow rewrite below is only for engines that don't, renders
-// ~2x wider and loses spread) BUT flips the shadow's Y offset (box- and
-// text-shadow; drop-shadow is fine). Probe both facts once per session with a
-// tiny svg: a black box whose only other paint is its own offset box-shadow.
+// Modern WebKit paints box-shadow natively in svg-as-image (the drop-shadow rewrite is for
+// engines that do not, and loses spread) BUT flips the Y offset of box- and text-shadow
+// (drop-shadow is fine). Probe both once per session: a black box and its offset shadow.
 let _svgShadowProbe = null
 function probeSvgShadowSupport() {
   if (_svgShadowProbe) return _svgShadowProbe
@@ -188,12 +186,9 @@ function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
 /* c8 ignore stop */
 
 /**
- * Safari shadow handling on decoded svg text. Returns the (possibly rewritten)
- * text plus whether it carries box-/text-shadows: WebKit only rasterizes those
- * consistently at the svg's natural size (any other rasterization scale corrupts
- * offset direction and magnitude, or drops blurred shadows entirely), so the
- * caller must then draw 1:1 and resample the raster instead of letting WebKit
- * re-rasterize the svg scaled.
+ * Rewrite Safari shadows in decoded svg text. `naturalOnly` says it carries box-/text-shadows,
+ * which WebKit rasterizes right only at the svg's natural size (any other scale corrupts their
+ * offsets or drops blurred ones), so the caller must draw 1:1 and resample the raster.
  * @param {string} svg - decoded svg text
  * @returns {Promise<{svg: string, naturalOnly: boolean}>}
  */

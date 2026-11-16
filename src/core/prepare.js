@@ -2,12 +2,11 @@
  * The clone step: prepare the live element, deepClone it, then run every pass that needs the
  * clone and the source side by side.
  *
- * Before the clone: content-visibility forced, lazy shadow icons revealed
- * (#488). All of it is undone in a finally, so the page is as it was when this returns.
+ * Before the clone: content-visibility forced, lazy shadow icons revealed (#488), all undone
+ * in a finally so the page is as it was when this returns.
  * After the clone, in this order: svg defs, pseudo-elements, blob URLs, @media freezing,
  * shadow CSS extraction, class generation, top-layer lift, fixed/sticky re-anchoring, scroll
- * compensation, root neutralization. Several of those depend on the one before, and the
- * comment at each says which.
+ * compensation, root neutralization. Several depend on the one before; each comment says which.
  * @module prepare
  */
 
@@ -41,25 +40,20 @@ const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important
 
 /**
  * Clone an element for capture and return the clone with everything the render step needs.
- *
- * The source is prepared and restored around deepClone (see the module header). Each call is
- * one clone attempt: it makes one ClonePass (session.js) over the session's maps, and every
- * memo of the walk dies with the call. Direct callers without a session get fresh maps;
- * captureDOM always passes its own.
+ * Each call is one clone attempt with one ClonePass (session.js) over the session's maps;
+ * the walk's memos die with the call. Without a session a direct caller gets fresh maps.
  * @param {Element} element - Element to clone
  * @param {Object} [options={}] - the normalized context (createContext)
  * @param {import('./session.js').CaptureSession} [session] - the run's session, whose maps the clone fills
  * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, shadowCSS: boolean, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null, standIns: Map<Element, Element>|null, universe: Set<string>|null}>}
- *   classCSS is the full stylesheet (prefix included); classPrefixCSS is the shadow, pseudo
- *   and suppression part alone, which burst re-prepends after a diff; clipWindow is the
- *   clip rect in the root's own layout pixels; standIns maps each culled source to the
- *   husk standing in for it, which nodeMap leaves out; shadowCSS says the prefix carries
- *   shadow-root rules; universe is what the snapshots were pruned by, for the base reset
+ *   classCSS includes the prefix; classPrefixCSS (shadow, pseudo, suppression) is what burst
+ *   re-prepends after a diff; clipWindow is in the root's layout pixels; standIns maps each
+ *   culled source to its husk, which nodeMap leaves out; shadowCSS: the prefix carries
+ *   shadow-root rules; universe: what the snapshots were pruned by, for the base reset
  */
 export async function prepareClone(element, options = {}, session = createCaptureSession(options)) {
-  // Same-tick DOM/style mutations otherwise reach the clone against a stale epoch
-  // (MutationObserver delivery is a microtask) — drain them before any epoch-scoped
-  // memo (universe, pseudo gates, isInSvgTemplate) is read.
+  // MutationObserver delivers in a microtask, so same-tick mutations would meet a stale epoch.
+  // Drain them before any epoch-scoped memo (universe, pseudo gates, isInSvgTemplate) is read.
   flushStyleInvalidations()
   // :hover leaves no record and no event: asked here, once per capture.
   invalidateHoverChanges(element.ownerDocument || document)
@@ -87,10 +81,9 @@ export async function prepareClone(element, options = {}, session = createCaptur
   let classCSS = ''
   let shadowScopedCSS = ''
 
-  // #488: Calcite icons defer their SVG path fetch until IntersectionObserver says
-  // their open shadow tree is visible. Reveal only offscreen roots that actually contain an
-  // unresolved shadow SVG, then wait (bounded) for its paint data before cloning. The source
-  // styles are restored first, and concurrent captures share the same warmup.
+  // #488: Calcite icons fetch their SVG path only once IntersectionObserver sees their shadow
+  // tree. Reveal an offscreen root that holds an unresolved shadow SVG, wait (bounded) for the
+  // paths, restore the styles. Concurrent captures share the warmup.
   if (visibilityWarmups.size) {
     const containsComposed = (root, child) => {
       for (let node = child; node; node = node.assignedSlot || node.parentElement || shadowHost(node)) {
@@ -207,24 +200,19 @@ export async function prepareClone(element, options = {}, session = createCaptur
     } catch { /* non-blocking */ }
   }
 
-  // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
-  // Clip mode prunes the walk to the window instead of skipping it: a clip rect far from the
-  // real viewport lands on UNRENDERED cv:auto placeholders (blank bands in the capture),
-  // while content outside the window still gets culled at its placeholder box.
+  // #281: force content-visibility:visible so Safari/Chromium do not skip offscreen boxes.
+  // Clip mode prunes the walk, it does not skip it: a clip far from the viewport lands on
+  // UNRENDERED cv:auto placeholders and paints blank bands.
   const undoContentVisibility = forceContentVisibility(element, clipRect)
 
   if (clipRect) {
-    // Freeze the window in element-local coords NOW — after cv forcing (which can relayout),
-    // at the same instant culling reads gBCRs. Re-deriving it from a fresh gBCR at render
-    // time races user scroll.
+    // Freeze the window in element-local coords NOW, after cv forcing relayouts and as culling
+    // reads gBCRs. A fresh gBCR at render time races user scroll.
     const elR = element.getBoundingClientRect()
-    // gBCR is in PAGE pixels — it carries every ancestor transform — while the viewBox that
-    // consumes this window is in the root's own LAYOUT pixels. The two were mixed, so under
-    // a scaled ancestor the capture showed the wrong region at the wrong extent: a
-    // zoom-to-fit editor at scale(0.5) asking for the right half of a slide got the left
-    // half, half as wide. Convert with the element's own visual-to-layout ratio. The
-    // sub-pixel guard keeps the untransformed path (every ordinary capture) byte-identical,
-    // since offsetWidth is integer-rounded and elR.width is not.
+    // gBCR is in PAGE pixels (ancestor transforms included), the viewBox in the root's LAYOUT
+    // pixels: under scale(0.5) the right half of a slide came out as the left half, half as
+    // wide. The >= 1 guard keeps untransformed captures byte-identical, since offsetWidth is
+    // integer-rounded and elR.width is not.
     const lw = element.offsetWidth || elR.width
     const lh = element.offsetHeight || elR.height
     const sx = (elR.width && Math.abs(lw - elR.width) >= 1) ? lw / elR.width : 1
@@ -257,10 +245,8 @@ export async function prepareClone(element, options = {}, session = createCaptur
   }
   freezeInflatedFontSizes(sessionCache.nodeMap, element.ownerDocument || document)
 
-  // Inline external <defs>/<symbol> into the CLONE, not the live source. Operating on the
-  // source mutated the user's DOM (a hidden <svg> was inserted as firstChild and never
-  // removed) and shifted :first-child/nth-child matches while deepClone read computed
-  // styles. The clone is detached; external refs are still resolved from the live document.
+  // Inline external <defs>/<symbol> into the CLONE: in the source, the inserted <svg> stayed in
+  // the user's DOM and shifted :first-child/nth-child matches. Refs resolve from the live page.
   if (sessionCache.slicer?.due()) await sessionCache.slicer.pause()
   try {
     inlineExternalDefsAndSymbols(clone, undefined, element)
@@ -279,15 +265,13 @@ export async function prepareClone(element, options = {}, session = createCaptur
   if (sessionCache.bgClipText) paintClippedText(sessionCache.bgClipText)
   await resolveBlobUrlsInTree(clone, sessionCache)
 
-  // Kept light-DOM <style> clones travel into the SVG, whose own tiny viewport would
-  // re-evaluate their @media conditions, so they are frozen to the live viewport's state now.
-  // Then each goes into an anonymous @layer, below the unlayered class CSS (#562). The SVG
-  // re-runs their rules in another tree: `:root` is the <svg> there, and a var() set by an
-  // ancestor outside the capture resolves to another value or to nothing, while `.card` tied
-  // the class generated for the card and won by coming later. In the layer they still paint
-  // what no class carries (pseudo-elements, keyframes). @import and @namespace are invalid
-  // inside a layer block and keep the old order. The differential path never splices a
-  // <style> (HEAVY_SUBTREE, diff.js). Pinned by `__tests__/snapdom.issue562.test.js`.
+  // Kept light-DOM <style> clones travel into the SVG, whose tiny viewport would re-evaluate
+  // their @media, so they are frozen to the live viewport now. Each then goes into an anonymous
+  // @layer below the class CSS (#562): in the SVG `:root` is the <svg> and an outside var()
+  // resolves differently, yet `.card` tied the card's generated class and won by coming later.
+  // The layer still paints what no class carries (pseudo-elements, keyframes). @import and
+  // @namespace are invalid in a layer and stay unlayered. The differential path never splices
+  // a <style> (HEAVY_SUBTREE, diff.js). Pinned by `__tests__/snapdom.issue562.test.js`.
   for (const [cloneNode, srcNode] of sessionCache.nodeMap.entries()) {
     if (srcNode?.tagName === 'STYLE' && cloneNode?.tagName === 'STYLE' && !cloneNode.hasAttribute('data-sd')) {
       let css = cloneNode.textContent || ''
@@ -300,7 +284,7 @@ export async function prepareClone(element, options = {}, session = createCaptur
     }
   }
 
-  // --- Pull shadow-scoped CSS out of the clone (avoid visible CSS text) ---
+  // Pull shadow-scoped CSS out of the clone, so it does not render as text.
 
   try {
     // Shallow first (#558): a group's one copy must follow every scope above any member and
@@ -333,23 +317,19 @@ export async function prepareClone(element, options = {}, session = createCaptur
     applyStyleClass(node, key, keyToClass)
   }
 
-  // Top layer: an open modal <dialog> / popover paints above everything with a ::backdrop,
-  // but its clone renders in tree order with no backdrop box. Re-append matching clones at
-  // the end of the root (document order approximates top-layer order) with a synthesized
-  // backdrop div. Zero cost when nothing matches; runs after class application so frozen
-  // styles survive the move.
+  // An open modal <dialog> or popover paints in the top layer with a ::backdrop; its clone
+  // would paint in tree order. Move it to the end of the root (document order approximates
+  // top-layer order) after class application, so frozen styles survive the move.
   try {
     liftTopLayerClones(element, clone, sessionCache.nodeMap)
   } catch (e) {
     debugWarn(sessionCache, 'Couldn\'t bring an open dialog or popover into the capture.', e)
   }
 
-  // Re-anchor fixed/sticky clones to their painted position — in clip mode (the window is
-  // what the user sees) and whenever the capture root is itself scrolled (stuck stickies
-  // must freeze where they're stuck: header/footer/left-sidebar, horizontal included).
-  // Must run after class application (the sticky placeholder inherits the twin's class)
-  // and BEFORE the scrolled-container wrapper below — its fixed/absolute adjustment
-  // (+scrollY) is what cancels the wrapper's translate for these now-absolute elements.
+  // Re-anchor fixed/sticky clones where they paint, in clip mode and when the root itself is
+  // scrolled (stuck stickies freeze where stuck, horizontal included). After class application
+  // (the sticky placeholder inherits the twin's class) and BEFORE the scroll wrapper below,
+  // whose +scrollY on fixed/absolute boxes cancels its translate for them.
   if ((sessionCache.clip || element.scrollTop || element.scrollLeft) && clone?.nodeType === 1) {
     try {
       const edge = sessionCache.clip && clipWindow ? { x: clipWindow.x, y: clipWindow.y } : { x: 0, y: 0 }
@@ -410,23 +390,22 @@ export async function prepareClone(element, options = {}, session = createCaptur
     // Individual translate is separate from computed transform. Like its matrix e/f,
     // its page placement has already been discarded by the root's bbox compensation.
     clone.style.translate = 'none'
-    // An atomic inline (an input, a button, an inline-block) sits on the container's line
-    // and aligns its baseline with that line's strut, a 16px default font, not the page's:
-    // a captured <input> landed 1px low in its own image, 414 pixels off its in-page render
-    // in Chromium, 410 in WebKit. Top-align it to the line. Pinned by
-    // __tests__/core.prepare.inlineRoot.test.js.
+    // An atomic inline (input, button, inline-block) aligns its baseline with the container's
+    // 16px default strut, not the page's: a captured <input> landed 1px low, 414 pixels off its
+    // in-page render in Chromium. Top-align it.
+    // Pinned by __tests__/core.prepare.inlineRoot.test.js.
     if (/^inline-/.test(computed.display) || (computed.display === 'inline' && REPLACED_INLINE.test(element.tagName))) {
       clone.style.verticalAlign = 'top'
     }
     // Its containing block stayed in the page too: a percentage min/max size would resolve
     // against the foreignObject instead. No-op unless one of them holds a `%`.
     freezeRootPercentSizes(element, clone, computed)
-    // So did its language. The default fonts, and how a font stack falls back for each
-    // script, depend on it: under <html lang="zh"> Chromium set the same CJK heading 15px
-    // wider than under none, and Firefox switched it from serif to sans-serif, so d42's
-    // heading came out regular and its digits in Times. Firefox and WebKit honour it inside
-    // the svg; Chromium's svg images keep their default fonts per language (13.8px off with
-    // or without it, `xml:lang` too). Pinned by __tests__/core.prepare.lang.test.js.
+    // So did its language, which picks default fonts and per-script fallback: under <html
+    // lang="zh"> Chromium set a CJK heading 15px wider than under none, and Firefox moved d42's
+    // heading from serif to sans-serif, its digits in Times. Firefox and WebKit honour it in
+    // the svg; Chromium's svg images keep their default fonts per language (13.8px off with or
+    // without it, `xml:lang` too).
+    // Pinned by __tests__/core.prepare.lang.test.js.
     if (!clone.hasAttribute('lang')) {
       const lang = element.closest?.('[lang]')?.getAttribute('lang') ?? element.ownerDocument?.documentElement?.getAttribute('lang')
       if (lang) clone.setAttribute('lang', lang)
@@ -450,11 +429,9 @@ export async function prepareClone(element, options = {}, session = createCaptur
     reconcileRisk: sessionCache.reconcileRisk || 0,
     clipWindow,
     standIns,
-    // What the snapshots were pruned by, for the base reset (assembleCaptureCSS): the scan
-    // pinned on this pass, or the capture's shadow union when the root lives in a shadow
-    // root. When the reset read the document's scan by itself, it could read a later scan
-    // than the snapshots did (#554), and under a shadow root it read every property, so its
-    // resolved black text fill painted every glyph black from 3.1.0 on.
+    // What the snapshots were pruned by, for the base reset (assembleCaptureCSS): this pass's
+    // scan, or the shadow union for a root in a shadow root. Read by the reset alone, the scan
+    // could be a later one (#554), and under a shadow root a black text fill painted every glyph.
     universe: universeFor(element, sessionCache),
   }
 }
@@ -480,10 +457,9 @@ function liftTopLayerClones(element, clone, nodeMap) {
   for (const top of tops) {
     const topClone = srcToClone.get(top)
     if (!topClone || topClone === clone || topClone.parentNode == null) continue
-    // Synthesized ::backdrop — fixed inset:0 resolves against the svg viewport inside the
-    // foreignObject, dimming the whole capture like the live backdrop dims the page.
-    // backdrop-filter can't ride along (#457 + no source element for emulation): the rgba
-    // dim is the faithful-and-portable part.
+    // Synthesized ::backdrop: fixed inset:0 resolves against the svg viewport and dims the
+    // whole capture. Only the rgba dim travels; backdrop-filter cannot (#457, and there is no
+    // source element to emulate it from).
     try {
       const bd = getComputedStyle(top, '::backdrop')
       const bg = bd.backgroundColor
@@ -604,11 +580,9 @@ export function wrapScrolledClone(cloneNode, originalNode, nodeMap, styleCache) 
   } catch { /* non-blocking */ }
 
   const inner = document.createElement('div')
-  // #413: baseCSS emits a `div{white-space:normal;font-family:…}` rule (from the tag's
-  // all:initial defaults) that directly targets this wrapper and overrides the inherited
-  // text formatting of the scrolled element (e.g. a <pre>'s pre-wrap/monospace). `all:unset`
-  // lets inherited props flow from the parent again (inline style beats the type selector)
-  // while keeping non-inherited props at initial, so the wrapper stays visually transparent.
+  // #413: baseCSS's `div{white-space:normal;font-family:…}` hits this wrapper and overrides
+  // what the scroller passes down (a <pre>'s pre-wrap and monospace). `all:unset` inline lets
+  // inherited props flow again and keeps the rest at initial.
   inner.style.all = 'unset'
   // `all` leaves `direction` alone, so baseCSS's `div{direction:ltr}` won over the
   // scroller's: a right-to-left scroller lost its order and the translate pushed its

@@ -1,24 +1,19 @@
 /**
- * Inline every <img> and SVG <image> in the clone as a data URL.
+ * Inline every <img> and SVG <image> (since #341) in the clone as a data URL.
  *
- * An svg-as-image document loads no external resources, so a remote src paints nothing
- * inside the foreignObject. This pass fetches each one through snapFetch and writes the data
- * URL onto the clone; an <img> that cannot be fetched keeps its box and shows a sized
- * placeholder (nothing with `placeholders: false`). SVG <image href> gets the same treatment
- * since #341.
+ * An svg-as-image document loads no external resources, so a remote src paints nothing inside
+ * the foreignObject. Each one is fetched through snapFetch and written onto the clone; an <img>
+ * that cannot be fetched keeps its box and shows a sized placeholder (nothing with
+ * `placeholders: false`).
  *
- * One contract, measured: an inlined data: URL is written to the clone ONCE. Every src
- * write re-parses and re-decodes the payload, every read through the `src` getter
- * re-serializes it, and the 9-photo gallery (26 MB of base64) paid that four times over
- * (cloneNode's attribute copy, freezeImgSrcset re-setting the same value, this pass
- * re-assigning it, compress writing the downsample) plus two regex scans of the same
- * megabytes. Removing all but the first took the warm pipeline from 172 ms to 62 and the
- * cold one from 409 to 298. What is left is cloneNode's own 41 ms, since the attribute copy
- * itself starts a load; avoiding it means a clone with no `src` until serialization, which a
- * plugin reading the clone would see, so it is not done. The write is synchronous and grows
- * with the payload: on d-compress (19 images, 44M characters) it is 85 of the 99 ms a
- * recapture takes in Chromium. A clone made in a document without a browsing context skips
- * it and pays it when adopted, so that is no way around it either.
+ * One contract, measured: an inlined data: URL is written to the clone ONCE. Every src write
+ * re-parses and re-decodes the payload and every `src` getter read re-serializes it. The 9-photo
+ * gallery (26 MB of base64) paid four writes (cloneNode, freezeImgSrcset, this pass, compress);
+ * keeping only the first took the warm pipeline from 172 ms to 62. What is left is cloneNode's
+ * own 41 ms copy, which starts a load. Skipping it would leave the clone without `src` until
+ * serialization, visible to plugins, and a clone in a document without a browsing context only
+ * defers it to adoption. On d-compress (19 images, 44M characters) that write is 85 of the 99 ms
+ * a Chromium recapture takes.
  * Pinned by __tests__/modules.images.dataUrlPassthrough.test.js, which counts the writes.
  * @module images
  */
@@ -37,11 +32,9 @@ function getSvgImageHref(el) {
 }
 
 /**
- * The box a placeholder should take when the image never loaded.
- *
- * snapdom's own data-snapdom-width/height win, then the inline style, then the width/height
- * attributes, then whatever the element reports, then 100x100. A failed image has no
- * natural size, so the earlier hints are the only way to keep the layout from collapsing.
+ * The box a placeholder takes when the image never loaded: data-snapdom-width/height, then the
+ * inline style, then the width/height attributes, then what the element reports, then 100x100.
+ * A failed image has no natural size, so only these hints keep the layout from collapsing.
  * @param {HTMLImageElement} img
  * @returns {{ width: number, height: number }}
  */
@@ -60,12 +53,10 @@ function extractImageDimensions(img) {
 }
 
 /**
- * Inline every <img> and SVG <image> in the clone, six at a time.
- *
- * Per <img>: pick one concrete src (srcset and sizes are dropped), reuse a cached data URL,
- * else fetch. A fetch that fails tries `fallbackURL` (string or async callback), then
- * points the <img> at a grey "img" box of the estimated size (plus an `image-fallback`
- * session warning), or at an empty image under `placeholders: false`.
+ * Inline every <img> and SVG <image> in the clone, six at a time. Per <img>: one concrete src
+ * (srcset and sizes dropped), a cached data URL or a fetch. A failed fetch tries `fallbackURL`
+ * (string or async callback), then a grey "img" box of the estimated size with an
+ * `image-fallback` session warning, or an empty image under `placeholders: false`.
  * Also runs on the differential path (diff.js) for the rebuilt subtree.
  * Pinned by __tests__/modules.images.test.js.
  * @param {Element} clone - the clone, or the <img> itself when that is the capture root
@@ -83,7 +74,7 @@ export async function inlineImages(clone, options = {}, session = null) {
   const processImg = async (img) => {
     // Normalize src/srcset/sizes to a single concrete URL. currentSrc stays empty on the
     // detached clone until the candidate loads (Chromium/Firefox), so derive a candidate
-    // from srcset before stripping it — never demote a sourced img to a source-less one.
+    // from srcset before stripping it: never demote a sourced img to a source-less one.
     if (!img.getAttribute('src')) {
       const eff = img.currentSrc || img.src || pickSrcsetCandidate(img.getAttribute('srcset'), img) || ''
       if (eff) img.setAttribute('src', eff)
@@ -92,11 +83,9 @@ export async function inlineImages(clone, options = {}, session = null) {
     img.removeAttribute('srcset')
     img.removeAttribute('sizes')
 
-    // Already inline: nothing to fetch, and the clone carries it. Re-assigning the same
-    // string re-parsed and re-decoded it (61 ms of a 180 ms gallery pipeline, 26 MB of
-    // base64), and the image cache would have kept a multi-MB key pointing at itself. The
-    // attribute is read raw on purpose: the `src` GETTER re-serializes the URL, another
-    // copy of every payload.
+    // Already inline: leave it. Re-assigning re-decoded it (61 ms of a 180 ms gallery
+    // pipeline, 26 MB of base64) and kept a multi-MB cache key pointing at itself. Read the
+    // attribute raw: the `src` GETTER re-serializes every payload.
     if ((img.getAttribute('src') || '').startsWith('data:')) {
       if (!img.width) img.width = img.naturalWidth || 100
       if (!img.height) img.height = img.naturalHeight || 100

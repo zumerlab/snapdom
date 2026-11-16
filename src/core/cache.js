@@ -1,24 +1,20 @@
 /**
- * Cross-capture asset caches and shared style defaults.
- *
- * Everything scoped to one capture lives on the session (session.js). What lives here is
- * reused across captures on purpose: fetched assets, per-tag defaults, the clone-in-document
- * measurement, the compress output. Each Map is capped and evicts FIFO, so a long-lived SPA
- * cannot grow them without bound; compress.js trims its own when a pass that added to it
- * ends. `cache: 'disabled'` replaces every one of them before a capture.
+ * Caches reused across captures on purpose: fetched assets, per-tag defaults, the
+ * clone-in-document measurement, the compress output. Anything scoped to one capture belongs
+ * on the session (session.js). Each Map is capped and evicts FIFO, so a long-lived SPA cannot
+ * grow them without bound; compress.js trims its own when a pass that added to it ends.
+ * `cache: 'disabled'` replaces every one of them before a capture.
  * Pinned by __tests__/core.cache.test.js.
  * @module cache
  */
 
-/** Max entries before evicting oldest (FIFO). Keeps lib lightweight, avoids memory leaks. */
+/** Max entries before the oldest is evicted (FIFO). */
 const MAX_IMAGE = 100
 const MAX_BACKGROUND = 100
 const MAX_RESOURCE = 150
 const MAX_BASE_STYLE = 50
-// Keyed by tag name. Above the ~31 distinct tags a page commonly uses on purpose: at 30 the
-// cache evicted 'div', the most common tag on any page, while the first capture was still
-// filling it, and every capture then re-measured div defaults from a live sandbox.
-// Headroom above 31 covers the tags a real document uses beyond that list.
+// Keyed by tag name, and kept above the ~31 tags a page commonly uses: at 30 the first capture
+// evicted 'div' while still filling it, and every capture re-measured div from the sandbox.
 const MAX_DEFAULT_STYLE = 64
 
 /**
@@ -61,9 +57,8 @@ export const cache = {
    *  verifies exact source equality and evicts (compressCloneAssets). */
   compress: new Map(),
   computedStyle: new WeakMap(),
-  /** Persistent cache for clone-in-document layout measurements (PERF-3).
-   *  Key: Element. Value: { cssLen, w0, csh, csw } — cssLen is the total injected CSS
-   *  length, used together with w0 as a cheap invalidation key when styles change. */
+  /** Clone-in-document layout measurements (PERF-3), Element to { cssLen, w0, csh, csw }.
+   *  cssLen (total injected CSS length) and w0 are the cheap invalidation key. */
   measureHints: new WeakMap(),
   /** Fires the reconcile suggestion at most once per page load (see capture.js). */
   warnedReconcile: false,
@@ -72,13 +67,11 @@ export const cache = {
 export { EvictingMap }
 
 /**
- * Normalizes cache values: `false`/'disabled' opt out of every cache (debug/test escape
- * hatch); everything else — including the legacy 'soft'/'auto'/'full' strings — maps to
- * the one structural behavior. The old per-policy session sharing is superseded: sessions
- * are per-capture by construction (createCaptureSession), repeat-capture speed comes from
- * auto-burst + differential recapture WITH real invalidation, and 'full' would re-share
- * session maps across captures — the exact mutable-state class the session refactor
- * eliminated.
+ * Normalizes the `cache` option: `false` or 'disabled' opt out of every cache (a debug and
+ * test escape hatch); anything else, the legacy 'soft', 'auto' and 'full' included, is 'soft'.
+ * Sessions are per capture (createCaptureSession), so no value shares one: 'full' would bring
+ * back the shared mutable state the session refactor removed. Repeat-capture speed comes from
+ * burst and differential recapture instead.
  * @param {unknown} v
  * @returns {"soft"|"disabled"}
  */

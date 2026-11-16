@@ -97,15 +97,13 @@ const OUT_OF_FLOW_SIGNATURE = /(?:^|;)position:(absolute|fixed)(?:;|$)/
 
 /**
  * Move a body capture's page-anchored boxes by the gap between where the foreignObject puts
- * them and where the page does. An absolute box with no containing block below the body,
- * and a fixed one, are placed from the page origin live, but from the foreignObject's origin
- * in the clone, while the body's content starts `dx`,`dy` from there (the room between
- * <html> and the body, net of bleed padding). They landed 8px low and right with the
- * default body margin. Computed left/top are used values on all three engines, so the
- * clone's classes carry them and they win over right/bottom. The new values derive from the
- * source, so a burst recapture setting them again lands on the same place. Candidates come
- * from the style signature, one test per signature. Pinned by
- * __tests__/snapdom.bodyExtent.test.js.
+ * them and where the page does. An absolute box with no containing block below the body, and
+ * a fixed one, are placed from the page origin live but from the foreignObject's origin in the
+ * clone, while the body's content starts `dx`,`dy` from there (the room between <html> and the
+ * body, net of bleed padding): with the default body margin they landed 8px low and right.
+ * Computed left/top are used values on all three engines, so the clone's classes carry them
+ * and they win over right/bottom. The new values derive from the source, so a burst recapture
+ * lands on the same place. Pinned by __tests__/snapdom.bodyExtent.test.js.
  * @param {Element} root - the live body
  * @param {Map<Node, Node>} nodeMap - clone → source
  * @param {Map<Element, string>} styleMap - clone → style signature
@@ -144,8 +142,8 @@ export function anchorPagePositioned(root, nodeMap, styleMap, styleCache, dx, dy
 /**
  * Residual 2D matrix an element's clone still carries once its translation is discarded:
  * individual rotate/scale (applied before `transform`, per css-transforms-2) times the
- * computed transform. Direct composition — no DOM round-trip, and unlike reading back a
- * computed style, individual props aren't silently lost. Returns null on parse failure.
+ * computed transform, composed directly: reading back a computed style would lose the
+ * individual props. Returns null on parse failure.
  * @param {string} baseTransform - computed transform ('' when none)
  * @param {{rotate:string, scale:any, translate:any}} ind
  * @returns {DOMMatrix|null}
@@ -161,15 +159,14 @@ export function composeResidual2D(baseTransform, ind) {
 }
 
 /**
- * Clip mode: re-anchor fixed and sticky clones to their painted position.
- * In the static clone their layout position wins (sticky un-sticks, fixed anchors to the
- * page origin), which is wrong when the output window is the scrolled viewport. Converts
- * them to absolute at gBCR-derived, root-relative coordinates and HOISTS them to the clone
- * root — escaping #364 scroll wrappers, ancestor overflow clipping, and CB-forming
- * ancestors in one move (every clone node carries its full computed snapshot, so
- * inheritance doesn't change). Sticky leaves an invisible in-flow placeholder so its flow
- * slot doesn't shift. Shadow-scoped clones depend on [data-sd] descendant selectors, so
- * they freeze in place relative to their composed containing-block ancestor instead.
+ * Clip mode: re-anchor fixed and sticky clones to their painted position. In the static clone
+ * their layout position wins (sticky un-sticks, fixed anchors to the page origin), which is
+ * wrong when the output window is the scrolled viewport. They become absolute at gBCR-derived,
+ * root-relative coordinates and are HOISTED to the clone root, escaping #364 scroll wrappers,
+ * ancestor overflow clipping and containing-block ancestors at once (every clone node carries
+ * its full computed snapshot, so inheritance does not change). Sticky leaves a hidden in-flow
+ * placeholder so its slot does not shift. Shadow-scoped clones depend on [data-sd] descendant
+ * selectors, so they freeze in place against their composed containing-block ancestor.
  * Pinned by __tests__/module.changeCSS.test.js.
  * @param {Element} root - original capture root
  * @param {Element} cloneRoot
@@ -308,17 +305,13 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
 }
 
 /**
- * #483: Neutralize CSS `zoom` on the CLONE ROOT ONLY.
- *
- * The capture canvas is sized from `offsetWidth`/`offsetHeight` and the generated class
- * uses `getComputedStyle()` widths — both are expressed in the element's own coordinate
- * space, i.e. BEFORE its own `zoom` is applied (a 200px box with `zoom:.8` reports
- * offsetWidth 200 while its rect measures 160). So the raster is built at the unzoomed
- * size and the root must not re-apply its zoom inside the foreignObject: `shouldIgnoreProp`
- * already keeps `zoom` out of the generated class (#369), but an *inline* `zoom` survives
- * `cloneNode()` and shrinks the content into the top-left corner, leaving blank right/bottom
- * bands. Pin the root to `zoom:1`; descendants keep their own zoom, whose computed sizes are
- * likewise local and therefore still need the scale factor.
+ * #483: Neutralize CSS `zoom` on the CLONE ROOT ONLY. The canvas is sized from
+ * `offsetWidth`/`offsetHeight` and the class from computed widths, both measured BEFORE the
+ * element's own zoom (a 200px box with `zoom:.8` reports offsetWidth 200, its rect 160), so the
+ * root must not apply its zoom again in the foreignObject. `shouldIgnoreProp` keeps `zoom` out
+ * of the class (#369), but an *inline* `zoom` survives `cloneNode()` and shrinks the content
+ * into the top-left corner. The root is pinned to `zoom:1`; descendants keep theirs, whose
+ * computed sizes are local too and still need the scale factor.
  * Pinned by __tests__/core.capture.zoomRoot.test.js.
  *
  * @param {Element} originalEl
@@ -390,24 +383,18 @@ function firstInFlowBlockChild(el, side) {
 }
 
 /**
- * #426: When margins of in-flow children collapse *through* the captured root's
- * top/bottom edge, that margin lands outside the root's border box — exactly the
- * region `element.getBoundingClientRect()`/`offsetHeight` excludes. The clone,
- * isolated inside an `all:initial` wrapper, no longer collapses those margins out,
- * so the content is pushed in and the opposite edge is clipped.
+ * #426: margins of in-flow children that collapse *through* the root's top/bottom edge land
+ * outside its border box, which getBoundingClientRect/offsetHeight exclude. The clone, inside
+ * an `all:initial` wrapper, no longer collapses them out, so the content is pushed in and the
+ * far edge clipped. So the collapse-through chain from each open edge gets its leading or
+ * trailing margin zeroed on the CLONE. The source decides; the clone node comes from
+ * `nodeMap`, not the child index, which misaligns once `exclude`/`filter` drop nodes. A clip
+ * husk is not in nodeMap and comes from `standIns`: without it a culled first child kept its
+ * margin and moved the whole window down by it (#549).
  *
- * Mirror the browser: walk the collapse-through chain from each open edge and zero
- * the leading/trailing margin on the CLONE so content sits flush, matching what the
- * captured border box actually shows. Source tree drives the decision; the matching
- * clone node is resolved via the session's clone→source `nodeMap` (not child index,
- * which misaligns once `exclude`/`filter` drop nodes during cloning — see pseudo.js).
- * A clip husk is not in nodeMap and comes from `standIns`. Without it, a culled first child
- * kept its margin and moved the whole window down by it (#549).
- *
- * Returns the source elements whose margin the walk zeroes, top edge first, then `null`,
- * then the bottom edge. The list depends on the source alone: without a clone nothing is
- * written, and diff.js compares the list for the live DOM with the one the retained capture
- * wrote to tell whether a splice can leave a zero stale or miss one.
+ * Returns the source elements it zeroes, top edge first, then `null`, then the bottom edge.
+ * The list depends on the source alone (no clone, nothing written): diff.js compares the live
+ * list with the retained capture's to tell whether a splice can leave a zero stale or miss one.
  * Pinned by __tests__/utils.capture.helpers.test.js, __tests__/core.clip.test.js and
  * __tests__/core.capture.diff.collapseChain.test.js.
  *
@@ -490,17 +477,15 @@ function isInvalidXHTMLAttr(name, stripFrameworkDirectives) {
 
 /* eslint-disable no-control-regex */
 /**
- * Characters that are illegal in XML 1.0 even though browsers accept them in live HTML:
- * C0 controls except TAB (\x09), LF (\x0A), CR (\x0D), plus the noncharacters U+FFFE/U+FFFF.
- * If any survive into the serialized SVG, the data: URL fails to parse and the browser throws
- * "EncodingError: The source image cannot be decoded" at img.decode() time.
+ * Characters illegal in XML 1.0 that live HTML accepts: C0 controls except TAB (\x09), LF
+ * (\x0A) and CR (\x0D), and the noncharacters U+FFFE/U+FFFF. One left in the serialized SVG
+ * makes img.decode() throw "EncodingError: The source image cannot be decoded".
  *
- * UNPAIRED SURROGATES are worse than that: encodeURIComponent (engines/svg.js) THROWS on them,
- * so one truncated emoji anywhere in the page \u2014 `title.slice(0, 60)` cutting a 4-byte codepoint
- * in half is the usual source \u2014 rejects the whole capture with an opaque "URI malformed" and
- * the user gets no image at all. lineClamp's safeCut already avoids MINTING one; this catches
- * the ones the page arrived with. Valid pairs are matched first by the leading alternative so
- * the replacer can hand them back untouched \u2014 do not reorder.
+ * UNPAIRED SURROGATES are worse: encodeURIComponent (engines/svg.js) THROWS on them, so one
+ * emoji cut in half anywhere in the page (`title.slice(0, 60)` is the usual source) rejects the
+ * whole capture with "URI malformed". lineClamp's safeCut avoids MINTING one; this catches the
+ * ones the page arrived with. The leading alternative matches valid pairs so the replacer can
+ * hand them back untouched: do not reorder.
  */
 const INVALID_XML_CHARS = /[\uD800-\uDBFF][\uDC00-\uDFFF]|[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]/g
 /** Non-global twin of the second alternative above: a test that allocates nothing, so a
@@ -515,9 +500,9 @@ const stripInvalidXML = (s) => s.replace(INVALID_XML_CHARS, (m) => (m.length ===
 const BASE64_DATA_URL = /^data:[^,]{0,120};base64,/
 
 /**
- * One pass over the finished clone before serialization (was three separate walks):
+ * One pass over the finished clone before serialization:
  * - drops attribute names invalid in XHTML ("@", unknown ":" prefixes, `xmlns`, framework directives)
- * - strips XML-1.0-invalid chars from attribute values and text (#425 — values re-applied
+ * - strips XML-1.0-invalid chars from attribute values and text (#425: values re-applied
  *   after cloning, e.g. `input.setAttribute('value', …)` with ExtJS's U+0003 delimiters)
  * - removes HTML comments (invalid XML like "--")
  * Runs after the afterClone plugin hooks (plugins may add attributes), in both the full
@@ -615,14 +600,9 @@ function shouldShrinkBox(srcEl, cs) {
 }
 
 /**
- * Post-clone "shrink pass": for parents that lost children due to excludeMode:"remove",
- * override snapshot sizes so they can collapse naturally.
- *
- * It writes inline overrides on the CLONE (never the real DOM):
- *   - height/width: auto
- *   - remove logical sizes (block-size/inline-size)
- *   - relax min/max to allow collapse
- *
+ * Post-clone shrink pass: a parent that lost children to excludeMode:"remove" gets inline
+ * overrides on the CLONE (never the real DOM) so it can collapse: height/width auto, no
+ * logical sizes, min/max relaxed.
  * Pinned by __tests__/utils.capture.helpers.test.js.
  *
  * @param {Element} sourceRoot - original subtree root (for reading computed styles)
@@ -666,14 +646,11 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
       }
     }
 
-    // Pair each clone child with its OWN source through the capture's clone->source map.
-    // Walking both child lists by index is the pairing this function exists to handle the
-    // fallout of: it runs only when excludeMode:'remove' has already dropped nodes, so the
-    // two lists are guaranteed to be misaligned from the first removal onward, and the
-    // pseudo-element wrappers the pipeline inserts shift them again. Every child past the
-    // first divergence was then measured against an unrelated element. Clone nodes with no
-    // source (snapdom's own inserted wrappers) simply have nothing to compare and are
-    // skipped. The index walk stays as the fallback for callers with no map.
+    // Pair each clone child with its OWN source through the clone-to-source map. By index the
+    // lists are misaligned from the first excludeMode:'remove' drop onward (and again by the
+    // pseudo-element wrappers), so every later child was measured against an unrelated element.
+    // Clone nodes with no source (snapdom's own wrappers) are skipped. The index walk is the
+    // fallback for callers with no map.
     const cKids = Array.from(cln.children)
     if (nodeMap) {
       for (const cKid of cKids) {
@@ -791,12 +768,11 @@ export const limitDecimals = (v, n = 3) =>
 
 /**
  * Deep-copy the clone for an in-document measurement mount without running page code (#523).
- * `cloneNode` in the page document constructs every defined custom element, and connecting
- * the copy runs its `connectedCallback`, so a Lit or widget page set itself up again on a
- * throwaway node per capture. The copy is made in an inert document (no registry, nothing
- * upgrades), and custom tags become spans, which mounting cannot upgrade either. A span lays
- * out like the clone does in the foreignObject, where no definition exists and the base reset
- * already uses span defaults for custom tags (`getDefaultStyleForTag`). `is` is dropped by
+ * `cloneNode` in the page document constructs every defined custom element and connecting the
+ * copy runs `connectedCallback`, so a Lit or widget page set itself up again per capture. The
+ * copy is made in an inert document (no registry), and custom tags become spans, which mounting
+ * cannot upgrade. A span lays out like the clone in the foreignObject, where the base reset
+ * already gives custom tags span defaults (`getDefaultStyleForTag`). `is` is dropped by
  * recreating the element. Pinned by __tests__/snapdom.issue523.test.js.
  * @param {Element} clone
  * @returns {Element} copy owned by an inert document; appending it adopts it
@@ -818,11 +794,11 @@ export function inertMeasurementCopy(clone) {
 
 /**
  * Give a shadow root snapdom mounts in the live page (the measurement mounts, the
- * html-in-canvas paint mount) its CSS as a constructable sheet, so a page CSP of
- * `style-src 'self'` cannot block it. An inline `<style>` there is refused, the mount lays
- * out unstyled, and capturing `body` under that policy came out 800x1446 instead of
- * 800x1252 (webgrip/unfold dropped snapdom over it). The `<style>` stays as the fallback for
- * engines without constructable sheets. Pinned by __tests__/snapdom.csp.test.js.
+ * html-in-canvas paint mount) its CSS as a constructable sheet, which a page CSP of
+ * `style-src 'self'` cannot block. An inline `<style>` there is refused and the mount lays out
+ * unstyled: a `body` capture under that policy came out 800x1446 instead of 800x1252
+ * (webgrip/unfold). The `<style>` stays as the fallback for engines without constructable
+ * sheets. Pinned by __tests__/snapdom.csp.test.js.
  * @param {ShadowRoot} shadow
  * @param {string} css
  */
@@ -843,14 +819,11 @@ const RECONCILE_EPS = 0.75
 
 /**
  * Opt-in layout reconciliation (`reconcile: true`): mount the styled clone in-document,
- * measure every node, and pin width/height ONLY on the boxes whose size diverges from the
- * live tree. Measurement instead of heuristics — the class of bugs where the clone's
- * translated CSS lays out differently than the live DOM (#429/#433/#434 family) gets fixed
- * per-node with the real values.
- *
- * Pins are inline `width`/`height` + `box-sizing:border-box` (rects are border-box), which
- * beat the generated classes by specificity. Single pass: pinning a box can settle its
- * descendants on the next layout, but one pass already removes the systematic divergence.
+ * measure every node, and pin width/height ONLY on boxes whose size diverges from the live
+ * tree, so the #429/#433/#434 family (translated CSS laying out differently) is fixed per node
+ * with real values. Pins are inline `width`/`height` plus `box-sizing:border-box` (rects are
+ * border-box), which beat the classes. One pass: a pin can settle descendants on the next
+ * layout, but one pass already removes the systematic divergence.
  * Pinned by __tests__/core.capture.reconcile.test.js.
  *
  * @param {Element} element - live capture root
@@ -874,12 +847,11 @@ export function reconcileCloneLayout(element, clone, cssText, nodeMap, w0, h0) {
   markInternalNode(wrap)
   wrap.style.cssText = 'position:absolute!important;left:-9999px!important;top:0!important;width:' +
     w0 + 'px!important;overflow:visible!important;visibility:hidden!important;'
-  // Shadow DOM so the capture CSS can't leak into the live tree (#474): baseCSS carries global
-  // tag rules (span{font-family:...;text-wrap-mode:wrap;...}) that beat INHERITED styles on the
-  // page — mounting them document-wide re-lays-out the live element and poisons every source
-  // rect read below. Inside the shadow the clone also stops seeing page CSS, same as in the
-  // foreignObject. Embedded @font-face is skipped by the caller: every face came from this
-  // document, so family names already resolve to loaded faces.
+  // Shadow DOM so the capture CSS cannot leak into the live tree (#474): baseCSS carries tag
+  // rules that beat INHERITED page styles, and mounted document-wide they re-lay-out the live
+  // element and poison every source rect read below. Inside, the clone also stops seeing page
+  // CSS, as in the foreignObject. The caller skips embedded @font-face: every face came from
+  // this document, so family names already resolve to loaded faces.
   const shadow = wrap.attachShadow({ mode: 'open' })
   adoptShadowCSS(shadow, cssText)
   const measured = inertMeasurementCopy(clone)
@@ -1093,12 +1065,10 @@ export function collectScrollbarCSS(doc) {
 
 /**
  * The CSS that makes a finished clone render like the page it came from, assembled once and
- * stamped onto the capture state.
- *
- * It lives here rather than inside a render engine because it belongs to the CLONE, not to
- * any one way of painting it: `classCSS` already arrives from prepareClone, and these two
- * complete the set. Both engines need the identical string, and an engine that recomputed it
- * would be one refactor away from disagreeing with the other.
+ * stamped onto the capture state. It lives here, not in an engine, because it belongs to the
+ * CLONE: `classCSS` already arrives from prepareClone and these two complete the set. Both
+ * engines need the identical string, and one that recomputed it would be a refactor away from
+ * disagreeing with the other.
  *
  * @param {object} state - capture state carrying `clone` and `element`
  * @param {string} fontsCSS - embedded @font-face payload for this capture
@@ -1130,21 +1100,19 @@ export function assembleCaptureCSS(state, fontsCSS, universe) {
 const ROOT_PERCENT_PROPS = [['max-width', 'x'], ['min-width', 'x'], ['max-height', 'y'], ['min-height', 'y']]
 
 /**
- * Freeze the capture root's percentage min/max sizes to the pixels they resolved to in the
- * page. `getComputedStyle` keeps those percentages unresolved (`max-width: 30%`, also inside
- * calc()), and inside the foreignObject they resolve against the snapshot's own container,
- * which is about as wide as the root itself: a popup with `max-width:30%` came out a third of
- * its width and its children overflowed it (#532). `width`/`height` need nothing here, their
- * computed values are already the used pixels.
+ * Freeze the capture root's percentage min/max sizes to the pixels they resolved to live.
+ * `getComputedStyle` keeps them unresolved (`max-width: 30%`, also inside calc()), and in the
+ * foreignObject they resolve against the snapshot's container, about as wide as the root: a
+ * popup with `max-width:30%` came out a third of its width (#532). `width`/`height` need
+ * nothing, their computed values are already used pixels.
  *
- * Only the root, and only when one of the four values holds a `%`: every other capture reads
- * four strings it already has. The basis is the original's containing block (padding box of
- * the offset parent, or the viewport, for absolute/fixed; the parent's content box otherwise),
- * read from layout that is clean at this point. Each value is written as `max(<value>, used)`
- * for a max and `min(<value>, used)` for a min, so CSS does the arithmetic and a constraint
- * the page did not apply (a percentage height of an indefinite block, a containing block this
- * guess got wrong) can never make the clone smaller or larger than the live box.
- * Horizontal writing modes only; vertical ones are left as they were.
+ * Only the root, and only when one of the four values holds a `%`. The basis is the original's
+ * containing block (the offset parent's padding box or the viewport for absolute/fixed, the
+ * parent's content box otherwise), read from layout that is clean here. Each value becomes
+ * `max(<value>, used)` for a max and `min(<value>, used)` for a min, so a constraint the page
+ * did not apply (a percentage height of an indefinite block, a wrongly guessed containing
+ * block) can never make the clone smaller or larger than the live box.
+ * Horizontal writing modes only.
  * Pinned by __tests__/core.prepare.rootPercentSize.test.js.
  * @param {Element} element - source root
  * @param {HTMLElement} clone - its clone

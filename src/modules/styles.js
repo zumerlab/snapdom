@@ -2,16 +2,15 @@
  * Style snapshots: one object of computed values per node, and the caches that keep them
  * across captures.
  *
- * `inlineAllStyles` is the entry. Per node it snapshots the computed style (only the props
- * the page's CSS can touch, see styleScan.js), keys it, and stores the key on the session's
- * styleMap for the class CSS the engine emits. That snapshot is the dominant cost of a
- * capture, so most of this file is about not taking it: a cross-capture cache guarded by
- * one version per record and a probe of the used values it froze (`getSnapshot`).
+ * `inlineAllStyles` is the entry: per node it snapshots the computed style (only the props the
+ * page's CSS can touch, see styleScan.js), keys it, and stores the key on the session's
+ * styleMap for the class CSS the engine emits. The snapshot is the dominant cost of a capture,
+ * so most of this file avoids taking it: a cross-capture cache guarded by one version per
+ * record and a probe of the used values it froze (`getSnapshot`).
  *
- * Around it: core/changes.js observes what makes a cached snapshot stale, authorStyles.js
- * says which properties the page's CSS can touch, styleShare.js lets structural twins copy
- * one read within a capture, and styleFreeze.js holds the rewrites that keep the clone's
- * layout (gutter, border box, one-line pin, wrapper heights).
+ * Neighbours: core/changes.js observes what makes a snapshot stale, authorStyles.js names the
+ * props the page's CSS can touch, styleShare.js lets structural twins copy one read, and
+ * styleFreeze.js keeps the clone's layout (gutter, border box, one-line pin, wrapper heights).
  * @module styles
  */
 
@@ -50,13 +49,12 @@ export function invalidateSnapshotsUnder(root) {
 }
 
 /**
- * List what each animation target has animated, as target -> longhand names. An animation
- * or a transition outranks the target's inline declarations, so inlineAllStyles re-resolves
- * those from the computed style, and only those: re-resolving them all wrote the used
- * `width` of a flex item over its authored one, and the clone shrank it a second time.
- * Keyframes name longhands, except a script-made effect, which keeps the shorthand it was
- * given; a detached declaration expands it. An effect on a pseudo-element animates nothing
- * of the element's own.
+ * List the longhands each animation target has animated. An animation or a transition
+ * outranks the target's inline declarations, so inlineAllStyles re-resolves those, and only
+ * those: re-resolving them all wrote the used `width` of a flex item over its authored one,
+ * and the clone shrank it a second time. A script-made effect keeps its shorthand, which a
+ * detached declaration expands. An effect on a pseudo-element animates nothing of the
+ * element's own.
  * Pinned by `__tests__/core.capture.animationFrames.test.js`.
  * @param {Iterable<Animation>} animations
  * @returns {Map<Element, Set<string>>|null} null when nothing is animated
@@ -106,12 +104,11 @@ export function needsBackgroundInline(source) {
 
 /**
  * The element's current style snapshot, or null when there is none to trust. The background
- * pass reads through this instead of the CSSOM: a prop present in the snapshot is the value
- * the capture already resolved, and a prop ABSENT from it was pruned by the property
- * universe — the page cannot touch it, so its computed value is the default and there is
- * nothing to copy. Nodes carrying the Firefox background-clip:text fallback are excluded:
- * their snapshot background props were deliberately swapped (applyBgClipTextFallback) and
- * the background pass must keep seeing the live values it was written against.
+ * pass reads through it instead of the CSSOM: a prop in the snapshot is the value the capture
+ * resolved, and a prop ABSENT from it was pruned by the universe, so it holds its default and
+ * there is nothing to copy. Null under the Firefox background-clip:text fallback, whose
+ * background props were swapped (applyBgClipTextFallback): the background pass must see the
+ * live values.
  * @param {Element} source
  * @returns {object|null}
  */
@@ -224,15 +221,11 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
       } catch { }
     }
   }
-  // Keep visibility as visibility. Unlike opacity, it is inherited but a child may explicitly
-  // restore `visibility: visible`; flattening a hidden ancestor to opacity:0 makes that legal,
-  // painted descendant impossible to recover.
-  // content-visibility:hidden skips the element's CONTENTS while still painting the element's
-  // own box (background, border, padding) - verified against real Chromium. Carry the
-  // declaration itself so the rasterizer applies those exact semantics: mapping it to
-  // visibility:hidden would erase the box too, and a descendant could override it back, which
-  // the real property does not allow. Read explicitly because content-visibility is not always
-  // enumerated in the style.length iteration.
+  // Keep visibility as visibility: a child may restore `visibility: visible`, which opacity:0
+  // on the hidden ancestor would make impossible to recover.
+  // content-visibility:hidden skips the CONTENTS but paints the element's own box (real
+  // Chromium). Carry the declaration itself: as visibility:hidden it would erase the box too,
+  // and a descendant could override it back. Read by name: it is not always enumerated.
   try {
     const cv = out['content-visibility'] || style.getPropertyValue('content-visibility')
     if (cv === 'hidden') out['content-visibility'] = 'hidden'
@@ -281,11 +274,10 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
   return out
 }
 /**
- * Firefox cannot rasterize background-clip:text inside an SVG foreignObject image: the
- * background is dropped entirely, so gradient text whose own colour is transparent captures as
- * nothing at all (verified on v3: 0 painted pixels against Chromium's 1198 for the same span).
- * Approximate it with a plain text colour — the average of the gradient's stops — which loses
- * the gradient but keeps the words. Only fires when the text would otherwise be invisible.
+ * Firefox drops background-clip:text inside an SVG foreignObject image, so gradient text with
+ * a transparent colour captures as nothing (0 painted pixels against Chromium's 1198 for the
+ * same span). The average of the gradient's stops stands in as a plain text colour, only when
+ * the text would otherwise be invisible.
  * Pinned by __tests__/module.styles.bgClipText.test.js.
  *
  * Imported from @frostin/snapdom (element-mirror).
@@ -319,11 +311,11 @@ function applyBgClipTextFallback(out) {
 
 /**
  * WebKit paints no text-shadow under `-webkit-text-stroke` inside an SVG foreignObject image
- * (real Safari 27.0.1 and Playwright WebKit, hand-written svg: 802 shadow pixels without the
- * stroke, 0 with it), while `filter: drop-shadow()` still paints (662). The clone trades the
- * one for the other where they are the same picture: a leaf whose only ink is its text, and a
- * single shadow, since chained drop-shadows also shadow each other. WebKit reads a
- * drop-shadow blur as a deviation, twice a text-shadow's, hence the halving. #531, pinned by
+ * (real Safari 27.0.1 and Playwright WebKit: 802 shadow pixels without the stroke, 0 with it),
+ * while `filter: drop-shadow()` still paints (662). The clone swaps one for the other where
+ * they are the same picture: a leaf whose only ink is its text, with a single shadow (chained
+ * drop-shadows shadow each other). WebKit reads a drop-shadow blur as a deviation, twice a
+ * text-shadow's, hence the halving. #531, pinned by
  * __tests__/module.styles.strokedTextShadow.test.js.
  * @param {Element} source
  * @param {HTMLElement} clone
@@ -437,13 +429,10 @@ function hasRenderedContent(el) {
   return false
 }
 /**
- * Whether the element's width is author-specified (a length/percentage) rather than derived from
- * its content or from the layout algorithm around it.
- *
- * `getComputedStyle().width` cannot answer this: it resolves to the USED width, so `auto` and
- * `width: 16px` both come back as `16px`. Typed OM reports the COMPUTED value, where `auto` stays
- * `auto` — that is the exact question, and it is available in Chromium and WebKit. Firefox has no
- * Typed OM, so there the answer is inferred from layout instead (see the two probes below).
+ * Whether the element's width is author-specified (a length or percentage) rather than derived
+ * from its content or the layout around it. `getComputedStyle().width` cannot tell: it returns
+ * the USED width, so `auto` and `width: 16px` both read `16px`. Typed OM keeps `auto` (Chromium
+ * and WebKit); Firefox has none, so there the two layout probes below infer it.
  *
  * @param {Element} el
  * @param {CSSStyleDeclaration} cs live computed style of `el`
@@ -599,12 +588,11 @@ export function marginsHold(el, style) {
 
 /**
  * Note what a fresh snapshot froze that layout can move while the cascade stands still: the
- * node's own box, the offsets of a positioned box, the margins a flex line, a grid area or
- * an absolutely positioned box hands out, and the tracks of a grid. Offsets that all read
- * 0px on a relative box and margins that all read 0px are left out: the first hold nothing,
- * and the second are either zero by the cascade or an `auto` the read below puts back as the
- * keyword. Where Typed OM cannot tell (Firefox) the zero margins are noted too. Read off the
- * snapshot before any pass rewrites it, so it costs no computed-style read.
+ * node's box, a positioned box's offsets, the margins a flex line, a grid area or an
+ * absolutely positioned box hands out, and a grid's tracks. All-0px offsets on a relative box
+ * hold nothing and are left out; so are all-0px margins (zero by the cascade, or an `auto` the
+ * Typed OM read in getSnapshot puts back), except in Firefox, where Typed OM cannot tell.
+ * Read off the snapshot before any pass rewrites it, so it costs no computed-style read.
  * @param {Record<string, string>} snap
  * @param {Element} el
  * @param {boolean} flexItem - its parent is a flex or grid container
@@ -636,12 +624,11 @@ function usedValuesOf(snap, el, flexItem) {
 }
 
 /**
- * Whether the used values a cached snapshot froze still read the same. The box is compared
- * through getBoundingClientRect: on a recapture of the 250-row table after a nested edit it
- * costs 5% where reading `width` and `height` costs 10%, and `offsetWidth` with
- * `offsetHeight` 4% while missing a change below one pixel (Chromium, paired rounds). The
- * first check after a read compares the two strings once and keeps the rectangle for the
- * next ones.
+ * Whether the used values a cached snapshot froze still read the same. The box goes through
+ * getBoundingClientRect: on a recapture of the 250-row table after a nested edit it costs 5%,
+ * where `width`/`height` cost 10%, and `offsetWidth`/`offsetHeight` 4% but miss a change below
+ * one pixel (Chromium). The first check after a read compares the strings once and keeps the
+ * rectangle.
  * @param {ReturnType<typeof usedValuesOf>} used
  * @param {Element} el
  * @param {CSSStyleDeclaration} style
@@ -663,13 +650,11 @@ function usedValuesHold(used, el, style) {
 }
 
 /**
- * The element's snapshot: the cached one while it is current, else a fresh full read, or on
- * an identity hit a copy of the twin's read with only the used-value props re-read here.
- * Current means the stamp AND the used values: a cached snapshot is served only while what
- * it froze of the layout still reads the same, and a re-read that finds another box passes
- * the miss on to what resolves against that box (see the stamp note). The used values are
- * read again only once some stamp has moved since they last held (the node clock): a
- * recapture of a page where nothing happened pays one comparison a node.
+ * The element's snapshot: the cached one while it is current, else a fresh full read, or on an
+ * identity hit a copy of the twin's read with only the used-value props re-read. Current means
+ * the stamp AND the used values; a re-read that finds another box passes the miss to what
+ * resolves against it (stamp note below). Used values are read again only once some stamp has
+ * moved since they last held, so a recapture where nothing happened pays one comparison a node.
  * @param {Element} el
  * @param {CSSStyleDeclaration|null} [preStyle] - getComputedStyle(el), when the caller has it
  * @param {object} [options]
@@ -680,11 +665,9 @@ function usedValuesHold(used, el, style) {
  */
 function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, session = null, flexItem = false) {
   const rec = snapshotCache.get(el)
-  // The snapshot content depends on embedFonts (extra font props) and excludeStyleProps
-  // (skipped props), which no invalidation signal tracks. Capturing the same element twice
-  // with different options must not reuse the snapshot (#348). Callback identity cannot
-  // reveal changes to its closure, so function policies always take a fresh snapshot even
-  // when the caller already bypassed result memoization.
+  // The snapshot depends on embedFonts and excludeStyleProps, which no invalidation tracks, so
+  // a capture with other options must not reuse it (#348). A function policy can change its
+  // closure unseen, so it always takes a fresh snapshot.
   const ef = !!(options && options.embedFonts)
   const ex = (options && options.excludeStyleProps) || null
   const style = preStyle || getComputedStyle(el)
@@ -698,13 +681,12 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   let dyn = null
   const shared = shareInfo && shareInfo.st.snaps.get(shareInfo.id)
   if (shared) {
-    // Identity hit: the twin inherits the shared full read and holds only the used-value
-    // props, re-read here. Copying the ~150 keys instead was 5 of the 34 ms of a first
-    // capture of the 250-row table. The riders (__needsBgInline, __bgClipTextFix) are
-    // inherited too: they derive from non-geometry computed values, the same for every
-    // twin. An empty re-read is stored as undefined so it hides the shared value; nothing
-    // may `delete` from a snapshot for the same reason. The values feed `dyn`, the part of
-    // this twin's key that the identity does not already hold.
+    // Identity hit: the twin inherits the shared read and holds only the re-read props
+    // (copying the ~150 keys was 5 of the 34 ms of a first capture of the 250-row table). The
+    // riders (__needsBgInline, __bgClipTextFix) come from non-geometry values, the same for
+    // every twin. An empty re-read is stored as undefined to hide the shared value, which is
+    // also why nothing may `delete` from a snapshot. The values feed `dyn`, the part of this
+    // twin's key the identity does not hold.
     const rrList = shared.rr || shareLists(shared, el, shareInfo.st)
     snap = Object.create(shared.snap)
     dyn = []
@@ -724,12 +706,10 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     }
   }
   const used = usedValuesOf(snap, el, flexItem)
-  // Chromium can report a zero used margin after a partial container layout even
-  // though the box remains centered. Typed OM retains the resolved `auto` keyword;
-  // carrying it lets the frozen parent/child dimensions reproduce that alignment.
-  // Keep ordinary nonzero used margins unchanged, and respect excluded properties.
-  // The keyword is a computed value, the same for every twin of an identity, so the share
-  // record keeps each answer and Typed OM is asked once per identity and side.
+  // Chromium can report a zero used margin after a partial container layout though the box
+  // stays centred; Typed OM keeps the `auto` keyword, and carrying it reproduces the alignment.
+  // Nonzero margins and excluded props are left alone. The keyword is computed, the same for
+  // every twin, so the share record keeps each answer: one Typed OM ask per identity and side.
   let restoredAutoMargin = false
   if (typeof el.computedStyleMap === 'function') {
     const twins = shared || (shareInfo ? shareInfo.st.snaps.get(shareInfo.id) : null)
@@ -767,14 +747,13 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     shareInfo.rec = shared
   }
   const hosts = shadowHostsOf(el)
-  // Before the stamp below is read. A box that changed since the last read passes the miss on.
-  // A query container, to everything under it, whose rules it selects. Any other box, to its
-  // children (what a slot holds included, and its shadow content through its own stamp) when
-  // what their percentages and auto margins resolve against moved: its inline size (the
-  // width, or the height under a vertical writing mode), the tracks of a grid, or a block
-  // size that was zero, against which every percentage read 0. The block size alone moves
-  // nothing below that the node's own check does not read: re-reading every subtree under a
-  // box that grew cost a recapture after one added line 61 to 139% (40 panels, 400 cards).
+  // Before the stamp below is read: a box that changed since the last read passes the miss on.
+  // A query container, to its whole subtree, whose rules it selects. Any other box, to its
+  // children (slotted ones included, shadow content through its own stamp) when what their
+  // percentages and auto margins resolve against moved: the inline size (the height under a
+  // vertical writing mode), a grid's tracks, or a block size that was zero. A block size alone
+  // is left to each node's own check: re-reading every subtree under a box that grew cost a
+  // recapture after one added line 61 to 139% (40 panels, 400 cards).
   const before = rec && rec.used
   if (before && (before.w !== used.w || before.h !== used.h || before.tracks !== used.tracks)) {
     const query = (before.w !== used.w || before.h !== used.h) && style.getPropertyValue('container-type')
@@ -872,24 +851,21 @@ const CONTEXT_DEPENDENT_VALUE_RE =
 const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
 let firefox
 /**
- * Re-resolves the source's inline declarations through the cascade onto the clone.
- *
- * Four cases need it. Everything else is an absolute value copied onto itself, which the
- * clone's style attribute already holds.
- *  - A stylesheet `!important` must still beat an inline declaration inside the clone (#328).
- *  - An animation or a transition outranks the inline declaration of what it animates: a
- *    transition started through `el.style` has the END value inline while the frame is
- *    halfway, and the capture showed that end value. Only the animated properties are
- *    re-resolved (animatedProps). Pinned by __tests__/core.capture.animationFrames.test.js.
- *  - `background` on text fields only: the selection highlight composes its layers on top
- *    of the longhands this writes on an input's clone. On every other node the shorthand is
- *    the same value, and re-resolving it cost the 500-row table 13.5k reads plus 13.5k
- *    writes for nothing.
+ * Re-resolves the source's inline declarations through the cascade onto the clone, in four
+ * cases. Anything else is an absolute value the clone's style attribute already holds.
+ *  - A stylesheet `!important` must still beat an inline declaration in the clone (#328).
+ *  - An animation or transition outranks the inline declaration of what it animates: one
+ *    started through `el.style` holds the END value inline mid-frame. Only the animated
+ *    properties are re-resolved (animatedProps).
+ *    Pinned by __tests__/core.capture.animationFrames.test.js.
+ *  - `background` on text fields only, where the selection highlight composes over the
+ *    longhands written on an input's clone. Elsewhere it cost the 500-row table 13.5k reads
+ *    plus 13.5k writes for nothing.
  *  - Context-dependent values (`width:100%`, `1.2em`, `calc()`, `auto`) resolve against a
  *    containing block the foreignObject does not have.
- * The context test is one regex over the whole style attribute, on purpose: per longhand it
- * got 67.6 ms down to 63 where the single regex gets 49.7. A null important set (unreliable
- * scan) re-resolves everything. Pinned by __tests__/module.styles.inlineImportant.test.js.
+ * The context test is one regex over the whole attribute on purpose: per longhand it got
+ * 67.6 ms down to 63 where the single regex gets 49.7. A null important set (unreliable scan)
+ * re-resolves everything. Pinned by __tests__/module.styles.inlineImportant.test.js.
  * @param {Element} source
  * @param {Element} clone
  * @param {CSSStyleDeclaration} computed - getComputedStyle(source)
@@ -983,17 +959,14 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const styleAttr = source.getAttribute?.('style')
   if (styleAttr) normalizeInlineStyleToComputed(source, clone, pre, styleAttr, session.animated?.get(source))
 
-  // A static snapshot must not animate. The generated style class already filters animation
-  // props (shouldIgnoreProp), but `animation` can still reach the SVG through the normalized
-  // inline style above or through `<style>` tags cloned inside the captured subtree; when the
-  // SVG is rasterized the animation replays from its 0% keyframe. An entry animation whose
-  // start frame hides the element (e.g. `from { opacity: 0 }`, or an off-screen `transform`)
-  // therefore blanks it out even though the live element already finished animating. Pin
-  // `animation` off with inline `!important` on the elements that actually have one; the
-  // current opacity/transform captured in the snapshot below then renders as the frozen,
-  // already-settled frame. Asked of the live style on every capture and never kept with the
-  // cached snapshot: a state set by script (`input.value`) can name an animation with no
-  // record at all. Pinned by __tests__/core.capture.animation.test.js.
+  // A static snapshot must not animate. The class already drops animation props
+  // (shouldIgnoreProp), but `animation` can still reach the SVG through the inline style above
+  // or a cloned `<style>`, and the rasterized SVG replays it from 0%: an entry animation from
+  // `opacity: 0` or an off-screen `transform` blanks an element that finished animating live.
+  // So `animation` is pinned off inline with `!important` where there is one, and the
+  // snapshot's settled opacity/transform renders. Asked of the live style every capture, never
+  // cached: a state set by script (`input.value`) can name an animation with no record at all.
+  // Pinned by __tests__/core.capture.animation.test.js.
   const animName = pre.getPropertyValue('animation-name')
   if (clone && clone.style && animName && animName !== 'none') {
     clone.style.setProperty('animation', 'none', 'important')
@@ -1066,14 +1039,12 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
 
   freezeOneLine(source, clone, snap, flexItem, session)
 
-  // #406: foreignObject may resolve min-width:auto differently than normal DOM
-  // for flex/grid items. Explicitly set min-width:0 on flex/grid items that have
-  // the default auto value, so the generated CSS class includes it and we don't
-  // need a blanket foreignObject *{min-width:0} rule (which breaks inline-flex+gap).
-  // The floor goes into the key, never into `snap`: the snapshot outlives this capture and is
-  // shared with its twins, and whether a row overflows belongs to neither. Written into the
-  // snapshot, an item kept the floor of the first twin read, or of the capture before its row
-  // overflowed. Pinned by __tests__/module.styles.flexFloor.test.js.
+  // #406: foreignObject may resolve min-width:auto differently for flex/grid items, so items
+  // with the default auto get min-width:0 in their class instead of a blanket foreignObject
+  // *{min-width:0} rule (which breaks inline-flex+gap). The floor goes into the key, never
+  // into `snap`: the snapshot outlives the capture and is shared with twins, and there an item
+  // kept the floor of the first twin read, or of the capture before its row overflowed.
+  // Pinned by __tests__/module.styles.flexFloor.test.js.
   let floor = ''
   if (flexItem) {
     const mw = pre.getPropertyValue('min-width')

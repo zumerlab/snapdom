@@ -1,24 +1,17 @@
 /**
- * Perceptual image compression for captures. ON by default (`compress: false` is the internal
- * escape hatch, see context.js) — this IS the default hot path, so every cost here is paid by
- * every capture that inlines a raster.
+ * Perceptual image compression. ON by default (`compress: false` is the internal escape hatch,
+ * see context.js), so every cost here is paid by every capture that inlines a raster.
  *
- * Inlined raster images can be much larger than their output needs. This pass estimates the
- * required resolution from the display box, output width/height or scale, dpr, transforms and
- * SVG viewports, then downsamples eligible data URLs while preserving aspect ratio and never
- * upscaling. Conservative bounds can retain extra pixels when the exact geometry is uncertain.
+ * Each inlined raster (<img> including cloned canvas/video, no-repeat CSS background-image, SVG
+ * <image href>) is downsampled to the resolution its output needs, estimated from the display
+ * box, output width/height or scale, dpr, transforms and SVG viewports. Aspect ratio is kept,
+ * nothing is upscaled, uncertain geometry keeps extra pixels, and an image already at or below
+ * the estimate is left alone. Tiled backgrounds are skipped: a tile needs its natural size.
  *
- * RES_FACTOR is 1: there is no deliberate reduction below that resolution estimate, and images
- * already at or below it are left alone. Resampling can still change pixels. PNG encoding stays
- * lossless; JPEG/WebP encoding uses LOSSY_QUALITY, including when the source WebP was lossless.
- * Originals are retained privately for later result exports that need a higher resolution.
- * The caller hands each compressCloneAssets call a geometry holder: the run's session, which
- * receives the registry of originals and the density, plus the clip and root transform the
- * density is resolved against.
- *
- * Covers every inlined raster in the capture: <img> (incl. cloned canvas/video), CSS
- * background-image (no-repeat only — tiled backgrounds need their natural tile resolution), and
- * SVG <image href>.
+ * PNG stays lossless; JPEG/WebP encode at LOSSY_QUALITY, even from a lossless WebP. Originals
+ * are kept privately for later exports that need more resolution. Each compressCloneAssets call
+ * gets a geometry holder: the run's session (it receives the originals and the density), plus
+ * the clip and root transform the density is resolved against.
  *
  * @module compress
  */
@@ -200,26 +193,17 @@ function compressionGeometry(clone, options, geometry) {
 // it and encodes the resampled pixels losslessly. Re-encoding JPEG/WebP can introduce artifacts.
 const LOSSY_QUALITY = 0.92
 
-// Target resolution as a fraction of the conservative visible-resolution estimate. 1 keeps
-// that estimate intact. Anything under 1 aims BELOW it, which buys a little more size on
-// heavily-oversized images but starts to
-// show on barely-oversized sharp content, and that is a fidelity cost core should not take on
-// the caller's behalf. The big win was never the last 5%: it is discarding the pixels that
-// cannot be seen at all. Only applied to images that pass the oversize guard, never to images
-// already at or below their visible size.
+// Target resolution as a fraction of the visible-resolution estimate. Keep it at 1: under 1
+// buys a little size on heavily oversized images but shows on barely oversized sharp content,
+// a fidelity cost core should not take for the caller. The win is discarding pixels nobody can
+// see. Applied only to images that pass the oversize guard.
 const RES_FACTOR = 1
 
-// Prefer decode() over onload: onload can fire before the pixels are decodable, so drawing in the
-// same tick may produce a blank/partial canvas for large images. decode() guarantees drawable pixels.
-//
-// The onload/onerror fallback only runs where decode() does not EXIST. It used to also catch a
-// decode() REJECTION, which can never be awaited safely: decode rejects on images that have
-// already settled (a valid-header/empty-data PNG on Firefox, a raster past Chromium's ~268 Mpx
-// decode cap), and the listeners attached afterwards then wait on an event that already fired.
-// The promise never settled, and since the only caller has a catch but no timeout, that hung
-// compressCloneAssets -> assetsPhase -> captureDOM's Promise.all forever: the capture neither
-// resolved nor rejected. Letting the rejection propagate turns both cases into the existing
-// "no gain, embed verbatim" path.
+// decode() over onload: onload can fire before the pixels are decodable, and a large image then
+// draws blank or partial. The onload/onerror fallback runs only where decode() does not exist.
+// Do not catch a decode() rejection with listeners: decode rejects on images already settled
+// (an empty-data PNG on Firefox, a raster past Chromium's ~268 Mpx decode cap), the events have
+// fired, and the capture hung forever. A rejection becomes "no gain, embed verbatim".
 async function loadImage(src) {
   const img = new Image()
   img.decoding = 'sync'
@@ -238,10 +222,9 @@ function sourceMime(dataURL) {
   return m ? m[1] : ''
 }
 
-// Below this, the worker LOSES: postMessage structured-clones the whole base64 string in,
-// FileReaderSync clones another one back, and the payload isn't big enough for the pixel
-// work to cover those two copies. Small images stay on the main thread, where their decode
-// is usually already warm in the browser's cache.
+// Below this the worker loses: the base64 string is cloned in and the result cloned back, and
+// the pixel work does not cover the two copies. Small images stay on the main thread, where
+// their decode is usually warm in the browser's cache.
 const WORKER_MIN_CHARS = 64 * 1024
 
 // The sampled key is only a lookup hint: PNG metadata and fixed-size frames can share
@@ -251,18 +234,16 @@ const COMPRESS_CACHE_MAX_CHARS = 32 * 1024 * 1024
 const COMPRESS_CACHE_MAX_ENTRIES = 50
 const compressInFlight = new Map()
 /** `pass` counts compressCloneAssets passes and an entry carries the pass that last used it;
- *  `stored` counts inserts. The bounds are applied when a pass that stored something ends,
- *  oldest first, sparing what any pass has used since it began (the end of
- *  compressCloneAssets). Applied on every insert, oldest first, they dropped the very entry
- *  the next image needed, so a page over a bound never hit (d-compress, 19 images, 44M
- *  characters, 287 ms a recapture, 99 ms with the 19 served) and one replaced image cost
- *  every image after it its entry. A pass over the bounds is therefore kept whole until a
- *  later pass stores something. Pinned by __tests__/compress.cachePass.test.js. */
+ *  `stored` counts inserts. The bounds are applied, oldest first, when a pass that stored
+ *  something ends, sparing what any pass used since it began, so a pass over the bounds stays
+ *  whole. Applied on every insert they evicted the entry the next image needed and a page over
+ *  a bound never hit (d-compress, 19 images, 44M characters: a recapture 287 ms, 99 ms served).
+ *  Pinned by __tests__/compress.cachePass.test.js. */
 let pass = 0
 let stored = 0
 
 /** First `maxBytes` decoded bytes of a base64 data URL (null for percent-encoded or
- *  malformed payloads — callers just fall through to the decode path). */
+ *  malformed payloads; callers fall through to the decode path). */
 function headerBytes(dataURL, maxBytes) {
   const comma = dataURL.indexOf(',')
   if (comma < 0 || !/;base64/i.test(dataURL.slice(0, comma))) return null
@@ -280,12 +261,10 @@ function headerBytes(dataURL, maxBytes) {
 }
 
 /**
- * Natural size straight from the container header, without decoding the image.
- *
- * This exists because the "no gain" verdict is the COMMON case (a gallery shows its images
- * at or near natural size) and it used to cost a full decode — inside the worker, behind two
- * clones of the whole base64 string. Reading 4KB of header answers it for free.
- * Unrecognized container → null → the old decode path decides, as before.
+ * Natural size from the container header, without decoding. "No gain" is the common case (a
+ * gallery shows images near natural size), and 4KB of header answers it without a full decode
+ * behind two clones of the base64 string. An unrecognized container returns null and the
+ * decode path decides.
  * @returns {{w:number,h:number}|null}
  */
 function naturalSizeFromDataURL(dataURL) {
@@ -306,7 +285,7 @@ function naturalSizeFromDataURL(dataURL) {
     if (kind === 0x58) return { w: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1, h: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1 } // VP8X
   }
   // JPEG: walk the segment chain to the first SOFn. A large EXIF thumbnail can push it past
-  // our 4KB window — that just falls through to the decode path.
+  // our 4KB window, and the decode path takes over.
   if (b[0] === 0xFF && b[1] === 0xD8) {
     let p = 2
     while (p + 9 < b.length) {
@@ -332,12 +311,10 @@ function gainFactor(nw, nh, targetW, targetH) {
   return (!(raw > 0) || raw >= 0.95) ? 0 : raw
 }
 
-// ——— Worker offload ———
-// decode + downscale + re-encode are pure pixel work: off the main thread they stop
-// blocking interaction during image-heavy captures and run in parallel with the rest of
-// the pipeline. Inline worker (no build infra); any failure flips to the sync path.
-// The worker repeats gainFactor's guard on its own decoded size (the header fast path in
-// downsampleDataURL only covers containers it can parse) and answers null for "no gain".
+// Worker offload. Decode, downscale and re-encode are pure pixel work, so off the main thread
+// they stop blocking interaction and overlap the rest of the pipeline. Inline worker (no build
+// infra); any failure flips to the sync path. The worker repeats gainFactor's guard on its own
+// decoded size (the header fast path only parses some containers) and answers null for no gain.
 const WORKER_SRC = `self.onmessage = async (e) => {
   const { id, dataURL, blob: given, srcLength, targetW, targetH, resFactor, quality, mime } = e.data
   try {
@@ -364,12 +341,10 @@ const WORKER_SRC = `self.onmessage = async (e) => {
   }
 }`
 
-// A small POOL, filled lazily: decode + scale + encode are CPU-bound and independent per
-// image, and one worker serialized them — the 9-photo gallery's jobs took 219 ms on one
-// worker, 145 on four (138 on eight, so four is the knee). Slots are spawned on demand, so a
-// page with a single photo still starts a single thread. Failure semantics are pool-wide,
-// as they were for the single worker: a construction that throws (CSP) or a worker that
-// errors fails every pending request over to the sync path and stops the worker route.
+// A small pool, filled on demand: the jobs are CPU-bound and independent per image (9-photo
+// gallery: 219 ms on one worker, 145 on four, 138 on eight, so four is the knee), and a page
+// with one photo starts one thread. Failure is pool-wide: a construction that throws (CSP) or
+// a worker error fails every pending request over to the sync path and closes the route.
 const POOL_SIZE = Math.max(1, Math.min(4, ((typeof navigator !== 'undefined' && navigator.hardwareConcurrency) || 2) - 1))
 let _workers = null // null = not tried, false = unavailable/broken, else lazily filled slots
 let _next = 0
@@ -425,11 +400,10 @@ function getCompressWorker() {
   return _workers[i]
 }
 
-// A job is one createImageBitmap + one drawImage + one convertToBlob: tens of milliseconds for
-// a typical photo, and still well under a second for a multi-megapixel source on a slow device.
-// Past 5s the worker is wedged, not busy — only `onerror` ever drained `_pending`, so a job that
-// simply never posts back used to hang the capture forever. Falling back costs one redundant
-// main-thread encode and produces the same pixels. Pinned by compress.worker.timeout.test.js.
+// A job takes tens of milliseconds for a typical photo and well under a second for a
+// multi-megapixel one on a slow device, so past 5s the worker is wedged. Without the timeout a
+// job that never posts back hangs the capture (only `onerror` drains `_pending`). Falling back
+// costs one redundant main-thread encode, same pixels. Pinned by compress.worker.timeout.test.js.
 const WORKER_JOB_TIMEOUT = 5000
 
 /** Runs the downsample in the worker. Resolves null (no gain / skip), a data URL, or
@@ -454,17 +428,16 @@ function workerDownsample(dataURL, targetW, targetH, mime, blob) {
 }
 
 /**
- * Downsample a raster data URL to the largest resolution the target box can show, preserving the
- * source aspect ratio (so object-fit:cover still has enough pixels). JPEG/WebP keep their codec;
- * other raster types use PNG. Never upscales.
- * Returns a new data URL, or null when downsampling wouldn't help (vector, already small, or the
- * re-encode grew the string).
+ * Downsample a raster data URL to the largest resolution the target box can show, keeping the
+ * aspect ratio (so object-fit:cover still has its pixels) and never upscaling. JPEG/WebP keep
+ * their codec, other rasters become PNG. Null when it would not help (vector, already small, or
+ * the re-encode grew the string).
  *
- * Three stages, each cheaper than the next: the container header answers "no gain" without
- * a decode; payloads of 64 KB and up go to the worker pool; everything else, and any worker
- * failure, decodes on the main thread. Results, null included, are memoized in
- * cache.compress by a sampled lookup key with exact source equality. Concurrent identical
- * requests share their pending decode/encode. Pinned by __tests__/compress.test.js.
+ * Cheapest first: the container header answers "no gain" without a decode, payloads of 64 KB
+ * and up go to the worker pool, and the rest (and any worker failure) decode on the main
+ * thread. Results, null included, are memoized in cache.compress by a sampled key with exact
+ * source equality; identical concurrent requests share one decode.
+ * Pinned by __tests__/compress.test.js.
  *
  * @param {string} dataURL
  * @param {number} targetW - required box width in pixels, including output density and transforms
@@ -474,7 +447,7 @@ function workerDownsample(dataURL, targetW, targetH, mime, blob) {
  */
 export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
   if (typeof dataURL !== 'string' || !dataURL.startsWith('data:image')) return null
-  // SVG data URLs are vectors — rasterizing them here would *lose* fidelity, not save bytes.
+  // SVG data URLs are vectors: rasterizing them here would *lose* fidelity, not save bytes.
   if (dataURL.startsWith('data:image/svg')) return null
 
   // Exact source equality prevents a sampled-key collision from returning another image.
@@ -502,7 +475,7 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
     if (header && header.w > 0 && header.h > 0 && !gainFactor(header.w, header.h, targetW, targetH)) return null
 
     // Preferred path for big payloads: pixel work in the worker (decode + scale + encode off
-    // the main thread). Small ones skip it — see WORKER_MIN_CHARS.
+    // the main thread). Small ones skip it, see WORKER_MIN_CHARS.
     if (dataURL.length >= WORKER_MIN_CHARS) {
       const offloaded = await workerDownsample(dataURL, targetW, targetH, mime, blob)
       if (offloaded !== undefined) return offloaded
@@ -568,8 +541,8 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
  */
 export async function compressClonedImages(clone, options, nodeMap = new Map(), geometry = { session: {} }) {
   if (!options.compress) return { count: 0, before: 0, after: 0 }
-  // querySelectorAll never matches clone itself — a capture root that IS the <img> (#461)
-  // was inlined but never downsampled, so compress:true silently did nothing for it.
+  // querySelectorAll never matches clone itself, and a root that IS the <img> was never
+  // downsampled (#461).
   const imgs = Array.from(clone.querySelectorAll('img'))
   if (clone.tagName === 'IMG') imgs.unshift(clone)
   let count = 0, before = 0, after = 0
@@ -592,7 +565,7 @@ export async function compressClonedImages(clone, options, nodeMap = new Map(), 
     }
   }
 
-  // Batch of 6 mirrors inlineImages — bounded concurrency for the canvas encode work.
+  // Batch of 6 mirrors inlineImages: bounded concurrency for the canvas encode work.
   const BATCH = 6
   for (let i = 0; i < imgs.length; i += BATCH) {
     await Promise.allSettled(imgs.slice(i, i + BATCH).map(process))
@@ -613,18 +586,13 @@ function originalBox(el) {
 }
 
 /**
- * Downsample inlined CSS background-image data URLs to the element's visible box. Only for
- * non-repeating backgrounds, and only where `background-size` is BOX-RELATIVE.
- *
- * The box bounds what is visible, but it is not always the visible RESOLUTION, and the two
- * were conflated here. Under `cover`, `contain` or a percentage the layer is scaled to the
- * box, so shrinking the source only removes pixels nobody could see. Under `background-size:
- * auto` — the CSS default — the layer paints at the image's own intrinsic size and the box
- * merely CROPS it, so a smaller source is a different picture: a 1000x1000 photo in a 200x200
- * no-repeat div went from a top-left crop to the whole photo squeezed into 200x200, and a
- * sprite addressed by a negative background-position landed outside the shrunken image and
- * painted nothing at all. Absolute lengths crop the same way. Tiled backgrounds (`repeat`,
- * `space`, `round`) are skipped for the related reason that a tile needs its natural size.
+ * Downsample inlined CSS background-image data URLs to the element's visible box, only for
+ * non-repeating layers whose `background-size` is BOX-RELATIVE. Under `cover`, `contain` or a
+ * percentage the layer scales to the box, so shrinking the source removes only unseen pixels.
+ * Under `auto` (the default) or an absolute length the layer paints at its own size and the box
+ * CROPS it, so a smaller source is a different picture: a 1000x1000 photo in a 200x200 div
+ * showed whole instead of cropped, and a sprite at a negative background-position painted
+ * nothing. Tiles (`repeat`, `space`, `round`) are skipped: a tile needs its natural size.
  * Pinned by the background cases in __tests__/compress.test.js.
  *
  * @param {Element} clone
@@ -650,7 +618,7 @@ export async function compressClonedBackgrounds(clone, options, nodeMap = new Ma
     if (!orig || !orig.isConnected) return
     let cs
     try { cs = getComputedStyle(orig) } catch { return }
-    // Any repeating layer → bail (can't treat the box as the target).
+    // Any repeating layer bails: the box is not the target.
     const repeat = (cs.backgroundRepeat || 'repeat').toLowerCase()
     if (repeat.split(',').some(r => r.trim() !== 'no-repeat')) return
     // Every layer must scale WITH the box, or the box is not the resolution to target.
@@ -746,9 +714,8 @@ export async function compressClonedSvgImages(clone, options, nodeMap = new Map(
 }
 
 /**
- * Run all compression passes over the clone (no-op when `compress` is off).
- * Called from captureDOM after images and backgrounds are inlined, since it works on the
- * data URLs those passes wrote.
+ * Run all compression passes over the clone (no-op when `compress` is off), after images and
+ * backgrounds are inlined: it works on the data URLs those passes wrote.
  * @param {Element} clone
  * @param {object} options
  * @param {Map<Node, Node>} [nodeMap] - Session clone-to-source map; pass the capture's own

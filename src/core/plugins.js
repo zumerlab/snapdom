@@ -1,5 +1,5 @@
 /**
- * Plugin core for SnapDOM (minimalistic, local-first compatible).
+ * Plugin registry and hook runner.
  *
  * Public hooks:
  *  - beforeSnap(context)
@@ -19,9 +19,8 @@
  * @module plugins
  */
 
-// The stage vocabulary travels with the plugin API (this module is the `@zumer/snapdom/
-// plugins` subpath export), so a plugin declares and validates `needs` with the same
-// words core resolves it by. See stages.js.
+// Re-exported through the `@zumer/snapdom/plugins` subpath, so a plugin validates `needs` with
+// the same words core resolves it by (stages.js).
 import { DEFAULT_STAGE } from './stages.js'
 export { STAGES, DEFAULT_STAGE, assertNeeds } from './stages.js'
 
@@ -48,13 +47,12 @@ export function normalizePlugin(spec) {
 }
 
 /**
- * Register global plugins (deduped by name, preserves order).
+ * Register global plugins (deduped by name, order kept).
  *
- * A global plugin may NOT lower the stage. resolveStage runs over the merged list, so a
- * global `needs: 'clone'` would stop every capture in the application before it produced
- * pixels, including call sites that never heard of the plugin. Lowering is a per-capture
- * decision by construction, so this is rejected at registration instead of surfacing later
- * as a result with no url.
+ * A global plugin may NOT lower the stage: resolveStage runs over the merged list, so a global
+ * `needs: 'clone'` would stop every capture in the application before pixels, including call
+ * sites that never heard of it. Rejected here rather than surfacing later as a result with no
+ * url.
  * @param  {...any} defs
  * @throws {Error} when a global plugin declares `needs` other than 'render'
  */
@@ -66,7 +64,7 @@ export function registerPlugins(...defs) {
     if (inst.needs !== undefined && inst.needs !== DEFAULT_STAGE) {
       throw new Error(`[SnapDOM] '${inst.name || '(unnamed)'}' declares needs: ${JSON.stringify(inst.needs)}, so it can't be a global plugin (it would stop every capture before '${DEFAULT_STAGE}'). Pass it per capture: snapdom(el, { plugins: [...] }).`)
     }
-    // 🔒 de-dup por name
+    // Dedup by name
     if (!__plugins.some(p => p && p.name && inst.name && p.name === inst.name)) {
       __plugins.push(inst)
     }
@@ -74,9 +72,7 @@ export function registerPlugins(...defs) {
 }
 
 /**
- * INTERNAL: pick the plugin list for a given context.
- * If the context defines a per-capture plugin list, use that (local-first).
- * Otherwise, fall back to the global registry.
+ * INTERNAL: the context's per-capture plugin list (local-first), else the global registry.
  * @param {any} context
  * @returns {readonly any[]}
  */
@@ -129,9 +125,7 @@ export async function runAll(name, context, payload) {
 /** Clear all globally registered plugins (mostly for tests). */
 export function clearPlugins() { __plugins.length = 0 }
 
-/* ──────────────────────────────────────────────────────────────────────────────
- * Local-first per-capture support, without removing the global APIs.
- * ────────────────────────────────────────────────────────────────────────────── */
+/* Local-first per-capture plugins, next to the global APIs. */
 
 /** Counter behind the `anonymous-N` names handed to unnamed local plugins. */
 let __anonSeq = 0
@@ -148,15 +142,14 @@ export function mergePlugins(localDefs) {
   /** @type {any[]} */
   const out = []
 
-  // 1️⃣ Locals first (priority)
+  // Locals first (priority)
   if (Array.isArray(localDefs)) {
     for (const d of localDefs) {
       const inst = normalizePlugin(d)
       if (!inst) continue
-      // An unnamed plugin used to be dropped here with no error and no warning, so its hooks
-      // simply never ran — indistinguishable from a plugin that does nothing. `name` exists
-      // for dedup and local-over-global override; a plugin that opts out of both is still a
-      // plugin. Give it a per-instance name so it runs and can never collide.
+      // `name` exists for dedup and local-over-global override; a plugin without one is still
+      // a plugin. A per-instance name keeps it running and never collides (dropping it here
+      // silently skipped its hooks).
       if (!inst.name) inst.name = `anonymous-${++__anonSeq}`
       const i = out.findIndex(x => x && x.name === inst.name)
       if (i >= 0) out.splice(i, 1)
@@ -164,7 +157,7 @@ export function mergePlugins(localDefs) {
     }
   }
 
-  // 2️⃣ Then globals if not already present
+  // Then globals not already present
   for (const g of __plugins) {
     if (g && g.name && !out.some(x => x.name === g.name)) {
       out.push(g)
@@ -196,17 +189,16 @@ export function getGlobalPlugins() {
   return __plugins.slice()
 }
 
-/** Hooks that touch the clone or the render — the ones memo/diff fast paths would skip
- *  or re-run against retained state. Export-only plugins (defineExports/beforeExport/
- *  afterExport) are served correctly by buildResult on every path. */
+/** Hooks that touch the clone or the render, which the memo and diff paths would skip or re-run
+ *  against retained state. buildResult serves export-only plugins (defineExports, beforeExport,
+ *  afterExport) on every path. */
 const RENDER_HOOKS = ['resolveNode', 'beforeSnap', 'beforeClone', 'afterClone', 'beforeRender', 'afterRender']
 
 /**
- * True when the capture's plugin list contains a render-affecting plugin that has NOT
- * declared itself pure. Auto-burst and the diff path bail on these — serving a memo would
- * skip their hooks, and splicing a rebuilt subtree would drop their transformations —
- * mirroring the engine seam's conservative hasPlugins rule. A plugin whose hooks are
- * deterministic/idempotent can set `pure: true` to opt back into the fast paths.
+ * True when the capture has a render-affecting plugin that has NOT declared itself pure.
+ * Auto-burst and the diff path bail on these, as the engine seam's hasPlugins rule does: a
+ * memo would skip their hooks and a spliced subtree would drop their changes. A plugin whose
+ * hooks are deterministic and idempotent sets `pure: true` to get the fast paths back.
  * @param {{plugins?: any[]}} context
  * @returns {boolean}
  */

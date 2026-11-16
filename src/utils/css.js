@@ -1,18 +1,15 @@
 /**
  * The generated CSS a clone carries: tag defaults, per-element style keys, the base reset.
  *
- * A computed-style snapshot is diffed against the tag's defaults (`getDefaultStyleForTag`)
- * into a style key (`getStyleKey`); equal keys share one class (`generateCSSClasses`), and the
- * defaults themselves become one factored reset rule (`generateDedupedBaseCSS`). The width
- * rules are the delicate part. A frozen used width re-wraps text when the raster falls back
- * to a wider font, so content-sized boxes get a min-width floor instead (`softensWidth`,
- * `softenNeedsAutoWidth`, and the epsilon inside getStyleKey).
+ * A snapshot is diffed against the tag's defaults (`getDefaultStyleForTag`) into a style key
+ * (`getStyleKey`); equal keys share one class (`generateCSSClasses`), and the defaults become
+ * one factored reset (`generateDedupedBaseCSS`). The delicate part is width: a frozen used
+ * width re-wraps text when the raster falls back to a wider font, so content-sized boxes get a
+ * min-width floor instead (`softensWidth`, `softenNeedsAutoWidth`, the epsilon in getStyleKey).
  * @module utils/css
  */
 
-// -----------------------------------------------------------------------------
-// Central single-source-of-truth sets
-// -----------------------------------------------------------------------------
+// Tag sets, defined here once.
 
 /** Tags that Snapdom must never capture (skip node + subtree). */
 export const NO_CAPTURE_TAGS = new Set([
@@ -33,17 +30,13 @@ import { cache } from '../core/cache'
 import { ALWAYS_PROPS } from '../modules/styleScan'
 import { isInternalNode, markInternalNode } from './ownership.js'
 
-// -----------------------------------------------------------------------------
-// getDefaultStyleForTag -> single gate on NO_DEFAULTS_TAGS + a marked sandbox
-// -----------------------------------------------------------------------------
 /**
  * A tag's default styles, memoized in cache.defaultStyle.
  *
- * Read from a fresh element with `all: initial` inside a hidden sandbox div, so the map holds
- * the INITIAL values, not the UA sheet's. That is the point: the base reset re-states them
- * inside the foreignObject, where the UA sheet would otherwise add its own margins and
- * paddings, and getStyleKey keeps only what differs from them. NO_DEFAULTS_TAGS get `{}`,
- * which means no reset and no class.
+ * Read from a fresh `all: initial` element in a hidden sandbox, so the map holds INITIAL
+ * values, not the UA sheet's: the base reset re-states them inside the foreignObject, where
+ * the UA sheet would add its own margins and paddings. getStyleKey keeps only what differs.
+ * NO_DEFAULTS_TAGS get `{}`: no reset, no class.
  * @param {string} tagName
  * @returns {Record<string, string>}
  */
@@ -93,11 +86,9 @@ export function getDefaultStyleForTag(tagName) {
     const value = styles.getPropertyValue(prop)
     defaults[prop] = value
   }
-  // The snapshot reads every ALWAYS_PROPS entry by name, but Chromium's enumeration lists
-  // none of counter-set / counter-reset / counter-increment / content-visibility / white-space
-  // (shorthands and newer properties), so their defaults were missing here and every class
-  // rule carried `counter-set:none;content-visibility:visible;white-space:normal;…` as a
-  // "non-default" value. Read the ones the enumeration skipped from the same probe.
+  // Chromium's enumeration skips counter-set/-reset/-increment, content-visibility and
+  // white-space, which the snapshot reads by name (ALWAYS_PROPS). Without a default here every
+  // class carried `counter-set:none;white-space:normal;…` as non-default.
   for (const prop of ALWAYS_PROPS) {
     if (!(prop in defaults) && !shouldIgnoreProp(prop)) defaults[prop] = styles.getPropertyValue(prop)
   }
@@ -131,19 +122,17 @@ const NO_PAINT_EXACT = new Set([
   'container-name',
   'container-type',
   'timeline-scope',
-  // #369: CSS zoom — getComputedStyle() widths/heights already reflect post-zoom layout values.
-  // Capturing zoom in the class causes double-zoom inside SVG foreignObject → blank sections.
-  // Excluding zoom prevents this; dimensions are already correct as-is.
+  // #369: computed widths and heights already include CSS zoom. Zoom in the class zooms twice
+  // inside the foreignObject and leaves blank sections.
   'zoom',
-  // WebKit-only draft prop (CSS Fill & Stroke on text; distinct from SVG `stroke`).
-  // Re-stating its transparent default inside svg-as-image flips WebKit's text paint
-  // path and silently drops text-shadow. Authored usage is nil — never capture it.
+  // WebKit-only draft prop (Fill & Stroke on text, not SVG `stroke`). Re-stating its
+  // transparent default in svg-as-image flips WebKit's text paint path and drops text-shadow.
+  // Nobody authors it.
   'stroke-color',
 ])
 
-/** Memo of shouldIgnoreProp by property name. The verdict depends only on the name, and the set
- * of CSS property names is small and fixed — but this runs ~350×/node, so caching turns 1M+
- * regex tests per large capture into Map lookups. */
+/** Memo of shouldIgnoreProp by property name, the only input. It runs ~350×/node, so this turns
+ * 1M+ regex tests per large capture into Map lookups. */
 const _ignorePropCache = new Map()
 
 /**
@@ -155,8 +144,8 @@ const _ignorePropCache = new Map()
  * @returns {boolean}
  */
 export function shouldIgnoreProp(prop /*, tag */) {
-  // Cache by the raw name (computed-style iteration already yields canonical lowercase), so hits
-  // skip both the regex tests and the toLowerCase — this runs ~350×/node on cold captures.
+  // Keyed on the raw name (computed-style iteration already yields lowercase), so a hit skips
+  // the toLowerCase too.
   let r = _ignorePropCache.get(prop)
   if (r === undefined) {
     const p = String(prop).toLowerCase()
@@ -166,9 +155,6 @@ export function shouldIgnoreProp(prop /*, tag */) {
   return r
 }
 
-// -----------------------------------------------------------------------------
-// 3) getStyleKey -> "" for NO_DEFAULTS_TAGS, so no auto class is generated
-// -----------------------------------------------------------------------------
 // Tags that size to text content; grid/flex blockify them, so a frozen used width wraps the
 // text when the raster falls back to a wider font (e.g. the "Timestamp demo").
 const INLINE_SIZED_TAGS = new Set(['span', 'small', 'em', 'strong', 'b', 'i', 'u', 's', 'code', 'cite', 'mark', 'sub', 'sup'])
@@ -182,20 +168,17 @@ const REPLACED_TAGS = new Set(['img', 'video', 'canvas', 'svg', 'iframe', 'embed
 // Width longhands we never freeze as a hard value when softening (physical + logical).
 const HARD_WIDTH_PROPS = new Set(['width', 'max-width', 'inline-size', 'max-inline-size'])
 // MathML token elements are sized by their glyph. WebKit picks the italic glyph of an <mi>
-// (mathvariant) while it computes the token's preferred width, and with the token and its
-// containers all carrying a frozen width that pass never runs: the formula captured in upright
-// letters. Measured in Playwright WebKit on demos/d-text-layout.html. Pinned by
+// while computing the token's preferred width, a pass a frozen width skips: the formula came
+// out upright (Playwright WebKit, demos/d-text-layout.html). Pinned by
 // __tests__/snapdom.mathmlTokens.test.js.
 const MATHML_TOKEN_TAGS = new Set(['mi', 'mn', 'mo', 'ms', 'mtext'])
 // Min-width longhands: kept verbatim when authored (or set to 0 by #406 on flex/grid items).
 const MIN_WIDTH_PROPS = new Set(['min-width', 'min-inline-size'])
 
 /**
- * Logical box properties and the physical property they duplicate. Computed-style enumeration
- * lists both forms of every box property, so the generated CSS re-states most of a box a second
- * time — about 14 of the 47 declarations of a typical class, parsed again by every rasterization.
- *
- * Imported from @frostin/snapdom (element-mirror).
+ * Logical box properties and the physical property they duplicate. Computed style lists both
+ * forms, so about 14 of the 47 declarations of a typical class said the box twice, parsed again
+ * by every rasterization. Imported from @frostin/snapdom (element-mirror).
  */
 const LOGICAL_TO_PHYSICAL = new Map(Object.entries({
   'block-size': 'height',
@@ -241,12 +224,10 @@ const LOGICAL_TO_PHYSICAL = new Map(Object.entries({
 }))
 
 /**
- * Whether `prop` says nothing in this style map that its physical counterpart does not already
- * say. Dropped only on a byte-identical value: the engine genuinely resolves the two forms
- * differently in places (`min-width` resolves `auto` to `0px` where `min-inline-size` reports
- * `auto`), and there the logical declaration is load-bearing. The mapping is writing-mode
- * dependent, so nothing is dropped outside horizontal-tb LTR.
- *
+ * Whether `prop` says nothing its physical counterpart does not already say. Only a
+ * byte-identical value counts: the engine resolves the two forms differently in places
+ * (`min-width` gives `0px` where `min-inline-size` reports `auto`), and there the logical one
+ * is load-bearing. Nothing is dropped outside horizontal-tb LTR, where the mapping changes.
  * @param {string} prop
  * @param {Record<string, string>} styles the map the declaration comes from
  * @returns {boolean}
@@ -289,15 +270,13 @@ const SHRINK_TO_FIT_DISPLAYS = new Set([
 /**
  * Whether softening this box relies on its width being `auto`.
  *
- * Softening replaces the used width with a `min-width` floor, which only reproduces the box
- * when `width: auto` is shrink-to-fit. Two shapes break that assumption (#484):
- *   - a blockified box in normal flow (`span { display: block; width: 16px }`) — `auto` stretches
- *     it to the container, so the floor never caps it and the box renders full width;
+ * The `min-width` floor reproduces a box only when `width: auto` is shrink-to-fit. Two shapes
+ * break that (#484), and for them the caller keeps an author-specified width:
+ *   - a blockified box in normal flow (`span { display: block; width: 16px }`): `auto`
+ *     stretches it to the container and the box renders full width;
  *   - a flex/grid item, which gets no floor at all (#406) and collapses to its content.
- * For those the caller must check whether the width is author-specified and, if so, keep it.
- * Real inline boxes ignore `width`, and the table box tree is sized by the table algorithm
- * (#429) — neither can carry an author width worth preserving.
- *
+ * Real inline boxes ignore `width` and the table box tree is sized by the table algorithm
+ * (#429), so neither carries an author width worth keeping.
  * @param {string} tagName
  * @param {Record<string,string>} snapshot computed-style snapshot
  * @param {boolean} isFlexItem whether the element is a flex/grid item
@@ -324,8 +303,8 @@ export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
  * @param {string} tagName
  * @param {boolean} [sizedByContent=true] whether the element is sized by its own content
  *   (text / child elements). Empty boxes sized by a CSS class keep their width verbatim.
- * @param {boolean} [isFlexItem=false] whether the element is a flex/grid item — those must keep
- *   their natural ability to shrink (#406), so we never give them a synthesized min-width floor.
+ * @param {boolean} [isFlexItem=false] whether the element is a flex/grid item; those must stay
+ *   shrinkable (#406), so they never get a synthesized min-width floor.
  * @param {string} [floor=''] the min-width the key carries in place of the snapshot's (the
  *   flex floor of inlineAllStyles); an argument, since copying the snapshot to hold it cost the
  *   first capture of 240 grid items 3%
@@ -342,16 +321,15 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   const display = (snapshot.display || '').toLowerCase()
   const isInline = display === 'inline'
   const softenTag = softensWidth(tagName, display)
-  // Only soften when the box is sized by its content: a frozen used width then wraps the text
-  // (#429) / pins the table (#434). An empty box sized by a CSS class (#433 inline-block span,
-  // ExtJS button-icon spans) must keep its width. Boxes whose text cannot wrap (nowrap/pre)
-  // are frozen too (#474): softening lets them GROW under raster metric drift, and growth in a
-  // min-content layout like KaTeX pushes siblings past the frozen root and line-wraps them —
-  // catastrophic vs the sub-pixel overflow a frozen nowrap box risks. Real inline boxes ignore
-  // `width`, so softening stays (dropping it costs nothing and keeps the CSS smaller).
+  // Soften only a box sized by its content, where a frozen width wraps the text (#429) or pins
+  // the table (#434). An empty box sized by a class (#433 inline-block span, ExtJS button-icon
+  // spans) keeps its width. A box whose text cannot wrap (nowrap/pre) stays frozen (#474):
+  // softened, it GROWS under raster metric drift, and in a min-content layout like KaTeX that
+  // line-wraps its siblings, far worse than a sub-pixel overflow. Real inline boxes ignore
+  // `width`, so dropping it there costs nothing.
   const noWrapMode = (snapshot['text-wrap-mode'] || snapshot['white-space'] || '')
-  // A box whose own text cannot break gains nothing from the width guard below: it can only
-  // clip sub-pixel, never re-wrap. Tag/display-independent (#491) — the softening gate is not.
+  // A box whose own text cannot break can only clip sub-pixel, so it skips the width epsilon
+  // below, whatever its tag or display (#491). The softening gate does depend on them.
   const noWrapBox = noWrapMode === 'nowrap' || noWrapMode === 'pre'
   const frozenNoWrap = softenTag && sizedByContent && !isInline && noWrapBox
   const soften = softenTag && sizedByContent && !frozenNoWrap
@@ -375,26 +353,14 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
       }
     }
     if (value && value !== defaults[prop]) {
-      // Blink lays out in 1/64px units, serializes computed lengths to 6 significant digits
-      // (1/1000 below 1000px), sometimes DOWN, and floors a length back onto that grid when
-      // parsing it. Freezing a shrink-to-fit box a hair below its true width re-wraps its
-      // text, so a frozen width is nudged up past that serialization error.
-      //
-      // The nudge must stay AT the error (#491). Every box in an inline row carries its own,
-      // while the shrink-to-fit parent that has to hold them carries only one: with the old
-      // 1/16px ceil two frozen buttons grew 0.094px inside a parent that grew 0.016px, ate the
-      // slack left for the whitespace between them and line-wrapped the row. SIZE_EPSILON is
-      // 1/1000, above the error it corrects and 62× below the ceil it replaces.
-      //
-      // Skipped entirely for widths whose text cannot break (#474): they can only clip
-      // ≤0.0005px, so the nudge is pure accumulation with nothing to gain.
-      //
-      // A frozen height takes the same nudge. A 38.390625px paragraph read back as "38.3906px"
-      // laid out 1/64px short, and on a 4136px page of them the lower text lines painted one
-      // pixel high. Stacked heights do not accumulate it the way a row of widths does: each
-      // one lands back on its own grid value. Snapping to the nearest 1/64 instead broke the
-      // zoomed ancestor of d508, whose computed values are not on that grid. Pinned by
-      // __tests__/snapdom.frozenHeightPrecision.test.js.
+      // Blink serializes a computed length to 6 significant digits, sometimes DOWN, and a box
+      // frozen a hair under its true width re-wraps its text. So a frozen size is nudged up by
+      // SIZE_EPSILON (1/1000px). Keep it that small: every box in a row carries its own nudge
+      // and the shrink-to-fit parent only one, so the old 1/16px ceil wrapped two buttons (#491).
+      // Not applied to a width whose text cannot break (#474). Heights take it too: a
+      // 38.390625px paragraph read back as "38.3906px" put the lower lines of a 4136px page one
+      // pixel high. Do not snap to 1/64 instead: the zoomed ancestor of d508 is not on that
+      // grid. Pinned by __tests__/snapdom.frozenHeightPrecision.test.js.
       const sized = prop === 'height' || prop === 'block-size' ||
         (!noWrapBox && (prop === 'width' || prop === 'inline-size'))
       if (sized && value.endsWith('px') && value.includes('.')) {
@@ -442,9 +408,6 @@ export function collectUsedTagNames(root) {
   return Array.from(tagSet)
 }
 
-// -----------------------------------------------------------------------------
-// 5) generateDedupedBaseCSS -> skips empty keys, so no junk rules are emitted
-// -----------------------------------------------------------------------------
 /**
  * Emit the base reset for the used tags: one shared rule with what every tag's defaults have
  * in common, then one rule per group of tags whose leftovers are identical.
@@ -459,21 +422,15 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
   const groups = new Map()
 
   for (let tagName of usedTagNames) {
-    // Resolve through getDefaultStyleForTag instead of reading cache.defaultStyle directly.
-    // That cache is an EvictingMap (MAX_DEFAULT_STYLE), and this runs at the very end of a
-    // capture: a document using more distinct tags than the cap has already had its earliest
-    // tags evicted. Reading the map raw returned undefined for exactly those tags and the
-    // `continue` silently emitted no base reset for them, so inside the foreignObject the UA
-    // stylesheet's defaults applied instead (h1..h3/p margins, hr borders, list padding…) and
-    // the capture reflowed taller than the source. Re-deriving is memoized and idempotent;
-    // NO_DEFAULTS_TAGS still yields {} and is dropped by the empty-key guard below.
+    // Not a raw read of cache.defaultStyle: it is an EvictingMap (MAX_DEFAULT_STYLE), and on a
+    // page with more tags than the cap the earliest ones are gone by now. They got no reset,
+    // so the UA margins and paddings applied and the capture reflowed taller.
     const styles = getDefaultStyleForTag(tagName)
     if (!styles) continue
 
-    // Pruned snapshots diff only the universe props, so the reset must not stamp anything
-    // outside it: a reset-only prop (resolved defaults like -webkit-text-fill-color) would
-    // override the class value with no diff entry able to win it back. Outside the universe
-    // the UA default applies inside the foreignObject anyway — restating it buys nothing.
+    // Pruned snapshots diff only the universe props, so the reset stays inside it too: a
+    // reset-only prop (like -webkit-text-fill-color) would override the class value with no
+    // diff entry to win it back. Outside the universe the UA default applies anyway.
     const entries = universe
       ? Object.entries(styles).filter(([k]) => universe.has(k))
       : Object.entries(styles)
@@ -486,18 +443,16 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
 
     if (!key) continue // avoids empty rules (NO_DEFAULTS_TAGS yields {})
 
-    // Agrupamos por firma
+    // Group by signature
     if (!groups.has(key)) {
       groups.set(key, { tagList: [], declarations })
     }
     groups.get(key).tagList.push(tagName)
   }
 
-  // Factor out what every group declares identically. Tag defaults are ~300 properties each
-  // and overwhelmingly the same across tags, so emitting each group in full made this the
-  // largest CSS in the SVG (32.8kb for 24 tags), re-parsed by every rasterization. The shared
-  // rule lists every tag and each group restates only what differs; group rules come second,
-  // so same-specificity source order still gives them the final word, exactly as before.
+  // Factor out what every group declares identically: tag defaults are ~300 near-identical
+  // properties, and in full they were the largest CSS in the SVG (32.8kb for 24 tags). Group
+  // rules come after the shared one, so source order still gives them the last word.
   // Imported from @frostin/snapdom (element-mirror).
   const parsedGroups = [...groups.values()]
   let shared = null
@@ -525,19 +480,16 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
   return css
 }
 
-// -----------------------------------------------------------------------------
-// 4) generateCSSClasses -> ignores empty keys (defensive)
-// -----------------------------------------------------------------------------
 /**
  * Name the distinct style keys `c1`, `c2`, … in sorted order, so the same keys always get the
  * same names.
- * @param {Map<Element, string>} styleMap - element -> style key
- * @returns {Map<string, string>} style key -> class name
+ * @param {Map<Element, string>} styleMap - each element's style key
+ * @returns {Map<string, string>} each style key's class name
  */
 export function generateCSSClasses(styleMap) {
   const keys = Array.from(new Set(styleMap.values()))
     .filter(Boolean)
-    .sort()                 // ← orden estable
+    .sort()                 // stable order
   const classMap = new Map()
   let i = 1
   for (const k of keys) classMap.set(k, `c${i++}`)
@@ -610,12 +562,10 @@ function computeStyle(el, pseudo) {
 /**
  * Gets the computed style for an element or pseudo-element, with caching.
  *
- * The memo is cache.computedStyle: element -> its own declaration, and that declaration ->
- * Map of pseudo -> declaration, made on the first pseudo request. A pseudo-free element (the
- * clone walk's display test reads every element) gets no Map, and resetting
- * cache.computedStyle drops both levels. What it holds is the live CSSStyleDeclaration, so a
- * value read later reflects the element's state at that moment, not at the first call.
- * Non-elements bypass the memo.
+ * cache.computedStyle maps an element to its declaration, and that declaration to a Map of
+ * pseudo declarations made on the first pseudo request, so a pseudo-free element gets no Map
+ * and one reset drops both levels. The declaration is live: a later read sees the element's
+ * state then, not at the first call. Non-elements bypass the memo.
  * @param {Element} el - The element
  * @param {string|null} [pseudo=null] - The pseudo-element
  * @returns {CSSStyleDeclaration} The computed style
@@ -665,13 +615,11 @@ export function parseContent(content) {
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left']
 
 /**
- * Read a computed style into a plain map. With `universe` (the property set the page's
- * author CSS can touch, from styleScan — the same pruning the element snapshot uses) only
- * those properties are read: a property no author rule mentions sits at its UA default,
- * which getStyleKey drops anyway. This is the pseudo-element path, and a `::before` on
- * every leaf of the deep-tree scene read all ~400 properties per pseudo — 788k
- * getPropertyValue calls for 1,936 pseudos, 435 ms against 125 without the rule. Null
- * (unreliable scan, shadow content) keeps the full enumeration.
+ * Read a computed style into a plain map. With `universe` (the properties author CSS can
+ * touch, from styleScan) only those are read: the rest sit at their UA default, which
+ * getStyleKey drops anyway. This is the pseudo-element path: deep-tree scene with a `::before`
+ * on every leaf, 1,936 pseudos, 435 ms reading all ~400 properties against 125 without the
+ * rule. Null (unreliable scan, shadow content) reads everything.
  * @export
  * @param {CSSStyleDeclaration} style
  * @param {Set<string>|null} [universe]

@@ -1,37 +1,30 @@
 /**
  * Per-capture session state.
  *
- * A capture OWNS its session from its first synchronous tick. The old mutable
- * `cache.session` global (the mechanism behind #463 and the double scroll-compensation
- * race) is gone: the shared-session race class is structurally unrepresentable now.
- * Module-level mutable state is reserved for genuine cross-capture caches (cache.js);
- * everything scoped to one capture lives on the object created here and is threaded
- * explicitly through every stage.
+ * A capture OWNS its session from its first synchronous tick and threads it through every
+ * stage. Module-level mutable state is only for cross-capture caches (cache.js): the shared
+ * `cache.session` global was behind #463 and the double scroll-compensation race.
  *
- * The session is an argument: burst creates it for a full run it starts, snapdom.capture
- * otherwise, and captureDOM hands it to prepareClone; direct callers of either get one from a
- * default parameter.
- * A differential frame (diff.js) gets its own, built over burst's retained capture, and
- * hands it to buildResult as the full path does.
- * The factory is pure: captureDOM applies the cache policy at its entry and on the torn
- * retry, the two ticks the factory used to apply it in.
+ * Who creates it: burst for a full run it starts, snapdom.capture otherwise; captureDOM hands
+ * it to prepareClone, and direct callers of either get one from a default parameter. A
+ * differential frame (diff.js) builds its own over burst's retained capture. The factory is
+ * pure: captureDOM applies the cache policy at its entry and on the torn retry.
  *
- * A ClonePass is one clone attempt of a run: prepareClone makes one per attempt, diff.js one
- * per dirty root and one for its reconcile. Every memo of the clone walk lives and dies with
- * it. createClonePass declares every slot, so a pass keeps one shape however the walk fills it.
+ * A ClonePass is one clone attempt: prepareClone makes one per attempt, diff.js one per dirty
+ * root and one for its reconcile. Every memo of the clone walk lives and dies with it, and
+ * createClonePass declares every slot so a pass keeps one shape.
  *
- * Not here: options (context.js, including the private ones decided before the pipeline and
- * only read after it: __iconMatchers, __explicitFormat, __pinned, __subpixel, the
- * __styleShare override, __needsLoweredBy), the plugin stage fields on the context
- * (PLUGIN_SPEC.md), return values (prepareClone's record, the url), arguments (the render
- * input, the compress geometry, ExportEnv), cross-capture caches (cache.js and module
- * caches), burst's per-element state and burst's retained capture (RetainedCapture,
- * burst.js), node and snapshot expandos.
+ * Not here: options (context.js, including the private ones read after the pipeline:
+ * __iconMatchers, __explicitFormat, __pinned, __subpixel, the __styleShare override,
+ * __needsLoweredBy), the plugin stage fields (PLUGIN_SPEC.md), return values (prepareClone's
+ * record, the url), arguments (the render input, the compress geometry, ExportEnv),
+ * cross-capture caches (cache.js and module caches), burst's per-element state and its
+ * RetainedCapture (burst.js), node and snapshot expandos.
  *
- * `context.__session` is an ALIAS of the session of a full capture, set by captureDOM.
- * Published readers: packages/vector/src/adapters/snapdom.js (styleMap, in beforeRender),
- * __tests__/core.capture.fast.test.js and scripts/safari-release-smoke.mjs (tornSinceStart).
- * Nothing in src reads it: the engines take the session as an argument. A frame sets none.
+ * `context.__session` is an ALIAS of a full capture's session, set by captureDOM; a frame sets
+ * none. Nothing in src reads it. Published readers: packages/vector/src/adapters/snapdom.js
+ * (styleMap, in beforeRender), __tests__/core.capture.fast.test.js and
+ * scripts/safari-release-smoke.mjs (tornSinceStart).
  *
  * Never name a ClonePass slot `session`: _resolveCtx (styles.js) tells a ready styles ctx
  * from a pass by that key.

@@ -17,18 +17,11 @@ import { isSafari } from '../utils/browser'
 export async function rasterize(url, options, env = {}) {
   const canvas = await toCanvas(url, options, { ...env, codec: options.format }) // backgroundColor, when set, is already flattened here
 
-  // Two encode routes, chosen by output size.
-  //
-  // toBlob encodes off the main thread, which is why it is here: the synchronous toDataURL
-  // freezes the page for the whole encode, and on a large capture that is a visible stall
-  // (measured: 41ms at 3.8Mpx, 77ms at 7.2Mpx, scaling linearly at ~10.7ms/Mpx).
-  //
-  // But it is not free. The blob has to be base64'd back through FileReader to satisfy the
-  // data:-URL contract, and end to end that route costs ~4ms MORE than toDataURL on a small
-  // canvas — enough to lose the category benchmark's 1200x800 scenario outright (16.6ms →
-  // 12.8ms when switched, measured over three runs each). Below the threshold the block is
-  // about one frame and nobody can see it, so take the faster route; above it, keep the page
-  // responsive. Move this number with a measurement, not a guess.
+  // Two encode routes, by output size. toDataURL blocks the page for the whole encode
+  // (~10.7ms/Mpx, 77ms at 7.2Mpx); toBlob encodes off the main thread but the FileReader trip
+  // to a data: URL costs ~4ms more on a small canvas (category benchmark, 1200x800: 16.6ms
+  // with toBlob, 12.8ms with toDataURL). Under the threshold the block is about one frame.
+  // Move this number with a measurement, not a guess.
   const SYNC_ENCODE_MAX_PIXELS = 2e6
   const SYNC = (canvas.width * canvas.height) <= SYNC_ENCODE_MAX_PIXELS
   const dataURL = SYNC
@@ -53,11 +46,9 @@ export async function rasterize(url, options, env = {}) {
 
   const img = new Image()
   img.src = dataURL
-  // A bare load is all the contract needs (naturalWidth/naturalHeight populated): decode()
-  // here re-decodes the raster we JUST encoded — 23.8ms vs 8.5ms at 8.2Mpx, measured — and
-  // the browser decodes lazily on first paint/draw anyway. Safari keeps the eager decode:
-  // its image pipeline resolves load before paint-readiness (#219770-class), and the Safari
-  // ceremonies downstream assume decoded pixels.
+  // A bare load fills naturalWidth/Height; decode() re-decodes what we just encoded (23.8ms
+  // vs 8.5ms at 8.2Mpx). Safari keeps it: WebKit resolves load before paint-readiness
+  // (#219770-class), and the Safari paths downstream assume decoded pixels.
   if (isSafari()) await img.decode()
   else {
     await new Promise((resolve, reject) => {

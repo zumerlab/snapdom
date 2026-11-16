@@ -38,15 +38,11 @@ const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|(?<!\\):(?:before|after|
 const SPAN_PSEUDO_RE = /^::?(?:before|after|first-letter)$/
 
 /**
- * Wrap a selector list with :where(scope ...), lowering specificity to 0.
- * Optionally excludes slotted elements on the rightmost selector.
- *
- * A pseudo-element stays OUTSIDE the wrapper: `:where(… .k::after)` is not a valid selector
- * and neither is `.k::after:not(…)`, so every scoped pseudo rule used to be dropped by the
- * parser — a `li::marker` declared inside a shadow root never coloured its marker. ::marker,
- * ::first-line, ::placeholder and the rest render natively in the foreignObject from the
- * scoped rule; ::before/::after/::first-letter are the pseudo pass's (span), so their rule is
- * replaced by a never-matching selector.
+ * Wrap a selector list with :where(scope ...), lowering specificity to 0, and optionally
+ * exclude slotted elements on the rightmost selector.
+ * A pseudo-element stays OUTSIDE the wrapper: `:where(… .k::after)` and `.k::after:not(…)` are
+ * invalid, and the parser dropped the rule (a shadow `li::marker` never coloured its marker).
+ * ::before/::after/::first-letter belong to the pseudo pass, so their rule never matches.
  */
 function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scopeId) {
   // #503: commas inside :is/:not (or attribute strings) belong to one selector.
@@ -111,9 +107,8 @@ export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   })
 
   // 5) The first rule of a group (@supports, @container, @layer, @scope, a raw @media)
-  //    follows a `{`, where step 4 never starts, so it went out as written and `p{…}` in a
-  //    shadow root also painted every <p> of the light DOM. A `;` ends the attempt, since
-  //    inside a nested style rule the group can open with declarations.
+  //    follows a `{`, where step 4 never starts: unscoped, a shadow `p{…}` painted every light
+  //    DOM <p>. A `;` stops it, since a nested group can open with declarations.
   //    Pinned by __tests__/regression.shadowHostStructural.test.js.
   cssText = cssText.replace(/(^|})(\s*@(?:supports|container|layer|scope|media)\b[^{};]*{\s*)([^@}{;]+){/g, (_, brace, head, selectorList) => {
     return `${brace}${head}${wrapWithScope(selectorList, scopeSelector, /*excludeSlotted*/ true, scopeId)}{`
@@ -123,13 +118,10 @@ export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
 }
 
 /**
- * Resolve @media at capture time: the serialized SVG is its own tiny viewport, so a
- * passed-through condition re-evaluates against the IMAGE size, not the page. Matching
- * blocks inline unwrapped (recursively), non-matching blocks drop — the capture freezes
- * the media state the user was seeing. @supports keeps its wrapper (its condition is
- * viewport-independent); @container/@keyframes/@font-face/etc. pass through verbatim
- * (@container evaluates against ancestor containers, which the foreignObject preserves —
- * it must be matched by TYPE, since it shares conditionText with @supports).
+ * Resolve @media at capture time: the SVG is its own tiny viewport, where a condition would
+ * test the IMAGE size. Matching blocks inline unwrapped, recursively; the rest drop.
+ * @supports keeps its wrapper; @container, @keyframes, @font-face and the rest pass verbatim.
+ * Match @supports by TYPE: @container shares its conditionText.
  * @param {CSSRuleList} rules
  * @returns {string}
  */
@@ -145,10 +137,8 @@ export function resolveMediaQueries(rules) {
       // that window's CSSSupportsRule, so the parent realm's constructor never claims it.
       out += `@supports ${rule.conditionText}{${resolveMediaQueries(rule.cssRules)}}`
     } else if (rule.cssRules && rule.cssRules.length && /@media/i.test(rule.cssText)) {
-      // Any other rule that can NEST (a CSS-nesting style rule, @scope, @container): passing
-      // its cssText through verbatim would carry an inner @media into the SVG, where the
-      // condition re-evaluates against the image box instead of the page. Rebuild it so the
-      // inner rules go through this same resolution.
+      // Any other rule that can NEST (a nested style rule, @scope, @container): rebuild it so
+      // an inner @media goes through this same resolution instead of into the SVG.
       const head = rule.cssText.slice(0, rule.cssText.indexOf('{') + 1)
       out += head + (rule.style ? rule.style.cssText : '') + resolveMediaQueries(rule.cssRules) + '}'
     } else {
@@ -160,9 +150,8 @@ export function resolveMediaQueries(rules) {
 
 /**
  * Extract CSS text from a ShadowRoot: inline <style> plus adoptedStyleSheets (if readable),
- * with @media resolved against the live viewport (see resolveMediaQueries). Each adopted
- * sheet is read once per capture. Sixteen roots on one 5,000-rule sheet read it sixteen times,
- * most of the 60 ms the capture still took once they shared one copy (#558); now it takes 9.
+ * with @media resolved against the live viewport. Each adopted sheet is read once per capture:
+ * sixteen roots on one 5,000-rule sheet went from 60 ms to 9 ms (#558).
  * @param {ShadowRoot} sr
  * @param {WeakMap<CSSStyleSheet, string>} sheetText per-capture text of each adopted sheet
  * @returns {string}
@@ -205,15 +194,10 @@ export function injectScopedStyle(hostClone, cssText, depth) {
 }
 
 /**
- * Freeze the responsive selection of an <img> that has srcset/sizes.
- * Copies a concrete URL into `src` and removes `srcset`/`sizes` so the clone
- * doesn't need layout to resolve a candidate.
- * Works with <picture> because currentSrc reflects the chosen source — except
- * currentSrc resolves eagerly/synchronously in WebKit but is deferred past this point in
- * Chromium (confirmed: 5/5 runs froze the wrong, non-selected source under fast:true — the
- * default). Inside a <picture>, resolve the winning source explicitly via the same
- * media-query matching logic pictureResolver already uses instead of trusting an
- * unresolved currentSrc.
+ * Freeze the responsive choice of an <img> into `src` and drop `srcset`/`sizes`, so the clone
+ * needs no layout to pick a candidate. Inside a <picture>, resolve the source through
+ * pictureResolver: Chromium sets currentSrc after this point (WebKit before), and trusting it
+ * froze the wrong source in 5 of 5 runs.
  * The write-once rule below is pinned by __tests__/modules.images.dataUrlPassthrough.test.js.
  * @param {HTMLImageElement} original - Image in the live DOM.
  * @param {HTMLImageElement} cloned - Just-created cloned <img>.
@@ -242,18 +226,15 @@ export function freezeImgSrcset(original, cloned, options = {}) {
       // Chromium/Firefox leave currentSrc empty until the selected candidate has loaded,
       // so resolve candidates before falling back to src, even when src is present.
       pickSrcsetCandidate(srcset, original) || original.src || ''
-    // Lazy-load placeholders (tiny data:/blob src with the real URL parked in data-src…):
-    // resolve on the CLONE. The old live-DOM resolver swapped the user's element and
-    // undid it afterwards — visible flicker and an undo dance for something inlineImages
-    // fetches from the clone just as well.
+    // Lazy-load placeholders (tiny data:/blob src, the real URL in data-src…) resolve on the
+    // CLONE: swapping the live element flickered.
     if ((!chosen || isPlaceholderSrc(chosen)) && options.resolvePicturePlaceholders !== false) {
       const lazy = findLazySrcAttr(original)
       if (lazy) chosen = lazy
     }
     if (!chosen) return
-    // Setting src is not free: every assignment re-parses the URL and starts a load, and on a
-    // data: URL that is a base64 decode of the whole payload — 26 MB of gallery sources cost
-    // ~40 ms here for a value cloneNode had already copied. Write only what differs.
+    // Every src write re-parses the URL and starts a load, a full base64 decode for data:
+    // (26 MB of gallery sources: ~40 ms for a value cloneNode already copied). Write on change.
     if (cloned.getAttribute('src') !== chosen) cloned.setAttribute('src', chosen)
     cloned.removeAttribute('srcset')
     cloned.removeAttribute('sizes')
@@ -346,19 +327,11 @@ export function getUnscaledDimensions(el) {
 const pinSheets = new WeakMap()
 
 /**
- * Temporarily pin the iframe's internal viewport to (w, h) CSS px.
- * Adopts a stylesheet into the iframe doc and returns a cleanup function.
- *
- * #393: `overflow: hidden` clamps the iframe's root scroll position to 0. Removing
- * the style later doesn't restore it, so the live iframe ends up scrolled to (0,0).
- * Snapshot scroll state before pinning and restore it after unpinning.
- *
- * #448: pinning body to (w, h) is what makes its background fill the content box
- * (the browser propagates body background to the viewport). But hard-zeroing body
- * margin/padding drops the content inset. Instead fold the original body margin into
- * its padding: body still fills the box (background propagation preserved) while the
- * content keeps its live offset from the viewport edge.
- *
+ * Pin the iframe's internal viewport to (w, h) CSS px with an adopted sheet; returns the undo.
+ * #393: `overflow: hidden` clamps the root scroll to 0 and removing it does not restore it,
+ * so the scroll state is recorded first and put back after.
+ * #448: body pinned to (w, h) carries its background over the content box. Zeroing its margin
+ * lost the content inset, so the margin is folded into the padding.
  * @param {Document} doc
  * @param {number} w
  * @param {number} h
@@ -400,12 +373,10 @@ export function pinIframeViewport(doc, w, h) {
     doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, sheet]
     unmount = () => { doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter(s => s !== sheet) }
   } catch {
-    // Owned, so the frame document's invalidation observer (changes.js, wired per document)
-    // ignores the style's arrival and removal: as an unmarked <head> mutation it bumped the
-    // shared environment epoch twice per capture, which is an unconditional dirtyAll on the
-    // OUTER element's burst memo. The viewport flag itself travels as the nested capture's
-    // `__pinned` option (rasterizeIframe), not as an attribute on this <html>: a record on
-    // <html> is the all-stamp, and it invalidated every snapshot in every document.
+    // Owned, so the frame's invalidation observer (changes.js) ignores it: unmarked, it bumped
+    // the shared epoch twice per capture and dirtied the OUTER element's burst memo. The flag
+    // travels as the `__pinned` option, not an attribute on <html>: a record there is the
+    // all-stamp and invalidates every snapshot in every document.
     // Pinned by __tests__/core.burst.nestedIframe.test.js.
     const style = doc.createElement('style')
     style.setAttribute('data-sd-iframe-pin', '')
@@ -419,10 +390,8 @@ export function pinIframeViewport(doc, w, h) {
   // a fresh nested capture cannot reuse geometry from the previous iframe size.
   invalidateSnapshotsUnder(doc.documentElement)
 
-  // Pinning sets overflow:hidden on html/body, which resets the scroll offset — so a frame
-  // the user had scrolled was captured from the top of its document instead of from what
-  // they were looking at. Put the recorded offset back on whichever box now scrolls; the
-  // nested capture's existing scrolled-root handling takes it from there.
+  // overflow:hidden resets the scroll offset, and a scrolled frame came out from its top. Put
+  // the offset back on whichever box scrolls now; the nested capture compensates from there.
   if (sx || sy) {
     try {
       if (doc.body) { doc.body.scrollLeft = sx; doc.body.scrollTop = sy }
@@ -447,12 +416,9 @@ export function pinIframeViewport(doc, w, h) {
 }
 
 /**
- * Rasterize a same-origin iframe exactly at its content-box size, as the user requested:
- * - Capture iframe.contentDocument.documentElement
- * - Force a bitmap (toPng) sized to the iframe viewport (not the content height)
- * - Wrap with a styled container that mimics the <iframe> box (borders, radius, etc.)
+ * Rasterize a same-origin iframe at its content-box size: a toPng of its documentElement at
+ * the iframe viewport (not the content height), in a wrapper styled like the <iframe> box.
  * Pinned by __tests__/utils.clone.iframe.test.js.
- *
  * @param {HTMLIFrameElement} iframe
  * @param {object} sessionCache
  * @param {object} options
@@ -476,8 +442,8 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   const contentWidth = Math.max(0, Math.round(rect.width - (border('Left') + border('Right'))))
   const contentHeight = Math.max(0, Math.round(rect.height - (border('Top') + border('Bottom'))))
 
-  // main() threads the capture entrypoints on the context (context.snap) — no global
-  // window.snapdom dependency anymore. Direct captureDOM/deepClone callers must pass it.
+  // main() threads the capture entrypoints as context.snap. Direct captureDOM/deepClone
+  // callers must pass it.
   const snap = options?.snap
   if (!snap || typeof snap.toPng !== 'function') {
     throw new Error('Iframes are only captured through snapdom(el).')
@@ -493,8 +459,8 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 
   // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
-  // Every capture owns its session from its first synchronous tick (snapdom.capture),
-  // so the nested capture can't disturb this one's maps — no save/restore needed.
+  // Every capture owns its session from its first synchronous tick (snapdom.capture), so the
+  // nested one cannot disturb this one's maps. No save/restore.
   let imgEl
   try {
     imgEl = await snap.toPng(doc.documentElement, nested)
@@ -525,17 +491,15 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   return wrapper
 }
 
-// ========== Checkbox/Radio replacement (Firefox fix) ==========
+// Checkbox/radio replacement (Firefox fix)
 
 /**
- * What `accent-color: auto` paints with: the system colours, which resolve inside the capture
- * to what the page resolves them to (#560, Firefox 160 and Chrome 157). Firefox paints its
- * controls in them. Chromium does on a light page only. On a dark one its controls are
- * #99c8ff under a mark in the Field colour, while its AccentColor stays #0075ff (Chrome and
- * Edge 157). Inside the capture Chromium paints AccentColor only as the whole value of an
- * attribute, not inside light-dark(), so the scheme is settled here. That blue needs neither
- * keyword, so it comes first: Chromium 140, the suite's, has no AccentColorText. Without the
- * keywords, a blue in the range every desktop UA ships.
+ * What `accent-color: auto` paints with: the system colours, which resolve in the capture as
+ * on the page (#560, Firefox 160 and Chrome 157). Chromium uses them on a light page only; on
+ * a dark one its controls are #99c8ff with a Field mark while AccentColor stays #0075ff. It
+ * paints AccentColor only as a whole attribute value, not in light-dark(), so the scheme is
+ * settled here, and the blue comes first: Chromium 140, the suite's, has no AccentColorText.
+ * Without the keywords, a blue in the range every desktop UA ships.
  * @param {boolean} dark whether the control is in the dark colour scheme
  * @returns {{ fill: string, mark: string }}
  */
@@ -598,14 +562,11 @@ function isColor(color) {
 }
 
 /**
- * The paints a drawn control takes: `fill` for a checked or indeterminate box, a checked
- * radio and a slider's run, `mark` for the tick, dash or ring on it, `rim` for the outline
- * of a control that is neither, and `text`, the control's text colour, which the UA greys on
- * a disabled one.
- * `accent-color` computes to the keyword `auto` when the author never set one, which SVG can't
- * paint. An accent only shows on a control that is on. Off, Firefox outlines it in
- * ButtonBorder, in either colour scheme (Firefox 160). Chromium's ButtonBorder is black, so
- * elsewhere the outline is the text colour.
+ * The paints of a drawn control: `fill` for a checked or indeterminate box, a checked radio
+ * and a slider's run; `mark` for the tick, dash or ring; `rim` for the outline when off; and
+ * `text`, which the UA greys on a disabled control. An unset `accent-color` computes to
+ * `auto`, which SVG cannot paint. Off, Firefox outlines in ButtonBorder in either scheme
+ * (Firefox 160); Chromium's ButtonBorder is black, so elsewhere the rim is the text colour.
  * @param {CSSStyleDeclaration | undefined} cs computed style of the control
  * @returns {{ fill: string, mark: string, rim: string, text: string }}
  */
@@ -623,11 +584,8 @@ function resolveAccent(cs) {
 }
 
 /**
- * Creates a visual replacement for range inputs using inline SVG: a track, the
- * filled run up to the value, and a thumb, in the control's accent colour.
- * Firefox does not render native form controls inside SVG foreignObject: a cloned slider
- * painted none of its accent (verified on v3 as 0 accent-coloured pixels).
- *
+ * Draw a range input as inline SVG: track, filled run and thumb in the accent colour. Firefox
+ * paints no native control in a foreignObject (0 accent-coloured pixels on a cloned slider).
  * Imported from @frostin/snapdom (element-mirror).
  * @param {HTMLInputElement} node - Source input
  * @returns {{ el: HTMLDivElement, applyVisual: () => void }}
@@ -824,7 +782,7 @@ export function createCheckboxRadioReplacement(node) {
   return { el: box, applyVisual }
 }
 
-// ========== Blob URL Helpers ==========
+// Blob URL helpers
 
 /** blob: URL -> data URL, or the read still in flight. 80 entries, FIFO. */
 var _blobToDataUrlCache = new EvictingMap(80)
@@ -890,12 +848,9 @@ function stringifySrcset(parts) {
 }
 
 /**
- * querySelectorAll never matches the element it's called on, so a capture root that IS one of
- * these tags/attrs (e.g. `snapdom(imgEl)` where imgEl.src is a blob: URL) was silently skipped
- * — the early resolveBlobUrlsInTree pass missed it, and only the later idle-scheduled
- * inlineImages/inlineBackgroundImages passes picked it up, losing the race if the caller
- * revokes the object URL synchronously right after calling snapdom (see #461 for the same
- * shape in images.js).
+ * querySelectorAll plus the root itself: `snapdom(imgEl)` on a blob: src was left to the
+ * later passes, which lose to a caller that revokes the URL right after the call (#461 is the
+ * same shape in images.js).
  * @param {Element} root
  * @param {string} selector
  * @returns {Element[]}
@@ -908,20 +863,17 @@ function selfAndDescendants(root, selector) {
 
 /**
  * Replace every blob: URL in the clone with a data URL: <img> src and srcset, SVG <image>
- * href, inline styles, <style> text and <video> poster. Runs inside prepareClone, ahead of
- * the asset passes: a blob URL dies the moment the page revokes it, and a caller that revokes
- * right after calling snapdom would beat the later passes to it. A URL that fails to read is
- * logged under `debug` and left as it is.
+ * href, inline styles, <style> text and <video> poster. Runs in prepareClone, ahead of the
+ * asset passes, because a caller that revokes right after calling snapdom would beat them.
+ * A URL that fails to read is logged under `debug` and left as it is.
  * @param {Element} root - the clone
  * @param {object|null} [sessionCache] - read for `options.debug`
  * @returns {Promise<void>}
  */
 export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
-  // Plan UNIQUE resources before awaiting: the previous per-node await serialized every
-  // independent fetch + FileReader, including multiple URLs in one CSS value. Four readers
-  // overlap that latency without decoding an unbounded gallery at once. Shared in-flight
-  // dedupe remains blobUrlToDataUrl's job, including callers outside this traversal.
+  // Collect UNIQUE URLs first, then read with four readers: overlapped, without decoding a
+  // whole gallery at once. blobUrlToDataUrl dedupes in-flight reads across callers.
   const urls = new Set()
   const writes = []
   const resolved = new Map()
@@ -993,7 +945,7 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   for (const write of writes) write()
 }
 
-// ========== Font inflation (Firefox for Android) ==========
+// Font inflation (Firefox for Android)
 
 /** The computed properties that decide a word's advance, copied onto the probe. */
 const INFLATION_FONT_PROPS = ['font-family', 'font-size', 'font-style', 'font-weight', 'font-stretch', 'font-variant', 'font-feature-settings', 'font-variation-settings', 'font-kerning', 'letter-spacing', 'text-transform']
@@ -1007,17 +959,14 @@ const FIELD_WORD = /[^\s\uD800-\uDFFF]{2,}/
  * Write the font size and line height Firefox's font inflation paints onto the clone of every
  * element with text of its own, and of every text field with a value.
  *
- * #516: Firefox for Android inflates text on a page laid out wider than the screen (no meta
- * viewport), and getComputedStyle still reports the authored font-size and line-height. The
- * clone froze the boxes at their inflated size and the text at the authored one: on the
- * issue's form demo the labels came out at 16px beside checkboxes sized for 30px text, and a
- * paragraph with `line-height: 1.5` would stack 29px glyphs 24px apart. The foreignObject
- * never inflates, so the painted size is measured: a word's width live (for a field, the
- * distance between the centers of its first and last characters), against the same word in a
- * probe under a zero-width box, which turns inflation off for everything inside it. Inert unless the layout viewport is
- * wider than the screen, the only state where Firefox inflates. A field without a value, a
- * <select> and a field off screen keep the authored size: nothing reads their text without
- * changing it. Pinned by __tests__/snapdom.issue516.test.js.
+ * #516: Firefox for Android inflates text on a page wider than the screen (no meta viewport),
+ * and getComputedStyle still reports the authored sizes, so labels came out at 16px beside
+ * checkboxes sized for 30px text. The foreignObject never inflates, so the painted size is
+ * measured: a word's live width (for a field, between its first and last character centers)
+ * against the same word in a probe under a zero-width box, where inflation is off. Inert
+ * unless the layout viewport is wider than the screen. A field without a value, a <select> and
+ * an off-screen field keep the authored size: nothing reads their text without changing it.
+ * Pinned by __tests__/snapdom.issue516.test.js.
  * @param {Map<Node, Node>} nodeMap - clone -> source, from deepClone
  * @param {Document} [doc]
  */

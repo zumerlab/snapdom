@@ -37,9 +37,8 @@ export function parseTextShadow(cs) {
  *  rounded up to whole px. */
 function shadowListBleed(v) {
   if (!v || v === 'none') return { top: 0, right: 0, bottom: 0, left: 0 }
-  // Split into layers on top-level commas only (commas inside rgb()/rgba() must not split).
-  // A regex on `),` fails for computed values, which put the color first (color()-last is
-  // author syntax) — so a multi-layer shadow would not be separated.
+  // Split into layers on top-level commas only, not those inside rgb(). Not a regex on `),`:
+  // computed values put the color first, so it never separates the layers.
   const parts = []
   let buf = '', depth = 0
   for (let i = 0; i < v.length; i++) {
@@ -80,15 +79,11 @@ export function parseFilterBlur(cs) {
   const re = /blur\(\s*([0-9.]+)px\s*\)/gi
   let total = 0, m
   while ((m = re.exec(raw))) total += parseFloat(m[1]) || 0
-  // `blur(R)` sets R as the Gaussian STANDARD DEVIATION (Filter Effects §blur), so the ink
-  // reaches well past R and bleeding by R alone sliced the halo where it is still clearly
-  // opaque — a blurred box rastered with a hard rectangular edge, worse the larger the
-  // radius. The factor is MEASURED, not taken from the 3σ rule of thumb: walking outward
-  // from the box edge until the pixel is within 2% of the background gives a reach of
-  // 8/15/30px for R=4/8/16 on Chromium and 8/16/31px on Firefox — ~1.9-2.0R. 2 covers every
-  // one of those; 3 would enlarge every blurred capture by half again for no visible gain,
-  // and raster area is capture time. (box-shadow's blur-radius is defined as 2σ instead, so
-  // the same extent needs half this factor there — see parseBoxShadow.)
+  // `blur(R)` sets R as the Gaussian STANDARD DEVIATION (Filter Effects §blur): bleeding by R
+  // cut the halo with a hard edge. The factor 2 is MEASURED, not the 3σ rule: the ink reaches
+  // within 2% of the background at 8/15/30px for R=4/8/16 on Chromium, 8/16/31px on Firefox.
+  // 3 would grow every blurred raster by half for nothing. (box-shadow's blur-radius is 2σ,
+  // so parseBoxShadow needs half this factor.)
   const b2 = Math.ceil(total * 2)
   return { top: b2, right: b2, bottom: b2, left: b2 }
 }
@@ -101,8 +96,8 @@ export function parseFilterBlur(cs) {
 export function parseOutline(cs) {
   if ((cs.outlineStyle || 'none') === 'none') return { top: 0, right: 0, bottom: 0, left: 0 }
   const w = Math.ceil(parseFloat(cs.outlineWidth || '0') || 0)
-  // outline-offset > 0 pushes the outline further out, increasing bleed.
-  // Negative offset moves it inward — it never reduces bleed below the outline width itself.
+  // A positive outline-offset pushes the outline out. A negative one never takes the bleed
+  // below the outline width.
   const offset = parseFloat(cs.outlineOffset || '0') || 0
   const total = w + Math.max(0, Math.ceil(offset))
   return { top: total, right: total, bottom: total, left: total }
@@ -190,26 +185,21 @@ function clipsPaint(cs) {
 /**
  * How far the ink of DESCENDANTS reaches past the root's own box.
  *
- * A capture is the root's box, so a ring or a shadow a child draws against the
- * root's edge lands outside it: cloned, then clipped away by the viewBox. This
- * measures that overhang, so a capture can be widened by as much ink as there
- * is rather than padded on the chance that something overhangs.
+ * A ring or shadow a child draws against the root's edge is clipped by the
+ * viewBox. Measuring the overhang widens the capture by exactly that ink
+ * instead of padding it on the chance. Only elements with an outer effect are
+ * measured (the clone already read their styles), and clipping ancestors are
+ * honoured, which also keeps a scrolled container's offscreen rows out.
  *
- * Only elements carrying an outer effect are measured, and their styles were
- * already read by the clone. Ancestors that clip are honoured — a shadow inside
- * `overflow: hidden` never escapes it — which is also what stops a scrolled
- * container's offscreen rows from widening anything.
- *
- * Two spaces meet here. Boxes are measured on the page, so a scale anywhere
- * above the root inflates them; effects are read from computed style, which is
- * always in the element's own pixels. The work is done in page pixels, where
- * clipping ancestors can bound the ink, and `perX`/`perY` — which the caller
- * knows, having built the bbox — convert the result back at the end.
+ * Boxes are measured in page pixels, inflated by any scale above the root;
+ * effects come from computed style, in the element's own pixels. The work is
+ * done in page pixels, where clipping ancestors bound the ink, and the
+ * caller's `perX`/`perY` convert back at the end.
  *
  * Imported from @frostin/snapdom (element-mirror).
  *
  * @param {Element} root
- * @param {Map<Node, Node>} nodeMap clone → source, from the clone pass
+ * @param {Map<Node, Node>} nodeMap from clone to source, from the clone pass
  * @param {WeakMap<Element, CSSStyleDeclaration>} styleCache
  * @param {number} [perX] root pixels per page pixel, horizontally
  * @param {number} [perY] root pixels per page pixel, vertically
@@ -300,11 +290,9 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
 
   const tr = cs.transform || 'none'
   if (!tr || tr === 'none') {
-    // No `transform`, but the element may still use the individual `scale` property, which
-    // composes separately from `transform` (matrixFromComputed only reads `transform`, so it
-    // would miss it and leave the viewBox unscaled, clipping the content). translate/rotate
-    // were already stripped from the clone above and the clone keeps `scale`, so report the
-    // scale matrix for bbox expansion — do NOT write it to transform or scale applies twice.
+    // No `transform`, but an individual `scale` composes apart from it, and missing it leaves
+    // the viewBox unscaled and clips the content. The clone keeps `scale`, so report its
+    // matrix for the bbox only: written to transform too, the scale applies twice.
     let scaleStr = null
     try { scaleStr = readIndividualTransforms(originalEl).scale } catch { }
     try { cloneRoot.style.transform = 'none' } catch { }
@@ -357,7 +345,7 @@ export function normalizeRootTransforms(originalEl, cloneRoot) {
     }
   }
 
-  // #216: matrix3d — extract 2D components from 4x4 matrix, decompose scale/shear, drop translate+rotation
+  // #216: matrix3d, from the 2D part of the 4x4: keep scale/shear, drop translate and rotation
   const m3d = tr.match(/^matrix3d\(\s*([^)]+)\)$/i)
   if (m3d) {
     const nums = m3d[1].split(',').map(v => parseFloat(v.trim()))
@@ -550,11 +538,9 @@ function getMeasureHost() {
   const n = document.createElement('div')
   n.id = 'snapdom-measure-slot'
   n.setAttribute('aria-hidden', 'true')
-  // Marks the host as snapdom-owned BEFORE it is mounted, so neither the mount record nor
-  // the append/remove pair readTotalTransformMatrix does inside it reads as an external
-  // mutation (changes.js isExternalRecord). Without it every capture of a transformed root
-  // bumped the style epoch and re-stamped the whole document, dropping the author-style
-  // scan memo and every cached snapshot on the page.
+  // Marked snapdom-owned BEFORE it mounts, so neither the mount nor the probe's append/remove
+  // reads as an external mutation (changes.js isExternalRecord). Otherwise every capture of a
+  // transformed root bumps the style epoch and drops every cached snapshot on the page.
   markInternalNode(n)
   Object.assign(n.style, {
     position: 'absolute',

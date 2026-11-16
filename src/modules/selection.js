@@ -1,31 +1,22 @@
 /**
  * Renders the user's text selection into the clone (SEL-1, fork addition).
  *
- * A selection is paint without DOM: the browser draws the highlight and
- * restyles the selected glyphs at paint time, from state a structural clone
- * cannot carry, so a capture of selected text came out unselected. This module
- * reads the live Selection once per capture, and the clone pass wraps each
- * selected run of text in a <span> carrying the styles the browser painted it
- * with — the authored `::selection` styles where a rule matches, the UA's
- * highlight color where none does.
+ * A selection is paint without DOM, so a structural clone loses it. The live
+ * Selection is read once per capture, and the clone pass wraps each selected
+ * run in a <span> with the styles the browser paints it with: the authored
+ * `::selection` where a rule matches, the UA highlight where none does.
  *
- * A selection inside <input>/<textarea> is different again: it lives on the
- * field's selectionStart/End rather than in a Range, and the field renders its
- * own value, so there is no text node to wrap. That highlight is painted as
- * background layers on the field's clone instead — a background paints behind
- * the value, which is where the browser draws it — with the selected run's
- * rectangles measured from a hidden twin that lays the value out in the
- * field's own text styles (see inlineTextFieldSelection).
+ * An <input>/<textarea> selection lives on selectionStart/End and the field
+ * paints its own value, so there is no text node to wrap. Its highlight goes
+ * on the clone as background layers (behind the value, like the browser's),
+ * measured from a hidden twin of the value (inlineTextFieldSelection).
  *
- * Limitations, all inherent to what a page can observe: selections inside
- * shadow roots are not exposed on the document's Selection; an authored
- * `::selection { background: transparent }` is indistinguishable from no rule
- * at all, so it paints the UA highlight; a field's `::selection` color cannot
- * recolor part of a value the field paints itself, so only the highlight
- * behind it is rendered; and the selection API only exists on
- * text/search/url/tel/password inputs — an email or number input paints a
- * highlight the platform refuses to report (selectionStart is null even
- * mid-selection), so nothing can be rendered for it.
+ * Limits of what a page can observe: shadow-root selections are not on the
+ * document's Selection; `::selection { background: transparent }` reads like
+ * no rule and paints the UA highlight; a field's `::selection` color cannot
+ * recolor its value, so only the highlight renders; and email or number
+ * inputs report no selection (selectionStart is null mid-selection), since
+ * the API exists only on text/search/url/tel/password.
  *
  * Imported from @frostin/snapdom (element-mirror), where it was written as SEL-1.
  * Pinned by __tests__/module.selection.test.js (the clone) and
@@ -68,13 +59,11 @@ export function prepareSelectionContext(root) {
 
 /**
  * The styles the browser paints this element's selected text with, as a CSS
- * declaration list — or null when it paints no highlight here at all.
+ * declaration list, or null when it paints no highlight here.
  *
- * Only the spec's highlight-paintable properties are considered. A property no
- * ::selection rule set computes to the element's own value (background stays
- * transparent), so a diff against the element is what detects an authored
- * rule; an authored value equal to the element's paints identically either
- * way, so nothing is lost by reading it as unstyled.
+ * Only highlight-paintable properties count. One no ::selection rule set
+ * computes to the element's own value, so a diff against the element finds
+ * the authored rule; an authored value equal to the element's paints the same.
  *
  * @param {Element} parent
  * @param {{ styles: Map<Element, string|null> }} ctx
@@ -85,10 +74,9 @@ function selectionStyleFor(parent, ctx) {
   let css
   try {
     const own = getComputedStyle(parent)
-    // The browser paints no highlight over unselectable content, even when a range spans it
-    // in the DOM. Both spellings are read independently: WebKit answers `user-select` with
-    // `auto` while carrying the authored `none` on the prefixed property, so falling through
-    // a `||` chain read the wrong one and highlighted an unselectable run.
+    // No highlight over unselectable content, even inside a range. Each spelling is tested
+    // on its own: WebKit answers `user-select: auto` and keeps the authored `none` on the
+    // prefixed property, so a `||` chain read the wrong one.
     if (own.userSelect === 'none' ||
         own.webkitUserSelect === 'none' ||
         own.getPropertyValue('-webkit-user-select') === 'none') {
@@ -170,15 +158,13 @@ export function cloneTextWithSelection(textNode, ctx) {
   for (const [from, to] of runs) {
     if (from > cursor) fragment.append(doc.createTextNode(text.slice(cursor, from)))
     const span = doc.createElement('span')
-    // `all:unset` keeps the wrapper visually transparent: inherited text
-    // properties flow through it, and the deduped base CSS's `span{…}` tag
-    // rule — which would reset font and spacing to UA defaults on a span that
-    // carries no generated class — is outranked by the inline declaration.
-    // Same trick as the scroll wrapper (#413).
+    // `all:unset` keeps the wrapper invisible: inherited text properties flow
+    // through, and it outranks the base reset's `span{…}` rule, which would
+    // reset font and spacing on a span with no class. Same trick as the scroll
+    // wrapper (#413).
     span.setAttribute('data-snapdom-selection', '')
-    // Written as an attribute, not through style.cssText: Gecko's CSSOM expands `all` into
-    // every longhand it knows, which serialized ~4kb of `unset` per highlighted run into the
-    // SVG. The attribute is what the serializer reads, so it stays the two declarations here.
+    // An attribute, not style.cssText: Gecko's CSSOM expands `all` into every longhand, ~4kb
+    // of `unset` per highlighted run in the SVG.
     span.setAttribute('style', `all:unset;${css}`)
     span.textContent = text.slice(from, to)
     fragment.append(span)
@@ -229,15 +215,11 @@ function textFieldSelectionBackground(field, own) {
 /**
  * Paints an <input>/<textarea>'s own selection onto its clone (SEL-1).
  *
- * The field renders its value itself, so the selected run cannot be wrapped;
- * instead the highlight is painted as background layers on the clone — a
- * background paints behind the value, which is exactly where the browser
- * draws it. The run's rectangles are measured from a hidden twin that lays
- * the value out in the field's own text styles, which is the only way to know
- * where a wrapped or scrolled run paints.
- *
- * Does nothing unless the field is focused: the browser keeps an unfocused
- * field's selection but paints no highlight for it.
+ * The field paints its own value, so the highlight goes on the clone as
+ * background layers, behind the value like the browser's. The rectangles come
+ * from a hidden twin laid out in the field's text styles, the only way to know
+ * where a wrapped or scrolled run paints. Only on a focused field: an
+ * unfocused one keeps its selection but paints no highlight.
  *
  * @param {HTMLInputElement|HTMLTextAreaElement} field - The SOURCE field.
  * @param {Element} clone - Its clone, already carrying the field's styles.
@@ -297,10 +279,9 @@ export function inlineTextFieldSelection(field, clone) {
     let dx = -field.scrollLeft
     let dy = -field.scrollTop
     if (!isTextArea) {
-      // A single-line input aligns its one line box within the content area —
-      // vertically centered, horizontally by text-align once the value is
-      // shorter than the field — while the twin's line sits at its own
-      // top-left, shrink-to-fit.
+      // A single-line input centers its line box vertically and aligns it by
+      // text-align when the value is shorter than the field; the twin's line
+      // sits top-left, shrink-to-fit.
       dy += Math.max(0, (contentHeight - base.height) / 2)
       const rtl = own.direction === 'rtl'
       let align = own.textAlign
@@ -327,12 +308,10 @@ export function inlineTextFieldSelection(field, clone) {
   if (rects.length === 0) return
 
   const background = textFieldSelectionBackground(field, own)
-  // One layer per line box, sized in px against the padding box (which is
-  // what background-position measures from). STASHED rather than written:
-  // the background-inline pass rewrites a field's background longhands from
-  // the source's computed style wholesale, so layers written now would be
-  // overwritten — applyTextFieldSelectionLayers composes them after that
-  // pass has run.
+  // One layer per line box, in px against the padding box (what
+  // background-position measures from). STASHED, not written: the background
+  // pass rewrites the field's background longhands wholesale afterwards, so
+  // applyTextFieldSelectionLayers composes them after it.
   clone.__snapdomFieldSelection = {
     images: rects.map(() => `linear-gradient(${background},${background})`),
     positions: rects.map((rect) => `${rect.x}px ${rect.y}px`),
@@ -354,14 +333,11 @@ export function inlineTextFieldSelection(field, clone) {
 /**
  * Composes stashed field-selection layers onto their clones (SEL-1).
  *
- * Runs at the end of the asset phase, after the background-inline pass: that
- * pass rewrites a field's background longhands from the source's computed
- * style, and a url() background it inlines has to end up UNDER the highlight
- * as a data: URL the rasterizer can draw. The pass leaves its final values
- * inline on the clone whenever the field has a background of its own; where
- * it wrote nothing, the values stashed at measure time fill in.
+ * Runs at the end of the asset phase, after the background pass, so a url()
+ * background it inlined ends up UNDER the highlight as a data: URL. Where that
+ * pass wrote nothing on the clone, the values stashed at measure time fill in.
  *
- * @param {Map<Node, Node>} nodeMap - The session clone→source map.
+ * @param {Map<Node, Node>} nodeMap - The session map from clone to source.
  */
 export function applyTextFieldSelectionLayers(nodeMap) {
   for (const clone of nodeMap.keys()) {
@@ -371,8 +347,8 @@ export function applyTextFieldSelectionLayers(nodeMap) {
     const { images, positions, sizes, repeats, origins, clips, base } = stash
     const image = clone.style.backgroundImage || base.image
     if (image && image !== 'none') {
-      // The highlight layers paint first (on top), the field's own background
-      // under them — still behind the value, where the real highlight draws.
+      // Highlight layers first (on top), the field's own background under
+      // them, all behind the value.
       images.push(image)
       positions.push(clone.style.backgroundPosition || base.position)
       sizes.push(clone.style.backgroundSize || base.size)

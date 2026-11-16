@@ -42,14 +42,9 @@ function escapeRegExp(string) {
 }
 
 /**
- * Compile the `iconFonts` option into matchers, ONCE per capture, in createContext.
- *
- * This used to be a module-level `sessionIconFonts` array that every capture overwrote at
- * its start. Two concurrent captures with different lists interleaved through the await
- * points and each read the other's matchers, which is the exact bug class v3 removed
- * everywhere else: per-capture state does not live at module scope, it lives on the
- * context and is passed explicitly.
- *
+ * Compile the `iconFonts` option into matchers, ONCE per capture, in createContext. The result
+ * lives on the context, not at module scope: a shared module-level list let two concurrent
+ * captures read each other's matchers across their awaits.
  * @param {string|RegExp|Array<string|RegExp>} [fonts]
  * @param {{debug?: boolean}} [options] - read for `debug`
  * @returns {RegExp[]}
@@ -66,11 +61,9 @@ export function compileIconFontMatchers(fonts, options) {
 }
 
 /**
- * Whether a family name or font URL belongs to an icon font.
- *
- * The defaults and the capture's own matchers go first, then a loose word test (icon, glyph,
- * symbols) that also catches self-hosted icon sets nobody listed. Callers skip embedding and
- * subsetting for anything that answers true.
+ * Whether a family name or font URL belongs to an icon font: the defaults, the capture's own
+ * matchers, then a loose word test (icon, glyph, symbols) for self-hosted sets nobody listed.
+ * Callers skip embedding and subsetting for anything that answers true.
  * @param {*} input - family name or URL to test
  * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
  * @returns {boolean}
@@ -90,15 +83,11 @@ export function isIconFont(input, matchers) {
 }
 
 /**
- * Whether a stylesheet URL is an icon-font-only stylesheet that can be skipped wholesale.
- *
- * `isIconFont` is a loose name heuristic (`/icon/`, `/symbols/`, ...) meant for one family at a
- * time. Run over a whole URL it also reads the query string, and Google Fonts bundles every
- * requested family there: a single icon-ish name (`Noto+Sans+Symbols`, `Material+Symbols+Outlined`)
- * used to discard the text families sharing the request, so nothing got embedded (#493).
- * When the URL carries `family` params, judge those names one by one and skip only if every
- * one is an icon font; the per-face family check downstream still drops the icon ones.
- * URLs without `family` params keep the path heuristic.
+ * Whether a stylesheet URL holds only icon fonts and can be skipped wholesale.
+ * Do not run `isIconFont` over the whole URL: Google Fonts puts every family in the query, and
+ * one icon-ish name (`Noto+Sans+Symbols`) discarded the text families beside it (#493). With
+ * `family` params, skip only when every name is an icon font (the per-face check downstream
+ * drops the icon ones); without them, the path heuristic applies.
  * @param {string} href
  * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
  * @returns {boolean}
@@ -121,11 +110,9 @@ export function isIconFontStylesheet(href, matchers) {
 }
 
 /**
- * Draw one icon-font glyph on a canvas at devicePixelRatio and return it as a data URL.
- *
- * The pseudo pass calls this for a single-character `content` in an icon font: icon fonts are
- * never embedded, so inside the svg the glyph would have no font. The size comes from a
- * hidden span measured in the same family the canvas draws with.
+ * Draw one icon-font glyph on a canvas at devicePixelRatio and return it as a data URL, for a
+ * single-character pseudo `content`: icon fonts are never embedded, so the svg has no font for
+ * it. The size comes from a hidden span in the same family the canvas draws with.
  * @param {string} unicodeChar - The unicode character to render
  * @param {string} fontFamily - The font family name
  * @param {string|number} fontWeight - The font weight
@@ -213,13 +200,10 @@ function parseAxes(variation = '') {
 }
 
 /**
- * Pick the family the canvas will draw a Material ligature with.
- *
- * Material Icons (legacy, not variable) and any non-Material family are kept as they are.
- * Material Symbols is variable, and a canvas font string has no font-variation-settings, so a
- * Symbols icon with FILL=1 would draw hollow. For that case a static filled face is loaded
- * under a snapdom alias, matched to the style class (outlined, rounded, sharp). With FILL=0,
- * or no static face for that style, the original Symbols family stays.
+ * Pick the family the canvas will draw a Material ligature with. Only Material Symbols with
+ * FILL=1 changes: a canvas font string has no font-variation-settings, so it would draw hollow,
+ * and a static filled face for its style class (outlined, rounded, sharp) is loaded under a
+ * snapdom alias. Everything else, or a style with no static face, keeps its family.
  * @param {string} cssFamily
  * @param {string} className - the element's class list, where Material puts the style
  * @param {Record<string, number>} axes - from parseAxes
@@ -270,15 +254,13 @@ async function ensureLigatureCanvasFont(cssFamily, className, axes) {
   if (!loadedCanvasFamilies.has(pick.alias)) {
     try {
       const ff = new FontFace(pick.alias, `url(${pick.url})`, { style: 'normal', weight: '400' })
-      // Load BEFORE registering, and memoize the failure. Adding first meant a rejected load
-      // left a dead FontFace in document.fonts, and `has()` was only set on success — so a
-      // font that could not load was re-created and re-added once per icon per capture, and
-      // the document's font set grew for the page's lifetime with faces nothing can use.
+      // Load BEFORE registering, and memoize the failure, or a font that cannot load is re-added
+      // as a dead FontFace once per icon per capture for the page's lifetime.
       await ff.load()
       document.fonts.add(ff)
       loadedCanvasFamilies.set(pick.alias, true)
     } catch {
-      // If loading fails, stay on Symbols — and remember, so the next capture does not retry.
+      // If loading fails, stay on Symbols, and remember so the next capture does not retry.
       loadedCanvasFamilies.set(pick.alias, false)
       return { familyForMeasure: fam, familyForCanvas: fam }
     }
@@ -318,10 +300,8 @@ function resolvePaintColor(cs) {
 }
 
 /**
- * Draw one ligature on a canvas at devicePixelRatio and return it as a data URL.
- *
- * The glyph is measured with a hidden span in the same family the canvas draws with, so the
- * box the <img> gets is the box the glyph needs. Width and height come back in CSS px.
+ * Draw one ligature on a canvas at devicePixelRatio and return it as a data URL. A hidden span
+ * in the canvas's family measures it, so the <img> gets the box the glyph needs, in CSS px.
  * @param {string} ligatureText - e.g. "home"
  * @param {object} [opts]
  * @param {string} [opts.family='Material Icons']
@@ -396,12 +376,10 @@ export async function materialIconToImage(
 }
 
 /**
- * Replace every Material ligature in the clone with an <img> of the drawn glyph.
- *
- * Size, colour, weight and axes are read from the SOURCE node, paired through nodeMap; the
- * clone's own computed style is only a fallback. The root itself is a candidate too, since
- * `querySelectorAll` never matches the node it is called on. Failures skip the node and the
- * text stays. Pinned by __tests__/module.iconFonts.test.js.
+ * Replace every Material ligature in the clone with an <img> of the drawn glyph. Size, colour,
+ * weight and axes come from the SOURCE node through nodeMap, the clone's style only as a
+ * fallback. A failure skips the node and the text stays.
+ * Pinned by __tests__/module.iconFonts.test.js.
  * @param {Element} cloneRoot
  * @param {Element} sourceRoot
  * @param {Map<Node, Node>} [nodeMap] - clone -> source, built by deepClone
@@ -412,9 +390,8 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = new M
 
   const selector = '.material-icons, [class*="material-symbols"]'
 
-  // querySelectorAll never matches the element it's called on — a capture root that IS the
-  // icon (e.g. snapdom(iconSpan) for a single toolbar icon) was silently skipped, leaving its
-  // ligature text unconverted (see #461 for the same shape in images.js).
+  // querySelectorAll never matches the element it is called on, so a root that IS the icon
+  // (snapdom(iconSpan)) is added by hand (#461 is the same shape in images.js).
   const cloneNodes = Array.from(
     cloneRoot.querySelectorAll(selector)
   ).filter(n => n && n.textContent && n.textContent.trim())
@@ -424,9 +401,8 @@ export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = new M
 
   if (cloneNodes.length === 0) return 0
 
-  // Map each clone node to its exact source via the clone→source nodeMap built by deepClone.
-  // Pairing the two trees positionally breaks when excludeMode:'remove' drops nodes from the
-  // clone but not the source: indices shift and we read the wrong source's color/size/variation.
+  // Pair through nodeMap, not by position: excludeMode:'remove' drops clone nodes but not
+  // source ones, and the indices shift onto the wrong source.
   const sourceNodes = (sourceRoot?.nodeType === 1)
     ? Array.from(sourceRoot.querySelectorAll(selector)).filter(n => n && n.textContent && n.textContent.trim())
     : []
@@ -487,19 +463,14 @@ const FONT_FAMILY_SIGNATURE = /(?:^|;)font-family:([^;]*)/
 const strutClones = new WeakSet()
 
 /**
- * Keep an icon font's share of the line in the clone.
- *
- * Icon fonts are never embedded, so inside the svg an icon element lays out in the fallback
- * font, and a line's height and baseline come from the first available font of every inline
- * box on it, glyph or not. An empty 28px Material Icons <i> made its line 4px taller in
- * Chromium and WebKit (Times is taller than Material Icons), and the error added up line
- * after line until the last block fell off the bottom of the capture. Each icon element's
- * line box is measured once per font in the live document, where the font is loaded, and
- * reproduced in the clone: the element's own strut is zeroed with `line-height: 0` and a
- * zero-width inline-block of the measured height, sitting on the measured baseline, stands
- * in for it. The probe uses the element's exact font stack, so a family the name test
- * mistakes for an icon font gets the strut it already had. Candidates come from the style
- * signature, one test per signature. Pinned by __tests__/module.iconStrut.test.js.
+ * Keep an icon font's share of the line in the clone. Icon fonts are never embedded, so in the
+ * svg an icon element's strut comes from the fallback font: an empty 28px Material Icons <i>
+ * made its line 4px taller in Chromium and WebKit (Times is taller), line after line, until the
+ * last block fell off the capture. The line box is measured once per font in the live document; the clone gets
+ * `line-height: 0` and a zero-width inline-block of that height on that baseline. The probe
+ * uses the exact font stack, so a family the name test mistakes for an icon font keeps the
+ * strut it had. One icon test per style signature.
+ * Pinned by __tests__/module.iconStrut.test.js.
  * @param {Iterable<Element>} clones - the clone nodes to visit: every key of the session's
  *   styleMap for a full capture, the rebuilt subtree for a differential one
  * @param {Map<Element, string>} styleMap - clone -> style signature (session.styleMap)
@@ -545,10 +516,9 @@ export function pinIconStruts(clones, styleMap, nodeMap, matchers) {
 }
 
 /**
- * An empty inline is transparent to space collapsing: in "a <i></i> b" the page shows one
- * space. The stand-in is an atomic inline and keeps both ("Parrafo  con" in the capture), so
- * when the text before the element ends in a collapsible space, the clone drops the leading
- * space of the text after it, the one the page collapsed.
+ * An empty inline is transparent to space collapsing ("a <i></i> b" shows one space), but the
+ * stand-in is atomic and keeps both. So when the text before ends in a collapsible space, the
+ * clone drops the leading space of the text after.
  */
 function keepSpaceCollapsed(clone, source) {
   const ws = getComputedStyle(source.parentElement || source).whiteSpace

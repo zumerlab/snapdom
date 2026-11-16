@@ -2,12 +2,11 @@
  * Private provenance for helper nodes snapdom mounts in the live document.
  *
  * Public markers (`data-snapdom-internal`, `data-snapdom-sandbox`, `#snapdom-sandbox`,
- * `data-snapdom="injected-import"`) remain observable for CSS, tests and cleanup, but cannot
- * prove ownership: authors may validly use the same names. Destructive decisions such as
- * dropping or removing a subtree use this module-instance WeakSet instead.
+ * `data-snapdom="injected-import"`) serve CSS, tests and cleanup, but authors may use the same
+ * names, so they prove nothing. Dropping or removing a subtree asks this module's WeakSet.
  *
- * Also the transient edits snapdom makes to the page's own nodes (`noteSelfWrite`), so their
- * mutation records are not taken for the page changing.
+ * Also tracks snapdom's transient edits to page nodes (`noteSelfWrite`), so their mutation
+ * records are not taken for the page changing.
  * @module utils/ownership
  */
 

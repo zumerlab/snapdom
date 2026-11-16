@@ -1,17 +1,16 @@
 /**
  * Web fonts: which @font-face rules a capture needs, emitted with their payloads inlined.
  *
- * Two halves. `collectFontUsage` walks the subtree once and records every family, weight,
- * style and stretch it uses, plus every codepoint it shows. `embedCustomFonts` then scans the
- * document's stylesheets (same-origin through CSSOM, cross-origin fetched, nested @import
- * flattened), keeps the faces that match a used variant and meet a used codepoint, and emits
- * them with every url() turned into a data: URL. Icon fonts are skipped throughout: their
- * glyphs are drawn to images instead (iconFonts.js).
+ * `collectFontUsage` walks the subtree once for every family, weight, style, stretch and
+ * codepoint it uses. `embedCustomFonts` scans the document's stylesheets (same-origin through
+ * CSSOM, cross-origin fetched, nested @import flattened), keeps the faces that match a used
+ * variant and meet a used codepoint, and emits them with every url() as a data: URL. Icon
+ * fonts are skipped: their glyphs are drawn to images (iconFonts.js).
  *
- * Contracts a change must keep. A remote url() never reaches the emitted CSS, it is inert
- * inside a foreignObject. A family the page uses never ends the scan with zero faces (#478).
- * Descriptors the source did not declare are never invented (#479). The result is memoized
- * per document, codepoint set and option bag, never across them.
+ * Contracts: a remote url() never reaches the emitted CSS (it is inert inside a
+ * foreignObject). A used family never ends the scan with zero faces (#478). Descriptors the
+ * source did not declare are never invented (#479). The result is memoized per document,
+ * codepoint set and option bag, never across them.
  * @module fonts
  */
 
@@ -205,15 +204,13 @@ export function fontKeyFamily(key) {
 /**
  * Split the document's webfont families into those it declares and those it has drawn with.
  *
- * A browser fetches a face only when some laid-out text needs it, so a family whose faces are
- * all still "unloaded" was never drawn, however often it appears in a font stack. A face in
- * "error" was needed and failed, and the text went on to the next family, so it never drew
- * either. In the jant#174 scene on a Mac, Songti SC drew a CJK quote and every Noto Serif SC
- * face stayed unloaded in Chromium and Firefox (Safari 27.0.1 also left one in error, its
- * `local()` source failing), yet 5 of them (35 KB) were embedded; Jant measured 180 KB against
- * 2 MB on their own card. Layout flips a needed face to "loading" synchronously on all three
- * engines, so read this after a layout: the fonts phase runs after prepareClone, which also
- * lays out content-visibility subtrees.
+ * A browser fetches a face only when laid-out text needs it, so a family whose faces are all
+ * "unloaded" never drew, and a face in "error" failed and passed its text on. Layout flips a
+ * needed face to "loading" synchronously on all three engines, so read this after a layout:
+ * the fonts phase runs after prepareClone, which also lays out content-visibility subtrees.
+ * jant#174 scene on a Mac: Songti SC drew the CJK quote and every Noto Serif SC face stayed
+ * unloaded (Safari 27.0.1 left one in error, its `local()` source failing), yet 5 of them
+ * (35 KB) were embedded. Jant measured 180 KB against 2 MB on their own card.
  * Pinned by __tests__/module.fonts.drawnFamilies.test.js.
  * @param {Document} doc
  * @returns {{declared: Set<string>, drawn: Set<string>}} lowercase family names
@@ -230,9 +227,7 @@ export function documentFontFamilies(doc) {
   return { declared, drawn }
 }
 
-// ----------------------------------------------------------------------------
-// Import inliner + relative URL rewriter per stylesheet level (with cycle guard)
-// ----------------------------------------------------------------------------
+// Import inliner and relative URL rewriter, per stylesheet level, with a cycle guard
 
 /** `u` resolved against `base` (the page when absent), or `u` itself when it does not parse. */
 function normalizeUrl(u, base) {
@@ -281,10 +276,8 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy, debug) {
     let out = ''
     let last = 0
     let m
-    // Own regex per call. IMPORT_ANY_RE is module-level and /g, so its lastIndex is shared
-    // state — and this function RECURSES into each imported sheet. The nested call resumed
-    // scanning from the parent's lastIndex and then left its own behind, so imports after
-    // the first nested one were skipped and their @font-face rules never embedded.
+    // Own regex per call: IMPORT_ANY_RE is module-level and /g, and this recurses into each
+    // imported sheet, so a shared lastIndex skipped every import after the first nested one.
     const importRe = new RegExp(IMPORT_ANY_RE.source, 'g')
     while ((m = importRe.exec(text))) {
       out += text.slice(last, m.index)
@@ -322,8 +315,6 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy, debug) {
   rewritten = await resolveOnce(rewritten, ownerHref || location.href, 0)
   return rewritten
 }
-
-// ----------------------------------------------------------------------------
 
 /** Regexes local to embedCustomFonts */
 const URL_RE = /url\((["']?)([^"')]+)\1\)/g
@@ -381,11 +372,8 @@ function extractSrcUrls(srcValue, baseHref) {
 
 /**
  * A font file as a data: URL, from cache.resource or fetched. Null when it cannot be loaded.
- *
- * `cache.resource` is the ONLY proof the payload exists. It is FIFO-capped, so a font fetched
- * earlier can be gone; having merely SEEN the URL proves nothing. Miss => refetch, because
- * the alternative is leaving the live url() in place, and a remote URL inside a
- * foreignObject is inert: the font would silently fail to embed.
+ * `cache.resource` is FIFO-capped, so having seen the URL before proves nothing: a miss
+ * refetches, because a live url() left in place is inert inside a foreignObject.
  * @param {string} src
  * @param {string} useProxy
  * @param {boolean} debug
@@ -408,12 +396,10 @@ async function fontDataURL(src, useProxy, debug) {
 /**
  * Replace every url() in a @font-face block with its payload as a data: URL, from
  * cache.resource or fetched. A fetch that fails leaves the url() in place and warns.
+ * Callers have already dropped icon families by NAME. Do not also test the URL with isIconFont:
+ * its loose `/icon/` matched `fonts.gstatic.com/s/delagothicone/`, and "Dela Gothic One"
+ * kept its inert remote url() and rendered in the fallback font (#508).
  * Pinned by __tests__/module.fonts.evictedResource.test.js.
- *
- * Every caller has already dropped icon families by NAME. The URL used to be run through
- * isIconFont as well, whose loose `/icon/` test matched `fonts.gstatic.com/s/delagothicone/`
- * (goth-icon-e): the text font "Dela Gothic One" kept its remote url(), which is inert inside
- * a foreignObject, and rendered in the fallback font (#508).
  * @param {string} cssBlock
  * @param {string} baseHref
  * @param {string} [useProxy='']
@@ -508,8 +494,8 @@ function dedupeFontFaces(cssText) {
   return cssText.replace(FACE_RE, () => out[i++] || '')
 }
 
-// doc identity for the cache key below: same-origin documents (parent + iframe) can share
-// stylesheet hrefs, so the href isn't a safe proxy — assign each Document instance its own id.
+// Doc identity for the cache key below: same-origin documents (parent and iframe) can share
+// stylesheet hrefs, so each Document instance gets its own id.
 const _docIds = new WeakMap()
 let _nextDocId = 0
 function docCacheId(doc) {
@@ -519,26 +505,19 @@ function docCacheId(doc) {
 }
 
 /**
- * The cache.resource key for an embed result. It covers every input that changes the
- * emitted CSS: required variants, exclusions, localFonts, proxy, allowed domains, the
- * document itself (same-origin frames share hrefs, so the Document instance is the id),
- * the used codepoints, and the icon matchers. Leaving any of them out served one
- * capture's CSS to another. Pinned by __tests__/module.fonts.iframe.test.js and the digest
- * collision case in __tests__/regression.reviewP1.test.js.
+ * The cache.resource key for an embed result. It covers every input that changes the emitted
+ * CSS (required variants, exclusions, localFonts, proxy, allowed domains, the Document, used
+ * codepoints, icon matchers); one left out served one capture's CSS to another. Pinned by
+ * __tests__/module.fonts.iframe.test.js and the digest collision case in
+ * __tests__/regression.reviewP1.test.js.
  */
 function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesheetDomains, doc, usedCodepoints, iconMatchers, envEpoch) {
   const req = Array.from(required || []).sort().join('|')
-  // The emitted CSS is SUBSETTED by unicode-range against the codepoints the captured
-  // subtree actually uses, so two captures of the same families but different text are not
-  // interchangeable: an English panel warmed the cache and a Cyrillic one was then served
-  // its latin-only faces. Order-independent digest — Set iteration order is insertion order.
-  //
-  // Each codepoint is AVALANCHED before it joins the sum. Multiplying and adding is linear
-  // over the ring, so `sum(imul(c, K)) === imul(sum(c), K)`: the digest was a function of the
-  // SUM of the codepoints and nothing else, and any two sets summing alike collided —
-  // "ad" and "bc" (97+100 = 98+99) produced the same key, on a cache whose whole job is to
-  // tell glyph sets apart. The xor-shift/multiply rounds break that linearity; the outer sum
-  // stays, because the digest must not depend on iteration order.
+  // The emitted CSS is subsetted by unicode-range against the used codepoints, so captures of
+  // different text are not interchangeable (a Cyrillic panel was served an English one's
+  // latin-only faces). The outer sum keeps the digest independent of Set order. Each codepoint
+  // is avalanched first: `sum(imul(c, K)) === imul(sum(c), K)`, so without the xor-shift
+  // rounds "ad" and "bc" (97+100 = 98+99) got the same key.
   let cp = 0, n = 0
   for (const c of usedCodepoints || []) {
     let h = Math.imul(c, 2654435761)
@@ -560,9 +539,8 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
   const px = useProxy || ''
   const fd = (fontStylesheetDomains || []).map(s => String(s).toLowerCase()).sort().join('|')
   const dc = docCacheId(doc || document)
-  // iconFonts decides which families are SKIPPED, so it changes the emitted CSS. Leaving it
-  // out meant the first capture of a page decided for every later one: `iconFonts: 'Brand'`
-  // and a plain capture of the same subtree shared one entry, and whichever ran first won.
+  // iconFonts decides which families are skipped. Without it, `iconFonts: 'Brand'` and a plain
+  // capture of the same subtree shared one entry, and whichever ran first won.
   const ic = (iconMatchers || []).map(rx => String(rx)).sort().join('|')
   return `fonts-embed-css::req=${req}::ex=${ex}::lf=${lf}::px=${px}::fd=${fd}::doc=${dc}::cp=${cp}::n=${n}::ic=${ic}::env=${envEpoch}`
 }
@@ -570,23 +548,21 @@ function buildFontsCacheKey(required, exclude, localFonts, useProxy, fontStylesh
 /**
  * Build the @font-face CSS a capture needs, every payload inlined as a data: URL.
  *
- * Sources, in order: <link> stylesheets (same-origin read through CSSOM, cross-origin fetched
- * when the URL looks like a font sheet, nested @import flattened), the rest of
- * document.styleSheets through CSSOM, the faces the strict filter rejected for a family that
- * ended with nothing (#478), FontFaces the page built in script and tagged with `_snapdomSrc`
- * (a FontFace does not expose its source, so the host puts it there), and `localFonts`.
+ * Sources, in order: <link> stylesheets (cross-origin ones only when the URL looks like a
+ * font sheet), the rest of document.styleSheets through CSSOM, the rejected faces of a family
+ * that ended with nothing (#478), script-built FontFaces the host tagged with `_snapdomSrc`
+ * (a FontFace does not expose its source), and `localFonts`.
  *
- * A face is kept when its family is used, it matches a used variant (exact first, then a
- * weight within 300, then a normal face for an italic request the family cannot serve),
- * and its unicode-range meets a used codepoint. Only descriptors the source declared are
- * emitted (#479), and the family is always quoted. The result is memoized in cache.resource
- * under a key that covers every input, document included (#441).
+ * A face is kept when it matches a used variant (exact, then a weight within 300, then a
+ * normal face for an italic the family cannot serve) and its unicode-range meets a used
+ * codepoint. Only declared descriptors are emitted (#479), the family always quoted. Memoized
+ * in cache.resource under a key that covers every input, document included (#441).
  * Pinned by __tests__/module.fonts.*.test.js.
  *
  * @typedef {{family:string, weightSpec:string, styleSpec:string, stretchSpec:string, unicodeRange:string, srcRaw:string, srcUrls:string[], href:string}} FontFaceMeta
  *
  * @param {Object} options
- * @param {Set<string>} options.required - keys "family__weight__style__stretchPct", from collectFontUsage
+ * @param {Set<string>} options.required - family, weight, style, stretchPct keys from collectFontUsage
  * @param {Set<number>} options.usedCodepoints - codepoints the captured subtree shows
  * @param {{families?:string[], domains?:string[], subsets?:string[]}} [options.exclude] - the `excludeFonts` option
  * @param {Array<{family:string,src:string,weight?:string|number,style?:string,stretchPct?:number}>} [options.localFonts=[]]
@@ -612,8 +588,8 @@ export async function embedCustomFonts({
   if (!(usedCodepoints instanceof Set)) usedCodepoints = new Set()
 
   // Build index: family -> [{w,s,st}]. CSS font-family names are case-insensitive, so the
-  // index is keyed lowercase and every lookup lowercases too — otherwise a page using
-  // `Roboto` against `@font-face { font-family: roboto }` would silently fail to embed.
+  // index is keyed lowercase and every lookup lowercases too, or a page using `Roboto`
+  // against `@font-face { font-family: roboto }` fails to embed.
   const requiredIndex = new Map()
   for (const key of required) {
     const [fam, w, s, st] = String(key).split(FONT_KEY_SEP)
@@ -625,15 +601,12 @@ export async function embedCustomFonts({
   }
 
   /**
- * Which of the variants the page asked for in its family a @font-face serves.
- *
- * Three tiers. An exact match on weight (inside the face's range), style kind and stretch,
- * listed in `exact`. Then a single-weight face within 300 of a request, same style and
- * stretch, listed in `near`: the caller keeps it only where the exact faces leave a used
- * codepoint uncovered (`nearFaces`). Then, when the page asks for italic or oblique and this
- * family only declares a normal face, that normal face with both lists empty, so the engine
- * can synthesize the slant instead of falling back to a system font.
- *
+ * Which of the variants the page asked for in its family a @font-face serves, in three tiers.
+ * `exact`: weight inside the face's range, same style kind and stretch. `near`: a single-weight
+ * face within 300 of a request, same style and stretch, kept by the caller only where the exact
+ * faces leave a used codepoint uncovered (`nearFaces`). Last, an italic or oblique request in a
+ * family that declares only a normal face takes it with both lists empty, so the engine
+ * synthesizes the slant instead of falling back to a system font.
  * @param {string} fam
  * @param {string} styleSpec   font-style from the @font-face, e.g. "normal" or "italic"
  * @param {string} weightSpec  font-weight from the @font-face, e.g. "400" or "400 700"
@@ -671,10 +644,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
     if (near.length) return { exact, near }
   }
 
-  // 3) Fallback: the DOM asks for italic/oblique but THIS family only declares a normal
-  //    @font-face. Accept the normal face when weight/stretch are reasonable.
-  // No italic check needed: tier 2 already took every normal request this close, so a request
-  // found here is italic or oblique.
+  // 3) A normal face for an italic or oblique request. No italic check needed: tier 2 already
+  //    took every normal request this close.
   if (!faceIsRange && ss.kind === 'normal' &&
       need.some((r) => Math.abs(faceSingleW - r.w) <= 300 && r.st >= ts.min && r.st <= ts.max)) {
     return { exact, near: [] }
@@ -707,16 +678,11 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       if (!hasLink) importUrls.push(u)
     }
   }
-  // @import font URLs with no matching <link> are made reachable by injecting a temporary
-  // <link>. These are tracked and removed below so the capture never mutates the user's DOM.
-  //
-  // The deadline is not optional. A <link> cannot be aborted and fires NEITHER load nor
-  // error while a request hangs, so a stylesheet that never answers — an offline CDN, a
-  // service worker holding the request, a captive portal — left this Promise.all pending
-  // forever: snapdom() never settled, and the temporary <link> the comment above promises
-  // to remove stayed in the user's <head> because the removal is after the await. Missing
-  // that font costs one fallback glyph run; waiting for it costs the whole capture. Same
-  // 3s budget snapFetch gives every other remote resource.
+  // An @import font URL with no matching <link> gets a temporary one, removed below so the
+  // capture never mutates the user's DOM. Keep the 3s deadline (snapFetch's budget): a <link>
+  // cannot be aborted and fires neither load nor error while a request hangs (offline CDN,
+  // service worker, captive portal), so snapdom() never settled and the <link> stayed in
+  // <head>. A missing font costs one fallback glyph run; waiting costs the whole capture.
   const injectedLinks = []
   if (importUrls.length) {
     await Promise.all(importUrls.map((u) => new Promise((resolve) => {
@@ -737,10 +703,9 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   let finalCSS = ''
 
-  // #478 — a required family must never end the scan with zero faces. `coveredFamilies`
-  // records the families a strict match already satisfied; `provisionalFaces` holds the
-  // ones the strict filter rejected, un-inlined, so the fallback below costs nothing
-  // unless it is actually needed.
+  // #478: a required family never ends the scan with zero faces. `coveredFamilies` holds the
+  // families a strict match satisfied; `provisionalFaces` the faces it rejected, un-inlined,
+  // so the fallback below costs nothing unless it is needed.
   const coveredFamilies = new Set()
   const provisionalFaces = []
   // Tier-2 faces wait for the scan to end, when `exactCover` knows which used codepoints the
@@ -894,12 +859,10 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         const family = pickAllFamilies(famRaw)[0]
         if (!family || isIconFont(family, iconMatchers)) continue
 
-        // An ABSENT descriptor is not the same as an explicit default on a variable font: with
-        // no font-weight the browser leaves the wght axis free across the font's whole range,
-        // while `font-weight:400` pins it to 400 (same for wdth/slnt via font-stretch and
-        // font-style). This block re-emits the rule, so substituting the default here flattened
-        // every axis in the capture while the live page varied it (#479). Keep the defaults for
-        // *matching*, but emit only the descriptors the source actually declared.
+        // An ABSENT descriptor is not an explicit default on a variable font: with no
+        // font-weight the wght axis stays free, while `font-weight:400` pins it (same for
+        // wdth/slnt via font-stretch and font-style). Emitting the defaults flattened every axis
+        // (#479), so they serve matching only and the rule carries what the source declared.
         const weightRaw    = (rule.style.getPropertyValue('font-weight')             || '').trim()
         const styleRaw     = (rule.style.getPropertyValue('font-style')              || '').trim()
         const stretchRaw   = (rule.style.getPropertyValue('font-stretch')            || '').trim()
@@ -932,10 +895,9 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
         }
         if (exclude && simpleExcluder(meta, ranges)) continue
 
-        // Always quote. An unquoted family is a sequence of CSS identifiers, and an identifier
-        // may not start with a digit — so "Press Start 2P", "Baloo 2" and "M PLUS 1p" emitted
-        // an INVALID @font-face that the parser dropped whole, and the font silently failed to
-        // embed while everything else looked fine.
+        // Always quote: an unquoted family is CSS identifiers, which cannot start with a digit,
+        // so "Press Start 2P", "Baloo 2" and "M PLUS 1p" made an invalid @font-face that the
+        // parser dropped whole.
         const familyDecl = `"${String(family).replace(/^\s*["']|["']\s*$/g, '').replace(/(["\\])/g, '\\$1')}"`
 
         // See the <link> pass: held raw until the family is known to have nothing (#478).
@@ -1006,10 +968,8 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   }
 
   // ---------- 2b) Families the strict filter left empty (#478) ----------
-  // The page uses this family and every one of its faces was judged too far from the
-  // request. CSS would still render it — the browser picks the closest face and
-  // synthesises weight/stretch — so dropping it is what produces the reported fallback
-  // to a system font. Emit what the family does have.
+  // Every face of this used family was judged too far from the request. CSS still renders it
+  // (closest face, weight and stretch synthesized), so dropping it fell back to a system font.
   for (const p of provisionalFaces) {
     if (coveredFamilies.has(p.family)) continue
     finalCSS += /url\(/i.test(p.srcRaw)
@@ -1063,19 +1023,14 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   return finalCSS
 }
 
-// ----------------------------------------------------------------------------
 // Collectors for required variants and used codepoints
-// ----------------------------------------------------------------------------
 
 /**
- * Collect the font variants AND the codepoints a subtree uses, in one walk.
- *
- * The two used to be separate collectors, each re-walking the tree with fresh
- * getComputedStyle calls (element, ::before and ::after per node). This one walks once on
- * the memoized getStyle cache, shared with the clone pass and across captures. Every family
- * in a fallback chain is registered, not only the first (#357), and pseudo content counts
- * toward the codepoints. The Safari pre-step (snapdom.js) runs it and hands the result to
- * the fonts phase, so a non-clip capture pays for it once.
+ * Collect the font variants and the codepoints a subtree uses, in one walk on the memoized
+ * getStyle cache (shared with the clone pass and across captures). Every family in a fallback
+ * chain is registered (#357), and pseudo content counts toward the codepoints. The Safari
+ * pre-step (snapdom.js) runs it and hands the result to the fonts phase, so a non-clip
+ * capture pays for it once.
  * @param {Element} root
  * @param {((el: Element) => boolean)|null} [keep] - Clip mode: skip elements outside the window
  * @returns {{required: Set<string>, usedCodepoints: Set<number>}}
@@ -1096,8 +1051,7 @@ export function collectFontUsage(root, keep) {
     const sig = ff + FONT_KEY_SEP + fw + FONT_KEY_SEP + fs + FONT_KEY_SEP + fst
     if (seen.has(sig)) return
     seen.add(sig)
-    // #357: Register ALL families in the fallback chain, not just the primary one.
-    // This ensures that if the first font doesn't have a glyph, the fallback font is also embedded.
+    // #357: every family in the chain, so a glyph the first one lacks has its fallback embedded.
     const families = pickAllFamilies(ff)
     if (!families.length) return
     const tail = FONT_KEY_SEP + normWeight(fw) + FONT_KEY_SEP + normStyle(fs) + FONT_KEY_SEP + normStretchPct(fst)
@@ -1154,17 +1108,15 @@ export function collectFontUsage(root, keep) {
 
 /**
  * Wait for the document's fonts, then lay out a hidden span per used variant holding the used
- * codepoints, so the faces the capture embeds have been fetched and rasterized before the
- * clone reads them. Waits two frames after the layout.
+ * codepoints, so the embedded faces are fetched and rasterized before the clone reads them.
+ * Waits two frames after the layout.
  *
- * Safari-only in practice: every caller gates it on isSafari(), and under `embedFonts: 'auto'`
- * both pass only the variants of families the document declares, since waiting on system
- * families cost about 30 ms per capture on WebKit for nothing. The spans used to be one fixed
- * sample in 700 italic per family, whatever the element used, so they fetched faces nothing
- * showed. In the jant#174 scene (Noto Serif SC split by unicode-range, a quote set in 400) a
- * capture's distinct font downloads went from 14 to 11; the 700 faces left come from the
- * near-weight tier of `embedCustomFonts`. The layout costs WebKit 12 ms for 3000 distinct CJK
- * codepoints in 12 variants, and rounds to 0 for 95 Latin ones, as the old sample did.
+ * Safari-only in practice: every caller gates it on isSafari(). Under `embedFonts: 'auto'`
+ * they pass only families the document declares, since waiting on system families cost WebKit
+ * about 30 ms per capture. Spans per used variant, not one fixed 700 italic sample per family,
+ * took the jant#174 scene from 14 to 11 font downloads per capture (the 700 faces left come
+ * from the near-weight tier of `embedCustomFonts`). The layout costs WebKit 12 ms for 3000
+ * distinct CJK codepoints in 12 variants, and rounds to 0 for 95 Latin ones.
  * Pinned by __tests__/module.fonts.more.test.js.
  * @param {Set<string>} required - keys from collectFontUsage: family, weight, style, stretchPct
  * @param {Set<number>} usedCodepoints

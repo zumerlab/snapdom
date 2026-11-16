@@ -15,8 +15,8 @@ import { compileIconFontMatchers } from '../modules/iconFonts.js'
 import { isTag } from '../utils/helpers.js'
 import { debugWarn } from '../utils/debug.js'
 
-/** Formats a caller can name in `format` (or legacy `type`). Shared with the export
- *  normalizer in snapdom.js — the same set decides the alias there. */
+/** Formats a caller can name in `format` (or legacy `type`). The export normalizer in
+ *  snapdom.js decides the alias with the same set. */
 const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
 
 /**
@@ -69,10 +69,10 @@ export function createContext(options = {}) {
     : null
   let resolvedFormat = options.format ?? rawTypeFormat ?? 'png'
   if (resolvedFormat === 'jpg') resolvedFormat = 'jpeg'
-  // Did the CALLER name a format, or is this the default? `format` is always set, so the
-  // difference is otherwise unrecoverable downstream — and toBlob needs it: it defaults to
-  // the raw vector unless a codec was asked for, and `snapdom.toBlob(el, {format:'png'})`
-  // asks at CAPTURE time (the static helpers forward options there, not to the exporter).
+  // Did the CALLER name a format? `format` is always set, so downstream cannot tell. toBlob
+  // needs it: it returns the raw vector unless a codec was asked for, and
+  // `snapdom.toBlob(el, {format:'png'})` asks at CAPTURE time (the static helpers forward
+  // options there, not to the exporter).
   const explicitFormat = options.format != null ? resolvedFormat : (rawTypeFormat === 'jpg' ? 'jpeg' : rawTypeFormat)
   /** @type {CachePolicy} */
   const cachePolicy = normalizeCachePolicy(options.cache)
@@ -131,30 +131,25 @@ export function createContext(options = {}) {
     // Placeholders
     placeholders: options.placeholders !== false, // default true
 
-    // Render the user's live text selection into the capture: selected runs of text are
-    // wrapped in the styles the browser paints them with (authored ::selection where a rule
-    // matches, the UA highlight colour where none does). Opt-in — a screenshot taken while
-    // the user happens to have text selected should look selected only when asked.
+    // Selected runs of text are wrapped in the styles the browser paints them with (authored
+    // ::selection, else the UA highlight colour). Opt-in: a capture taken while the user has
+    // text selected looks selected only when asked.
     captureSelection: options.captureSelection ?? false,
 
-    // Canvas exporter target. A caller looping captures (a live mirror) otherwise pays a
-    // full-canvas copy per frame moving the pixels off a throwaway canvas onto its own.
-    // Anything that is not a canvas is ignored, so the exporter always has one to draw into.
-    // isTag, not instanceof: a canvas from an iframe document belongs to that window's
-    // HTMLCanvasElement (#494). Pinned by `__tests__/core.context.test.js`.
+    // Canvas exporter target, so a caller looping captures (a live mirror) skips a full-canvas
+    // copy per frame. Anything else is ignored. isTag, not instanceof: a canvas from an iframe
+    // belongs to that window's HTMLCanvasElement (#494). Pinned by `__tests__/core.context.test.js`.
     canvas: isTag(options.canvas, 'canvas') ? options.canvas : null,
 
     // Fonts
-    // 'auto' (default): embed webfonts only when the element actually uses families the
-    // document declares — svg-as-image is an isolated document that can't see page fonts,
-    // so skipping the embed on webfont text is silent infidelity; system-font pages skip
-    // the whole phase at zero cost. true/false remain explicit overrides.
+    // 'auto' (default): embed webfonts only when the element uses families the document
+    // declares. svg-as-image cannot see page fonts, so skipping that embed silently loses
+    // them, while system-font pages skip the phase for free. true/false override.
     embedFonts: options.embedFonts ?? 'auto',
     iconFonts: Array.isArray(options.iconFonts) ? options.iconFonts
       : (options.iconFonts ? [options.iconFonts] : []),
-    // Compiled here, once, and passed explicitly to every isIconFont call: this used to be
-    // a module-level array each capture overwrote, so concurrent captures with different
-    // lists read each other's matchers.
+    // Compiled once and passed to every isIconFont call. Not module state: concurrent captures
+    // with different lists would read each other's matchers.
     __iconMatchers: compileIconFontMatchers(options.iconFonts, options),
     localFonts: Array.isArray(options.localFonts) ? options.localFonts : [],
     excludeFonts: options.excludeFonts ?? undefined,
@@ -191,9 +186,8 @@ export function createContext(options = {}) {
     // to their live size. Opt-in (adds one in-document layout of the clone).
     reconcile: options.reconcile ?? false,
 
-    // Burst memoization is default engine behavior (engages from the first capture, see
-    // src/core/burst.js). true/false remain INTERNAL-ONLY escapes (tests/benchmarks need
-    // deterministic full-pipeline runs), not public API.
+    // Burst memoization is on from the first capture (src/core/burst.js). true/false are
+    // INTERNAL-ONLY escapes for tests and benchmarks that need full-pipeline runs.
     burst: options.burst,
 
     // Time slicing (#503): false and 'auto' let a long clone yield so the page keeps painting
@@ -203,8 +197,8 @@ export function createContext(options = {}) {
     // 'html-in-canvas' opts into the WICG html-in-canvas engine when the browser has it (Chrome
     // 157+, see src/engines/htmlInCanvas.js); anything else uses the svg pipeline.
     engine: options.engine,
-    // Forces one fresh capture and clears lower style caches — for application
-    // changes with no browser signal, notably programmatic CSSOM edits. Frame sources bypass.
+    // Forces one fresh capture and clears lower style caches, for changes with no browser
+    // signal, notably programmatic CSSOM edits. Frame sources bypass.
     invalidate: options.invalidate ?? false,
 
     // Internal: the nested capture rasterizeIframe takes of a frame's documentElement, pinned
@@ -212,18 +206,16 @@ export function createContext(options = {}) {
     // expanding a root capture to scrollHeight; never public.
     __pinned: options.__pinned === true,
 
-    // Internal: the page's subpixel offset of the root, {x, y} in CSS px, which the stream
-    // plugin renders a patch at so its box edges snap and its glyphs land as in the full
-    // frame (packages/stream). Not for users; a stable contract with that plugin.
-    // Pinned by __tests__/engine.svg.subpixel.test.js.
+    // Internal: the root's subpixel offset in the page, {x, y} in CSS px. The stream plugin
+    // renders a patch at it so edges and glyphs land as in the full frame (packages/stream).
+    // A stable contract with that plugin. Pinned by __tests__/engine.svg.subpixel.test.js.
     __subpixel: options.__subpixel ?? null,
 
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 
-    // Perceptual image downsampling — always-on engine behavior (fidelity-neutral: codecs
-    // preserved, output adopted only when smaller). `compress: false` is INTERNAL-ONLY
-    // (benchmarks/tests measuring the uncompressed pipeline), not public API.
+    // Image downsampling is always on (codecs kept, output adopted only when smaller).
+    // `compress: false` is INTERNAL-ONLY, for benchmarks of the uncompressed pipeline.
     compress: options.compress !== false,
 
     // #348: exclude style props from snapshot (reduces cost when :root has thousands of CSS vars)
@@ -233,7 +225,7 @@ export function createContext(options = {}) {
     // Accepted for v2 compat, undocumented in v3 (the engine just does the right thing).
     resolvePicturePlaceholders: options.resolvePicturePlaceholders !== false,
 
-    // Plugins (reservado)
+    // Plugins (reserved)
     // plugins: normalizePlugins(...),
   }
   return context

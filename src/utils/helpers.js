@@ -47,10 +47,9 @@ function imageSetCandidates(value) {
 }
 
 /**
- * Picks the best-matching URL out of a CSS `image-set()`/`-webkit-image-set()` value for a
- * given device pixel ratio — the smallest declared resolution that's >= targetDppx, or the
- * largest available if none reaches it. A candidate with no `Nx`/`Ndpi` descriptor is 1x.
- * Returns null if `value` isn't an image-set() (so callers can fall through to a plain url()).
+ * Pick the URL of a CSS `image-set()`/`-webkit-image-set()` value for a device pixel ratio:
+ * the smallest resolution >= targetDppx, else the largest. No `Nx`/`Ndpi` descriptor means 1x.
+ * Returns null when `value` is not an image-set(), so callers fall through to a plain url().
  * @param {string} value
  * @param {number} [targetDppx=1]
  * @returns {string|null}
@@ -62,13 +61,11 @@ export function resolveImageSetURL(value, targetDppx = 1) {
   for (const part of imageSetCandidates(m[1])) {
     const urlMatch = part.match(/url\((['"]?)(.*?)(\1)\)/)
     if (!urlMatch) continue
-    // The browser's own image-set() selection skips candidates whose type() it can't
-    // decode — mirror that, or an unsupported format out-ranks what the page painted.
+    // The browser skips a candidate whose type() it cannot decode. Mirror that, or an
+    // unsupported format out-ranks what the page painted.
     const typeMatch = part.match(/type\(\s*["']([^"']+)["']\s*\)/i)
     if (typeMatch && !SUPPORTED_IMAGE_SET_TYPE.test(typeMatch[1].trim())) continue
-    // Match the descriptor OUTSIDE the url(): scanning the whole candidate picked the first
-    // digits-then-'x' anywhere in it, so `url("hero-2x.png") 3x` resolved as a 2x candidate
-    // and a retina source could out- or under-rank the one the page actually paints.
+    // Match the descriptor OUTSIDE the url(), or `url("hero-2x.png") 3x` reads as 2x.
     const resMatch = part.replace(/url\((['"]?)[\s\S]*?\1\)/, ' ').match(/(\d+(?:\.\d+)?)\s*(x|dpi|dppx)\b/i)
     let dppx = 1
     if (resMatch) {
@@ -159,12 +156,10 @@ export function resolveURL(url, base) {
   }
 }
 
-/** The ONE input core masks, and it costs no fidelity: the browser already paints a password
- *  field as bullets, so a same-length bullet mask renders IDENTICALLY to the live control
- *  while keeping the typed secret out of the serialized SVG (which is a string callers log,
- *  upload and cache). Everything the browser shows in PLAIN TEXT (email, tel, cc-*,
- *  one-time-code) is captured as-is: redacting it would be a real fidelity loss, and fidelity
- *  is core's job. Redaction is opt-in, via the `redactInputs` plugin. */
+/** The ONE input core masks: a password field already paints as bullets, so a same-length
+ *  mask looks identical and keeps the secret out of the SVG string callers log and upload.
+ *  Plain-text fields (email, tel, cc-*, one-time-code) are captured as-is, since masking them
+ *  loses fidelity. Redaction is opt-in, via the `redactInputs` plugin. */
 export function isPasswordInput(el) {
   return !!el && el.tagName === 'INPUT' && (el.getAttribute('type') || '').toLowerCase() === 'password'
 }
@@ -174,16 +169,10 @@ export function maskValue(value) {
   return '\u2022'.repeat(String(value ?? '').length)
 }
 
-/* ---------------- realm-safe type tests ----------------
- *
- * `node instanceof HTMLInputElement` asks whether the node was built by THIS window's
- * constructor. A same-origin <iframe> is a second window with its own constructor set, so
- * every one of those tests answered false for nodes inside a frame \u2014 and the answers were
- * load-bearing: the branches they guard are what copy a form control's LIVE value
- * (`.value`, `.checked`) onto the clone. Capturing inside an iframe silently fell through
- * to the plain-element path and serialized the HTML-attribute defaults, so a typed-in form
- * came out empty. Namespace + localName are realm-independent, and being plain string
- * compares they are also cheaper than instanceof in the per-node clone loop. */
+/* Realm-safe type tests. `instanceof HTMLInputElement` is false for a node in a same-origin
+ * <iframe>, which has its own constructors, so the branches that copy a control's LIVE
+ * `.value`/`.checked` were skipped and a typed-in form came out empty. Namespace + localName
+ * work in every realm and are cheaper string compares in the per-node clone loop. */
 
 const HTML_NS = 'http://www.w3.org/1999/xhtml'
 const SVG_NS = 'http://www.w3.org/2000/svg'

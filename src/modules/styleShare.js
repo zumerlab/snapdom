@@ -11,15 +11,12 @@ import { scanFor } from '../core/changes.js'
 import { pseudoUniverseFor } from './authorStyles.js'
 
 /**
- * Whether the identity-share fast path is sound for THIS capture: no author selector that
- * can style two elements with identical tag + attributes + ancestor identity chain
- * differently (structural, sibling, state, :has — collected by styleScan) matches anything
- * under the capture root right now. A rule that matches nothing in the subtree at this
- * instant styles nobody the snapshot will read, so twins are identical by construction;
- * `.btn:hover` elsewhere on the page cannot split two table cells. One querySelector over
- * the joined gate, same shape as the pseudo pass's subtree question. Derived from the same
- * scan the property universe comes from; an unreadable scan or an unmatchable gate answers
- * "unsafe", which only costs the optimization.
+ * Whether the identity share is sound for THIS capture: no author selector that can style two
+ * identical-identity elements differently (structural, sibling, state, :has, collected by
+ * styleScan) matches anything under the root right now. A rule that matches nothing in the
+ * subtree styles nobody the snapshot reads, so `.btn:hover` elsewhere on the page cannot split
+ * two table cells. An unreadable scan or an unmatchable gate answers "unsafe", which only
+ * costs the optimization.
  * Pinned by __tests__/module.styles.shareSubtreeGate.test.js.
  * @param {Element} el capture root
  * @returns {boolean}
@@ -53,55 +50,40 @@ export function styleShareSafe(el) {
 /**
  * Identity-share fast path (the per-element cold lever).
  *
- * A one-shot capture's dominant cost is the style snapshot: ~200 getPropertyValue reads per
- * node, measured at 56µs/node — 162ms of a 192ms capture on a 3000-node table. But most of
- * those nodes are structurally identical (same tag, same attributes, same ancestor chain),
- * and for such nodes the computed style can only differ in LAYOUT-derived values — the
- * properties CSSOM resolves to USED values. Measured across chromium/firefox/webkit with
- * identical-identity nodes whose boxes differ, the divergence set is: width/height (+ their
- * logical aliases), the box offsets, transform-origin and perspective-origin (box-derived),
- * margin/padding longhands (auto and % resolution), a grid container's track lists (`1fr 1fr`
- * reads as px per container — the deep-tree scene's grids took a deeper twin's columns and
- * laid out 18% of the pixels wrong), and the transform matrix (a % translate is resolved
- * against the box). So: read the full snapshot ONCE per identity, and per node re-read only
- * those.
+ * The style snapshot dominates a one-shot capture: ~200 getPropertyValue reads per node,
+ * 56µs/node, 162ms of a 192ms capture on a 3000-node table. Nodes with the same tag,
+ * attributes and ancestor chain can differ only in what CSSOM resolves to USED values, so the
+ * full snapshot is read ONCE per identity and each node re-reads only those (list below).
  *
- * FIDELITY GATES, all conservative (any doubt → full reads):
- *  - document: no author selector that can split identical identities (structural position,
- *    sibling combinators, interaction/UA state, :has — styleShareSafe above), and no running
- *    animation/transition under the capture root (computed styles differ per frame). Decided
- *    once per capture in captureDOM, which writes it to the session (styleShare), and read
- *    from the clone pass.
- *  - element: never for form controls (UA styles their state without author CSS), never for
- *    the focused element (UA :focus-visible ring), never for shadow-root content (its sheets
- *    are outside the document scan the share gate comes from), and never for a shadow host
- *    or a slotted node, which that unscanned sheet styles through :host() and ::slotted().
+ * Gates, all conservative (any doubt means full reads):
+ *  - document: no author selector that can split twins (styleShareSafe) and no running
+ *    animation/transition under the root (computed styles differ per frame). captureDOM
+ *    decides it once and writes it to the session (styleShare) for the clone pass.
+ *  - element: never form controls (UA styles their state without author CSS), the focused
+ *    element (UA :focus-visible ring), shadow-root content (its sheets are outside the scan
+ *    the gate comes from), or a shadow host or slotted node, which that unscanned sheet styles
+ *    through :host() and ::slotted().
  *    Pinned by __tests__/regression.shadowHostStructural.test.js.
  *
- * The share map lives on the SESSION — one capture — so no cross-capture staleness is
- * possible; the per-element snapshotCache (cross-capture, stamp-guarded) sits in front
- * exactly as before.
+ * The share map lives on the session, so nothing goes stale across captures; the
+ * stamp-guarded per-element snapshotCache sits in front of it.
  */
-/* Which shared-snapshot props a twin must RE-READ, refined empirically on all three engines
- * (2026-09-01, twins with %-valued props under different-width parents):
- *  - ALWAYS: the geometry props whose getComputedStyle value is the USED value regardless of
- *    how they were authored (width/height, transform-origin/perspective-origin).
- *  - POSITIONED: the box offsets (top/right/bottom/left and the inset-* logical longhands)
- *    resolve to used px only on a relative, absolute, fixed or sticky box. On a static one
- *    they read as the computed value ('10%' stays '10%') on all three engines, equal between
- *    twins under different-size parents, so they are re-read only when the identity's own
- *    `position` is not exactly 'static'. A container-query unit (`10cqw`) is the exception:
- *    it computes per container, so static twins then share a class text that differs from
- *    their own value, on a property that paints nothing on a static box.
- *  - NEVER: the min and max sizing longhands — their resolved value is the COMPUTED value ('10%' stays '10%',
- *    'auto' stays 'auto' on chromium, firefox AND webkit), and computed values are identical
- *    between identity twins by construction (same matched rules, same inherited inputs).
- *  - CONDITIONAL: the margin and padding longhands resolve %-values to used px, so they vary only when the
- *    document (or the identity's own inline style, identical across twins) actually gives
- *    the family an unstable value — styleScan flags marginUnstable/paddingUnstable. The grid
- *    track lists only on a grid container (elsewhere they are the specified value), and
- *    `transform` only when the identity has one (`none` cannot hide a % translate) — both
- *    decided from the identity's own read, so a table pays nothing for either. */
+/* Which shared-snapshot props a twin must RE-READ, measured on all three engines (2026-09-01,
+ * twins with %-valued props under parents of different width):
+ *  - ALWAYS: width/height and transform-origin/perspective-origin, which getComputedStyle
+ *    returns as USED values however they were authored.
+ *  - POSITIONED: the box offsets (top/right/bottom/left, inset-*) resolve to used px only on a
+ *    non-static box; on a static one '10%' stays '10%' on all three engines. So they are
+ *    re-read unless the identity's `position` is exactly 'static'. A `10cqw` offset computes
+ *    per container, so static twins then share a value that is not their own, on a property
+ *    that paints nothing on a static box.
+ *  - NEVER: the min and max sizing longhands resolve to the COMPUTED value ('10%', 'auto') on
+ *    chromium, firefox AND webkit, identical between twins by construction.
+ *  - CONDITIONAL: margin and padding resolve % to used px, so they are re-read only when the
+ *    document or the identity's inline style gives the family an unstable value (styleScan's
+ *    marginUnstable/paddingUnstable). The grid track lists only on a grid container, and
+ *    `transform` only when the identity has one (`none` cannot hide a % translate), both
+ *    decided from the identity's own read, so a table pays for neither. */
 const LAYOUT_ALWAYS_RE = /^(width|height|inline-size|block-size|transform-origin|perspective-origin)$/
 const OFFSET_RE = /^(top|right|bottom|left)$|^inset-/
 export const UNSTABLE_INLINE_RE = /(margin|padding)[a-z-]*\s*:[^;]*(%|\bauto\b|calc\(|var\()/i
@@ -173,23 +155,18 @@ export function identityFor(el, st) {
   return id
 }
 
-/** The identity's re-read list, decided once on its first twin (`el`,
- *  whose style attribute is the identity's — the attribute is part of the key) and kept on
- *  the share record: the
- *  always-geometry props, plus the box offsets unless the identity is position:static, the
- *  margin/padding families only when the document-level
- *  scan or that inline style gives them an unstable value, the grid track lists on a grid
- *  container, and `transform` when the identity has one. A twin's own re-read VALUES (plus
- *  the strip outcome) are all that tells its style key from another twin's.
+/** The identity's re-read list, decided once on its first twin and kept on `rec.rr`: the
+ *  always-geometry props, the box offsets unless the identity is position:static, the
+ *  margin/padding families when the scan or the identity's inline style (part of the key)
+ *  makes them unstable, the grid track lists on a grid container, and `transform` when the
+ *  identity has one. A twin's re-read VALUES (and the strip outcome) are all that tells its
+ *  style key from another twin's.
  *
- *  The list is the set of properties CSSOM resolves to USED values, and it was found by a
- *  defect: with the share on, the deep-tree scene rendered 18.6% of its pixels wrong because
- *  `grid-template-columns` reads as the used track list (`1fr 1fr` is `42px 388px` on one
- *  grid and `230px 840px` on its structural twin) and every grid took the first twin's
- *  columns. A probe of twins with different boxes on all three engines gave the full set.
- *  Building it on the first twin, and copying the snapshot once on the first hit, is what
- *  keeps the share free on a tree with no twins: per identity it cost the deep tree 27 ms of
- *  134.
+ *  A used value missing here is a pixel defect: `grid-template-columns` reads as the used
+ *  tracks (`1fr 1fr` is `42px 388px` on one grid, `230px 840px` on its twin), and without it
+ *  the deep-tree scene rendered 18.6% of its pixels wrong. Building the list and copying the
+ *  snapshot only on the first hit keeps the share free on a tree with no twins: per identity
+ *  it cost the deep tree 27 ms of 134.
  *  Pinned by __tests__/module.styles.identityShare.test.js.
  *  @param {{snap: object, rr: string[]|null}} rec
  *  @param {Element} el the identity's first twin
@@ -229,19 +206,16 @@ export function shareLists(rec, el, st) {
 }
 
 /**
- * A pseudo-element's snapshot, shared between identity twins the way the element's is. The
- * identity interned for `source` during the clone walk (same tag, attributes and ancestor
- * chain) means the same rules match its `::before` and its inherited inputs are a twin's,
- * so ONE pruned read per (identity, pseudo) and per twin only the used-value props
- * (shareLists — the element's own list, decided on the first twin). Falls back to the pruned
- * read whenever the element share is off for the capture (a splitting selector matching
- * under the root, animations, an unreadable scan, shadow content) or the walk refused this
- * node an identity. Deep tree with a `::before` on every leaf (1,936 pseudos), bare page:
- * pruned reads alone 272 ms; shared 190 ms; without the rule 125.
+ * A pseudo-element's snapshot, shared between identity twins like the element's: the same
+ * identity means the same rules match its `::before` and its inherited inputs are a twin's,
+ * so ONE pruned read per (identity, pseudo) and per twin only the element's re-read list
+ * (shareLists). Falls back to the pruned read whenever the element share is off for the
+ * capture or the walk refused this node an identity. Deep tree with a `::before` on every
+ * leaf (1,936 pseudos): pruned reads alone 272 ms, shared 190 ms, without the rule 125.
+ * Pinned by __tests__/module.pseudo.twinShare.test.js.
  * @param {Element} source
  * @param {string} pseudo '::before' | '::after'
  * @param {CSSStyleDeclaration} style getComputedStyle(source, pseudo)
- * Pinned by __tests__/module.pseudo.twinShare.test.js.
  * @param {Object} session the clone pass (carries the styleShare verdict and the share tables)
  * @returns {Record<string, string>}
  */

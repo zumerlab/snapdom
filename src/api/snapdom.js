@@ -1,11 +1,10 @@
 /**
  * Public entry: `snapdom(el, options)` and its `to*` shortcuts.
  *
- * Owns what happens around a capture, not the capture itself (core/capture.js): option
- * normalization, the per-capture plugin list, the Safari pre-step, the burst decision, and
- * `buildResult`, which turns a data URL into the result object with its export queue and
- * hooks. Burst's differential path calls buildResult straight from the context and the
- * frame's session, so nothing a result needs may live only inside captureDOM.
+ * Owns what happens around a capture (core/capture.js does the capture): option
+ * normalization, per-capture plugins, the Safari pre-step, the burst decision, and
+ * `buildResult`, the result object with its export queue and hooks. Burst's differential path
+ * calls buildResult without captureDOM, so nothing a result needs may live only there.
  * @module api/snapdom
  */
 import { captureDOM } from '../core/capture.js'
@@ -32,16 +31,11 @@ import { restoreCompressedAssets } from '../modules/compress.js'
 export function plugins(...defs) { registerPlugins(...defs); return snapdom }
 
 /**
- * Captures an HTML string (SSR markup, templates, sanitized user content) without the
- * caller wiring a mount: the markup mounts offscreen in the live document (so page CSS
- * and fonts apply), captures, and cleans up. When the string has a single root element
- * that element is the capture target; otherwise the wrapper is.
+ * Capture an HTML string: it mounts offscreen in the live document (page CSS and fonts
+ * apply), is captured and removed. A single root element is the target, else the wrapper.
  *
- * TRUSTED HTML ONLY. The string goes through `innerHTML` into the REAL document, so it is
- * parsed and activated like any markup on the page: event-handler attributes run, in this
- * origin. That is not a bug to fix — a capture needs real layout, and real layout means a
- * live document — but it IS a boundary, and it belongs to the caller. Sanitize anything
- * user-supplied before it gets here.
+ * TRUSTED HTML ONLY. `innerHTML` into the REAL document runs event-handler attributes in
+ * this origin. Not a bug to fix: a capture needs real layout. Sanitizing is the caller's job.
  * @param {string} html
  * @param {object} [options] - Same options as snapdom()
  * @returns {Promise<object>} The capture result
@@ -63,22 +57,19 @@ async function fromString(html, options) {
     // Keep surrounding text; indentation and comments around a sole root still unwrap.
     const hasText = Array.from(mount.childNodes).some(node => node.nodeType === 3 && node.textContent.trim())
     const target = mount.children.length === 1 && !hasText ? mount.firstElementChild : mount
-    // This live mount is destroyed below and can never be captured again. A burst state would
-    // only keep the detached mount/listeners alive in the LRU, even if the caller passed true.
+    // The mount dies below; a burst state would only keep it alive in the LRU.
     return await main(target, { ...(options || {}), burst: false })
   } finally {
     mount.remove()
   }
 }
 
-// The build stamps package.json's version in; a `src` import (the test suite) has none. It is
-// here so a benchmark page can say which build it measured: the live lab loads the published
-// package from unpkg unless served by `npm run site`, and a v2 row read as v3 cost an evening.
+// Stamped by the build ('src' from source) so a benchmark page can say which build it
+// measured: the live lab loads the published package unless served by `npm run site`.
 const version = typeof __SNAPDOM_VERSION__ === 'string' ? __SNAPDOM_VERSION__ : 'src'
 export const snapdom = Object.assign(main, { plugins, fromString, version, preCapture })
-// preCapture's prefetch goes through the public entry, so it is exactly a capture (hooks,
-// burst state, result). Bound here rather than imported there: preCapture.js is imported
-// by this module, and a cycle would leave it a dead binding.
+// preCapture's prefetch is a real capture through the public entry. Bound here, not
+// imported there: the import cycle would leave a dead binding.
 bindCapture(main)
 
 // Token to prevent public use of snapdom.capture
@@ -110,35 +101,28 @@ async function main(element, userOptions) {
 
   // Normalize options into a capture context
   const context = createContext(userOptions)
-  // The capture root, on every path: burst's differential recapture builds its result from
-  // this context WITHOUT running captureDOM, so hooks are not a reliable place to stash it.
+  // Set here: burst's differential recapture builds its result without captureDOM.
   context.element = element
 
-  // `invalidate` has to land here, not inside burst: the style memos (property universe,
-  // snapshots, CSSVar) are epoch-scoped and sit BELOW burst, so `{ burst: false,
-  // invalidate: true }` after a CSSOM edit still rendered the pre-edit CSS world.
+  // Here, not in burst: the style memos sit BELOW burst, and `{ burst: false, invalidate:
+  // true }` after a CSSOM edit rendered the old CSS.
   if (context.invalidate) invalidateStyleCaches()
 
   // Attach per-capture plugins (local-first) without removing globals
   attachSessionPlugins(context, userOptions && userOptions.plugins)
 
-  // How deep this capture runs: the maximum `needs` of those plugins (stages.js).
-  // Resolved here, once, because both fast paths below only make sense for a capture
-  // that ends in a render artifact.
+  // How deep this capture runs, the maximum `needs` of its plugins (stages.js). Both fast
+  // paths below need a render artifact.
   const { stage, loweredBy } = resolveStage(context)
   context.needs = stage
   context.__needsLoweredBy = loweredBy
   const rendersPixels = stageReaches(stage, 'render')
 
-  // Explicit burst controls eligible trees; unset auto-enables from the first capture.
-  // Render-affecting plugins suspend auto mode (a memo serve would skip their hooks) —
-  // explicit burst:true keeps memoizing (the caller opted in), and `pure: true` plugins
-  // re-enable auto. Selection/frame-driven trees remain a fidelity boundary even for true.
-  // Capture callbacks may read external state without changing their identity or the DOM.
-  // Always run their pipeline again, including with the internal burst override. A pure
-  // plugin says nothing about the caller's filter, exclusion, style or fallback callbacks.
-  // Decide before Safari's awaited font/GPU pre-step: a capture started synchronously by a
-  // press/click handler still belongs to that event task, even if preparation finishes later.
+  // Unset burst auto-enables from the first capture. Render plugins suspend it (a memo serve
+  // skips their hooks) unless burst:true or they are `pure: true`. Selection and frame-driven
+  // trees stay fresh even under true. Capture callbacks (filter, exclude, style, fallback)
+  // may read outside state, so they always rerun the pipeline. Decide before Safari's awaited
+  // pre-step: a capture begun in a press/click handler belongs to that event task.
   const pluginAllowsMemo = context.burst === true || !hasImpureRenderPlugins(context)
   const hasCaptureCallbacks = typeof context.filter === 'function' || !!context.excludePredicates ||
     typeof context.excludeStyleProps === 'function' || typeof context.fallbackURL === 'function'
@@ -148,10 +132,9 @@ async function main(element, userOptions) {
   if (burst) noteCapture(element, userOptions)
 
   if (!context.snap) {
-    // NOT a compat shim: this is the dependency injection that lets clone.helpers capture
-    // nested iframes (rasterizeIframe) without importing snapdom back and creating a cycle,
-    // and without reaching for a global window.snapdom. Direct captureDOM/deepClone callers
-    // must pass it themselves — clone.helpers throws by name when it is missing.
+    // NOT a compat shim: injected so clone.helpers can capture nested iframes without an
+    // import cycle or window.snapdom. Direct captureDOM/deepClone callers pass their own;
+    // clone.helpers throws by name without it.
     context.snap = {
       toPng: (el, opts) => snapdom.toPng(el, opts),
       toSvg: (el, opts) => snapdom.toSvg(el, opts),
@@ -183,35 +166,26 @@ async function main(element, userOptions) {
 snapdom.capture = async (el, context, _token, session = createCaptureSession(context)) => {
   if (_token !== INTERNAL_TOKEN) throw new Error('[SnapDOM] snapdom.capture() is internal; use snapdom(el).')
 
-  // Safari pre-step (replaces the old 3x pre-capture warmup — WebKit #219770's blank
-  // first draw is now handled at draw time by toCanvas's verified-draw ladder):
-  // wait for the fonts the element actually uses, and poke GPU-backed <canvas>
-  // stores so cloneCanvas's toDataURL isn't blank. Run only on a real capture: a memo
-  // hit already passed font/environment invalidation in burst and needs neither wait.
+  // Safari pre-step: wait for the fonts the element uses and poke GPU-backed <canvas> stores
+  // so cloneCanvas's toDataURL is not blank. WebKit #219770's blank first draw is handled by
+  // toCanvas's verified-draw ladder, not here. Only on a real capture that reaches the
+  // render: a memo hit already passed invalidation in burst.
   // Pinned by __tests__/api.safari.memoPreparation.test.js.
-  // Both exist for the RENDER: a capture that stops earlier embeds no font and clones no
-  // canvas, so this whole block would be pure cost on the path that exists to skip cost.
   if (stageReaches(context.needs || DEFAULT_STAGE, 'render') && isSafari()) {
     if (context.embedFonts) {
       try {
-        // 'auto': wait only on webfont families the document has drawn with —
-        // waiting on system families costs real time per capture (measured ~30ms on
-        // WebKit) and buys nothing, and warming a family it never drew loads it for
-        // nothing. Explicit true keeps the unconditional wait.
+        // 'auto': wait only on webfont families the document drew with. System families
+        // cost ~30ms per capture on WebKit for nothing. Explicit true always waits.
         const doc = el.ownerDocument || document
         let drawn = null
         if (context.embedFonts === 'auto') {
-          // Layout first: it is what asks for the faces fresh text needs. The warm-up's
-          // offsetWidth forced the same layout here before, so this moves it, not adds it.
+          // Layout first: it requests the faces fresh text needs (moved here, not added).
           el.getBoundingClientRect()
           drawn = documentFontFamilies(doc).drawn
           if (drawn.size === 0) throw null // nothing to wait for
         }
-        // One walk serves both consumers: fontsPhase reuses this usage instead of
-        // re-walking the subtree (a few frames staler after ensureFontsReady's wait —
-        // narrow missing-glyph exposure, accepted). Clip captures don't thread it:
-        // their fontsPhase walk is clip-scoped, and full-subtree usage would regress
-        // the clip font-subset optimization.
+        // fontsPhase reuses this walk (a few frames stale, accepted). Not for clip captures:
+        // their walk is clip-scoped, and full usage would undo the clip font subset.
         const usage = collectFontUsage(el)
         if (!context.clip) session.fontUsage = usage
         let required = usage.required
@@ -222,19 +196,15 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
         await ensureFontsReady(required, usage.usedCodepoints, doc)
       } catch { /* non-blocking */ }
     }
-    // querySelectorAll never matches the element itself — a capture root that IS the <canvas>
-    // (e.g. snapdom(canvasEl) for a single chart) must be poked too.
+    // querySelectorAll skips the root itself, which may be the <canvas>.
     const canvases = Array.from(el.querySelectorAll('canvas'))
     if (el.tagName === 'CANVAS') canvases.unshift(el)
     for (const c of canvases) {
       try {
-        // Only poke a canvas that already HAS a context. getContext('2d') on one the page has
-        // not initialized yet creates it and fixes the element's mode for good, so the app's
-        // own later getContext('webgl') returns null — snapdom must not be able to break the
-        // page it is photographing. A canvas with content necessarily has a context (nothing
-        // can be drawn without one), and isBlankCanvas reads it through a scratch canvas,
-        // which binds nothing. A blank one has nothing for the poke to materialize anyway,
-        // and cloneCanvas still runs its own rAF + retry ladder for the GPU-backed case.
+        // Only poke a canvas that already HAS a context: getContext('2d') on a fresh one fixes
+        // its mode, and the app's later getContext('webgl') returns null. A canvas with
+        // content has a context; isBlankCanvas reads through a scratch canvas and binds
+        // nothing. cloneCanvas keeps its own rAF + retry ladder.
         if (isBlankCanvas(c)) continue
         const ctx = c.getContext('2d', { willReadFrequently: true })
         if (ctx) ctx.getImageData(0, 0, 1, 1)
@@ -260,20 +230,16 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
  * @returns {Promise<object>}
  */
 async function buildResult(url, context, session) {
-  // A capture that stopped at 'clone' has no render artifact. Every door to one
-  // throws the SAME error, naming the plugins that lowered the stage: silently
-  // re-capturing would hand back pixels of a different instant (stages.js).
-  // Read from the STAGE, not from `url`: if some other path ever hands back a non-string,
-  // the error must not blame plugins that did nothing.
+  // A capture that stopped at 'clone' has no render artifact: every door to one throws the
+  // SAME error naming the plugins that lowered the stage, never a silent recapture of
+  // another instant (stages.js). Read from the stage, not `url`, so it blames no one wrongly.
   const stage = context.needs || DEFAULT_STAGE
   const rendered = stageReaches(stage, 'render')
   const absent = (what) => absentArtifactError(stage, context.__needsLoweredBy || [], what)
 
-  // engine:'html-in-canvas' hands back the painted bitmap itself: PNG-encoding it eagerly
-  // costs 15-22x what the pixel exports actually need (62 vs 4 ms on a card, 4.2 s vs
-  // 210 ms at 29 Mpx, measured 2026-09-03). Pixel exports consume the canvas directly;
-  // the raw string surfaces (url, toRaw) mint the PNG data URL once, on first read. Image
-  // and download exporters encode independently so their requested sizing/codec still wins.
+  // engine:'html-in-canvas' hands back the bitmap. Pixel exports draw it directly (an eager
+  // PNG cost 62 vs 4 ms on a card, 2026-09-03); url and toRaw mint the PNG once, on first
+  // read. Image and download exporters encode on their own, so their size and codec win.
   const engineCanvas = (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) ? url : null
   let mintedUrl = engineCanvas ? null : url
   const urlOf = () => (mintedUrl ??= engineCanvas.toDataURL())
@@ -326,12 +292,10 @@ async function buildResult(url, context, session) {
     return rasterize(pixelSource, { ...ctx, ...(opts || {}), format: 'png' }, env)
   }
 
-  // Lazy decode: exposing the serialized SVG eagerly would double retained string size
-  // per live result — exporters that need it (toHtml) pay the decode on demand.
+  // Lazy: an eager SVG string doubles what a live result retains; toHtml decodes on demand.
   const lazySvgString = () => {
     if (!rendered) throw absent('svgString')
-    // An engine capture is raster from birth — decoding its PNG data URL as if it were
-    // the serialized SVG would hand back base64 garbage with an svg label on it.
+    // An engine capture is raster: decoding its PNG as svg would return base64 garbage.
     if (engineCanvas) throw new Error('[SnapDOM] html-in-canvas makes a raster capture; there is no SVG string.')
     const i = url.indexOf(',')
     // The svg as text leaves the browser's raster path, so it drops the layout zoom (#552).
@@ -406,25 +370,20 @@ async function buildResult(url, context, session) {
     }
   }
 
-  // ——— 2) Exports declarados por plugins ———
+  // 2) Exports declared by plugins
   // Reusable "silent" facade (no hooks) for use from defineExports()
   const _pluginExports = {}
   for (const k of ['img', 'svg', 'canvas', 'blob', 'png', 'jpeg', 'webp']) {
-    // Same normalization the public path applies. Skipping it meant the facade took raw
-    // options: `ctx.exports.blob({ format: 'png' })` handed `work` an un-normalized bag and
-    // came back an SVG blob, and `ctx.exports.jpeg()` never picked up the opaque-background
-    // default that keeps transparency from encoding black.
+    // Normalized like the public path, or `ctx.exports.blob({ format: 'png' })` came back an
+    // SVG blob and `ctx.exports.jpeg()` encoded transparency black.
     _pluginExports[k] = async (opts) =>
       coreExports[k](context, { ...normalizeExportOptions(k, opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
   }
   _pluginExports.jpg = _pluginExports.jpeg
 
-  // Extended context for defineExports (carries the URL and the facade for reuse)
-  // `options` is a NON-enumerable self-reference on the capture context, so a `{...context}`
-  // spread drops it — and every export-stage context is a spread. Plugins written against
-  // the published types (which declare `options` required on CaptureContext) therefore threw
-  // on `ctx.options.…` inside defineExports/beforeExport/afterExport while the identical line
-  // worked in afterClone. Re-pin it on each view.
+  // Export-stage contexts are spreads, which drop the non-enumerable `options` self-reference
+  // the published types declare required, so `ctx.options.…` threw in defineExports and the
+  // export hooks. Re-pin it on each view.
   const viewOf = (extra) =>
     Object.defineProperty({ ...context, ...extra }, 'options', { value: context, configurable: true })
 
@@ -447,26 +406,20 @@ async function buildResult(url, context, session) {
   function normalizeExportOptions(type, opts) {
     const raw = opts || {}
     const next = { ...context, ...raw }
-    // v3: `format` is the documented output-format name. Deprecated `type` remains an alias
-    // only when the RAW export call carries a recognized image-format string. The normalized
-    // capture context also retains a legacy `type` value, so reading `context.type` here would
-    // confuse an inherited/default value with an explicit per-export request.
+    // v3: `format` is canonical. Deprecated `type` counts only when the RAW call carries an
+    // image format: the context keeps a legacy `type` default that is not a request.
     const rawType = typeof raw.type === 'string' ? raw.type.toLowerCase() : ''
     const explicit = typeof raw.format === 'string' ? raw.format.toLowerCase()
       : (IMAGE_FORMATS.has(rawType) ? rawType : '')
     if (explicit) next.format = explicit === 'jpg' ? 'jpeg' : explicit
-    // What the CALLER actually asked for (null = nothing): per-export defaults differ
-    // (blob defaults to svg, download to png), so they need the explicit value, not the
-    // context default.
+    // What the CALLER asked for (null = nothing): blob defaults to svg, download to png.
     next.__explicitFormat = explicit ? next.format : (context.__explicitFormat ?? null)
-    // Give hooks the format this exporter will actually use. The normalized capture default
-    // is PNG, but blob historically returns the raw SVG unless a codec was requested; a
-    // native canvas capture has no SVG and therefore defaults to PNG.
+    // Hooks see the format the exporter will use: blob is svg unless asked, png for a
+    // native canvas capture, which has no SVG.
     if (type === 'blob' && !next.__explicitFormat) next.format = engineCanvas ? 'png' : 'svg'
     next.type = next.format
-    // `type` here is the export NAME ('blob'/'canvas'/'download'/'jpeg'/…), not the image
-    // format. Resolve the real format (jpg -> jpeg) so the background is flattened the same
-    // way createContext does it, or JPEG would encode transparent areas as black.
+    // `type` is the export NAME, not the format. Find a lossy format and flatten the
+    // background as createContext does, or JPEG encodes transparency black.
     const lossy = (s) => s === 'jpeg' || s === 'jpg' || s === 'webp'
     const fmt = [type, next.format, rawType]
       .map(v => (typeof v === 'string' ? v.toLowerCase() : ''))
@@ -487,24 +440,18 @@ async function buildResult(url, context, session) {
   let afterSnapFired = false
   let _exportQueue = Promise.resolve()
   async function runExport(type, opts) {
-    // Snapshot at CALL time, not when this export reaches the queue below. Callers reuse an
-    // options object, and a slow earlier export must not let later mutation rewrite the
-    // meaning of an already-requested one. Key PRESENCE is preserved too: a plugin default
-    // and a normalized capture default can hold the same value, so comparing merged values
-    // cannot tell an explicit override from an omitted key.
+    // Snapshot at CALL time: callers reuse options objects while earlier exports queue. Key
+    // PRESENCE is kept too, since merged values cannot tell an override from an omitted key.
     const requestedOptions = Object.freeze(opts && typeof opts === 'object' ? { ...opts } : {})
     const job = async () => {
       const work = exportsMap[type]
       if (!work) throw new Error(`[SnapDOM] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, requestedOptions)
       const ctx = viewOf({ artifacts, export: exportFacade({ type, options: nextOpts, requestedOptions }) })
-      // Payload shape per the plugin spec: beforeExport(ctx, {format, options}),
-      // afterExport(ctx, {format, options, result}). `type` is the export name (png/blob/…).
-      // Both hooks OBSERVE: what an export returns is decided by `work`, and no hook return
-      // value is read. A plugin steers an export by MUTATING payload.options (that same
-      // object is what work() receives) and replaces one by declaring it in defineExports.
-      // runAll, not runHook: runHook CHAINS returns, so one plugin returning anything would
-      // hand the next plugin that value instead of the documented payload.
+      // Plugin spec payloads: beforeExport(ctx, {format, options}), afterExport(ctx, {format,
+      // options, result}); `format` is the export name. Both hooks OBSERVE: no return value is
+      // read. A plugin steers by MUTATING payload.options (what work() receives) or replaces
+      // an export in defineExports. runAll, not runHook, which chains returns into the payload.
       const formatBeforeHook = nextOpts.format
       const typeBeforeHook = nextOpts.type
       await runAll('beforeExport', ctx, { format: type, options: nextOpts })
@@ -528,10 +475,8 @@ async function buildResult(url, context, session) {
       }
       return result2
     }
-    // A rejected job must reject only for ITS OWN caller, not poison every export
-    // call made afterward: chaining `_exportQueue.then(job)` directly would leave
-    // _exportQueue permanently rejected once any export throws, and `.then()`
-    // with no rejection handler skips `job` entirely on every later call.
+    // A rejected job rejects for its own caller only: a rejected queue would skip every later
+    // `job`.
     const run = _exportQueue.then(job)
     _exportQueue = run.catch(() => {})
     return run
@@ -544,10 +489,9 @@ async function buildResult(url, context, session) {
     url,
     /** How far this capture ran: 'clone' | 'render'. Same word plugins declare. */
     needs: stage,
-    // Degradation log for this capture (empty in the common case): {code, message,
-    // detail?} entries — image→placeholder, raster/canvas clamps, Safari PNG fallback,
-    // reconcile risk. Export-time entries append after the export resolves; burst memo
-    // serves retain the originating capture's log.
+    // Degradation log, {code, message, detail?}: image placeholders, raster/canvas clamps,
+    // Safari PNG fallback, reconcile risk. Export entries append when the export resolves;
+    // a burst memo serve keeps the originating capture's log.
     warnings: env.warnings || [],
     toRaw: () => { if (!rendered) throw absent('toRaw()'); return urlOf() },
     to: (type, opts) => runExport(type, opts),
@@ -563,22 +507,18 @@ async function buildResult(url, context, session) {
     download: (opts) => runExport('download', opts)
   }
 
-  // NOT enumerable: a throwing getter that spread/JSON.stringify/a logger would trip over
-  // turns "there is no image" into a crash in the code trying to report it. Reading
+  // NOT enumerable, so a spread, JSON.stringify or logger does not crash on it; reading
   // result.url still throws, with the reason.
   if (!rendered) {
     Object.defineProperty(result, 'url', { get() { throw absent('url') }, enumerable: false, configurable: true })
   } else if (engineCanvas) {
-    // Lazy mint (once) so an engine capture that only runs pixel exports never pays the
-    // PNG encode at all.
+    // Minted once, lazily: pixel-only use never pays the PNG encode.
     Object.defineProperty(result, 'url', { get: urlOf, enumerable: true, configurable: true })
   }
 
-  // Read-only render geometry for document exporters and diagnostics: THE SAME frozen
-  // record the context and every exporter read, so url and meta can never diverge. Pinned
-  // non-writable/non-configurable (this result object is ours, unlike the context bag).
-  // A capture that stopped before the render stage has no viewBox at all, so meta gets the
-  // same non-enumerable throwing getter as `url` rather than a fabricated shape.
+  // Read-only render geometry, THE SAME frozen record every exporter reads, so url and meta
+  // never diverge; non-configurable because this object is ours. No render stage, no viewBox:
+  // the same throwing getter as `url` instead of a made-up shape.
   Object.defineProperty(result, 'meta', rendered
     ? { value: context.meta, enumerable: true }
     : { get() { throw absent('meta') }, enumerable: false, configurable: true })

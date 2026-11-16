@@ -33,11 +33,10 @@ export function importantPropsFor(el) {
 }
 
 /**
- * The properties the page's CSS can move off their UA default (styleScan.js), or null for an
- * unreadable scan, which means full reads. The base reset and diff.js read it too, so
- * everything prunes with the same set the snapshots use. Shadow-root content gets the
- * capture's own union (shadowUniverseOf) when the caller passes its session, and full reads
- * without one. With a session, document content reads the scan pinned on it (scanOf).
+ * The properties the page's CSS can move off their UA default (styleScan.js), or null (full
+ * reads) for an unreadable scan. The base reset and diff.js prune with the same set. With a
+ * session, document content reads the scan pinned on it (scanOf) and shadow content the
+ * capture's own union (shadowUniverseOf); without one, shadow content reads everything.
  * @param {Element} el
  * @param {object} [session] - the capture's sessionCache
  * @returns {Set<string>|null}
@@ -55,16 +54,13 @@ export function universeFor(el, session) {
 const sheetPropsCache = new WeakMap()
 
 /**
- * The universe for shadow-root content: the document's, plus the sheets and WAAPI keyframes
- * of every root a node's style can come from. That is its own root, the roots above it
- * (::part rules and inheritance), its shadow root when it is a host (:host) and the root of
- * each slot it is assigned through (::slotted). A root joins together with every root above
- * it, so the order the clone walk reads nodes in does not matter; the set only grows, and a
- * larger set only costs reads. It lives on the session, one capture. An unreadable sheet
- * sends the rest of the capture's shadow content back to full reads.
- * Measured on the #503 ArcGIS table (2178 nodes, 281 roots): first capture 590-614 to 472 ms,
- * second 488 to 345 ms, raster identical; 150 nested roots of shadowTreeScenario, cold, 100-120
- * to 57 ms. Captures served from the snapshot cache do not change.
+ * The universe for shadow-root content: the document's, plus the sheets and WAAPI keyframes of
+ * every root a node's style can come from: its own, the roots above it (::part, inheritance),
+ * its shadow root if it is a host (:host), and the root of each slot it is assigned through
+ * (::slotted). A root joins with every root above it, so the walk order does not matter; the
+ * set only grows, which only costs reads. One per session. An unreadable sheet sends the rest
+ * of the capture's shadow content to full reads. #503 ArcGIS table (2178 nodes, 281 roots):
+ * first capture 590-614 to 472 ms, second 488 to 345 ms, raster identical.
  * Pinned by __tests__/module.styles.shadowUniverse.test.js.
  * @param {Element} el
  * @param {ShadowRoot} root - el's own root
@@ -133,7 +129,7 @@ export function svgGeometryReaches(el) {
 }
 
 /** Per-kind selector gates for the pseudo probe (see scanAuthorStyles). Same memo and
- *  same shadow-root escape as universeFor: null gates → probe every node. */
+ *  same shadow-root escape as universeFor: null gates mean probe every node. */
 const NULL_GATES = { before: null, after: null, firstLetter: null, marker: null, firstLine: null }
 export function pseudoGatesFor(el) {
   const doc = el.ownerDocument || document

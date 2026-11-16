@@ -77,11 +77,10 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // ALIAS for published readers (session.js); nothing in this module reads it back.
   options.__session = session
   session.resolveNodeHooks = collectResolveNodeHooks(options)
-  // ONE context for the whole capture: hooks receive the normalized option bag itself, so
-  // `ctx.scale` / `ctx.backgroundColor` / … are the very values the pipeline reads and the
-  // documented "mutate ctx in beforeSnap" actually lands. Per-stage fields are written onto
-  // it as they are produced. `options` is a NON-enumerable self-reference: plugins reading
-  // `ctx.options` keep working, without adding a cycle to every `{...ctx}` spread.
+  // ONE context per capture: hooks get the normalized option bag itself, so a "mutate ctx in
+  // beforeSnap" lands in what the pipeline reads. Per-stage fields are added as produced.
+  // `options` is a NON-enumerable self-reference: `ctx.options` works without putting a cycle
+  // in every `{...ctx}` spread.
   const state = options
   state.element = element
   Object.defineProperty(state, 'options', { value: state, configurable: true })
@@ -90,9 +89,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
   let fontsCSS = ''
   // Root transform (scale/skew), kept when outerTransforms is on
   let rootTransform2D = null
-  // How far this capture has to run: the maximum `needs` of the attached plugins
-  // (see stages.js). 'render' — the default, and every capture without plugins — is the
-  // historical pipeline; the checks below are the only two places that read it.
+  // How far this capture runs: the maximum `needs` of the attached plugins (stages.js).
+  // 'render' is the default and every capture without plugins. Read only by the two checks below.
   const stage = options.needs || DEFAULT_STAGE
 
   // BEFORESNAP. `format` is canonical, but the deprecated `type` alias remains writable in
@@ -126,13 +124,10 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
   const preClipRect = state.clip ? resolveClipRect(state.element, state.clip) : null
 
-  // Animations under the root, read once. An animation changes computed styles with no
-  // mutation record, so the snapshot cache would serve a frame read by an earlier capture.
-  // Each target's subtree (inherited values and used sizes follow it) is dropped here, before
-  // the clone reads it, and again once nothing reads the cache, so a frame read now does not
-  // outlive a capture that completes. The second drop asks the shadow roots again, because
-  // the clone has met new ones by then. A capture that throws in between leaves its reads
-  // behind, as every capture did before.
+  // An animation changes computed styles with no mutation record, so the snapshot cache would
+  // serve an earlier capture's frame. Each target's subtree is dropped before the clone reads
+  // it and again once nothing reads the cache; the second drop asks the shadow roots again,
+  // since the clone has met new ones. A capture that throws in between leaves its reads behind.
   // Pinned by `__tests__/core.capture.animationFrames.test.js`.
   let animations = []
   try {
@@ -147,12 +142,10 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // inlineAllStyles re-resolves the inline declarations these animate from computed values.
   session.animated = animatedProps(moving)
 
-  // Identity-share fast path (see styleShare.js): decided ONCE per capture, before any clone
-  // work. Both gates are cheap and both err toward full reads: an unscannable stylesheet or
-  // any selector that can split identical identities answers unsafe, and one running
-  // animation/transition anywhere under the root (computed styles differ per frame) turns
-  // it off wholesale. Respect an explicit override so tests can pin the slow path; it is
-  // read here, after the hooks, and the verdict goes to the session, never to the context.
+  // Identity share (styleShare.js), decided ONCE per capture. Both gates err toward full reads:
+  // an unscannable sheet or a selector that can split identical identities answers unsafe, and
+  // one running animation under the root turns it off. `__styleShare` lets tests pin the slow
+  // path; the verdict goes to the session, never to the context.
   let share = options.__styleShare
   if (share === undefined) {
     try {
@@ -169,8 +162,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
     session.slicer = slicer
     const undoClamp = lineClampTree(state.element, preClipRect)
     try {
-      // Keep this capture's own clone→source map — every later pass must use this
-      // reference (sessions are per-capture; there is no shared session global).
+      // Every later pass uses this capture's own clone-to-source map: there is no shared
+      // session global.
       ({ clone, classCSS, classPrefixCSS, shadowCSS, styleCache, nodeMap, reconcileRisk, clipWindow, standIns, universe } = await prepareClone(state.element, state.options, session))
 
       if (reconcileRisk > 0 && !options.reconcile) {
@@ -221,10 +214,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
   state.nodeMap = nodeMap
   await runHook('afterClone', state)
 
-  // needs: 'clone' — the plugins wanted the frozen tree, not pixels. Everything from here
-  // (XHTML sanitizing, asset inlining, fonts, foreignObject, serialization) exists only
-  // to feed a renderer, so it is skipped whole. Nothing is retained for burst: it is off
-  // below 'render' (src/api/snapdom.js), so there is no memo to feed.
+  // needs: 'clone': the plugins want the frozen tree, not pixels, and everything below only
+  // feeds a renderer. Nothing is retained: burst is off below 'render' (src/api/snapdom.js).
   if (!stageReaches(stage, 'render')) {
     dropAnimated()
     return null
@@ -250,10 +241,9 @@ export async function captureDOM(element, options, session = createCaptureSessio
     pinIconStruts(styleMap.keys(), styleMap, state.nodeMap, state.options.__iconMatchers)
   } catch { /* non-blocking */ }
 
-  // Asset phases are network/decode-bound and independent: images ∥ backgrounds ∥ fonts run
-  // concurrently (they were serialized before, stacking their network latencies). Compress
-  // depends on the inlined data URLs, so it waits for images+backgrounds only.
-  // Microtask boundary only — keeps the parallel asset phases' Promise.all concurrency.
+  // Images, backgrounds and fonts are independent and network-bound, so they run
+  // concurrently. Compress needs the inlined data URLs and waits for images and backgrounds.
+  // A microtask boundary only, so Promise.all keeps them concurrent.
   const runIdle = (fn) => Promise.resolve().then(fn)
   // Whether author CSS travels with the clone, read after the afterClone hooks. With no
   // shadow sheet, no `<style>` kept or added by a hook and the class CSS as generated,
@@ -265,8 +255,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
       runIdle(() => inlineImages(state.clone, state.options, session)),
       runIdle(() => inlineBackgroundImages(state.element, state.clone, state.styleCache, state.options, state.nodeMap, plainBg)),
     ])
-    // backdrop-filter can't be trusted to the svg rasterizer (#457): pre-compose it
-    // from the already-inlined clone. Non-blocking — a failure just loses the effect.
+    // The svg rasterizer misrenders backdrop-filter (#457): pre-compose it from the inlined
+    // clone. A failure loses the effect, nothing more.
     try {
       emulateBackdropFilters(state.element, state.clone, state.nodeMap)
     } catch (e) {
@@ -299,8 +289,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
     fontsPhase = runIdle(async () => {
       // #441: read fonts from the element's own document (same-origin iframe support)
       const ownerDoc = state.element.ownerDocument || document
-      // Clip mode: culled content embeds no text, so only collect fonts/codepoints from
-      // elements near the window — skips the per-element style work for offscreen content.
+      // Clip mode: culled content embeds no text, so collect fonts and codepoints only near
+      // the window.
       const clipKeep = preClipRect ? (el) => {
         try {
           const r = el.getBoundingClientRect()
@@ -308,8 +298,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
                  r.bottom >= preClipRect.top - 200 && r.top <= preClipRect.bottom + 200
         } catch { return true }
       } : null
-      // Safari's pre-step already walked this subtree — reuse its usage (threaded only
-      // for non-clip captures; clip needs the clipKeep-scoped walk).
+      // Reuse the usage Safari's pre-step collected, except in clip mode, which needs the
+      // clipKeep-scoped walk.
       const { required, usedCodepoints } = (!preClipRect && session.fontUsage) || collectFontUsage(state.element, clipKeep)
       // 'auto': embed only when a used family is a webfont the document has drawn with, and
       // leave out declared families it never drew (a later family in a stack whose earlier
@@ -344,25 +334,20 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // live-read path there.
   dropAnimated()
 
-  // ——— Render engine ———
-  // The clone is finished. Which engine turns it into pixels is the only choice left, and
-  // both take the SAME input. The canvas one is opt-in (`engine: 'html-in-canvas'`) behind a
-  // lazy import, so a capture that never asks for it never loads it. On ANY doubt (no
-  // drawElementImage, geometry it does not do, a tainted or blank paint) it returns null and
-  // the SVG engine runs on the same clone.
-  // The native painter cannot expose its bitmap to render-boundary hooks without creating a
-  // different artifact; those hooks make this capture use the exact SVG path.
+  // Render engine. Both engines take the same finished clone. The canvas one is opt-in
+  // (`engine: 'html-in-canvas'`) behind a lazy import; on ANY doubt (no drawElementImage,
+  // geometry it does not do, a tainted or blank paint) it returns null and the SVG engine runs
+  // on the same clone. beforeRender/afterRender hooks force SVG: the native bitmap cannot be
+  // handed to them without making a different artifact.
   const hasRenderBoundaryHooks = (state.options.plugins || []).some((plugin) => plugin &&
     (typeof plugin.beforeRender === 'function' || typeof plugin.afterRender === 'function'))
   if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks) {
     const { tryCanvasEngine } = await import('../engines/htmlInCanvas.js')
     assembleCaptureCSS(state, fontsCSS, universe)
     const canvas = await tryCanvasEngine(state, state.options, session)
-    // The painted bitmap itself, not a data URL: encoding it eagerly costs 15-22x what the
-    // pixel exports need (toDataURL+decode vs direct draw: 62 vs 4 ms on a card, 4.2 s vs
-    // 210 ms at 29 Mpx, measured 2026-09-03) — without this handoff the engine is SLOWER
-    // than the svg path it replaces. buildResult routes pixel exports straight at the
-    // canvas and mints the PNG data URL lazily for the string surfaces (url, toRaw, toImg).
+    // Return the bitmap, not a data URL: toDataURL plus decode cost 62 ms on a card against 4 ms
+    // for a direct draw, which made the engine slower than svg. buildResult draws the canvas
+    // for pixel exports and mints the PNG data URL lazily for url, toRaw and toImg.
     if (canvas) return canvas
   }
 

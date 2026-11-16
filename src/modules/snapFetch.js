@@ -35,9 +35,7 @@ import { safeEncodeURI } from '../utils/helpers.js'
  * @property {string} [reason]                   Failure reason (e.g., 'http_error','timeout','abort','network').
  */
 
-// ---------------------------------------------------------------------------
-// Slim logger: dedup + TTL + session cap
-// ---------------------------------------------------------------------------
+// Slim logger: dedup, TTL and a session cap
 
 /**
  * A console logger that says each thing once. A key is silenced for `ttlMs` after it fires,
@@ -70,9 +68,7 @@ function createSnapLogger(prefix = '[SnapDOM]', { ttlMs = 5 * 60_000, maxEntries
 
 const snapLogger = createSnapLogger('[SnapDOM]', { ttlMs: 3 * 60_000, maxEntries: 10 })
 
-// ---------------------------------------------------------------------------
 // Internal state
-// ---------------------------------------------------------------------------
 
 const _inflight = new Map()
 
@@ -92,9 +88,7 @@ function rememberError(key, result, ttlMs) {
   _errorCache.set(key, { until: Date.now() + ttlMs, result })
 }
 
-// ---------------------------------------------------------------------------
 // Utilities
-// ---------------------------------------------------------------------------
 
 /** data:/blob:/about:blank should not go through proxy decision */
 function isSpecialURL(url) {
@@ -109,7 +103,7 @@ function isAlreadyProxied(url, useProxy) {
     const proxyBase = new URL(proxyBaseRaw || '.', baseHref)
     const u = new URL(url, baseHref)
 
-    // Same origin as proxy → likely already proxied
+    // Same origin as the proxy: likely already proxied
     if (u.origin === proxyBase.origin) return true
 
     // Query parameter names alone do not identify this proxy: image CDNs commonly
@@ -137,7 +131,7 @@ function shouldProxy(url, useProxy) {
  * Apply proxy in multiple formats:
  * - Template: "...?url={url}" (query-encoded) or "/proxy/{urlRaw}" (path-style)
  * - Explicit query base: "...?url=" or matches /[?&]url=$/
- * - Ends with "?" → append "url=" before value (tests expect this)
+ * - Ends with "?": append "url=" before the value (tests expect this)
  * - Path-style base: endsWith("/")
  * - Fallback: append "?url="
  */
@@ -157,7 +151,7 @@ function applyProxy(url, useProxy) {
   if (/[?&]url=?$/.test(useProxy)) {
     return `${useProxy}${encodeURIComponent(url)}`
   }
-  // Ends with '?' → tests want '?url=' prefix
+  // Ends with '?': tests want the '?url=' prefix
   if (useProxy.endsWith('?')) {
     return `${useProxy}url=${encodeURIComponent(url)}`
   }
@@ -212,19 +206,15 @@ function notifyError(options, result) {
   try { options.onError?.(result) } catch { /* preserve the original failure */ }
 }
 
-// ---------------------------------------------------------------------------
 // snapFetch
-// ---------------------------------------------------------------------------
 
 /**
  * Fetch a URL as text, Blob or data URL, and never throw.
- *
- * data:, blob: and about:blank are answered without the network, the caches or the proxy
- * (about:blank as a data URL is a 1x1 transparent png). A blob: failure is not remembered,
- * since a revoked object URL is usually transient. For http(s): a remembered failure comes
- * back with `fromCache: true`, an identical request in flight is shared, credentials are
- * `include` for same-origin and `omit` otherwise unless given. In dataURL mode the Blob
- * rides on the result too, for compress's worker.
+ * data:, blob: and about:blank skip the network, the caches and the proxy (about:blank as a
+ * data URL is a 1x1 transparent png); a blob: failure is not remembered, since a revoked URL is
+ * usually transient. For http(s), a remembered failure returns with `fromCache: true`, an
+ * identical request in flight is shared, and credentials default to `include` same-origin and
+ * `omit` otherwise. In dataURL mode the Blob rides on the result, for compress's worker.
  * @param {string} url
  * @param {SnapFetchOptions} [options]
  * @returns {Promise<SnapFetchResult>}
@@ -255,7 +245,7 @@ export async function snapFetch(url, options = {}) {
           mime: String(url).slice(5).split(';')[0] || ''
         }
       }
-      // as === 'blob' → decode data: to Blob
+      // as === 'blob': decode data: to a Blob
       const [, meta = '', data = ''] = String(url).match(/^data:([^,]*),(.*)$/) || []
       const isBase64 = /;base64/i.test(meta)
       const bin = isBase64 ? atob(data) : decodeURIComponent(data)
@@ -286,7 +276,7 @@ export async function snapFetch(url, options = {}) {
       }
       return { ok: true, data: blob, status: resp.status, url, fromCache: false, mime }
     } catch {
-      // Do NOT memoize blob: failures — these are often transient (revocations)
+      // Do NOT memoize blob: failures, they are often transient (revocations)
       return { ok: false, data: null, status: 0, url, fromCache: false, reason: 'network' }
     }
   }
@@ -384,12 +374,10 @@ export async function snapFetch(url, options = {}) {
       return { ok: true, data: blob, status: resp.status, url: finalURL, fromCache: false, mime }
 
     } catch (err) {
-      // `ctrl.abort('timeout')` makes fetch reject with the abort REASON itself — the bare
-      // string 'timeout', not a DOMException — so the old `typeof err === 'object'` test never
-      // matched and every one of OUR OWN deadlines was reported as 'network'. That is not a
-      // cosmetic mislabel: it cached the failure as a network error, and told the user to set
-      // up a CORS proxy for a server that was simply slow. This controller is the only thing
-      // that aborts this request, so its signal is the authoritative answer.
+      // `ctrl.abort('timeout')` makes fetch reject with the bare string 'timeout', not a
+      // DOMException, so testing `err` alone reported our own deadlines as 'network' and told
+      // the user to set up a CORS proxy for a slow server. Only this controller aborts the
+      // request, so its signal is the answer.
       const reason = ctrl.signal.aborted
         ? (ctrl.signal.reason === 'timeout' ? 'timeout' : 'abort')
         : (err && typeof err === 'object' && err.name === 'AbortError') ? 'abort' : 'network'

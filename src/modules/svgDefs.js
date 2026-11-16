@@ -13,15 +13,12 @@ import { isSVGEl } from '../utils/helpers.js'
 /**
  * Copy every external def or symbol the clone references into a hidden <svg> at its top.
  *
- * References are found in three places: `<use href="#id">` (any namespace or prefix),
- * `url(#id)` in presentation attributes and inline styles (fill, stroke, filter, clip-path,
- * mask, marker-*), and the same on the root <svg> itself, which querySelectorAll never
- * matches. HTML elements reach the same defs through CSS (`filter: url(#f)`), and that value
- * is only visible in the SOURCE's computed style, never on the clone, so the live root is
- * passed in too and walked only when the document holds a def CSS can reference. Copied defs
- * are walked for their own references, so chains resolve, each id once. No layout reads:
- * DOM queries and cloneNode only. Pinned by __tests__/module.svg.test.js and, in pixels,
- * __tests__/module.svgDefs.htmlRefs.test.js.
+ * References: `<use href="#id">` (any namespace or prefix), and `url(#id)` in presentation
+ * attributes and inline styles (fill, stroke, filter, clip-path, mask, marker-*), the root <svg>
+ * included. HTML elements reach defs through CSS, visible only in the live source's computed
+ * style (see collectHtmlReferences). Copied defs are walked for their own references, each id
+ * once. No layout reads: DOM queries and cloneNode only. Pinned by
+ * __tests__/module.svg.test.js and, in pixels, __tests__/module.svgDefs.htmlRefs.test.js.
  * @param {Element} element - the clone: an <svg>, or a container holding one or more
  * @param {Document|ParentNode} [lookupRoot] - where the external defs are searched (element.ownerDocument by default)
  * @param {Element} [htmlSource] - the LIVE capture root, for references made through CSS
@@ -150,15 +147,11 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   }
 
   /**
-   * HTML elements reach the same defs through CSS. The value lives in the computed style —
-   * a class-based `filter: url(#f)` never touches the clone's attributes — so this is the
-   * only place it can be read, and it is why the live source is passed in.
-   *
-   * Gated on the document actually holding a def that CSS can reference. `symbol` is
-   * deliberately NOT in that list: an icon sprite is all <symbol>, it is reached through
-   * <use href>, and counting it would put every sprite page through the walk below for
-   * nothing. Pages with no filter/clipPath/mask/gradient/pattern id — nearly all of them —
-   * pay one querySelector and stop.
+   * HTML elements reach the same defs through CSS: a class-based `filter: url(#f)` lives only
+   * in the source's computed style, never on the clone, hence the live root parameter.
+   * Gated on the document holding a def CSS can reference, so nearly every page pays one
+   * querySelector. `symbol` stays out of that list on purpose: sprites are all <symbol>,
+   * reached through <use href>, and would put every sprite page through the walk for nothing.
    */
   const collectHtmlReferences = (root) => {
     if (!root || root.nodeType !== 1 || !root.querySelectorAll) return

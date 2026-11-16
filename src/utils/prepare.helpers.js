@@ -58,20 +58,14 @@ function transientStyles(element, declarations) {
 }
 
 /**
- * #281: Force content-visibility to 'visible' on all descendants that use 'auto'.
- * Safari (and some Chromium) skip rendering/style computation for content-visibility:auto
- * elements outside the viewport, causing blank captures.
- * With a clipRect (clip mode) the walk is pruned to subtrees whose boxes reach the window:
- * a clip rect far from the real viewport lands on unrendered cv:auto placeholders, but
- * forcing the whole page would cost O(page) for content the culler drops anyway.
+ * #281: force content-visibility 'auto' to 'visible' on every descendant. Safari (and some
+ * Chromium) skip rendering cv:auto boxes outside the viewport, and the capture comes out blank.
+ * With a clipRect the walk is pruned to subtrees that reach the window, since forcing the
+ * whole page costs O(page) for content the culler drops anyway.
  *
- * Only 'auto' is forced. 'hidden' is an explicit authoring decision, not an optimization:
- * the browser paints the element's own box (background, border, padding) and skips its
- * contents outright, and a descendant's `visibility: visible` does not bring them back.
- * Forcing it to 'visible' un-hid the whole subtree into the capture, and also erased the
- * value modules/styles.js reads to carry the declaration into the snapshot, so that guard
- * could never fire.
- * Returns an undo function to restore original values. Pinned by
+ * Do not force 'hidden': it is an authoring decision that paints the box and skips its
+ * contents. Forced, it un-hid the subtree and erased the value modules/styles.js reads to
+ * carry the declaration into the snapshot. Returns the undo. Pinned by
  * __tests__/utils.prepare.helpers.test.js.
  * @param {Element} root
  * @param {{left:number,top:number,right:number,bottom:number}|null} [clipRect]

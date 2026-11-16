@@ -1,32 +1,22 @@
 /**
- * How far down the pipeline a capture has to go.
- *
- * A capture is a chain, and each step consumes what the previous one produced:
+ * How far down the pipeline a capture has to go:
  *
  *   element ──▶ [clone] ──▶ [render] ──▶ exports
  *
- * Not every consumer needs the whole chain: a plugin that annotates the clone may not want
- * pixels at all. So each plugin declares how far it needs to go:
+ * Each plugin declares how far it needs:
  *
  *   { name: 'agent-map', needs: 'clone' }          // annotates the clone, no pixels
  *   { name: 'ascii-export' }                       // default: 'render', the full pipeline
  *
- * There used to be a third, shallower stage ('dom') that stopped BEFORE the clone, for
- * plugins that only read the live page. It was removed: a capture that takes no clone does
- * no capturing, so core contributed nothing but option normalization and a hook runner, and
- * a plugin can do that work by calling its own function on the element. The one thing it
- * genuinely needed from core, the compiled exclusion policy, is on the context as
- * `shouldExclude` and is available at any stage. The clone is the floor now.
+ * The clone is the floor. A stage before it ('dom') was removed: a capture without a clone
+ * captures nothing, and the one thing such a plugin needed from core, the exclusion policy,
+ * is on the context as `shouldExclude` at any stage.
  *
- * Two rules keep this predictable:
- *
- *  1. The capture runs to the MAXIMUM of what the attached plugins declare, defaulting to
- *     'render'. A plugin can only lower the pipeline when every other plugin agrees, so a
- *     capture with no plugins behaves exactly as it always did.
- *  2. What was never produced is never faked. Touching `url` / `toPng()` on a capture
- *     that stopped early throws, naming the plugins that lowered it. Re-capturing on
- *     demand would return pixels of a DIFFERENT instant, and the caller has no way to
- *     tell — the clone IS the freeze, and it cannot be taken after the fact.
+ *  1. The capture runs to the MAXIMUM the attached plugins declare, 'render' by default, so
+ *     a plugin lowers it only when every other plugin agrees.
+ *  2. What was never produced is never faked. `url` or `toPng()` on a capture that stopped
+ *     early throws, naming the plugins that lowered it. Do not re-capture on demand: the
+ *     clone is the freeze, and a later one returns pixels of a different instant.
  *
  * @module stages
  */
@@ -44,11 +34,11 @@ export const DEFAULT_STAGE = 'render'
  * @param {{plugins?: any[]}} context
  * @returns {{stage: 'clone'|'render', loweredBy: string[]}} stage plus, when it is
  *   below 'render', the plugin names that asked for less (for the error message).
- * @throws {Error} on an unknown `needs` value — a typo must not silently buy the default.
+ * @throws {Error} on an unknown `needs` value, so a typo does not silently buy the default.
  */
 export function resolveStage(context) {
-  // context.plugins holds INSTANCES (mergePlugins normalized them); anything else is
-  // treated as undeclared, which means the full pipeline — the conservative direction.
+  // context.plugins holds INSTANCES (mergePlugins normalized them); anything else counts as
+  // undeclared, so it gets the full pipeline.
   const defs = Array.isArray(context && context.plugins) ? context.plugins : []
   if (!defs.length) return { stage: DEFAULT_STAGE, loweredBy: [] }
 
@@ -67,8 +57,8 @@ export function resolveStage(context) {
 
   const stage = STAGES[rank]
   return {
-    // Only the plugins that asked for exactly this stage — they are the ones the error
-    // message blames, and naming a plugin that asked for less would be a wrong lead.
+    // Only the plugins that asked for exactly this stage: the error blames them, and naming
+    // one that asked for less would be a wrong lead.
     loweredBy: stage === DEFAULT_STAGE ? [] : declared.filter((d) => d.needs === stage).map((d) => d.name),
     stage,
   }

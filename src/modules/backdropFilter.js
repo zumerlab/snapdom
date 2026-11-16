@@ -1,16 +1,12 @@
 /**
  * Emulates backdrop-filter in the clone.
  *
- * Chromium's svg-as-image rasterizer (the path every snapDOM export goes through)
- * doesn't composite backdrop-filter reliably: it drops it, or paints it over a
- * misplaced region when a filtered element sits in the backdrop (#457). Since the
- * capture is static, the effect can be pre-composed: copy what paints *below* the
- * element, clip it to the element's box and apply the same functions via `filter`,
- * which the rasterizer does support.
- *
- * Paint-below is approximated by tree order: the copy keeps only content that
- * precedes the element in the clone. Runs after image/background inlining so the
- * copy reuses already-inlined resources.
+ * Chromium's svg-as-image rasterizer (every export goes through it) drops backdrop-filter, or
+ * paints it over a misplaced region when a filtered element sits in the backdrop (#457). The
+ * capture is static, so the effect is pre-composed: copy what paints *below* the element (by
+ * tree order: content that precedes it), clip it to the box and apply the same functions as
+ * `filter`, which the rasterizer supports. Runs after image and background inlining, so the
+ * copy reuses the inlined resources.
  *
  * @module backdropFilter
  */
@@ -20,15 +16,14 @@ import { getStyle } from '../utils'
 /**
  * Pre-compose every backdrop-filter in the clone as a frost layer.
  *
- * Each target gets its own copy of the clone, taken before any frost is inserted, pruned to
- * what can reach its box and cut at the target in tree order. The capture root is skipped:
- * its backdrop is outside the capture. Replaced elements are skipped too, since nothing
- * prepended inside them paints. Pinned by the frosted-vs-control pixel check in
- * __tests__/core.capture.diff.test.js and __tests__/audit.tier5.fidelity.test.js.
+ * Each target gets its own copy of the clone, taken before any frost goes in, pruned to what
+ * can reach its box and cut at the target in tree order. The capture root (its backdrop is
+ * outside the capture) and replaced elements are skipped. Pinned by the frosted-vs-control
+ * pixel check in __tests__/core.capture.diff.test.js and __tests__/audit.tier5.fidelity.test.js.
  * @param {Element} root - Original capture root (for viewport rects)
  * @param {Element} clone - Prepared clone (styles and resources already inlined)
- * @param {Map<Node, Node>} [nodeMap] - Session clone→source map; pass the capture's own
- *   reference — the global fallback can be stale after nested iframe captures.
+ * @param {Map<Node, Node>} [nodeMap] - Session clone-to-source map; pass the capture's own
+ *   reference, since the global fallback can be stale after nested iframe captures.
  */
 export function emulateBackdropFilters(root, clone, nodeMap = new Map()) {
   const targets = []
@@ -64,11 +59,9 @@ export function emulateBackdropFilters(root, clone, nodeMap = new Map()) {
   })
 
   for (const { cloneEl, orig, bf, copy } of jobs) {
-    // A replaced element renders no children, so the frost and backdrop layers this
-    // emulation prepends would never paint — while the element's OWN background has already
-    // been wiped with !important to make room for them. The net effect on an <input>, a
-    // <textarea> or an <img> was losing the background and gaining nothing. Leaving the
-    // element alone loses the blur, which is the lesser of the two.
+    // A replaced element renders no children, so the prepended layers never paint, while
+    // insertFrost wipes its own background with !important. An <input>, <textarea> or <img>
+    // lost its background for nothing; leaving it alone loses only the blur.
     if (REPLACED_ELEMENTS.has(cloneEl.tagName)) continue
     insertFrost(cloneEl, orig, bf, copy, rootRect)
   }
@@ -142,7 +135,7 @@ const PRUNE_MARGIN = 128
 
 /**
  * Empties heavy payload (img src, background-image) on copy nodes whose original
- * rect can't reach the frost box. Structure is never removed — dropping nodes
+ * rect can't reach the frost box. Structure is never removed: dropping nodes
  * could reflow the copy and misalign the visible part.
  */
 function prunePayload(copy, clone, rect, nodeMap, rects) {

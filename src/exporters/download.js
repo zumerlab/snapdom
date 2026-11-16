@@ -48,9 +48,7 @@ export async function download(url, options, env = {}) {
   const typeAsFormat = IMAGE_FORMATS.has(rawType) ? rawType : ''
   const format = (options?.format || typeAsFormat || '').toLowerCase()
   const normalizedFormat = format === 'jpg' ? 'jpeg' : format || 'png'
-  // `filename` is documented — and defaulted — as a name WITHOUT an extension, so a caller who
-  // followed the docs (`{ filename: 'card' }`) got a file literally called `card`, which no OS
-  // knows how to open. Supply the extension unless the name already carries one.
+  // `filename` is documented without an extension, so add one unless the name has it.
   const rawName = options?.filename || 'snapdom'
   const filename = /\.(png|jpe?g|webp|svg)$/i.test(rawName) ? rawName : `${rawName}.${normalizedFormat}`
   const nextOptions = { ...(options || {}), format: normalizedFormat, type: normalizedFormat }

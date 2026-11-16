@@ -1,17 +1,14 @@
 /**
  * Stylesheet-driven property universe.
  *
- * A page can only move a computed property away from its UA default through author CSS
- * (rules, inline styles, keyframes) or programmatic animation. Scanning the document's
- * stylesheets once yields the set of properties any rule can touch; the per-node style
- * snapshot then reads ONLY those plus a fixed always-list, instead of enumerating all
- * ~400 computed properties per node — the dominant cost of a capture (measured 8-9x
- * faster reads at 45 props, cross-engine).
- *
- * Correctness: a property outside the universe can't differ from the tag's UA default,
- * so the defaults-diff downstream would have dropped it anyway. Escape hatches:
- * - Any unreadable (cross-origin) stylesheet → null (callers fall back to full reads), unless
- *   the caller hands scanAuthorStyles a parsed copy of it (styles.js fetches one per href).
+ * A computed property leaves its UA default only through author CSS (rules, inline styles,
+ * keyframes) or programmatic animation. One scan of the sheets yields the properties any rule
+ * can touch, and the per-node snapshot reads ONLY those plus ALWAYS_PROPS instead of all ~400,
+ * the dominant cost of a capture (8-9x faster reads at 45 props, on all three engines). A
+ * property outside the universe sits at the UA default the downstream diff drops anyway.
+ * Escape hatches:
+ * - An unreadable (cross-origin) sheet makes it null and callers read everything, unless the
+ *   caller hands scanAuthorStyles a parsed copy (styles.js fetches one per href).
  * - Shadow-root sheets are not part of this scan: styles.js unions them per capture through
  *   scanSheetProps, and shadow content without a capture session keeps full reads.
  * - Element inline-style props are unioned in per node at snapshot time.
@@ -84,12 +81,10 @@ export const ALWAYS_PROPS = [
   'border-collapse', 'border-spacing', 'table-layout', 'caption-side', 'empty-cells',
 ]
 
-// What a pseudo-element's snapshot needs to read. A `::before` has no inline style and no
-// presentational attributes, so a NON-inherited property can only leave its UA default
-// through a rule whose selector names the pseudo (collected per scan as `pseudoProps`);
-// an inherited one only through the element, whose own snapshot already reads the universe.
-// The box props are the ones getStyleKey and the pseudo pass read back (softening, the
-// min-width floor). Deep tree with a ::before per leaf: ~130 reads per pseudo → ~45.
+// What a pseudo's snapshot reads. A `::before` has no inline style or attributes, so a
+// NON-inherited property moves only through a rule naming the pseudo (`pseudoProps`), an
+// inherited one only through the element. The box props are what getStyleKey and the pseudo
+// pass read back. Deep tree with a ::before per leaf: ~130 reads per pseudo down to ~45.
 const INHERITED_PROPS = [
   'color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-stretch', 'font-variant',
   'font-kerning', 'font-feature-settings', 'font-variation-settings', 'line-height', 'letter-spacing',
@@ -100,40 +95,31 @@ const INHERITED_PROPS = [
   'border-collapse', 'border-spacing', 'caption-side', 'empty-cells', 'quotes',
   'color-scheme', '-webkit-text-fill-color', '-webkit-font-smoothing', 'image-rendering',
 ]
-// Not listed although inherited: caret-color (no caret on a pseudo) and the text-stroke pair.
-// A stroke set on the ELEMENT reaches the pseudo span by inheritance inside the foreignObject
-// (the span is the element clone's child), and one set on the pseudo is in pseudoProps. Read
-// by name they made the pseudo's snapshot depend on whether the DOCUMENT universe happened to
-// contain them — snapdom's own injected class CSS in a test page did — and two captures of
-// the same pseudo keyed differently.
+// Inherited but not listed: caret-color (no caret on a pseudo) and the text-stroke pair. A
+// stroke on the ELEMENT reaches the span by inheritance, one on the pseudo is in pseudoProps.
+// Read by name, they keyed the same pseudo differently depending on the DOCUMENT universe.
 const PSEUDO_BOX_PROPS = ['display', 'width', 'height', 'min-width', 'min-height']
-// Every pseudo regex below refuses a colon escaped with a backslash: Tailwind serializes
-// `md:after:h-0.5` as `.md\:after\:h-0\.5::after`, and the `\:after` inside the class name
-// read as a pseudo. Stripped, it left `.md\\:h-0\.5`, an invalid selector that poisoned the
-// whole joined gate: the pseudo gates fell to null (every node probed) and svgGeometrySel
-// threw per SVG element (59k errors, +3.9 s on a 3,094-node diagram, math280h/diagrams#146).
-// Pinned by __tests__/module.styleScan.test.js.
+// Every pseudo regex below refuses a backslash-escaped colon: Tailwind's
+// `.md\:after\:h-0\.5::after` would read `\:after` as a pseudo, and the stripped selector was
+// invalid and poisoned the joined gate (59k errors, +3.9 s on a 3,094-node diagram,
+// math280h/diagrams#146). Pinned by __tests__/module.styleScan.test.js.
 const PSEUDO_ELEMENT_SEL_RE = /(?<!\\)::?(?:before|after|first-letter|first-line|marker)/
 
 /** Rule budget for one scan. Past it the scan answers unreliable, and every reader falls
  *  back to full reads. */
 const MAX_SCAN_RULES = 20000
 
-/** Margin/padding values that can make two identity twins resolve DIFFERENTLY: their
- *  getComputedStyle value is the USED value (per-cent margins resolve against the parent's
- *  used width — verified identical behavior on chromium/firefox/webkit), so a %-, auto-,
- *  calc()- or var()-valued declaration anywhere in the document forces the identity-share
- *  hit path to keep re-reading that family per node. Fixed lengths (px/em/rem) compute
- *  identically for twins by construction — same matched rules, same inherited inputs. */
+/** Margin/padding values that can make two identity twins resolve DIFFERENTLY, since
+ *  getComputedStyle answers the USED value (a % margin resolves against the parent's width,
+ *  the same on chromium/firefox/webkit). One anywhere makes the share re-read that family per
+ *  node. Fixed lengths (px/em/rem) compute the same for twins by construction. */
 const UNSTABLE_LAYOUT_VALUE_RE = /%|\bauto\b|calc\(|var\(/i
 
-/** The pseudo-elements the per-node probe in pseudo.js resolves. The same rule walk that
- *  builds the property universe collects, per kind, the selectors able to generate that
- *  pseudo — so the probe can be gated by one `el.matches()` instead of three
- *  getComputedStyle resolutions per node. */
+/** The pseudo-elements pseudo.js resolves. The universe walk collects, per kind, the selectors
+ *  that can generate it, so one `el.matches()` gates three getComputedStyle reads per node. */
 const PSEUDO_KINDS = {
   before: /(?<!\\)::?before\b/, after: /(?<!\\)::?after\b/, firstLetter: /(?<!\\)::?first-letter\b/,
-  // marker/firstLine aren't probed per node — matching elements get a scoped CSS rule
+  // marker/firstLine are not probed per node: matching elements get a scoped CSS rule
   // (markers re-render natively in the foreignObject; first-line re-fragments there).
   marker: /(?<!\\)::marker\b/, firstLine: /(?<!\\)::?first-line\b/,
 }
@@ -188,40 +174,33 @@ function scanRules(rules, universe, pseudoSels, state) {
       }
     }
     let sel = sel0
-    // `:has()` is the one selector whose reach a DOM mutation cannot be walked back from — it
-    // restyles ancestors AND, combined with a combinator, their other descendants. A document
-    // that uses it keeps document-wide style invalidation (see nodeStamp in changes.js).
+    // A mutation cannot be walked back through `:has()`: it restyles ancestors and, with a
+    // combinator, their other descendants. Its documents keep document-wide invalidation
+    // (nodeStamp in changes.js).
     if (sel && sel.includes(':has(')) state.usesHas = true
     // A class change can shift filtered nth positions without dirtying the siblings.
     // Keep the existing conservative combinator check (including An+B's '+').
     // This rides the import/cross-origin-aware walk instead of scanning sheets again.
     if (!state.leaksAcrossSubtrees && sel && LEAK_SEL_RE.test(sel)) state.leaksAcrossSubtrees = true
-    // CSS nesting: `& .feat::before` is not a matches()-able selector, and matches()
-    // RETURNS FALSE for it instead of throwing — so an unresolved & would silently gate
-    // every node out and delete the pseudo. Resolve & against the enclosing style rule,
-    // walking past grouping rules (@media/@supports have no selectorText). Hoisted above
-    // the share gate, which feeds querySelector and would be silenced the same way.
+    // CSS nesting: matches() RETURNS FALSE for `& .feat::before` instead of throwing, so an
+    // unresolved & gates every node out and deletes the pseudo. Resolve & against the
+    // enclosing style rule, past grouping rules (no selectorText). Above the share gate, which
+    // feeds querySelector and would go silent the same way.
     if (sel && sel.includes('&')) {
       for (let p = rule.parentRule; p && sel.includes('&'); p = p.parentRule) {
         if (p.selectorText) sel = sel.replace(/&/g, `:is(${p.selectorText})`)
       }
     }
-    // Selectors that can style two elements with IDENTICAL tag + attributes + ancestor chain
-    // DIFFERENTLY: structural position, sibling relationships, interaction/UA state, and
-    // :has() (content-dependent). Collected, not flagged: whether one of them can split a
-    // pair of twins is a question about the CAPTURED SUBTREE at capture time
-    // (styleShareSafe in styleShare.js asks it with one querySelector), not about the document.
-    // A document-wide flag turned the fast path off on every real page — `.btn:hover` or
-    // `.faq p + p` in the host CSS, matching nothing inside the captured table, cost a 500-row
-    // capture 536k computed-style reads instead of 77k. A substring test, deliberately
-    // conservative: a false positive only adds a selector to the gate.
-    // A rule inside @container styles by the CONTAINER's size, which twins under
-    // different-width parents do not share (measured: the narrow twin's colour painted onto
-    // the wide one), so every selector in there joins the gate too. So does a rule that MAKES
-    // a query container: twins under two of them resolve `10cqw` against different boxes with
-    // no @container rule anywhere (a 30px padding painted 10px).
-    // A pseudo-element is stripped first. querySelector never matches `li:nth-child(odd)::before`,
-    // so the gate answered "safe" and every `::before` took the first twin's colour.
+    // Selectors that can style two elements with IDENTICAL tag, attributes and ancestors
+    // DIFFERENTLY: position, siblings, interaction/UA state, :has(). Collected, not flagged:
+    // whether one splits twins is a question about the CAPTURED SUBTREE (styleShareSafe asks
+    // it with one querySelector). A document flag turned the share off on every real page:
+    // `.btn:hover` in the host CSS cost a 500-row capture 536k reads instead of 77k. A
+    // substring test, on purpose: a false positive only adds a selector. Every selector inside
+    // @container joins too (twins under parents of different widths resolve it differently),
+    // and so does a rule that MAKES a query container (`10cqw`: a 30px padding painted 10px).
+    // The pseudo-element is stripped first: querySelector never matches
+    // `li:nth-child(odd)::before`, so the gate answered "safe".
     // Pinned by __tests__/module.styles.shareContainerUnits.test.js and sharePseudoGate.test.js.
     if (sel && (container || state.inContainer || SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
       for (const part of splitTopLevel(sel, ',')) {
@@ -322,18 +301,15 @@ const CENSUS_NESTED_MAX = 64
 
 /**
  * List what a document scan reads, cheap enough to compare instead of scanning again: per
- * sheet its rule list, the list's length and its first and last rule, then the props WAAPI
- * animates. A sheet injected, adopted, loaded or replaced changes a list; a top-level
- * insertRule or deleteRule changes a length or an end. A short sheet also lists the child
- * count of each top-level rule, which is where a library that keeps its rules inside a few
- * `@media` or `@layer` groups inserts them.
+ * sheet its rule list, length, first and last rule, then the props WAAPI animates. A sheet
+ * injected, adopted, loaded or replaced changes a list; a top-level insertRule or deleteRule
+ * changes a length or an end. A short sheet also lists each top-level rule's child count,
+ * where a library that keeps its rules in a few `@media` or `@layer` groups inserts them.
  *
- * Not seen, and left to `invalidate: true` like every CSSOM edit no observer reports: a rule
- * edited in place, a delete and an insert that keep the count and both ends, an insert two
- * levels down or inside a group of a sheet longer than CENSUS_NESTED_MAX.
- *
- * Null when no comparison can stand for a scan: an unreadable sheet, or one that imports
- * another, whose late load changes nothing listed here.
+ * Not seen, left to `invalidate: true`: a rule edited in place, a delete plus an insert that
+ * keep the count and both ends, an insert two levels down or in a group of a sheet longer
+ * than CENSUS_NESTED_MAX. Null for an unreadable sheet, or one that imports another, whose
+ * late load changes nothing listed here.
  * Pinned by __tests__/module.styles.ruleEpoch.test.js.
  * @param {Document} doc
  * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - as scanAuthorStyles
@@ -384,10 +360,10 @@ export function splitTopLevel(sel, sep) {
 }
 
 /** A necessary condition for `sel` to match an element, as a cheap subtree-presence key:
- *  the first class, else the id, else the tag of its RIGHTMOST compound (the compound the
- *  subject itself must satisfy). null = no usable key, always a candidate. Tailwind-shaped
- *  sheets carry thousands of `.hover\:x:hover` rules; querying them all against a 3000-node
- *  subtree cost 55 ms, and 276 ms at 15k — the index makes the gate O(nodes + rules). */
+ *  the first class, else the id, else the tag of its RIGHTMOST compound. null = no usable
+ *  key, always a candidate. Tailwind sheets carry thousands of `.hover\:x:hover` rules; all
+ *  queried against a 3000-node subtree cost 55 ms (276 ms at 15k), and the index makes the
+ *  gate O(nodes + rules). */
 function subjectKeyOf(sel) {
   let depth = 0, quote = null, cut = 0
   for (let i = 0; i < sel.length; i++) {
@@ -419,8 +395,8 @@ function subjectKeyOf(sel) {
 }
 
 /** One matches()/querySelector-ready selector list from collected parts: '' when there are
- *  none, null when the joined result cannot be trusted. A & that survived resolution
- *  (top-level nesting) parses but can never match — worse than no gate, so null. */
+ *  none, null when the joined result cannot be trusted. A & left after resolution (top-level
+ *  nesting) parses but never matches, which is worse than no gate, so null. */
 function joinGate(probe, parts) {
   if (!parts.length) return ''
   if (parts.some((p) => p.includes('&'))) return null
@@ -428,9 +404,9 @@ function joinGate(probe, parts) {
   try { probe.matches(sel); return sel } catch { return null }
 }
 
-/** Joins collected per-kind selectors into one matches()-ready string, validating the
- *  combined result once (an unparsable selector → null → callers probe every node).
- *  `q` is always included for before/after: UA open/close-quote pseudos have no author rule. */
+/** Joins collected per-kind selectors into one matches()-ready string, validated once (an
+ *  unparsable one gives null, and callers probe every node). `q` is always included for
+ *  before/after: UA open/close-quote pseudos have no author rule. */
 function composePseudoGates(probe, pseudoSels) {
   const gates = {}
   for (const kind in pseudoSels) {
@@ -443,8 +419,8 @@ function composePseudoGates(probe, pseudoSels) {
 
 /** See the share-gate note at the selector visitor. Pseudo-ELEMENTS are absent on purpose:
  *  ::before/::after do not change the HOST element's computed style. `:link` is included
- *  (href-less anchors differ) but `:visited` need not be — getComputedStyle deliberately
- *  answers with unvisited values for privacy, so it cannot split identical elements. */
+ *  (href-less anchors differ) but `:visited` is not: getComputedStyle answers unvisited
+ *  values for privacy, so it cannot split identical elements. */
 const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-of-type|empty|hover|focus|active|target|checked|indeterminate|disabled|enabled|read-only|read-write|placeholder-shown|autofill|valid|invalid|user-valid|user-invalid|in-range|out-of-range|required|optional|default|link|any-link|scope|defined|modal|fullscreen|picture-in-picture|playing|paused|muted|seeking|buffering|stalled|volume-locked|open|popover-open|state\(|dir\(|lang\(|has\()/
 
 /** What in a shadow root's own CSS can style two nodes of one identity differently, tested
@@ -460,19 +436,16 @@ export const SHADOW_SPLIT_RE = new RegExp(SHARE_UNSAFE_RE.source.replace('hover|
  * Pure; changes.js memoizes it per document and style epoch, and keeps a scan across epochs
  * while sheetCensus reads the same (scanFor).
  *
- * Everything in the result rides the same rule walk, so none of it costs a second pass:
+ * Every field rides the same rule walk:
  * - `universe`: the properties any rule can touch, plus ALWAYS_PROPS. Null when the scan
- *   cannot be trusted (a cross-origin sheet, the rule budget blown), and then every other
- *   field takes its unreliable value as well.
- * - `pseudoUniverse`: what a pseudo-element's snapshot reads (PSEUDO_BOX_PROPS, the inherited
- *   props the universe holds, the props pseudo rules declare).
- * - `pseudoGates`: per kind, one selector for `el.matches()`. '' means no rule, skip every
- *   node; null means unreliable, probe every node.
- * - `usesHas`: some rule uses `:has()`, which turns per-node stamp narrowing off. True when
- *   unreliable.
+ *   cannot be trusted (a cross-origin sheet, the budget blown); every field is then unreliable.
+ * - `pseudoUniverse`: what a pseudo's snapshot reads (PSEUDO_BOX_PROPS, the inherited props
+ *   in the universe, the props pseudo rules declare).
+ * - `pseudoGates`: per kind, one selector for `el.matches()`. '' = no rule, skip every node;
+ *   null = unreliable, probe every node.
+ * - `usesHas`: some rule uses `:has()`, so per-node stamp narrowing is off. True if unreliable.
  * - `leaksAcrossSubtrees`: relational selectors, counters or container queries can restyle
- *   retained nodes. True when unreliable, so differential capture falls back to the full
- *   pipeline.
+ *   retained nodes. True if unreliable, so differential capture takes the full pipeline.
  * - `shareGate`: the selectors that can split identity twins, each with its subject key for
  *   styleShareSafe's presence index. Null when one cannot be matched (share off).
  * - `marginUnstable` / `paddingUnstable`: a %, auto, calc() or var() value in that family
@@ -506,7 +479,7 @@ export function scanAuthorStyles(doc, crossOriginRules) {
     for (const sheet of sheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }
-    // Programmatic (WAAPI) animations don't live in stylesheets — union their keyframe props.
+    // Programmatic (WAAPI) animations live in no stylesheet: union their keyframe props.
     if (typeof doc.getAnimations === 'function') {
       const animated = new Set()
       addAnimationProps(doc.getAnimations(), animated)

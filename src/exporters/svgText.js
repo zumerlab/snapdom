@@ -7,21 +7,15 @@
 import { isSafari } from '../utils/browser'
 
 /**
- * Window an SVG before decode. The crop is expressed in the serialized SVG's viewBox
- * coordinates (result.meta), so a document exporter can rasterize a long capture page by
- * page instead of allocating one bitmap past the browser decode limits.
+ * Window an SVG before decode, in viewBox units (result.meta), so a document exporter can
+ * rasterize a long capture page by page under the decode limits.
  *
- * WebKit: in an svg-as-image, every box of the foreignObject's HTML that paints through its
- * own layer (position:relative/absolute, opacity, transform: the text and marks of any real
- * layout) is drawn as if the viewBox started at 0 0. It ignores the viewBox min-x/min-y, and
- * a translate on an ancestor <g> as well; only the foreignObject's own x/y moves it.
- * Normal-flow blocks do move, which is why solid-band crops look right there. So every
- * window of a horizontal strip came out with the first window's text over its own
- * background. There the window is moved onto the viewport origin by shifting the root
- * foreignObject instead, with the viewBox at `0 0 w h`. Measured in Playwright WebKit
- * (3.3.5, 3.3.6-dev.1): windows 2-4 of a 4-slide strip went from window 1's pixels to their
- * own. A header-only svg (toLargeImage's sizing) has no foreignObject to move and keeps the
- * viewBox rewrite.
+ * WebKit draws every foreignObject box with its own layer (position, opacity, transform) as
+ * if the viewBox started at 0 0, ignoring min-x/min-y and an ancestor <g> translate; only
+ * the foreignObject's x/y moves it. Normal-flow blocks do move, so solid bands look right
+ * while text stays put: windows 2-4 of a 4-slide strip showed window 1's text (Playwright
+ * WebKit). There the root foreignObject is shifted instead, viewBox `0 0 w h`. A header-only
+ * svg (toLargeImage's sizing) has no foreignObject and keeps the viewBox rewrite.
  * @param {string} svg - decoded svg text
  * @param {{x:number,y:number,width:number,height:number}} crop - in viewBox units
  * @param {{shiftContent?: boolean}} [opts] - move the root foreignObject instead of the
@@ -100,16 +94,12 @@ function shiftRootForeignObject(svg, tag, dx, dy) {
 }
 
 /**
- * Size an svg to `w` x `h` the way WebKit can draw it: the viewBox at the output size, the
- * root foreignObject's geometry scaled and `zoom` on its wrapper, instead of a width/height
- * over the natural viewBox. WebKit draws every box of the foreignObject's HTML that paints
- * through its own layer (position, opacity, transform) without the viewBox-to-viewport scale
- * (WebKit bug 23113, open since 2009): a card with a positioned layer exported at 2x came out
- * at half size in the top-left corner over a full-size backdrop (LodyAI/Lody#2250, whose fix
- * this is; measured in Playwright WebKit too). The zoom lays the clone out at k times every
- * length, so layout and layers agree. Uniform scale, the smaller axis, centred, the same box
- * the plain header's `xMidYMid meet` gave. Null when there is nothing to scale (no viewBox,
- * no root foreignObject, no wrapper style), where the caller keeps the plain patch.
+ * Size an svg to `w` x `h` the way WebKit can draw it: viewBox at the output size, the root
+ * foreignObject scaled and `zoom` on its wrapper. WebKit draws every box with its own layer
+ * (position, opacity, transform) without the viewBox scale (WebKit bug 23113): a card exported
+ * at 2x put its positioned layer at half size in the corner (LodyAI/Lody#2250). The zoom lays
+ * out at k times every length, so layout and layers agree. Uniform, centred, like `xMidYMid
+ * meet`. Null when there is nothing to scale; the caller keeps the plain patch.
  * Pinned by __tests__/exporter.webkitLayerScale.test.js.
  * @param {string} svg - decoded svg text
  * @param {number} w - output width in CSS px
@@ -174,12 +164,10 @@ export function peekSvgHeader(u) {
   try { return decodeURIComponent(chunk) } catch { return '' }
 }
 /**
- * Rewrite the root `<svg>` tag of a data URL without decoding the payload. The tag is read
- * from the peeked header, `fn` returns its replacement, and the URL's untouched tail is
- * reused as it is: encodeURIComponent maps character by character and the tag ends at an
- * ASCII `>`, so the encoding of tag plus tail is the encoding of each. Returns null unless
- * the payload starts with the canonical encoding of that tag (a prolog, a non-canonical
- * encoding or a tag longer than the peek), and the caller decodes the whole text instead.
+ * Rewrite the root `<svg>` tag of a data URL without decoding the payload: encodeURIComponent
+ * maps character by character and the tag ends at an ASCII `>`, so the encoded tail is reused
+ * as is. Null unless the payload starts with the canonical encoding of the tag (no prolog, tag
+ * within the peek); the caller then decodes the whole text.
  * Pinned by __tests__/exporter.patchSvgHeader.test.js.
  * @param {string} u - data:image/svg+xml URL
  * @param {(head: string) => string} fn - the new root tag from the old one

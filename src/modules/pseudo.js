@@ -1,20 +1,18 @@
 /**
  * Pseudo-elements, materialized into the clone.
  *
- * The svg carries the class CSS snapdom generates, not the page's stylesheets, so an author's
- * `::before` rule never reaches the foreignObject (a `<style>` inside the captured subtree is
- * the exception: it is cloned, and its native pseudos are suppressed to avoid a double
- * paint, #359). This pass reads each pseudo's computed style off the live element and builds
- * it: `::before`, `::after` and `::first-letter` become a <span> with a style snapshot (icon
- * glyphs drawn to <img>, `content: url()` fetched, counters resolved); `::marker` and
- * `::first-line` become a scoped rule on `sessionCache.pseudoCSS`, folded into the class
- * prefix CSS by prepareClone, since a span can neither re-fragment a first line nor replace
- * a native marker.
+ * The svg carries snapdom's class CSS, not the page's sheets, so an author's `::before` never
+ * reaches the foreignObject. (A `<style>` inside the subtree is cloned; its native pseudos are
+ * suppressed so they do not paint twice, #359.) This pass reads each pseudo's computed style
+ * and builds it: `::before`, `::after` and `::first-letter` become a <span> (icon glyphs drawn
+ * to <img>, `content: url()` fetched, counters resolved); `::marker` and `::first-line` become
+ * a scoped rule on `sessionCache.pseudoCSS`, which prepareClone folds into the class CSS,
+ * because a span can neither re-fragment a first line nor replace a native marker.
  *
- * Cost control, in order: a document-level preflight (does any sheet mention a pseudo at
- * all), one subtree `querySelector` over the scan's selector gates (canSkipPseudoWalk), then
- * per node one `matches()` before any getComputedStyle probe. Pinned by
- * __tests__/module.pseudo.test.js and the module.pseudo.*.test.js siblings.
+ * Cost control, in order: a document preflight (does any sheet mention a pseudo), one subtree
+ * `querySelector` over the selector gates (canSkipPseudoWalk), then one `matches()` per node
+ * before any getComputedStyle. Pinned by __tests__/module.pseudo.test.js and the
+ * module.pseudo.*.test.js siblings.
  * @module pseudo
  */
 
@@ -47,8 +45,8 @@ import { flushStyleInvalidations, invalidateStyleCaches } from '../core/changes.
 /** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
 const __preflightMemo = new WeakMap()
 
-/** Max number of CSS rules to scan across all sheets (keeps it fast).
- *  300 was too low for large apps (Tailwind, MUI) with 500+ utility rules — raised to 1000. */
+/** Max number of CSS rules to scan across all sheets. 300 was too low for apps with 500+
+ *  utility rules (Tailwind, MUI). */
 const CSS_RULE_SCAN_BUDGET = 1000
 
 /**
@@ -150,38 +148,26 @@ function sheetHasNeedles(sheet, needles, state) {
 }
 
 /**
- * Fast preflight to decide whether pseudo/counter inlining is needed at all.
- * Triggers true if detects any:
- *  - ::before / ::after / ::first-letter (and single-colon variants)
- *  - counter( / counters( / counter-increment / counter-reset
- *
- * Strategy (fast → slower):
- *  1) Scan inline <style> textContent
- *  2) Scan adoptedStyleSheets (cssRules) if available
- *  3) Scan a small budget of cssRules in <style>/<link> same-origin
- *  4) Cheap DOM hint for inline styles with counter(
- *
- * Memoized by document + style fingerprint.
- *
+ * Whether the document needs pseudo/counter inlining at all: true when any sheet mentions a
+ * pseudo (NEEDLES) or a counter. Checked from cheapest to dearest: <style> text, adopted
+ * sheets, a budget of same-origin <style>/<link> rules, then inline `style="counter("`.
+ * Memoized by document and style fingerprint.
  * @param {Document} doc
  * @returns {boolean}
  */
 export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc)) {
   const memo = __preflightMemo.get(doc)
   if (memo && memo.fingerprint === fp) return memo.result
-  // A `<style>`/`<link>` mount or edit already bumps the DOM epoch through its mutation
-  // record, so the styles.js memos (universe, gates) re-scan for those on their own. The one
-  // rule change that emits NO record is on adoptedStyleSheets (assignment or replaceSync), so
-  // ONLY when the adopted portion of the fingerprint moved is a manual epoch bump needed —
-  // and doing it for every fingerprint change bumped epochs mid-capture and cost three
-  // read-count/byte-equality tests their invariants.
+  // A `<style>`/`<link>` change bumps the DOM epoch through its mutation record. Only
+  // adoptedStyleSheets changes emit no record, so bump by hand ONLY when the adopted part of
+  // the fingerprint moved: bumping on every change moved epochs mid-capture and broke three
+  // read-count/byte-equality tests.
   const adopted = (s) => (s.match(/\|ass:[^|]*/) || [''])[0]
   if (memo && adopted(fp) !== adopted(memo.fingerprint)) invalidateStyleCaches()
 
   const NEEDLES = [
-    // double-colon — ::marker/::first-line ship as scoped rules (emitScopedPseudoRule),
-    // and this preflight is what gates that code: omitting them made a page whose only
-    // author pseudo is a marker skip the pass entirely.
+    // double-colon. ::marker/::first-line stay listed: this preflight gates their scoped
+    // rules too, and a page whose only pseudo is a marker would skip the pass.
     '::before', '::after', '::first-letter', '::marker', '::first-line',
     // single-colon robustness
     ':before', ':after', ':first-letter', ':first-line',
@@ -261,9 +247,8 @@ function hasPaintedBorder(s) {
 }
 
 /**
- * Wraps buildCounterContext(doc) — an O(document) walk — behind a memoizing
- * get/getStack pair so the walk only runs on the first actual counter query,
- * not on every element's pseudo-element check.
+ * Wraps buildCounterContext(doc), an O(document) walk, behind a memoizing get/getStack pair,
+ * so the walk runs on the first real counter query, not on every pseudo check.
  * @param {Document} doc
  * @param {Object} sessionCache
  * @returns {{get:Function, getStack:Function}}
@@ -287,9 +272,8 @@ function lazyCounterContext(doc, sessionCache) {
 
 /**
  * Strips the CSS content alt-text suffix: `<content-list> / <string-or-counter>+`.
- * The part after a top-level (unquoted) `/` is screen-reader-only alt text, never
- * painted — e.g. Font Awesome 7 emits `content: "\f015" / ""` for its icons, and
- * without this the trailing `/` would be folded into the visible glyph string.
+ * The part after a top-level (unquoted) `/` is screen-reader alt text and never paints.
+ * Font Awesome 7 emits `content: "\f015" / ""`, whose `/` would otherwise join the glyph.
  * @param {string} raw
  */
 function stripContentAltText(raw) {
@@ -303,9 +287,8 @@ function stripContentAltText(raw) {
 }
 
 /** Decodes CSS string escapes: `\A` (a newline), `\2014` with its optional trailing space,
- *  `\"`, `\\`, and a backslash-newline line continuation (which produces nothing). Without
- *  this the escape sequences were carried through verbatim and PAINTED — a `content: "\201C"`
- *  quotation mark rendered as the literal text `\201C`. */
+ *  `\"`, `\\`, and a backslash-newline continuation (which produces nothing). Undecoded, a
+ *  `content: "\201C"` paints the literal text `\201C`. */
 function unescapeCssString(str) {
   return str.replace(/\\(?:([0-9a-fA-F]{1,6})[ \t\n]?|([\s\S]))/g, (_, hex, ch) => {
     if (hex) {
@@ -326,9 +309,8 @@ function unescapeCssString(str) {
 function collapseCssContent(raw) {
   if (!raw) return ''
   const parts = []
-  // A string token runs to its matching unescaped quote. `[^"]*` ended the token at the
-  // first `\"`, so `content: "say \"hi\""` was split mid-string and the tail leaked out as
-  // an unquoted token. Both quote styles, since a stylesheet may use either.
+  // A string token runs to its matching UNESCAPED quote: `[^"]*` split `"say \"hi\""`
+  // mid-string. Both quote styles, since a stylesheet may use either.
   const rx = /"((?:\\[\s\S]|[^"\\])*)"|'((?:\\[\s\S]|[^'\\])*)'/g
   let lastIndex = 0, m
   while ((m = rx.exec(raw))) {
@@ -401,7 +383,7 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
       stack = stack.length ? [...stack, val] : [val]
     }
 
-    // counter-set: sets the top value without creating a scope (CSS order: reset -> set -> increment)
+    // counter-set: sets the top value without creating a scope (CSS order: reset, set, increment)
     const s = sets.find(x => x.name === name)
     if (s) {
       const val = Number.isFinite(s.num) ? s.num : 0
@@ -435,11 +417,10 @@ function deriveCounterCtxForPseudo(node, pseudoStyle, baseCtx) {
 }
 
 /** Properties valid on the respective pseudo that the scoped-rule emitter diffs. */
-// -webkit-text-fill-color is here because it PAINTS the glyphs and overrides `color`: when the
-// element clone carries a full style read (the unreliable-scan path reads every property), it
-// gets the element's own fill colour, which then defeats the pseudo's `color`. Read from the
-// pseudo it resolves to the pseudo's own colour (initial is currentColor), so emitting it makes
-// the first line / marker actually paint. Only written when it differs from the element's.
+// -webkit-text-fill-color PAINTS the glyphs over `color`. A clone with a full style read (the
+// unreliable-scan path) carries the element's fill colour, which defeats the pseudo's `color`;
+// read from the pseudo it resolves to the pseudo's own colour (initial is currentColor), so
+// emitting it makes the first line or marker paint. Written only when it differs.
 const MARKER_PROPS = ['color', '-webkit-text-fill-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'letter-spacing', 'line-height']
 const FIRST_LINE_PROPS = [
   'color', '-webkit-text-fill-color', 'font-family', 'font-size', 'font-weight', 'font-style', 'font-variant',
@@ -454,9 +435,9 @@ const FIRST_LINE_PROPS = [
 function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) {
   try {
     if (gate === null) {
-      // No selector to ask: only the boxes the pseudo can exist on pay the probe — list
-      // items for ::marker, block containers for ::first-line (shadow content excluded: its
-      // own scoped rules render there).
+      // No selector to ask: only boxes the pseudo can exist on pay the probe, list items for
+      // ::marker and block containers for ::first-line. Shadow content is left out: its own
+      // scoped rules render there.
       if (source.getRootNode() !== (source.ownerDocument || document)) return
       const d = getStyle(source).display || ''
       if (pseudo === '::marker' ? !d.includes('list-item') : !(d === 'block' || d === 'flow-root' || d === 'list-item' || d === 'inline-block' || d === 'table-cell' || d === 'table-caption')) return
@@ -469,9 +450,8 @@ function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) 
     for (const p of props) {
       const v = ps.getPropertyValue(p)
       // background-color and vertical-align are not inherited: the pseudo's initial value
-      // differs from a painted element's own and is not an authored rule (a probed block
-      // with a background emitted an inert rule per node, which also tripped diff.js's
-      // "new scoped rules → full pipeline" bail).
+      // differs from the element's without any authored rule. Emitted, it was an inert rule
+      // per node, and new scoped rules send diff.js to the full pipeline.
       if (v && v !== base.getPropertyValue(p) &&
           !(p === 'background-color' && v === 'rgba(0, 0, 0, 0)') && !(p === 'vertical-align' && v === 'baseline')) decls += `${p}:${v};`
     }
@@ -484,13 +464,12 @@ function emitScopedPseudoRule(source, clone, sessionCache, gate, pseudo, props) 
     const attr = `data-sd-p${n}`
     clone.setAttribute(attr, '')
     sessionCache.pseudoCSS = (sessionCache.pseudoCSS || '') + `[${attr}]${pseudo}{${decls}}`
-  } catch { /* fidelity extra — never blocks the capture */ }
+  } catch { /* fidelity extra, never blocks the capture */ }
 }
 
-/** Computed `content` returns quote KEYWORDS un-resolved (open-quote stays the literal
- *  token), so without this the capture paints the text "open-quote". Resolve from the
- *  element's computed `quotes` (first pair — depth-0 approximation), falling back to
- *  typographic quotes when it computes 'auto' (Chromium) and nothing for 'none'. */
+/** Computed `content` keeps quote KEYWORDS unresolved, so the capture would paint the text
+ *  "open-quote". Resolved from the element's computed `quotes` (first pair, a depth-0
+ *  approximation), typographic quotes for 'auto' (Chromium), nothing for 'none'. */
 function resolveQuoteKeywords(raw, node) {
   if (!/\b(?:no-)?(?:open|close)-quote\b/.test(raw)) return raw
   let openQ = '“', closeQ = '”'
@@ -510,7 +489,7 @@ function resolveQuoteKeywords(raw, node) {
   openQ = openQ.replace(/"/g, '')
   closeQ = closeQ.replace(/"/g, '')
   return raw.replace(/"[^"]*"|\b(no-open-quote|no-close-quote|open-quote|close-quote)\b/g, (tok, kw) => {
-    if (!kw) return tok // quoted string — untouched
+    if (!kw) return tok // quoted string, untouched
     if (kw === 'open-quote') return `"${openQ}"`
     if (kw === 'close-quote') return `"${closeQ}"`
     return '""' // no-open-quote / no-close-quote render nothing
@@ -518,11 +497,10 @@ function resolveQuoteKeywords(raw, node) {
 }
 
 /**
- * Resolve the pseudo's `content` to the text it paints, in this order: alt-text suffix
- * stripped, quote keywords resolved, sibling counter overrides applied (so a sequence stays
- * continuous across siblings), the pseudo's own reset/increment, counter() expansion, then
- * token collapsing so `"..."` pieces join with no gap. Without a counter() in the content
- * and with no counter-increment, the counter context feeds nothing and is not derived.
+ * Resolve the pseudo's `content` to the text it paints: alt text stripped, quote keywords
+ * resolved, sibling counter overrides (so a sequence continues across siblings), the pseudo's
+ * own reset/increment, counter() expansion, then tokens joined with no gap. With no counter()
+ * and no counter-increment the counter context is not derived.
  * @param {Element} node
  * @param {CSSStyleDeclaration} ps - the pseudo's computed style
  * @param {{get:Function, getStack:Function}} baseCtx
@@ -549,7 +527,7 @@ function resolvePseudoContentAndIncs(node, ps, baseCtx, siblingCounters) {
     ? resolveCountersInContent(raw, node, derived)
     : raw
 
-  // 4) collapse tokens (drops the gap between "1" and "." -> "1.")
+  // 4) collapse tokens ("1" and "." become "1.")
   const text = collapseCssContent(resolved)
   return { text, incs: derived.incs || [], derived }
 }
@@ -557,27 +535,17 @@ function resolvePseudoContentAndIncs(node, ps, baseCtx, siblingCounters) {
 /**
  * Can the whole pseudo walk be skipped for this subtree?
  *
- * `shouldProcessPseudos` answers a DOCUMENT-level question — "does any stylesheet here
- * mention a pseudo?" — and every real page answers yes, so the pass then recurses over every
- * node of the capture to discover, usually, that nothing matches. Measured on a 500-row table:
- * one `.zz::before` rule matching zero nodes took `toRaw` from 75 ms to 197 ms, and the
- * instrumented counters showed 0 gate passes and 0 getComputedStyle probes. The walk itself
- * was the whole cost.
- *
- * The subtree-level question is the one worth asking, and one `querySelector` answers it.
- * Two cases must still walk:
- *  - a `null` gate — the scan could not be trusted (cross-origin CSS), so nothing may be ruled out;
- *  - a shadow root in the capture whose own CSS declares a pseudo — those sheets are never
- *    scanned, so `pseudoGatesFor` returns null gates per node there and the walk probes them.
- *    `shadowPseudo` is set by deepClone, which always runs first (prepare.js) and reads
- *    every shadow root's CSS anyway; diff.js bails on shadow content before this pass. (It
- *    used to test `shadowScopes.size`, which is a WeakMap: always undefined, never a bail —
- *    the pinned shadow ::after was skipped right here.) A shadow root that declares no
- *    pseudo cannot get one from the document's sheets, so the light-DOM question stands.
- *
- * With the gate that table went from 197 ms back to 66; scenes whose rules do match are
- * unchanged. Pinned by __tests__/module.pseudo.subtreeGate.test.js, whose descendant-match
- * test goes red without the querySelector half.
+ * `shouldProcessPseudos` asks whether any sheet in the DOCUMENT mentions a pseudo, and every
+ * real page says yes, so the pass walks every node to find, usually, nothing. On a 500-row
+ * table one `.zz::before` rule matching zero nodes took `toRaw` from 75 ms to 197 ms; one
+ * `querySelector` over the subtree brought it to 66. Two cases must still walk:
+ *  - a `null` gate: the scan could not be trusted (cross-origin CSS), nothing may be ruled out;
+ *  - a shadow root whose own CSS declares a pseudo: those sheets are never scanned, so the walk
+ *    probes there. `shadowPseudo` is set by deepClone, which always runs first (prepare.js);
+ *    diff.js bails on shadow content before this pass. Not `shadowScopes.size`: that is a
+ *    WeakMap, always undefined, and the pinned shadow ::after was skipped.
+ * Pinned by __tests__/module.pseudo.subtreeGate.test.js, whose descendant-match test goes red
+ * without the querySelector half.
  * @returns {boolean}
  */
 function canSkipPseudoWalk(source, sessionCache) {
@@ -601,17 +569,17 @@ function canSkipPseudoWalk(source, sessionCache) {
 /**
  * Inline every pseudo-element under `source` into `clone`, recursing through nodeMap.
  *
- * `::before`, `::after` and `::first-letter` become a <span> (data-snapdom-pseudo) whose
- * style snapshot is keyed into sessionCache.styleMap; `::marker` and `::first-line` become
- * scoped rules (emitScopedPseudoRule). A pseudo that paints nothing and takes no space is
- * skipped, unless it incremented a counter, which still has to reach the next sibling.
+ * `::before`, `::after` and `::first-letter` become a <span> (data-snapdom-pseudo) keyed into
+ * sessionCache.styleMap; `::marker` and `::first-line` become scoped rules. A pseudo that
+ * paints nothing and takes no space is skipped, unless it incremented a counter the next
+ * sibling needs.
  *
- * Four things took the pass from 150 to 24 µs per inlined `::before` on 2026-09-02 (deep
- * tree, a 2px stripe on each of 1,936 leaves: 435 ms to 172): the fingerprint preflight runs
- * on the root call only; the snapshot reads a pseudo universe of ~45 props instead of ~130;
- * the per-tag defaults cover the props enumeration skips; twin pseudos share one read
- * (pseudoSnapshotFor). Pinned by __tests__/module.pseudo.test.js, module.pseudo.subtreeGate,
- * module.pseudo.twinShare, module.pseudo.unreliableScan and module.pseudo.adoptedReplace.
+ * Deep tree with a 2px stripe on each of 1,936 leaves: 150 to 24 µs per `::before` (435 ms to
+ * 172), from four things: the preflight runs on the root call only, the snapshot reads a
+ * pseudo universe (~45 props, not ~130), the per-tag defaults cover the props enumeration
+ * skips, and twin pseudos share one read (pseudoSnapshotFor). Pinned by
+ * __tests__/module.pseudo.test.js, module.pseudo.subtreeGate, module.pseudo.twinShare,
+ * module.pseudo.unreliableScan and module.pseudo.adoptedReplace.
  * @param {Element} source - live element
  * @param {Element} clone - its clone, from deepClone
  * @param {object} sessionCache - the capture session (styleMap, nodeMap, pseudoCSS, counters)
@@ -629,12 +597,10 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
   if (source.tagName === 'TEXTAREA') return
   // --- preflight, once per session/doc ---
   const doc = source.ownerDocument || document
-  // Once per capture, on the ROOT call: the recursion below reaches every node, and the
-  // preflight's fingerprint is a document-wide querySelectorAll plus a walk of every sheet —
-  // per node that was quadratic (deep tree with a ::before per leaf: 64 ms of a 295 ms
-  // capture went to querySelectorAll, on a page holding one <style>). `shadowPseudo`: a
-  // shadow root in the capture declares a pseudo (deepClone reads its CSS); the
-  // document-level preflight cannot see it.
+  // On the ROOT call only: the fingerprint is a document-wide querySelectorAll plus a walk of
+  // every sheet, quadratic per node (deep tree with a ::before per leaf: 64 ms of a 295 ms
+  // capture). `shadowPseudo`: a shadow root in the capture declares a pseudo, which the
+  // document preflight cannot see.
   if (!isDescendant) {
     // Drain pending observer records first, so the scanned universe and pseudo gates are not
     // read against a stale epoch (a <style> added in the same tick).
@@ -644,31 +610,25 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
     if (canSkipPseudoWalk(source, sessionCache)) return
   }
 
-  // Sibling-counter overrides are per-capture state: they live on sessionCache (whose
-  // lifetime is exactly one capture), not on a module global — a concurrently starting
-  // capture used to wipe the shared global mid-traversal via an epoch bump.
+  // Sibling-counter overrides live on the session, not a module global: a concurrent capture
+  // wiped the global mid-walk through an epoch bump.
   if (!sessionCache.siblingCounters) sessionCache.siblingCounters = new WeakMap()
 
-  // buildCounterContext walks the whole document once — defer it behind a lazy
-  // wrapper so that cost is only paid the first time a pseudo actually declares
-  // counter-reset/-increment or a counter()/counters() content value (every real
-  // call site below is already gated that way), not on every element's pseudo check.
+  // Lazy: the whole-document counter walk runs only once a pseudo declares a counter.
   if (!sessionCache.counterCtx) {
     sessionCache.counterCtx = lazyCounterContext(source.ownerDocument || document, sessionCache)
   }
   const counterCtx = sessionCache.counterCtx
 
-  // Selector gate from the stylesheet scan: only nodes a collected selector matches pay
-  // the 3-pseudo getComputedStyle probe. '' = no author rules for that kind, null =
-  // scan unreliable (cross-origin CSS, shadow roots) → probe like before.
+  // Selector gates from the sheet scan: only nodes a collected selector matches pay the
+  // getComputedStyle probe. '' = no author rule for that kind, null = scan unreliable
+  // (cross-origin CSS, shadow roots), so probe.
   const gates = pseudoGatesFor(source)
 
-  // Authored ::marker / ::first-line: a scoped CSS rule (not a span) is the faithful
-  // mechanism — markers re-render natively in the foreignObject and first-line
-  // re-fragments there. '' = no author rule for that kind; a selector gates the probe; null
-  // (unreliable scan: a cross-origin sheet) probes like ::before does — the emitter only
-  // writes what differs from the element's own style, so it cannot over-apply. Shadow
-  // content carries these rules through injectScopedStyle instead.
+  // ::marker and ::first-line as scoped rules: markers re-render natively in the
+  // foreignObject and a first line re-fragments there. A null gate probes too; the emitter
+  // writes only what differs from the element, so it cannot over-apply. Shadow content gets
+  // these rules through injectScopedStyle.
   if (gates.marker !== '') emitScopedPseudoRule(source, clone, sessionCache, gates.marker, '::marker', MARKER_PROPS)
   if (gates.firstLine !== '') emitScopedPseudoRule(source, clone, sessionCache, gates.firstLine, '::first-line', FIRST_LINE_PROPS)
 
@@ -676,7 +636,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
     const gate = gates[pseudo === '::before' ? 'before' : pseudo === '::after' ? 'after' : 'firstLetter']
     if (gate !== null) {
       if (gate === '') continue
-      try { if (!source.matches(gate)) continue } catch { /* unparsable at match time → probe */ }
+      try { if (!source.matches(gate)) continue } catch { /* unparsable at match time, so probe */ }
     }
     // The first-letter pass rewrites a non-blank text child of the clone; with none there is
     // nothing to wrap, so the style probe is skipped.
@@ -741,9 +701,8 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
 
         const text = textNode.textContent
         // Leading white space is not part of ::first-letter and does not stop it (CSS Pseudo
-        // §3.2). The pattern was anchored at index 0 with \s excluded from both halves, so
-        // any indented markup — `<p>\n  Hello` — matched nothing and the whole pseudo was
-        // dropped. Skip the run, match after it, and put it back in front of the span.
+        // §3.2): skip the run, match after it, and put it back in front of the span, or
+        // indented markup (`<p>\n  Hello`) loses the pseudo.
         const lead = /^\s*/.exec(text)[0]
         const body = text.slice(lead.length)
         const match = body.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u)
@@ -765,7 +724,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
         continue
       }
 
-      // ---------- CONTENT (pseudo-aware counters + collapse tokens) ----------
+      // Content: pseudo-aware counters, collapsed tokens.
       const rawContent = content ?? ''
 const isNoExplicitContent =
   rawContent === '' || rawContent === 'none' || rawContent === 'normal'
@@ -790,22 +749,17 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       const hasBorder = hasPaintedBorder(style)
       const hasTransform = transform && transform !== 'none'
 
-      // A box-generating pseudo (content not none/normal) with real width/height occupies
-      // layout space even with no visible paint — e.g. antd's `::before { content:'';
-      // display:inline-block; height:100%; vertical-align:middle }` that vertically centers a
-      // modal. Dropping it collapses the layout it controls (#418).
-      // #498: an atomic inline box (inline-block / inline-flex / inline-grid / inline-table)
-      // takes part in line layout even at 0×0 — it is a justification opportunity, so
-      // `text-align-last: justify` spreads the text differently with and without it
-      // ("A   B   C" vs "A     B     C"). Block-level 0×0 boxes change nothing and stay dropped.
+      // A box-generating pseudo with a real size takes layout space without painting: antd's
+      // `::before { content:''; display:inline-block; height:100% }` centers a modal (#418).
+      // #498: an atomic inline box takes part in line layout even at 0×0, as a justification
+      // opportunity for `text-align-last: justify`. A block-level 0×0 box changes nothing.
       const boxGenerating = rawContent !== 'none' && rawContent !== 'normal'
       const atomicInline = /^inline-/.test(display || '')
       const hasLayoutBox = boxGenerating &&
         ((parseFloat(style.width) || 0) > 0 || (parseFloat(style.height) || 0) > 0 || atomicInline)
 
-      // A box-generating pseudo can paint with box-shadow/outline alone (no bg, border,
-      // text or size — a zero-size box with a blur/spread shadow still renders a glow).
-      // Gated on boxGenerating: with content:none no box exists and nothing paints live.
+      // A box-generating pseudo can paint with box-shadow or outline alone: a zero-size box
+      // with a blur shadow renders a glow. With content:none no box exists live.
       const boxShadow = style.boxShadow, outlineStyle = style.outlineStyle
       const hasShadow = boxGenerating && boxShadow && boxShadow !== 'none'
       const hasOutline = boxGenerating && outlineStyle && outlineStyle !== 'none' &&
@@ -834,16 +788,11 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         continue
       }
 
-      // SVG-as-<img> resolves system fonts (ui-sans-serif, system-ui) with
-      // metrics that differ from the live document; multi-char inline pseudo
-      // text (e.g. ' Pro', ' (sale!)') can push the host past its wrap point
-      // in the rasterized PNG even when the live DOM shows a single line.
-      // Pin white-space:nowrap on the host AND on the pseudo span itself when
-      // live is one line.
-      // Gate: skip single-char (icon) and url()/image-set() pseudos: wrap impossible there.
-      // #516: and any pseudo outside the host's line. Only an inline one in flow shares it; a
-      // positioned, floated or block one lays out its own lines, and pinning it put a 50px
-      // tooltip that wraps live onto a single line.
+      // SVG-as-<img> resolves system fonts (system-ui) with other metrics, so inline pseudo
+      // text like ' Pro' can wrap a host that is one line live. Then the host AND the span get
+      // nowrap. Not for single-char (icon) or url()/image-set() content, and not off the
+      // host's line (#516): a positioned, floated or block pseudo lays out its own lines, and
+      // pinning it put a 50px tooltip that wraps live onto one line.
       const isImageContent = cleanContent.startsWith('url(') || /^-?(?:webkit-)?image-set\(/i.test(cleanContent)
       const onHostLine = display === 'inline' && style.cssFloat === 'none' &&
         style.position !== 'absolute' && style.position !== 'fixed'
@@ -870,11 +819,9 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       // under it: the base reset's `span{white-space:normal}` beats what the span inherits.
       else if (clone.style.getPropertyValue(ONE_LINE_PROP) === 'nowrap') pseudoEl.style.setProperty(ONE_LINE_PROP, 'nowrap')
       const snapshot = pseudoSnapshotFor(source, pseudo, style, sessionCache)
-      // #452: mirror the styles.js width-softening flags. An empty pseudo box sized by
-      // CSS (width/height, content:'') is the #433 "empty box" case — its width must be
-      // kept verbatim, otherwise a blockified flex-item dot collapses to 0 and a
-      // display:block dot stretches to the host width. The pseudo's parent box is the
-      // host itself, so flex-item-ness comes from the host's display (#406: no floor).
+      // #452: the styles.js softening flags. An empty pseudo sized by CSS is the #433 empty box
+      // and keeps its width, or a flex-item dot collapses to 0 and a block dot stretches to the
+      // host. Its parent box is the host, so the host's display makes it a flex item (#406).
       const hostDisplay = (getStyle(source).display || '').toLowerCase()
       const pseudoIsFlexItem = hostDisplay.includes('flex') || hostDisplay.includes('grid')
       if (pseudoIsFlexItem) {
@@ -901,21 +848,16 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color, fontStyle)
         const imgEl = document.createElement('img')
         imgEl.src = dataUrl
-        // The bitmap starts at the glyph's em-square top, so it is lowered by however far its
-        // bottom reaches under the glyph's baseline. The host keeps its own display and
-        // vertical-align: pinIconStruts (iconFonts.js) holds the icon font's line metrics now,
-        // where #176 forced `inline` + `middle` on every icon host to approximate them, and that
-        // lifted a Material Icons ::before line's text 5px above the page's.
-        // Its width is the glyph's exact advance, not the bitmap's whole pixels: a host frozen
-        // to the glyph's width (Font Awesome's inline-block <i>, 23.25px) wrapped the 24px
-        // image onto a second line, 24px under the page's icon. Pinned by
-        // __tests__/module.iconStrut.test.js.
+        // The bitmap starts at the em-square top, so it drops by its depth under the baseline.
+        // The host keeps its display and vertical-align: pinIconStruts (iconFonts.js) holds the
+        // line metrics, and #176's forced `inline` + `middle` lifted the text 5px. The width is
+        // the glyph's exact advance, not whole pixels: Font Awesome's <i> frozen at 23.25px
+        // wrapped a 24px image to a second line. Pinned by __tests__/module.iconStrut.test.js.
         imgEl.style = `height:${fontSize}px;width:${(advance / h) * fontSize}px;object-fit:contain;vertical-align:${-descent}px;`
         pseudoEl.appendChild(imgEl)
       } else if (cleanContent && isImageContent) {
-        // content: url(...) / image-set(...) / -webkit-image-set(...) — image-set() used to
-        // fall through to the plain-text branch below, rendering the raw CSS source as
-        // visible text instead of an image.
+        // content: url(...), image-set(...) or -webkit-image-set(...); in the text branch
+        // below an image-set() painted its CSS source.
         const rawUrl = resolveImageSetURL(cleanContent, (typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1) ??
           extractURL(cleanContent)
         if (rawUrl?.trim()) {
@@ -961,9 +903,8 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       if (hasBg) {
         try {
           const bgSplits = splitBackgroundImage(bg)
-          // Arrow form, not a bare reference: map passes (entry, INDEX, array), so the
-          // layer index landed where options belongs and useProxy/CORS settings never
-          // reached a pseudo-element background. background.js:119 has it right.
+          // Arrow form, not a bare reference: map passes (entry, INDEX, array), and the index
+          // landed where options belongs, so useProxy never reached a pseudo background.
           const newBgParts = await Promise.all(bgSplits.map((entry) => inlineSingleBackgroundEntry(entry, options)))
           pseudoEl.style.backgroundImage = newBgParts.join(', ')
         } catch (e) {
@@ -972,10 +913,9 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
       }
       if (hasBgColor) pseudoEl.style.backgroundColor = bgColor
 
-      // The reset above blanks maskImage so a stale mask can't leak in; restoring it was
-      // missing entirely, so every masked icon pseudo (the standard way to tint an SVG
-      // icon) captured as a solid rectangle. The mask must be INLINED like a background —
-      // a url() mask would otherwise point at an asset the SVG cannot reach.
+      // Restore the mask the reset above blanked, or a masked icon pseudo (the usual way to
+      // tint an SVG icon) paints a solid rectangle. INLINED like a background: a url() mask
+      // points at an asset the SVG cannot reach.
       const maskImage = style.maskImage || style.webkitMaskImage
       if (maskImage && maskImage !== 'none') {
         try {
@@ -1026,9 +966,8 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
     }
   }
 
-  // Recurse – use nodeMap (clone→source) for alignment instead of index,
-  // because deepClone filters out NO_CAPTURE_TAGS (script, link, etc.),
-  // which causes index mismatch between source.children and clone.children.
+  // Recurse through nodeMap, not by index: deepClone drops NO_CAPTURE_TAGS (script, link),
+  // so source.children and clone.children do not line up.
   if (sessionCache.nodeMap) {
     // The pseudo spans inserted above have no nodeMap entry, so the miss skips them. The
     // attribute test keeps out a source element that carries the marker itself (a page that

@@ -37,7 +37,7 @@ export const URL_PROPS = [
 ]
 
 /** Mask longhands to preserve spatial layout (copy as-is).
- * Must run AFTER the `mask` shorthand in URL_PROPS — setting the shorthand
+ * Must run AFTER the `mask` shorthand in URL_PROPS: setting the shorthand
  * resets every longhand to its initial value (#402: lost mask-mode/composite). */
 const MASK_LAYOUT_PROPS = [
   'mask-position',
@@ -86,19 +86,15 @@ const BORDER_AUX_PROPS = [
 async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) {
   const style = styleCache.get(srcNode) || getStyle(srcNode)
   if (!styleCache.has(srcNode)) styleCache.set(srcNode, style)
-  // Same-capture snapshot reuse (idea validated independently by v2 PR #492's bg reuse):
-  // most of the ~19 CSSOM reads per flagged node repeated what inlineAllStyles already
-  // resolved. Present in the snapshot -> that value; absent -> pruned by the property
-  // universe, i.e. the computed value is the default and there is nothing to copy ('' skips
-  // every site below). No snapshot (stale stamps, or the Firefox bg-clip:text fallback) ->
-  // plain live reads, exactly the old path.
+  // Same-capture snapshot reuse (validated independently by v2 PR #492): most of the ~19
+  // CSSOM reads per flagged node repeat what inlineAllStyles resolved. A prop absent from the
+  // snapshot was pruned as default, so '' skips it. No snapshot (stale stamps, or the Firefox
+  // bg-clip:text fallback) reads live.
   //
-  // URL-BEARING reads stay LIVE on purpose — snapshot values are NOT the live values there:
-  // the snapshot rewrites a non-data url() background-image to 'none' so the shared class
-  // never references a remote resource, and THIS pass is the one that re-reads the real
-  // value and inlines it per node (d12-backgrounds moved 2.7% on all three engines when
-  // these read the sanitized snapshot). Shorthand fallbacks (#343) are live for the same
-  // reason snapshots hold longhands only.
+  // URL-BEARING reads stay LIVE: the snapshot rewrites a non-data url() background-image to
+  // 'none', and this pass inlines the real value (d12-backgrounds moved 2.7% on all three
+  // engines when they read the snapshot). Shorthand fallbacks (#343) are live too, since
+  // snapshots hold longhands only.
   const snap = snapshotFor(srcNode)
   const read = snap
     ? (prop) => (prop in snap ? snap[prop] : '')
@@ -109,10 +105,8 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   const bis = read('border-image-source')
   const hasBorderImage = (bi && bi !== 'none') || (bis && bis !== 'none')
 
-  // Background layout longhands (position/size/repeat/origin/clip/...) are inert without a
-  // background, yet are never empty, so copying them onto every node bloated the markup and
-  // rasterization cost. Copy only when a background actually exists. background-color is
-  // included so the background-clip:text trick (color clipped to text) still works.
+  // Background layout longhands are inert without a background but never empty, so they are
+  // copied only when one exists. background-color counts, for the background-clip:text trick.
   const bgImage = style.getPropertyValue('background-image')
   const bgColor = read('background-color')
   const hasBg =
@@ -174,7 +168,7 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
     }
   }
   // 4) background-attachment: fixed positions/sizes against the browser viewport, but the
-  // rasterized SVG's viewport is the element box — the live crop is lost. Freeze the slice
+  // rasterized SVG's viewport is the element box, so the live crop is lost. Freeze the slice
   // the user was seeing (runs only for the rare flagged nodes).
   if (hasBg && /fixed/.test(read('background-attachment') || '')) {
     try { await freezeFixedBackground(srcNode, cloneNode, style) } catch { /* keep uncompensated */ }
@@ -196,7 +190,7 @@ function resolveFixedLayerSize(sizeSpec, iw, ih, vw, vh) {
     if (v === 'auto' || v === undefined) return null
     if (v.endsWith('px')) return parseFloat(v)
     if (v.endsWith('%')) return base * parseFloat(v) / 100
-    return undefined // calc()/other → unsupported
+    return undefined // calc()/other: unsupported
   }
   const wRaw = comp(parts[0], vw)
   const hRaw = comp(parts[1], vh)
@@ -216,7 +210,7 @@ function resolveFixedLayerSize(sizeSpec, iw, ih, vw, vh) {
 async function freezeFixedBackground(srcNode, cloneNode, style) {
   const attachments = (style.getPropertyValue('background-attachment') || '').split(',').map(s => s.trim())
   // Engines degrade fixed to scroll inside transformed/filtered ancestors, and
-  // iOS-lineage engines ignore fixed entirely — match the LIVE rendering: plain rewrite.
+  // iOS-lineage engines ignore fixed entirely. Match the LIVE rendering: plain rewrite.
   let degraded = isIOS()
   if (!degraded) {
     for (let p = srcNode.parentElement; p && !degraded; p = p.parentElement) {
@@ -255,7 +249,7 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
     }
     const resolved = resolveFixedLayerSize(size, iw, ih, vw, vh)
     if (!resolved) { outSizes.push(size); outPositions.push(pos); continue }
-    // Position % resolves against (area - image); px is absolute. calc() → bail this layer.
+    // Position % resolves against (area - image); px is absolute; calc() bails this layer.
     const posParts = pos.split(/\s+/)
     const comp = (v, area, img) => {
       if (!v) return 0
@@ -278,33 +272,27 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
 const limitPx = (n) => Math.round(n * 100) / 100
 
 /**
- * Inlines background-related images and masks from the source tree onto the clone.
+ * Inline background images and masks from the source tree onto the clone.
  *
- * The worklist is built from the session clone→source nodeMap and filtered by the
- * needsBackgroundInline flag computed during the style snapshot, so the pass no longer
- * re-reads ~40 computed properties on every node — only flagged nodes do real work.
- * Walking the clone tree (descending through clone-only wrappers like the scroll-translate
- * wrapper) also reaches subtrees the old source/clone parallel walk skipped. Pairing through
- * nodeMap instead of child index is what keeps a clone-only <svg> of inlined defs from
- * shifting every background one sibling over (#439). Also runs on the differential path
- * (diff.js) for the rebuilt subtree. Pinned by __tests__/module.background.test.js and
- * __tests__/module.background.masks.test.js.
+ * The worklist walks the clone (through clone-only wrappers like the scroll-translate one),
+ * pairs each node through nodeMap and keeps only those the snapshot flagged with
+ * needsBackgroundInline, so unflagged nodes cost nothing. Pairing by child index instead
+ * shifted every background one sibling over past a clone-only <svg> of inlined defs (#439).
+ * Also runs on the differential path (diff.js) for the rebuilt subtree. Pinned by
+ * __tests__/module.background.test.js and __tests__/module.background.masks.test.js.
  *
- * A flagged node whose URL-bearing values all read none, live, has nothing to inline: the
- * snapshot flagged it for its background colour. The pass then writes only layout longhands
- * from that snapshot, the values the node's class and the base reset already give it. They
- * matter when author CSS travels with the clone, where a kept `<style>` or a shadow sheet can
- * outrank the class (`.badge{background-clip:content-box}` kept in the clone, overridden in
- * the page by a rule that stayed outside). `plain` says none does, and those nodes are left
- * alone. The live reads are the ones the pass made, so a node whose snapshot is behind the
- * page (a `:checked` set through the property, a twin a selector split) is still inlined.
+ * With `plain` (no author CSS travels with the clone), a flagged node whose URL-bearing values
+ * all read none, live, is left alone: it was flagged for its colour, and the longhands it would
+ * get are the ones its class already gives it. They matter only when a kept `<style>` or a
+ * shadow sheet can outrank the class. The test reads live, so a node whose snapshot is behind
+ * the page (a `:checked` set through the property, a twin a selector split) is still inlined.
  * Pinned by __tests__/module.background.plain.test.js.
  *
  * @param {HTMLElement} source The original source element.
  * @param {HTMLElement} clone The cloned element receiving inline styles.
  * @param {WeakMap} styleCache
  * @param {Object} [options={}]
- * @param {Map<Node, Node>} [nodeMap] Session clone→source map (the capturing session's
+ * @param {Map<Node, Node>} [nodeMap] Session clone-to-source map (the capturing session's
  *   own reference; the empty-map default only serves direct test calls).
  * @param {boolean} [plain] no author CSS travels with the clone (captureDOM decides)
  * @returns {Promise<void>}

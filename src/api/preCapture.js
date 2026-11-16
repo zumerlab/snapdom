@@ -1,31 +1,25 @@
 /**
  * `snapdom.preCapture()`: the capture that is ready before the click.
  *
- * Link prefetch, translated. A link declares its destination and the browser picks the
- * moment: when the user shows intent (pointer over it, focus, pointer down), before the
- * click. A capture has no href, so the destination is learned instead: a capture
- * that starts in the same event task as a pointerdown, click or Enter/Space keydown is
- * attributed to the control that was pressed, and from then on intent over that control
- * captures its element with the top-level options that call used. Memoization engages on an element's first
- * capture (core/burst.js), so the click that follows is served from that capture and pays
- * only the export; a changed element is invalidated or rebuilt by the diff path as always.
+ * Link prefetch, translated: capture on intent (pointer over, focus, pointer down), before
+ * the click. A capture has no href, so the destination is learned: a capture started in the
+ * same event task as a pointerdown, click or Enter/Space keydown belongs to the pressed
+ * control, and later intent over it captures that element with the call's top-level options.
+ * Memoization engages on the first capture (core/burst.js), so the click pays only the
+ * export; a changed element goes through invalidation or the diff path as always.
  *
- * Before any control is known, intent still buys the part that needs no target: the first
- * intent on the page captures the visible viewport once and discards it, which leaves the
- * style snapshots, fonts and images of everything on screen warm for whichever element is
- * asked for first (measured 2026-09-03 on the 79-demo corpus: a visible element captured
- * after such a warm runs at 1.1x its steady state, against 3.3x cold).
+ * Before any control is known, the first intent captures the visible viewport once and
+ * discards it, warming styles, fonts and images on screen (79-demo corpus, 2026-09-03: a
+ * visible element then captures at 1.1x its steady state, against 3.3x cold).
  *
- * No argument, no attribute, no background work: nothing runs until an intent event. A
- * programmatic capture needs none of this, because it is its own notice: capture early,
- * and the later call is a memo hit or a diff.
+ * No argument, no attribute, no background work until an intent event. A programmatic
+ * capture is its own notice: capture early and the later call is a memo hit or a diff.
  * Pinned by __tests__/api.preCapture.test.js.
  * @module api/preCapture
  */
 
-/** The public capture entry, bound by api/snapdom.js at load: a prefetch is exactly a
- *  capture, same hooks, same burst state. Bound rather than imported, because that module
- *  imports this one. */
+/** The public capture entry, bound by api/snapdom.js (which imports this module), so a
+ *  prefetch is exactly a capture: same hooks, same burst state. */
 let capture = null
 export function bindCapture(fn) { capture = fn }
 
@@ -40,9 +34,9 @@ const targets = new WeakMap()
 let viewportWarmed = false
 
 /**
- * Called when an eligible capture starts (api/snapdom.js): learns the control for this
- * element when a press preceded the call in the same event task. A `burst: false` capture cannot be served
- * from a memo, so there is nothing to learn from it; the viewport warm below is one.
+ * Learn the control for `element` when a press preceded this capture in the same event task.
+ * A `burst: false` capture is never served from a memo, so nothing is learned from it (the
+ * viewport warm below is one).
  * @param {Element} element
  * @param {object} [options] the caller's option bag; top-level values are snapshotted
  */
@@ -87,9 +81,8 @@ function onIntent(event, allowViewportWarm = true) {
   if (!capture || document.visibilityState === 'hidden') return
   const control = controlOf(event)
   if (!control) return
-  // pointerenter is dispatched once for the control and again for every descendant crossed.
-  // Capture only the control's own event; otherwise moving into <button><span>...</span>
-  // launches two identical prefetches (and repeats any pure plugin hooks).
+  // pointerenter fires again for every descendant crossed; only the control's own counts, or
+  // <button><span>...</span> launches two prefetches.
   if (event.type === 'pointerenter' && event.target !== control) return
   const known = targets.get(control)
   if (known) {

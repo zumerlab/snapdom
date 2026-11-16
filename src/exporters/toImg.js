@@ -1,10 +1,9 @@
 /**
  * The image exporter: a capture's data URL as a sized <img>. Also exported as `toSvg`.
  *
- * The normal output is the capture's own svg, sized. On WebKit that takes work:
- * a scaled svg-as-image corrupts shadows, so the svg text gets the same shadow rewrite
- * toCanvas uses and its own width/height patched to the display size, and only when that
- * fails does the PNG raster step in.
+ * The output is the capture's own svg, sized. On WebKit a scaled svg-as-image corrupts
+ * shadows, so the svg text gets toCanvas's shadow rewrite and is sized to the display size;
+ * a PNG raster steps in only when that fails.
  * @module exporters/toImg
  */
 import { isSafari, debugWarn } from '../utils'
@@ -16,11 +15,9 @@ import { fixSafariShadows } from './safariShadows.js'
  * Load a capture's data URL into an <img> sized by the shared exporter rule.
  *
  * `width`/`height` win, `scale` applies when neither is set, and the aspect reference is the
- * post-bleed viewBox (`meta.vbW/vbH`) rather than the element box, so an asymmetric
- * outerShadows bleed does not stretch the picture. With `scale` the svg's own width/height
- * are patched before decode when the header supplies the dimensions. Assigning src restarts
- * decoding, so the final URL must always finish decoding. On Safari any scale or size
- * runs the vector path described above, with PNG rasterize as its error fallback.
+ * post-bleed viewBox (`meta.vbW/vbH`), so an asymmetric bleed does not stretch the picture.
+ * A `scale` patches the svg header before decode. The final URL must always finish decoding.
+ * On Safari any scale or size takes the vector path above, falling back to a PNG.
  * Pinned by __tests__/exporter.toImg.test.js, __tests__/exporter.safariPaths.test.js and
  * __tests__/exporter.webkitLayerScale.test.js (the positioned-layer geometry of the vector path).
  * @param {string} url - the capture's data URL
@@ -38,10 +35,8 @@ export async function toImg(url, options, env = {}) {
   const hasH = Number.isFinite(height)
   const wantsScale = (Number.isFinite(scale) && scale !== 1) || hasW || hasH
   if (isSafari() && wantsScale) {
-    // Keep the export VECTOR instead of rasterizing to PNG: WebKit's svg-as-image quirks
-    // at non-natural scale are shadow quirks — fix those in the svg text (same rewrite
-    // toCanvas uses) and patch the svg's OWN width/height to the display size, so it
-    // renders at its natural scale and stays an SVG.
+    // Stay VECTOR: WebKit's quirks at a non-natural scale are shadow quirks, so fix those in
+    // the svg text and size the svg itself to the display size.
     try {
       const { svg } = await fixSafariShadows(decodeSvgFromDataURL(url))
       const head = (svg.match(/<svg\b[^>]*>/i) || [])[0] || ''
@@ -74,10 +69,9 @@ export async function toImg(url, options, env = {}) {
       return rasterize(url, { ...options, format: 'png', quality: 1, meta }, env)
     }
   }
-  // Normal SVG captures declare their natural dimensions in the header. Resolve a scale
-  // before loading, so a large payload is decoded once at its final size. The root tag is
-  // patched in place in the URL; only a URL that does not start with it, as svg.js writes it,
-  // is decoded. Unusual SVGs with relative/missing dimensions retain the measured fallback below.
+  // Resolve a scale from the header before loading, so a large payload decodes once at its
+  // final size, patching the root tag in the URL when it can. SVGs with relative or missing
+  // dimensions keep the measured fallback below.
   let source = url
   let scaledSvg = false
   if (!hasW && !hasH && scale !== 1 && typeof url === 'string' && url.startsWith('data:image/svg+xml')) {
@@ -114,10 +108,7 @@ export async function toImg(url, options, env = {}) {
     img.style.width = `${width}px`
     img.style.height = `${height}px`
   } else if (hasW) {
-    // Prefer the rasterized viewBox (vbW/vbH, post-bleed) over the pre-bleed
-    // content box (w0/h0): under outerShadows an asymmetric shadow/blur/outline
-    // bleeds unevenly, so w0/h0's aspect ratio no longer matches the actual
-    // rasterized image and stretches it.
+    // Post-bleed viewBox, not w0/h0: an asymmetric bleed changes the aspect ratio.
     const refW = Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : img.naturalWidth
     const refH = Number.isFinite(meta.vbH) ? meta.vbH : Number.isFinite(meta.h0) ? meta.h0 : img.naturalHeight
     const k = width / Math.max(1, refW)
@@ -141,10 +132,8 @@ export async function toImg(url, options, env = {}) {
           .replace(/width="[^"]*"/, `width="${cssW}"`)
           .replace(/height="[^"]*"/, `height="${cssH}"`)
         img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(patched)}`
-        // Assigning src RESTARTS decoding. The decode() above settled for the ORIGINAL
-        // url and says nothing about this one, so toSvg({scale}) handed back an image
-        // with `complete === false`: drawing it in the same tick — exactly what an
-        // exporter or a caller does — painted nothing.
+        // Assigning src RESTARTS decoding: without this wait toSvg({scale}) returned an
+        // image with `complete === false` that painted nothing when drawn at once.
         await img.decode()
       } catch (e) {
         debugWarn(options, 'Couldn\'t size the SVG image.', e)

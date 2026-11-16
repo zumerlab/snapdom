@@ -2,11 +2,11 @@
  * Text truncation, baked into the live text before the clone is taken.
  *
  * Firefox and Safari ignore `-webkit-line-clamp` and `text-overflow: ellipsis` inside a
- * foreignObject, so the ellipsis is resolved here on the real node, against its real layout,
- * and undone right after cloning. This is the one place the pipeline writes into the LIVE
- * tree: every write goes through textNodeWriter so node identity survives (#485), and undo
- * leaves alone any text the page changed meanwhile. capture.js runs it before prepareClone,
- * diff.js on a dirty subtree before the splice. Pinned by __tests__/module.lineClamp.test.js.
+ * foreignObject, so the ellipsis is resolved on the real node, against its real layout, and
+ * undone after cloning. The one place the pipeline writes the LIVE tree: every write goes
+ * through textNodeWriter so node identity survives (#485), and undo leaves text the page
+ * changed meanwhile alone. capture.js runs it before prepareClone, diff.js on a dirty subtree
+ * before the splice. Pinned by __tests__/module.lineClamp.test.js.
  * @module lineClamp
  */
 
@@ -17,10 +17,8 @@ import { noteSelfWrite } from '../utils/ownership.js'
 const NONE = () => {}
 
 /**
- * Bake text truncation for the element AND all descendants that CSS would
- * truncate: multi-line `-webkit-line-clamp` and single-line
- * `text-overflow: ellipsis`. Firefox and Safari don't honour either inside a
- * `<foreignObject>`, so we resolve the ellipsis into the text up front.
+ * Bake text truncation for the element AND every descendant CSS would truncate:
+ * multi-line `-webkit-line-clamp` and single-line `text-overflow: ellipsis`.
  * Fixes #386 (nested clamp) and #431 (single-line ellipsis on Safari/Firefox).
  *
  * @param {Element} el - Root element (and its subtree) to process
@@ -82,21 +80,18 @@ export function lineClamp(el, cs) {
   const text = textNodeWriter(el)
   const original = text.text
 
-  // Measure the REAL rendered line height instead of guessing from CSS.
-  // `line-height: normal` is font-metric dependent, and inside a -webkit-box the
-  // line box never shrinks below the font strut, so a value smaller than the
-  // glyph height (e.g. line-height:18px on 20px text) still lays out taller. A
-  // fs*1.2 / raw-CSS guess mis-sizes targetH and clamps to the wrong line count (#443).
+  // Measure the REAL line height, not CSS: `normal` depends on font metrics, and in a
+  // -webkit-box the line never shrinks below the strut (line-height:18px on 20px text lays out
+  // taller). A guess clamps to the wrong line count (#443).
   const pad = vpad(cs)
   text.write('X')
   const perLine = el.scrollHeight - pad
   text.restore()
   const lineH = perLine > 0 ? perLine : usedLineHeightPx(cs)
   const targetH = Math.round(lineH * lines + pad)
-  // scrollHeight is an integer, so the one-line probe can be half a pixel short and the
-  // error grows with every line: Firefox lays 14px Arial at 16.45px, the probe reads 16, two
-  // real lines read 33 against a target of 32, and the clamp cut to one line (#529). Still
-  // far short of a whole extra line.
+  // scrollHeight is an integer, so the probe can be half a pixel short per line: Firefox lays
+  // 14px Arial at 16.45px, two lines read 33 against a target of 32, and the clamp cut to one
+  // (#529). Still far short of a whole extra line.
   const slack = 0.5 * (lines + 1)
 
   // Already fits in N lines: do nothing, same as the native clamp
@@ -104,7 +99,7 @@ export function lineClamp(el, cs) {
     return NONE
   }
 
-  // ==== Binary search over the prefix length that fits with an ellipsis ====
+  // Binary search over the prefix length that fits with an ellipsis.
   let lo = 0, hi = original.length, best = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
@@ -126,10 +121,9 @@ export function lineClamp(el, cs) {
 }
 
 /**
- * Bake a single-line `text-overflow: ellipsis`. Same strategy as lineClamp but
- * on the horizontal axis: only when the element is a nowrap, overflow-clipped
- * plain-text container whose content overflows. Firefox/Safari skip this in a
- * <foreignObject>, so we resolve it here for every engine (#431).
+ * Bake a single-line `text-overflow: ellipsis`, lineClamp on the horizontal
+ * axis, for a nowrap, overflow-clipped plain-text container that overflows.
+ * Resolved for every engine, since Firefox/Safari skip it (#431).
  *
  * @param {Element} el
  * @param {CSSStyleDeclaration} [cs]
@@ -152,10 +146,9 @@ export function textEllipsis(el, cs) {
   // Mutates the live element's text nodes in place (never textContent, #485).
   const text = textNodeWriter(el)
   const original = text.text
-  // The browser cuts at the line's END edge, so what stays visible is whatever sits at its
-  // start edge. When the text runs against the box's direction (Arabic in a left-to-right
-  // box, English in a right-to-left one) that is the LOGICAL END of the text, and keeping
-  // the prefix captured the other end of the string.
+  // The browser cuts at the line's END edge and keeps what sits at its start edge. Text
+  // running against the box's direction (Arabic in an LTR box) shows its LOGICAL END there,
+  // so keeping the prefix would capture the wrong end.
   const keepEnd = startsWithLogicalEnd(el, cs, text.nodes)
   const keep = (k) => {
     if (!keepEnd) {
@@ -183,15 +176,11 @@ export function textEllipsis(el, cs) {
   return undoText(el, written, text)
 }
 
-/* ---------------- helpers ---------------- */
+/* helpers */
 
-/** Restore the pre-clamp text — unless the page changed it while the capture was running.
- *  This is the one place the pipeline writes to the LIVE tree: the ellipsis is baked into
- *  the real node, the clone is taken, and the text is put back. `prepareClone` is awaited
- *  in between, which is long enough for the caller's own code to write new text into the
- *  same node. A blind `el.textContent = original` then reverted that write — the capture
- *  being stale would have been forgivable, silently undoing the application's update was
- *  not. If what we wrote is no longer there, the node has a new owner: leave it. */
+/** Restore the pre-clamp text, unless the page changed it during the capture. `prepareClone`
+ *  is awaited in between, long enough for the app to write the same node, and a blind restore
+ *  would silently undo the app's update. If what we wrote is gone, the node has a new owner. */
 function undoText(el, written, text) {
   return () => {
     if (el.textContent === written) text.restore()
@@ -201,16 +190,12 @@ function undoText(el, written, text) {
 /**
  * Rewrites an element's text WITHOUT replacing its text nodes.
  *
- * `el.textContent = value` is destructive: the browser drops every child node and inserts a fresh
- * text node. Frameworks that keep a reference to the original node (React fibers, Vue vnodes,
- * Svelte blocks) then fail on their next update with
- * `NotFoundError: Failed to execute 'removeChild'` — long after the capture, which makes it very
- * hard to trace back (#485). Writing `node.data` mutates the same node in place, exactly what
- * React itself does for a single-text-child update, so node identity survives the measurement.
- *
- * Callers are gated by isPlainTextContainer(), so the element has no element children: writing
- * the whole string into the first text node and blanking the rest lays out identically to a
- * textContent write, and restore() puts every original chunk back where it was.
+ * `el.textContent = value` replaces the text node, and frameworks holding the original (React
+ * fibers, Vue vnodes, Svelte blocks) fail on their next update with
+ * `NotFoundError: Failed to execute 'removeChild'`, long after the capture (#485). Writing
+ * `node.data` keeps the node, as React does for a single text child. Callers pass
+ * isPlainTextContainer(), so the whole string in the first text node and the rest blanked lays
+ * out like a textContent write, and restore() puts every chunk back.
  *
  * @param {Element} el
  * @returns {{text: string, write: (value: string) => void, restore: () => void}}
@@ -235,11 +220,9 @@ function textNodeWriter(el) {
   }
 }
 
-/** A cut index that never lands between the two halves of a surrogate pair. Slicing an
- *  emoji in half leaves a lone surrogate, and the serialized SVG then fails
- *  encodeURIComponent — rejecting the WHOLE capture with "URIError: URI malformed",
- *  not just mangling one glyph. Must be applied to the emitted slice too, not only the
- *  probes: the last probe is not necessarily the one that wins. */
+/** A cut index that never splits a surrogate pair: a lone surrogate makes encodeURIComponent
+ *  reject the WHOLE capture ("URIError: URI malformed"). Apply it to the emitted slice too,
+ *  not only the probes: the last probe is not necessarily the winner. */
 function safeCut(text, n) {
   if (n <= 0 || n >= text.length) return n
   const c = text.charCodeAt(n - 1)
@@ -259,10 +242,9 @@ const JOINING = /[\u0600-\u08FF\u1800-\u18AF\uFB50-\uFDFF\uFE70-\uFEFF]/
 
 /**
  * A zero-width joiner when the cut at `i` splits a word of a joining script. Chromium and
- * Firefox truncate the shaped line, so the letter at the cut keeps its joined form; cut in
- * the text, it took its isolated or final form, wider, and the ellipsis fit one character
- * fewer than the page's (Arabic in a 220px box). WebKit reshapes the truncated text itself
- * and matches the plain cut, so it gets none.
+ * Firefox truncate the shaped line, so the cut letter keeps its joined form; a plain cut gave
+ * it the wider final form, one character fewer than the page (Arabic in a 220px box). WebKit
+ * reshapes the truncated text and matches the plain cut, so it gets none.
  */
 function joiner(text, i) {
   return i > 0 && i < text.length && JOINING.test(text[i - 1]) && JOINING.test(text[i]) && !isSafari()

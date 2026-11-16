@@ -12,13 +12,11 @@
 /**
  * Awaits the next animation frame, but never blocks the capture forever.
  *
- * Canvas readback rides on rAF: a WebGL/WebGPU canvas with `preserveDrawingBuffer: false` clears
- * its drawing buffer as soon as the frame composites, so `toDataURL` must run inside the frame,
- * right after the app's own render callback (#480). The catch is that rAF only fires while the
- * document is being rendered: in a background tab, a minimized window or an occluded view the
- * callback never arrives and the capture promise hangs for good (#486). Nothing composites in
- * that state either, so skipping the wait costs nothing — and the timeout backstop covers the
- * engines/states that keep the document "visible" while starving rAF anyway.
+ * A WebGL/WebGPU canvas with `preserveDrawingBuffer: false` clears its buffer once the frame
+ * composites, so `toDataURL` must run inside the frame, after the app's render (#480). But rAF
+ * never fires in a background tab or occluded view, and the capture hung for good (#486).
+ * Nothing composites there either, so a hidden document skips the wait, and the timeout covers
+ * states that stay "visible" while starving rAF.
  *
  * @param {number} [timeout=1000] ms after which the wait resolves on its own
  * @returns {Promise<void>}
@@ -37,13 +35,11 @@ export function nextFrame(timeout = 1000) {
 /**
  * Wait until `doc.fonts.ready` settles or no face in the set is loading, whichever is first.
  *
- * WebKit can leave the set "loading" for good while no face is loading, and `ready` then never
- * settles. In Safari 27.0.1, the jant#174 scene (a CJK serif stack whose faces try `local()`
- * first, and an emoji no local font covers) made no font request, still had `ready` pending a
- * minute later, and hung every capture past 20 s; with this wait the first capture took 129 to
- * 154 ms. A face really downloading is still waited for. Racing `ready` against a timer was
- * tried in jant#174 and cost an iPhone about 2 s per capture at 1 s per read, since one capture
- * reads it more than once.
+ * WebKit can leave the set "loading" for good with no face loading, and `ready` never settles.
+ * In Safari 27.0.1 the jant#174 scene (a CJK serif stack trying `local()` first, an emoji no
+ * local font covers) hung every capture past 20 s; with this wait the first took 129 to 154 ms.
+ * A face really downloading is still waited for. Not a timer race on `ready`: one capture
+ * reads it more than once, and at 1 s per read an iPhone paid about 2 s per capture.
  * Pinned by __tests__/utils.fontsSettled.test.js.
  * @param {Document} [doc=document]
  * @returns {Promise<void>}
@@ -69,14 +65,11 @@ const AUTO_GRACE_MS = 40
 /**
  * Create the time slicer for `fast: false` and `fast: 'auto'` (#503).
  *
- * The clone reads every node's computed style in one walk. On the #503 ArcGIS table that walk
- * was a single 480 ms task, so the page could neither paint nor take input until it ended. The
- * walks ask `due()` at node boundaries and `await pause()` once a slice is spent, which hands
+ * On the #503 ArcGIS table the clone's style walk was one 480 ms task, with no paint or input.
+ * The walks ask `due()` at node boundaries and `await pause()` once a slice is spent, handing
  * the event loop one task. `false` slices from the start; `'auto'` first runs AUTO_GRACE_MS.
- * v2's `fast: false` sent every node through requestIdleCallback and cost that table 45% cold
- * and 4x warm. Pausing only when a slice is spent (the clone and pseudo walks plus the phase
- * boundaries) kept the first capture at 455-469 ms against 476, with no task over 50 ms and
- * the page painting every 17-33 ms, raster identical.
+ * That table: first capture 455-469 ms against 476, no task over 50 ms, a paint every 17-33
+ * ms, raster identical. Not requestIdleCallback per node, as v2 did: 45% cold and 4x warm.
  * Pinned by __tests__/core.capture.fast.test.js.
  * @param {boolean|'auto'} fast
  * @returns {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} null for `fast: true`
@@ -116,13 +109,10 @@ let taskStart = -1
 /**
  * Hand the event loop one task when the running task has already spent a slice on captures.
  *
- * The same-element queue in burst.js starts each capture in a microtask of the one before, and
- * an awaited loop does the same from the caller, so captures that settle without a task of
- * their own (no decode, no fetch) ran as one task. Sixteen clip windows of the Zumly board
- * were one 90 ms task, queued at once or awaited in a loop. Asked before each capture, this
- * keeps the longest task at 20 to 26 ms there (a slice and the capture that crossed it), for
- * the same total. A task before every capture held it at 7 to 11 ms, but each one cost
- * Playwright's WebKit 1 to 4 ms, and 200 memo hits went from 6 to 170-308 ms.
+ * burst.js's same-element queue, or an awaited loop, starts each capture in a microtask of the
+ * one before, so captures with no decode or fetch ran as one task: sixteen Zumly clip windows
+ * were one 90 ms task, now 20 to 26 ms at most for the same total. Not a task before EVERY
+ * capture: each cost Playwright's WebKit 1 to 4 ms, and 200 memo hits went from 6 to 170-308 ms.
  * Pinned by __tests__/core.burst.taskTurn.test.js.
  * @returns {Promise<void>}
  */
@@ -161,9 +151,8 @@ let safariUA, safari, firefoxUA, firefox
  * apps, WeChat and WeCom, the Baidu apps (#295). Chrome and Firefox on iOS are excluded by the
  * first check and included again by the last one, on purpose: they render with WebKit too.
  *
- * The answer is kept per user agent string. The style pass asks once per node, and the nine
- * tests over the string cost the 1,506-node table 0.67 ms of a 43 ms capture. Keyed on the
- * string and not latched, since tests replace navigator.userAgent.
+ * Kept per user agent string: the style pass asks per node, and the nine tests cost the
+ * 1,506-node table 0.67 ms of a 43 ms capture. Not latched, since tests replace the UA.
  * Pinned by __tests__/utils.browser.more.test.js.
  * @returns {boolean}
  */
