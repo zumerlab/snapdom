@@ -127,9 +127,9 @@ const LEVELS = {
 const count = (level) => rows.filter(r => r.level === level).length
 const cell = (name, { dir, key }, r, refSize) => {
   if (r.missing) return '<td class="none" colspan="2">no baseline</td>'
-  const size = r.resized ? `<b class="dims">${r.size.join(' x ')} (Chromium ${refSize.join(' x ')})</b>` : ''
-  return `<td><img loading="lazy" src="${dir}/${name}.png"></td>
-    <td><div class="n"><b>${pct(r.layout)}</b> layout <span>${pct(r.strict)} strict</span>${size}</div><img loading="lazy" src="cross-diffs/${name}.${key}.png"></td>`
+  // Every cell opens with one caption line of the same height, so the images line up.
+  return `<td><div class="n${r.resized ? ' dims' : ''}">${r.size.join(' x ')}</div><img loading="lazy" src="${dir}/${name}.png"></td>
+    <td><div class="n"><b>${pct(r.layout)}</b> layout <span>${pct(r.strict)} strict</span></div><img loading="lazy" src="cross-diffs/${name}.${key}.png"></td>`
 }
 
 const live = (r) => !r.live ? '' : `<small class="${r.off.length ? 'off' : ''}">Against its own live page: ` +
@@ -138,7 +138,7 @@ const live = (r) => !r.live ? '' : `<small class="${r.off.length ? 'off' : ''}">
 
 const body = rows.map(({ name, results, level, refSize, ...r }) => `<tr class="${level}${r.off.length ? ' off' : ''}">
   <th><a href="../demos/${name}.html">${name}</a><i>${LEVELS[level]}</i>${live(r)}</th>
-  <td><img loading="lazy" src="${REF.dir}/${name}.png"></td>
+  <td><div class="n">${refSize ? refSize.join(' x ') : ''}</div><img loading="lazy" src="${REF.dir}/${name}.png"></td>
   ${OTHERS.map(o => cell(name, o, results[o.key], refSize)).join('\n  ')}</tr>`).join('\n')
 
 const html = `<!doctype html><meta charset="utf-8"><title>snapDOM cross-engine report</title>
@@ -160,8 +160,9 @@ const html = `<!doctype html><meta charset="utf-8"><title>snapDOM cross-engine r
   img { display: block; max-width: 100%; max-height: 240px; object-fit: contain; object-position: top left; cursor: zoom-in;
     background: repeating-conic-gradient(#eee 0 25%, #fff 0 50%) 0 0/16px 16px }
   img:fullscreen { max-height: none; background: #fff }
-  .n { margin-bottom: 4px } .n span { color: #71717a; margin-left: 6px }
-  .dims { display: block; color: #991b1b }
+  .n { height: 20px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; color: #52525b }
+  .n span { color: #71717a; margin-left: 6px } .n b { color: #18181b }
+  .n.dims { color: #991b1b; font-weight: 600 }
   small { display: block; margin-top: 6px; color: #52525b } small.off { color: #991b1b }
   body.only-off tr:not(.off) { display: none }
   tr.missing i, tr.size i { color: #991b1b } tr.layout i { color: #9a3412 } tr.minor i { color: #854d0e } tr.same i { color: #166534 }
