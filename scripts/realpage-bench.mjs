@@ -25,6 +25,7 @@ if (!await siteUp()) {
   site = spawn(process.execPath, [fileURLToPath(new URL('./serve-site.mjs', import.meta.url))], { stdio: 'ignore' })
   for (let i = 0; i < 100 && !await siteUp(); i++) await new Promise((resolve) => setTimeout(resolve, 100))
 }
+// For a run that throws; a run that ends stops it by hand at the bottom.
 process.on('exit', () => site?.kill())
 
 const N = Number(process.argv[2] || 5)
@@ -110,3 +111,5 @@ for (const r of rows) {
   console.log('')
 }
 await browser.close()
+// Stopped by hand: a live child keeps this process from ending.
+site?.kill()
