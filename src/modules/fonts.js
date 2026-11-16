@@ -673,25 +673,13 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
 
   // 3) Fallback: the DOM asks for italic/oblique but THIS family only declares a normal
   //    @font-face. Accept the normal face when weight/stretch are reasonable.
-  if (!faceIsRange && ss.kind === 'normal') {
-    const hasItalicRequest = need.some((r) => normStyle(r.s) !== 'normal')
-    if (hasItalicRequest) {
-      for (const r of need) {
-        const nearWeight = Math.abs(faceSingleW - r.w) <= 300
-        const stretchOK = (r.st >= ts.min && r.st <= ts.max)
-        if (nearWeight && stretchOK) {
-          return { exact, near: [] }
-        }
-      }
-    }
+  // No italic check needed: tier 2 already took every normal request this close, so a request
+  // found here is italic or oblique.
+  if (!faceIsRange && ss.kind === 'normal' &&
+      need.some((r) => Math.abs(faceSingleW - r.w) <= 300 && r.st >= ts.min && r.st <= ts.max)) {
+    return { exact, near: [] }
   }
 
-  // No branch above accepted this face. That is not the end of the story: the rules here
-  // reject a face that is FAR from what the page asked for, which is right while some
-  // other face of the family is closer — and wrong when there is no other face. CSS never
-  // drops a family that has faces; it picks the closest one and synthesises the rest.
-  // The caller therefore holds rejected faces of a required family as provisional and
-  // emits them only if the family ends the scan with nothing (issue #478).
   return null
 }
 
