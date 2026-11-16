@@ -262,11 +262,14 @@ export async function composeAndSerialize(state, ex) {
     }
     if (isBody && elDoc.documentElement) {
       const hr = elDoc.documentElement.getBoundingClientRect()
+      // Rects are in zoomed px under a `zoom` on <html>, the room is used in the body's own:
+      // unscaled, a page-anchored box sat 1px left and 4px up at zoom 1.25.
+      const z = state.element.currentCSSZoom || 1
       const room = {
-        top: Math.max(0, rect.top - hr.top),
-        right: Math.max(0, hr.right - rect.right),
-        bottom: Math.max(0, hr.bottom - rect.bottom),
-        left: Math.max(0, rect.left - hr.left)
+        top: Math.max(0, rect.top - hr.top) / z,
+        right: Math.max(0, hr.right - rect.right) / z,
+        bottom: Math.max(0, hr.bottom - rect.bottom) / z,
+        left: Math.max(0, rect.left - hr.left) / z
       }
       bodyRoom = room
       if (outerShadows !== 'subtree' && (room.top || room.right || room.bottom || room.left)) {
