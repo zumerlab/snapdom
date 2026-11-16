@@ -60,9 +60,6 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scope
       // An author's own :where() DOES need scoping; without this it leaked into the light DOM.
       if (s.startsWith(':where(') && s.includes('data-sd')) return s
 
-      // Do not touch @rules here (the caller handles those)
-      if (s.startsWith('@')) return s
-
       const m = s.match(TRAILING_PSEUDO_RE)
       if (m && SPAN_PSEUDO_RE.test(m[0])) return ':not(*)'
       const base = m ? s.slice(0, m.index).trim() : s
@@ -123,16 +120,6 @@ export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   })
 
   return cssText
-}
-
-/**
- * Generate a unique shadow scope id for this session.
- * @param {{shadowScopeSeq?: number}} sessionCache
- * @returns {string} like "s1", "s2", ...
- */
-export function nextShadowScopeId(sessionCache) {
-  sessionCache.shadowScopeSeq = (sessionCache.shadowScopeSeq || 0) + 1
-  return `s${sessionCache.shadowScopeSeq}`
 }
 
 /**
@@ -291,27 +278,6 @@ export function collectCustomPropsFromCSS(cssText) {
 }
 
 /**
- * Resolve the cascaded value of a custom prop for an element.
- * Falls back to documentElement if empty.
- * @param {Element} el
- * @param {string} name like "--o-fill"
- * @returns {string} resolved token string or empty if unavailable
- */
-function resolveCustomProp(el, name) {
-  try {
-    const cs = getComputedStyle(el)
-    let v = cs.getPropertyValue(name).trim()
-    if (v) return v
-  } catch { }
-  try {
-    const rootCS = getComputedStyle(document.documentElement)
-    let v = rootCS.getPropertyValue(name).trim()
-    if (v) return v
-  } catch { }
-  return ''
-}
-
-/**
  * Build a seed rule that initializes given custom props on the scope.
  * Placed before the rewritten shadow CSS so later rules (e.g. :hover) can override.
  * @param {Element} hostEl
@@ -322,7 +288,12 @@ function resolveCustomProp(el, name) {
 export function buildSeedCustomPropsRule(hostEl, names, scopeSelector) {
   const decls = []
   for (const name of names) {
-    const val = resolveCustomProp(hostEl, name)
+    // The host's cascaded value, else the document root's.
+    let val = ''
+    try {
+      val = getComputedStyle(hostEl).getPropertyValue(name).trim() ||
+        getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    } catch { }
     if (val) decls.push(`${name}: ${val};`)
   }
   if (!decls.length) return ''
@@ -350,45 +321,7 @@ export function markSlottedSubtree(root, scopeId) {
   root.querySelectorAll?.('*').forEach(mark)
 }
 
-/**
- * Wait for an accessible same-origin Document for a given <iframe>.
- * @param {HTMLIFrameElement} iframe
- * @param {number} [attempts=3]
- * @returns {Promise<Document|null>}
- */
-export async function getAccessibleIframeDocument(iframe, attempts = 3) {
-  const probe = () => {
-    try { return iframe.contentDocument || iframe.contentWindow?.document || null } catch { return null }
-  }
-  let doc = probe()
-  let i = 0
-  while (i < attempts && (!doc || (!doc.body && !doc.documentElement))) {
-    await new Promise(r => setTimeout(r, 0))
-    doc = probe()
-    i++
-  }
-  return doc && (doc.body || doc.documentElement) ? doc : null
-}
-
-/**
- * Compute the content-box size of an element (client rect minus borders).
- * @param {Element} el
- * @returns {{contentWidth:number, contentHeight:number, rect:DOMRect}}
- */
-function measureContentBox(el) {
-  const rect = el.getBoundingClientRect()
-  let bl = 0, br = 0, bt = 0, bb = 0
-  try {
-    const cs = getComputedStyle(el)
-    bl = parseFloat(cs.borderLeftWidth) || 0
-    br = parseFloat(cs.borderRightWidth) || 0
-    bt = parseFloat(cs.borderTopWidth) || 0
-    bb = parseFloat(cs.borderBottomWidth) || 0
-  } catch { }
-  const contentWidth = Math.max(0, Math.round(rect.width - (bl + br)))
-  const contentHeight = Math.max(0, Math.round(rect.height - (bt + bb)))
-  return { contentWidth, contentHeight, rect }
-}
+const positive = (v) => (v = parseFloat(v)) > 0 ? v : 0
 
 /**
  * Layout size before any ancestor transform: offsetWidth/Height first, then computed
@@ -399,50 +332,13 @@ function measureContentBox(el) {
  * @returns {{width: number, height: number}} CSS px
  */
 export function getUnscaledDimensions(el) {
-  let width = 0
-  let height = 0
-
-  // Priority 1: offsetWidth/offsetHeight (pre-transform layout dimensions)
-  if (el.offsetWidth > 0) width = el.offsetWidth
-  if (el.offsetHeight > 0) height = el.offsetHeight
-
-  // Priority 2: getComputedStyle() if offset dimensions not available
-  if (width === 0 || height === 0) {
-    try {
-      const cs = getComputedStyle(el)
-      if (width === 0) {
-        const w = parseFloat(cs.width)
-        if (!isNaN(w) && w > 0) width = w
-      }
-      if (height === 0) {
-        const h = parseFloat(cs.height)
-        if (!isNaN(h) && h > 0) height = h
-      }
-    } catch { }
+  let width = el.offsetWidth > 0 ? el.offsetWidth : 0
+  let height = el.offsetHeight > 0 ? el.offsetHeight : 0
+  if (!width || !height) {
+    const cs = getComputedStyle(el)
+    width ||= positive(cs.width) || positive(el.getAttribute('width')) || positive(el.naturalWidth)
+    height ||= positive(cs.height) || positive(el.getAttribute('height')) || positive(el.naturalHeight)
   }
-
-  // Priority 3: getAttribute() for hardcoded dimensions
-  if (width === 0 || height === 0) {
-    try {
-      if (width === 0) {
-        const w = parseFloat(el.getAttribute('width'))
-        if (!isNaN(w) && w > 0) width = w
-      }
-      if (height === 0) {
-        const h = parseFloat(el.getAttribute('height'))
-        if (!isNaN(h) && h > 0) height = h
-      }
-    } catch { }
-  }
-
-  // Priority 4: Intrinsic dimensions (for images)
-  if ((width === 0 || height === 0) && (el.naturalWidth || el.naturalHeight)) {
-    try {
-      if (width === 0 && el.naturalWidth > 0) width = el.naturalWidth
-      if (height === 0 && el.naturalHeight > 0) height = el.naturalHeight
-    } catch { }
-  }
-
   return { width, height }
 }
 
@@ -563,10 +459,22 @@ export function pinIframeViewport(doc, w, h) {
  * @returns {Promise<HTMLElement>}
  */
 export async function rasterizeIframe(iframe, sessionCache, options) {
-  const doc = await getAccessibleIframeDocument(iframe, 3)
-  if (!doc) throw new Error('The iframe document isn\'t ready.')
+  const probe = () => {
+    try { return iframe.contentDocument || iframe.contentWindow?.document || null } catch { return null }
+  }
+  let doc = probe()
+  for (let i = 0; i < 3 && !doc?.documentElement; i++) {
+    await new Promise(r => setTimeout(r, 0))
+    doc = probe()
+  }
+  if (!doc?.documentElement) throw new Error('The iframe document isn\'t ready.')
 
-  const { contentWidth, contentHeight } = measureContentBox(iframe)
+  // The content box: the client rect minus the borders.
+  const rect = iframe.getBoundingClientRect()
+  const frame = getComputedStyle(iframe)
+  const border = (side) => parseFloat(frame[`border${side}Width`]) || 0
+  const contentWidth = Math.max(0, Math.round(rect.width - (border('Left') + border('Right'))))
+  const contentHeight = Math.max(0, Math.round(rect.height - (border('Top') + border('Bottom'))))
 
   // main() threads the capture entrypoints on the context (context.snap) — no global
   // window.snapdom dependency anymore. Direct captureDOM/deepClone callers must pass it.
@@ -1010,7 +918,6 @@ function selfAndDescendants(root, selector) {
  */
 export async function resolveBlobUrlsInTree(root, sessionCache = null) {
   if (!root) return
-  const ctx = sessionCache
   // Plan UNIQUE resources before awaiting: the previous per-node await serialized every
   // independent fetch + FileReader, including multiple URLs in one CSS value. Four readers
   // overlap that latency without decoding an unbounded gallery at once. Shared in-flight
@@ -1039,82 +946,39 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
     })
   }
 
-  const imgs = selfAndDescendants(root, 'img')
-  for (const img of imgs) {
-    try {
-      const srcAttr = img.getAttribute('src')
-      const effective = srcAttr || img.currentSrc || ''
-      if (isBlobUrl(effective)) {
-        queueAttribute(img, 'src', effective)
+  for (const img of selfAndDescendants(root, 'img')) {
+    const effective = img.getAttribute('src') || img.currentSrc || ''
+    if (isBlobUrl(effective)) queueAttribute(img, 'src', effective)
+    const srcset = img.getAttribute('srcset')
+    if (srcset && srcset.includes('blob:')) {
+      const parts = parseSrcset(srcset)
+      for (const p of parts) {
+        if (isBlobUrl(p.url)) urls.add(p.url)
       }
-      const srcset = img.getAttribute('srcset')
-      if (srcset && srcset.includes('blob:')) {
-        const parts = parseSrcset(srcset)
+      writes.push(() => {
+        let changed = false
         for (const p of parts) {
-          if (isBlobUrl(p.url)) urls.add(p.url)
+          if (!resolved.has(p.url)) continue
+          p.url = resolved.get(p.url)
+          changed = true
         }
-        writes.push(() => {
-          let changed = false
-          for (const p of parts) {
-            if (!resolved.has(p.url)) continue
-            p.url = resolved.get(p.url)
-            changed = true
-          }
-          if (changed) img.setAttribute('srcset', stringifySrcset(parts))
-        })
-      }
-    } catch (e) {
-      debugWarn(ctx, 'Couldn\'t inline a blob: image.', e)
+        if (changed) img.setAttribute('srcset', stringifySrcset(parts))
+      })
     }
   }
 
-  const svgImages = selfAndDescendants(root, 'image')
-  for (const node of svgImages) {
-    try {
-      const XLINK_NS = 'http://www.w3.org/1999/xlink'
-      const href = node.getAttribute('href') || node.getAttributeNS?.(XLINK_NS, 'href')
-      if (isBlobUrl(href)) {
-        queueAttribute(node, 'href', href, () => node.removeAttributeNS?.(XLINK_NS, 'href'))
-      }
-    } catch (e) {
-      debugWarn(ctx, 'Couldn\'t inline a blob: SVG image.', e)
-    }
+  const XLINK_NS = 'http://www.w3.org/1999/xlink'
+  for (const node of selfAndDescendants(root, 'image')) {
+    const href = node.getAttribute('href') || node.getAttributeNS?.(XLINK_NS, 'href')
+    if (isBlobUrl(href)) queueAttribute(node, 'href', href, () => node.removeAttributeNS?.(XLINK_NS, 'href'))
   }
-
-  const styled = selfAndDescendants(root, "[style*='blob:']")
-  for (const el of styled) {
-    try {
-      const styleText = el.getAttribute('style')
-      queueCSS(styleText, replaced => el.setAttribute('style', replaced))
-    } catch (e) {
-      debugWarn(ctx, 'Couldn\'t inline blob: URLs in a style attribute.', e)
-    }
+  for (const el of selfAndDescendants(root, "[style*='blob:']")) {
+    queueCSS(el.getAttribute('style'), replaced => el.setAttribute('style', replaced))
   }
-
-  const styleTags = selfAndDescendants(root, 'style')
-  for (const s of styleTags) {
-    try {
-      const css = s.textContent || ''
-      queueCSS(css, replaced => { s.textContent = replaced })
-    } catch (e) {
-      debugWarn(ctx, 'Couldn\'t inline blob: URLs in a <style>.', e)
-    }
+  for (const s of selfAndDescendants(root, 'style')) {
+    queueCSS(s.textContent || '', replaced => { s.textContent = replaced })
   }
-
-  const urlAttrs = ['poster']
-  for (const attr of urlAttrs) {
-    const nodes = selfAndDescendants(root, `[${attr}^='blob:']`)
-    for (const n of nodes) {
-      try {
-        const u = n.getAttribute(attr)
-        if (isBlobUrl(u)) {
-          queueAttribute(n, attr, u)
-        }
-      } catch (e) {
-        debugWarn(ctx, `Couldn't inline the blob: URL in ${attr}.`, e)
-      }
-    }
-  }
+  for (const n of selfAndDescendants(root, "[poster^='blob:']")) queueAttribute(n, 'poster', n.getAttribute('poster'))
   if (!urls.size) return
   const pending = [...urls]
   let next = 0
@@ -1122,13 +986,11 @@ export async function resolveBlobUrlsInTree(root, sessionCache = null) {
     while (next < pending.length) {
       const url = pending[next++]
       try { resolved.set(url, await blobUrlToDataUrl(url)) } catch (e) {
-        debugWarn(ctx, 'Couldn\'t read a blob: URL; kept it as is.', e)
+        debugWarn(sessionCache, 'Couldn\'t read a blob: URL; kept it as is.', e)
       }
     }
   }))
-  for (const write of writes) {
-    try { write() } catch (e) { debugWarn(ctx, 'Couldn\'t write an inlined blob: URL.', e) }
-  }
+  for (const write of writes) write()
 }
 
 // ========== Font inflation (Firefox for Android) ==========

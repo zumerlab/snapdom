@@ -21,7 +21,6 @@ import { resolveCSSVars, isInSvgTemplate } from '../modules/CSSVar.js'
 import { debugWarn, getStyle, isPasswordInput, maskValue, isTag, isSVGEl } from '../utils/index.js'
 import {
   rewriteShadowCSS,
-  nextShadowScopeId,
   extractShadowCSS,
   injectScopedStyle,
   freezeImgSrcset,
@@ -150,29 +149,6 @@ function copySvgGeometry(node, clone, cs, list) {
     } else if (v === SVG_GEOMETRY_INITIAL[prop]) continue
     clone.style.setProperty(prop, v)
   }
-}
-
-/* ────────────────────────────────────────────────────────────────────────────
- * Tag handler registry: per-tag clone strategies for elements whose content
- * can't be cloned structurally (iframe/canvas/video/audio). A handler returns
- * a finished clone Node, null to skip the node, or undefined to fall through
- * to the generic clone path.
- * ──────────────────────────────────────────────────────────────────────────── */
-
-/** @type {Map<string, (node: Element, sessionCache: object, options: object) => Promise<Node|null|undefined>>} */
-const tagHandlers = new Map()
-
-/** Tags dispatched BEFORE the data-capture="placeholder" branch (an <iframe> placeholder
- *  clone would render as an empty frame, so iframe handling keeps precedence). */
-const PRE_PLACEHOLDER_TAGS = new Set(['IFRAME'])
-
-/**
- * Register a clone strategy for a tag (internal extension point).
- * @param {string} tag
- * @param {(node: Element, sessionCache: object, options: object) => Promise<Node|null|undefined>} handler
- */
-export function registerTagHandler(tag, handler) {
-  tagHandlers.set(String(tag).toUpperCase(), handler)
 }
 
 /**
@@ -338,8 +314,7 @@ function reachesClip(el, cs, b, clip) {
  */
 function isOutsideClip(node, clip) {
   if (node === clip.root) return false
-  let r
-  try { r = node.getBoundingClientRect() } catch { return false }
+  const r = node.getBoundingClientRect()
   if (r.width === 0 && r.height === 0) return false
   const cs = getStyle(node)
   if (cs.display === 'inline' && !CLIP_REPLACED_TAGS.has((node.localName || '').toLowerCase())) return false
@@ -789,9 +764,9 @@ export async function deepClone(node, sessionCache, options) {
     }
   }
 
+  // An <iframe> goes to its handler even as a placeholder: its plain clone renders an empty frame.
   const handler = tagHandlers.get(node.tagName)
-  const preHandler = handler && PRE_PLACEHOLDER_TAGS.has(node.tagName)
-  if (preHandler) {
+  if (handler && (node.tagName === 'IFRAME' || node.getAttribute('data-capture') !== 'placeholder')) {
     const handled = await handler(node, sessionCache, options)
     if (handled !== undefined) return handled
   }
@@ -805,11 +780,6 @@ export async function deepClone(node, sessionCache, options) {
     placeholder.style.cssText = 'color:#666;font-size:12px;text-align:center;line-height:1.4;padding:0.5em;box-sizing:border-box;'
     clone2.appendChild(placeholder)
     return clone2
-  }
-
-  if (handler && !preHandler) {
-    const handled = await handler(node, sessionCache, options)
-    if (handled !== undefined) return handled
   }
 
   let clone
@@ -1089,16 +1059,11 @@ export async function deepClone(node, sessionCache, options) {
     // the document observer stops at the boundary, so without this a component that
     // re-renders between captures keeps serving its previous frame's snapshots.
     observeShadowRoot(shadow)
-    try {
-      const slots = shadow.querySelectorAll('slot')
-      for (const s of slots) {
-        // Must NOT flatten: this set is checked against the host's *direct* childNodes.
-        // flatten:true resolves nested slots away, so when a light-DOM child is itself a
-        // <slot> (a component inside a component) it never lands here and gets cloned twice.
-        const assigned = s.assignedNodes?.() || []
-        for (const an of assigned) assignedToSlot.add(an)
-      }
-    } catch {
+    for (const s of shadow.querySelectorAll('slot')) {
+      // Must NOT flatten: this set is checked against the host's *direct* childNodes.
+      // flatten:true resolves nested slots away, so when a light-DOM child is itself a
+      // <slot> (a component inside a component) it never lands here and gets cloned twice.
+      for (const an of s.assignedNodes?.() || []) assignedToSlot.add(an)
     }
     const scopes = sessionCache.shadowScopes ||= new WeakMap()
     // #558: design systems hand the same sheet to every component, and each root used to get
@@ -1114,7 +1079,7 @@ export async function deepClone(node, sessionCache, options) {
     for (let p = node; (p = p.assignedSlot || p.parentNode || (p.nodeType === 11 ? p.host : null));) {
       if (p.shadowRoot && scopes.has(p.shadowRoot)) depth++
     }
-    const ownId = nextShadowScopeId(sessionCache)
+    const ownId = `s${sessionCache.shadowScopeSeq = (sessionCache.shadowScopeSeq || 0) + 1}`
     const rawCSS = extractShadowCSS(shadow, sessionCache.shadowSheets ||= new WeakMap())
     const groups = (sessionCache.shadowGroups ||= [])[depth] ||= new Map()
     let group = rawCSS && groups.get(rawCSS)
@@ -1133,15 +1098,11 @@ export async function deepClone(node, sessionCache, options) {
     // Roots of one group hold the same rules, so their content can share reads (styleShare.js),
     // re-reading margins and paddings when the text gives one a value that follows the box.
     if (group.share) (sessionCache.shadowShare ||= new WeakMap()).set(shadow, group.unstable)
-    try {
-      clone.setAttribute('data-sd', hostId)
-    } catch {
-    }
+    clone.setAttribute('data-sd', hostId)
     const seed = buildSeedCustomPropsRule(node, group.vars, `[data-sd="${hostId}"]`)
     injectScopedStyle(clone, seed + rewritten, depth)
     // Children clone concurrently (sibling iframe/canvas work overlaps); a failed child
     // resolves to null and is dropped. A leaf is cloned in place, as in the light-DOM loop below.
-    const shadowFrag = document.createDocumentFragment()
     const list = []
     let pending = false
     for (const child of Array.from(shadow.childNodes)) {
@@ -1153,8 +1114,7 @@ export async function deepClone(node, sessionCache, options) {
       list.push(deepClone(child, sessionCache, options).catch(() => null))
       pending = true
     }
-    for (const c of pending ? await Promise.all(list) : list) if (c) shadowFrag.appendChild(c)
-    clone.appendChild(shadowFrag)
+    for (const c of pending ? await Promise.all(list) : list) if (c) clone.appendChild(c)
   }
   if (node.tagName === 'SLOT') {
     const scopeId = sessionCache.shadowScopes?.get(node.getRootNode())
@@ -1250,8 +1210,7 @@ async function cloneIframe(node, sessionCache, options) {
 
   if (sameOrigin) {
     try {
-      const wrapper = await rasterizeIframe(node, sessionCache, options)
-      return wrapper
+      return await rasterizeIframe(node, sessionCache, options)
     } catch (err) {
       sessionWarn(sessionCache, 'iframe-failed', 'same-origin iframe failed to rasterize', err)
       debugWarn(options, 'Couldn\'t capture an iframe, so it was left out.', err)
@@ -1270,22 +1229,15 @@ async function cloneIframe(node, sessionCache, options) {
   }
 
   // Placeholder or spacer, both sized to the frame's box.
-  if (options.placeholders) {
-    const { width, height } = getUnscaledDimensions(node)
-    const fallback = document.createElement('div')
-    fallback.style.cssText =
-      `width:${width}px;height:${height}px;` +
+  const { width, height } = getUnscaledDimensions(node)
+  const box = document.createElement('div')
+  box.style.cssText = options.placeholders
+    ? `width:${width}px;height:${height}px;` +
       'background-image:repeating-linear-gradient(45deg,#ddd,#ddd 5px,#f9f9f9 5px,#f9f9f9 10px);' +
       'display:flex;align-items:center;justify-content:center;font-size:12px;color:#555;border:1px solid #aaa;'
-    inlineAllStyles(node, fallback, sessionCache, options)
-    return fallback
-  } else {
-    const { width, height } = getUnscaledDimensions(node)
-    const spacer = document.createElement('div')
-    spacer.style.cssText = `display:inline-block;width:${width}px;height:${height}px;visibility:hidden;`
-    inlineAllStyles(node, spacer, sessionCache, options)
-    return spacer
-  }
+    : `display:inline-block;width:${width}px;height:${height}px;visibility:hidden;`
+  inlineAllStyles(node, box, sessionCache, options)
+  return box
 }
 
 /**
@@ -1436,9 +1388,8 @@ async function cloneCanvas(node, sessionCache, options) {
   }
 
   const img = document.createElement('img')
-  try { img.decoding = 'sync'; img.loading = 'eager' } catch (e) {
-    debugWarn(sessionCache, 'Couldn\'t set image loading hints.', e)
-  }
+  img.decoding = 'sync'
+  img.loading = 'eager'
   if (url) img.src = url
 
   // keep the bitmap's intrinsic dimensions
@@ -1584,9 +1535,8 @@ async function cloneObjectEmbed(node, sessionCache, options) {
   return undefined // generic clone: fallback children render, matching the no-plugin browser behavior
 }
 
-registerTagHandler('IFRAME', cloneIframe)
-registerTagHandler('CANVAS', cloneCanvas)
-registerTagHandler('VIDEO', cloneVideo)
-registerTagHandler('AUDIO', cloneAudio)
-registerTagHandler('OBJECT', cloneObjectEmbed)
-registerTagHandler('EMBED', cloneObjectEmbed)
+/** Clone strategies for tags whose content cannot be cloned structurally. A handler returns
+ *  the finished clone, null to skip the node, or undefined for the generic clone path.
+ *  @type {Map<string, (node: Element, sessionCache: object, options: object) => Promise<Node|null|undefined>>} */
+const tagHandlers = new Map([['IFRAME', cloneIframe], ['CANVAS', cloneCanvas], ['VIDEO', cloneVideo],
+  ['AUDIO', cloneAudio], ['OBJECT', cloneObjectEmbed], ['EMBED', cloneObjectEmbed]])
