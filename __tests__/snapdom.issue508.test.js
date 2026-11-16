@@ -111,3 +111,28 @@ describe('#508 borders snapped to a fractional width', () => {
     expect(css).not.toMatch(/box-sizing:border-box/)
   })
 })
+
+describe('#508 cells of a collapsed table', () => {
+  function tableScene() {
+    const zoom = document.createElement('div')
+    zoom.style.zoom = '1.3125'
+    const root = document.createElement('div')
+    root.style.cssText = 'width:120px;background:#fff;display:flow-root'
+    const rows = Array.from({ length: ROWS }, (_, i) =>
+      `<tr><td style="border:1px solid #00f;padding:0;height:10px;background:${i === ROWS - 1 ? '#f00' : '#0f0'}"></td></tr>`)
+    root.innerHTML = `<table style="border-collapse:collapse;width:120px">${rows.join('')}</table>`
+    zoom.appendChild(root)
+    document.body.appendChild(zoom)
+    mounted.push(zoom)
+    return root
+  }
+
+  it('keeps the last of 40 rows at the bottom of the image', async () => {
+    const root = tableScene()
+    expect(parseFloat(getComputedStyle(root.querySelector('td')).borderTopWidth)).toBeLessThan(1)
+    const { canvas } = await count(root, red)
+    // A collapsed cell holds half of each border: adding both in full grew every row.
+    const { data } = canvas.getContext('2d').getImageData(0, canvas.height - 4, canvas.width, 1)
+    expect(red(data[4 * 60], data[4 * 60 + 1], data[4 * 60 + 2])).toBe(true)
+  })
+})

@@ -76,8 +76,11 @@ export function freezeBorderBox(el, style, snap) {
     if ((min && min !== '0px' && min !== 'auto') || (max && max !== 'none')) return ''
   }
   const px = (p) => parseFloat(snap[p]) || 0
-  const extraX = px('padding-left') + px('padding-right') + px('border-left-width') + px('border-right-width')
-  const extraY = px('padding-top') + px('padding-bottom') + px('border-top-width') + px('border-bottom-width')
+  // A cell of a collapsed table holds half of each border, its neighbour the other half: with
+  // both in full every row grew (six rows 4.8px at a devicePixelRatio of 1.25).
+  const share = snap['border-collapse'] === 'collapse' && snap.display === 'table-cell' ? 0.5 : 1
+  const extraX = px('padding-left') + px('padding-right') + (px('border-left-width') + px('border-right-width')) * share
+  const extraY = px('padding-top') + px('padding-bottom') + (px('border-top-width') + px('border-bottom-width')) * share
   const vertical = (snap['writing-mode'] || 'horizontal-tb') !== 'horizontal-tb'
   for (const prop of BOX_SIZES) {
     const v = snap[prop]
