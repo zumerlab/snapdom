@@ -297,9 +297,8 @@ export function stripRootShadows(originalEl, cloneRoot, opts = {}) {
 /**
  * #483: neutralize CSS `zoom` on the CLONE ROOT ONLY. The canvas and the class are sized
  * BEFORE the element's own zoom (a 200px box with `zoom:.8` reports offsetWidth 200, its rect
- * 160), so the root must not zoom again. `shouldIgnoreProp` keeps `zoom` out of the class
- * (#369), but an *inline* `zoom` survives `cloneNode()` and shrinks the content into a corner.
- * Descendants keep theirs.
+ * 160), so the root must not zoom again, whether its zoom comes from its class or inline
+ * (#369): zoomed twice, the content shrank into a corner. Descendants keep theirs.
  * Pinned by __tests__/core.capture.zoomRoot.test.js.
  *
  * @param {Element} originalEl

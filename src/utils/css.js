@@ -121,9 +121,6 @@ const NO_PAINT_EXACT = new Set([
   'container-name',
   'container-type',
   'timeline-scope',
-  // #369: computed widths and heights already include CSS zoom. Zoom in the class zooms twice
-  // inside the foreignObject and leaves blank sections.
-  'zoom',
   // WebKit-only draft prop (Fill & Stroke on text, not SVG `stroke`). Re-stating its
   // transparent default in svg-as-image flips WebKit's text paint path and drops text-shadow.
   // Nobody authors it.
