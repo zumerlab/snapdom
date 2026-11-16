@@ -717,7 +717,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
       if (!match) {
         ctx.provisionalFaces.push({
           family: family.toLowerCase(),
-          block: `@font-face{font-family:${family};src:${srcRaw};${descriptors}}`,
+          block: `@font-face{font-family:${familyDecl};src:${srcRaw};${descriptors}}`,
           srcRaw,
           baseHref: baseHref || location.href,
         })

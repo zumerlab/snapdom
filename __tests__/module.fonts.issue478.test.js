@@ -63,6 +63,22 @@ describe('#478 — a single custom @font-face must survive any weight/stretch re
     expect(css).toMatch(/src:\s*url\(data:font/)
   })
 
+  it('emits a parseable face for a family whose name has a word starting with a digit', async () => {
+    // Unquoted, `Baloo 2` is not a valid family: the parser drops the descriptor and the
+    // face names nothing.
+    addFace(`@font-face{font-family:'Baloo 2';src:${FACE_SRC};font-weight:400;font-style:normal;}`)
+
+    const css = await embedCustomFonts({
+      required: required('Baloo 2', '800', 'normal', 100),
+      usedCodepoints: usedCodepoints('A'),
+    })
+
+    const sheet = new CSSStyleSheet()
+    sheet.replaceSync(css)
+    const families = Array.from(sheet.cssRules, (rule) => rule.style.getPropertyValue('font-family'))
+    expect(families.some((family) => family.includes('Baloo 2'))).toBe(true)
+  })
+
   it('keeps the face when the element asks for a lighter weight', async () => {
     addFace(`@font-face{font-family:'SingleLight';src:${FACE_SRC};font-weight:700;font-style:normal;}`)
 
