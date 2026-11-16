@@ -294,6 +294,8 @@ async function diffCapture(element, state, context, animated) {
   const frame = createCaptureSession(context, R)
   frame.animated = animated
 
+  /** Clones this frame rebuilt or read again: the only ones whose style key can have changed. */
+  const touched = []
   for (const src of roots) {
     if (src.matches?.(HEAVY_SUBTREE) || src.querySelector?.(HEAVY_SUBTREE)) return null
     if (subtreeUsesBackdropFilter(src, universe)) return null
@@ -355,6 +357,7 @@ async function diffCapture(element, state, context, animated) {
 
     oldClone.replaceWith(sub)
     pruneSubtreeFromMaps(oldClone, R)
+    touched.push(sub, ...sub.querySelectorAll('*'))
     for (const [cloneNode, srcNode] of delta.entries()) {
       R.nodeMap.set(cloneNode, srcNode)
       R.srcToClone.set(srcNode, cloneNode)
@@ -438,6 +441,7 @@ async function diffCapture(element, state, context, animated) {
       // or an `!important` rule makes it do, puts those back.
       const rootStyle = srcN === element ? cloneN.style.cssText : null
       unpinOneLine(srcN, cloneN)
+      touched.push(cloneN)
       await inlineAllStyles(srcN, cloneN, sessionLike, context)
       if (rootStyle !== null && cloneN.style.cssText !== rootStyle) return null
       // An authored inline style holding a context-dependent value (`margin:20px auto`) is
@@ -468,6 +472,7 @@ async function diffCapture(element, state, context, animated) {
     if (floored === flexRowOverflows(row, sessionLike)) continue
     for (const item of items) {
       unpinOneLine(item, R.srcToClone.get(item))
+      touched.push(R.srcToClone.get(item))
       await inlineAllStyles(item, R.srcToClone.get(item), sessionLike, context)
       if (zeroed.includes(item)) rezero = true
     }
@@ -475,15 +480,29 @@ async function diffCapture(element, state, context, animated) {
   // In the order of the full pipeline, styles first and then the zeroes, on the same nodes.
   if (rezero) neutralizeRootMarginCollapse(element, R.clone, R.nodeMap)
 
-  // Class numbering is positional over the sorted key set, so new keys renumber: strip the
-  // generated classes everywhere and re-apply against the fresh keyToClass.
-  const keyToClass = generateCSSClasses(R.styleMap)
-  for (const [node, key] of R.styleMap.entries()) {
+  // Class numbering is positional over the sorted key set, so a new key renumbers every class.
+  // A frame that brought none keeps the numbering and the class CSS of the frame before, and
+  // only the clones it rebuilt or read again change class: naming them all again was a fifth
+  // of a differential frame of the 1,506-node table. A key that lost its last user stays in
+  // the CSS as an unused rule until a frame renumbers.
+  let keyToClass = R.keyToClass
+  let classCSS = R.classCSS
+  let renumber = !keyToClass
+  for (let i = 0; !renumber && i < touched.length; i++) {
+    const key = R.styleMap.get(touched[i])
+    if (key && !keyToClass.has(key)) renumber = true
+  }
+  if (renumber) {
+    keyToClass = R.keyToClass = generateCSSClasses(R.styleMap)
+    classCSS = R.classCSS = (R.classPrefixCSS || '') +
+      Array.from(keyToClass.entries()).map(([key, cn]) => `.${cn}{${key}}`).join('')
+  }
+  for (const node of renumber ? R.styleMap.keys() : touched) {
+    const key = R.styleMap.get(node)
+    if (key === undefined) continue
     stripGeneratedClasses(node)
     applyStyleClass(node, key, keyToClass)
   }
-  const classCSS = (R.classPrefixCSS || '') +
-    Array.from(keyToClass.entries()).map(([key, cn]) => `.${cn}{${key}}`).join('')
 
   // The splice awaited: a scan that moved meanwhile pruned some delta snapshots with another
   // universe than `universe`, which the reset is built from (#554).

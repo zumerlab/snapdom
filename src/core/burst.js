@@ -659,6 +659,9 @@ function targetScope(element, state, target) {
  * @property {number|undefined} compressionDensity
  * @property {Map<Node, Node>} srcToClone - source to clone, built by burst
  * @property {boolean|undefined} usesBackdropFilter - diff's lazy memo, undefined until read
+ * @property {Map<string, string>|undefined} keyToClass - style key to class name as the last
+ *   differential frame numbered them, with `classCSS`, the CSS it emitted; undefined until one ran
+ * @property {string|undefined} classCSS
  */
 
 /**
