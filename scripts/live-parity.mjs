@@ -83,7 +83,6 @@ const LIMITS = {
   'd444-audio': 'native controls without author styles do not paint in a foreignObject (#427)',
   'd14-cors-test': 'a cross-origin image without CORS is a placeholder by design',
   'd32-iframe-same-origin': 'a cross-origin iframe is a placeholder by design',
-  'd486-canvas-animation': 'its canvases redraw every frame, between the screenshot and the capture',
   'd498-layout-misalignment': 'headless Chromium paints no classic scrollbar in the reference',
   'd45-scrollbar-styles': 'headless Chromium paints no classic scrollbar in the reference',
   'd508-snapped-borders': 'a fractional zoom on an ancestor: compared after rescaling, off by sub-pixels',
@@ -91,6 +90,11 @@ const LIMITS = {
   'd42-nested-line-clamp': "a native button; Chromium's svg images ignore per-language default fonts",
   'd-rtl-body': "Chromium's reference screenshot of a right-to-left body starts 228px in; the capture holds the whole body",
   'd8-nested-elements': 'WebKit clips a hard box-shadow of several layers to its unflipped box in an svg image: the part below is lost, in real Safari too (measured 2026-11-16, Safari 27.0.1)',
+  'd433-inline-block-width': 'WebKit: a native <button> without author styles paints differently in an svg image (#427)',
+  'd40-antd-descriptions-iframe': 'WebKit: native <button>s without author styles paint differently in an svg image (#427)',
+  'd506-embedded-fonts': 'WebKit: native <button>s (#427), and the reference is taken before MathJax has painted its fonts, the capture after',
+  'd-element-mirror-import': 'its native controls (range, colour, date, checkbox) do not paint the same in a foreignObject (#427)',
+  'd-plugin-paint-canvas': 'WebKit clips a hard box-shadow to its unflipped box in an svg image, as in d8-nested-elements',
   'd-compress': "Playwright's WebKit draws box-shadow in an svg image off its box (safariShadows.js); real Safari is checked by hand",
 }
 
