@@ -135,6 +135,31 @@ round by devicePixelRatio and has no layout zoom; there `freezeBorderBox`
 (`src/modules/styleFreeze.js`) holds the outer edges of boxes with fractional borders, which a
 table cell holding text cannot do.
 
+## Images: what the page has decoded is not read again
+
+Every raster in a capture is embedded as a `data:` URL, downsampled to the resolution its output
+needs (`src/modules/compress.js`, on by default). For an `<img>` the page has already decoded
+there is a shorter way than reading the file again: `drawDecodedImages` draws the live element
+to a canvas at its visible size and writes that to the clone, before the passes that read
+sources. On the real-page photo gallery (9 photos, 16 Mpx shown in 0.6) a cold capture went
+from 368.6 to 151.9 ms; what is left is the browser decoding the photos for the canvas.
+
+It is taken only when a canvas may read the pixels and there is something to gain: a loaded
+`<img>`, larger than it is shown, from the same origin, a `blob:` or `data:` URL, or another
+origin with a `crossorigin` attribute. An SVG stays vector. A canvas that turns out unreadable
+(a redirect to another origin) is caught and the image goes through the passes as before, as do
+CSS backgrounds, which have no decoded element to draw.
+
+A result can be exported later at a higher scale than it was captured at
+(`const r = await snapdom(el); r.toPng({ scale: 2 })`), so compress keeps the original of every
+asset it shrinks. The decoded path has no original string to keep: it starts the read during the
+capture, unawaited, and an export that needs more density waits for it (`exportSource`,
+`src/api/snapdom.js`). A read that fails leaves that image at the resolution it has.
+
+Measured and not adopted: decoding the files off the main thread in parallel
+(`createImageBitmap` from the fetched blobs) is 27% faster than the synchronous draw in
+Chromium and 3 to 4 times slower in Firefox and WebKit.
+
 <a id="measured-dead-ends--do-not-retry"></a>
 
 ## Previous optimization results
