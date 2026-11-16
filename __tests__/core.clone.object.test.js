@@ -3,8 +3,8 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 
-// SOLID RED 1x1, generated at runtime — deliberately not the transparent pixel: CLAUDE.md
-// records a transparent control that measured 0% diff and nearly validated a broken harness.
+// SOLID RED 1x1, generated at runtime, deliberately not the transparent pixel: a transparent
+// control once measured 0% diff and nearly validated a broken harness.
 // An opaque fixture is the only kind the paint probe below can register.
 const PIXEL_PNG = (() => {
   const c = document.createElement('canvas')
@@ -36,8 +36,8 @@ describe('<object>/<embed> capture', () => {
     expect(svg).toContain('<img')
     expect(svg).not.toContain('FALLBACK-TEXT')
     expect(svg).not.toContain('<object')
-    // A serialized <img> does not prove it decodes and paints (the payload can lie — see
-    // CLAUDE.md). The 1x1 red fixture stretches to fill the 40x40 object box: the centre
+    // A serialized <img> does not prove it decodes and paints (the payload can lie).
+    // The 1x1 red fixture stretches to fill the 40x40 object box: the centre
     // pixel must carry it.
     const canvas = await res.toCanvas()
     const d = canvas.getContext('2d')

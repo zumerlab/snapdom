@@ -162,8 +162,7 @@ __snapshots__
 /output/
 
 .vscode/
-.claude/*
-!.claude/CLAUDE.md
+.claude/
 .cursor/
 bench/
 AGENTS.md

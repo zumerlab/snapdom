@@ -20,7 +20,7 @@ describe('the `width` option means the same thing in the SVG header and in every
   // larger than the requested box by the bleed — so the same capture rendered its element at
   // two different sizes depending on which exporter you reached for.
   // Not on Safari: there the header deliberately stays at viewBox size and toImg/toSvg patch
-  // width/height themselves to keep that path vector (see the Safari notes in CLAUDE.md), so
+  // width/height themselves to keep that path vector (src/exporters/toImg.js), so
   // the raw header is not the number the exporter uses.
   it.skipIf(isSafari())('agrees with toCanvas for a shadowed element captured at a target width', async () => {
     const el = mount('<div style="width:200px;height:200px;background:#08f;' +

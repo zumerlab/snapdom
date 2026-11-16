@@ -39,7 +39,7 @@ describe('snapdom API (direct)', () => {
 
   // The old 'cubre rama Safari en toImg' test mocked '../utils' — a specifier that resolves
   // to <repo>/utils, which does not exist — so the factory never applied and the test ran the
-  // plain chromium path with zero assertions. Per CLAUDE.md, Playwright cannot verify the
+  // plain chromium path with zero assertions. Playwright cannot verify the
   // Safari branches anyway (that lives in the SnapEye harness), so it was removed rather
   // than re-pointed: a correctly-wired mock would still only prove the mock.
 
