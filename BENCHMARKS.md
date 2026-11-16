@@ -107,7 +107,7 @@ checkout. Legacy tests explicitly label cases that include scene mounting in the
 
 ## Method
 
-Chromium via Playwright, headless, DPR 1, scale 1, Apple Silicon. All timed outputs end at a PNG data URL. Times are in milliseconds. The steady-state table is the median of four runs; other scene rows are individual benchmark runs. Core repeat memoization is disabled except in the polling scene. Library versions are pinned in the benchmark adapters.
+Chromium via Playwright, headless, DPR 1, scale 1, Apple Silicon. All timed outputs end at a PNG data URL. Times are in milliseconds. Measured 2026-11-16. Every row is the median of three runs of its benchmark; the real-page table is the median of five captures. Core repeat memoization is disabled except in the polling scene. Library versions are pinned in the benchmark adapters.
 
 A first capture and a repeat capture answer different questions. Image decoding, rasterization and PNG encoding remain part of the measured cost. Check output dimensions and visual differences before comparing timings.
 
@@ -115,46 +115,46 @@ A first capture and a repeat capture answer different questions. Image decoding,
 
 | Library | Complex card | Table, 500 rows | Simple node (1200×800) |
 | --- | --- | --- | --- |
-| **SnapDOM** | **10.0** | **130.1** | **11.1** |
-| domlens.js 0.1.0 | 17.4 | 194.1 | 133.4 |
-| modern-screenshot 4.7.0 | 30.5 | 579.9 | 12.2 |
-| dom-to-image-more 3.10.2 | 30.4 | 683.9 | 16.9 |
-| html-to-image 1.11.13 | 50.2 | 1,443.1 | 17.1 |
-| html2canvas 1.4.1 | 82.5 | 365.0 | 89.2 |
-| @renoun/screenshot 0.3.3 | 145.5 | 641.6 | 77.5 |
-| dom-to-image 2.6.0 | 154.9 | 1,041.5 | 131.7 |
-| dom-to-image-modern 1.0.2 | 156.5 | 928.2 | 129.6 |
+| **SnapDOM** | **11.7** | **128.0** | **11.7** |
+| domlens.js 0.1.0 | 16.6 | 182.7 | 16.7 |
+| modern-screenshot 4.7.0 | 30.6 | 561.2 | 12.1 |
+| dom-to-image-more 3.10.2 | 30.4 | 679.2 | 16.6 |
+| html-to-image 1.11.13 | 51.0 | 1,263.5 | 16.6 |
+| html2canvas 1.4.1 | 82.1 | 369.4 | 68.8 |
+| @renoun/screenshot 0.3.3 | 148.8 | 678.1 | 73.6 |
+| dom-to-image 2.6.0 | 152.7 | 949.4 | 127.3 |
+| dom-to-image-modern 1.0.2 | 152.9 | 925.2 | 127.6 |
 
 ## Real-world scenes
 
 | Scene | SnapDOM | Next fastest | Rest of the field |
 | --- | --- | --- | --- |
-| CSS-heavy page — 10k author rules, 240 class-styled cards | **125.4** | domlens 137.8 | modern-screenshot 288.3 · dom-to-image-more 344.3 · html-to-image 586.1 |
-| Shadow DOM — 150 open roots, 3 levels, ~3k nodes | **12.0** | domlens 65.3 | modern-screenshot 104.2 · html2canvas 140.0 · dom-to-image-more 168.1 · html-to-image 646.1 |
-| Web fonts — article with Inter 400/700 + mono spans | **10.7** | modern-screenshot 23.1 | dom-to-image-more 25.0 · html-to-image 41.5 |
-| Image grid — 40 same-origin PNGs fetched over HTTP | **52.1** | dom-to-image-more 59.7 | html-to-image 60.9 · domlens 66.5 · modern-screenshot 68.1 |
-| Photo gallery — 9 photos, 16 Mpx of sources, 960px wide | **61.8** | html2canvas 72.3 | html-to-image 244.6 · dom-to-image-more 426.6 · modern-screenshot 628.7 · domlens 841.6 |
-| Polling — 20 captures of a live dashboard | **18.6** | modern-screenshot 109.1 | dom-to-image-more 333.3 · domlens 470.4 |
-| Deep nested tree — 16 chains × 10 levels, ~2,100 nodes, a `::before` stripe on every leaf | **295.5** | html2canvas 708.4 | domlens 1,106.0 · modern-screenshot 1,280.3 · html-to-image 2,240.1 |
+| CSS-heavy page — 10k author rules, 1,000 class-styled nodes | **88.8** | domlens 150.7 | modern-screenshot 345.8 · dom-to-image-more 407.9 · html-to-image 687.8 |
+| Shadow DOM — 150 open roots, 3 levels, ~3k nodes | **23.8** | domlens 50.5 | modern-screenshot 118.8 · html2canvas 141.7 · dom-to-image-more 180.4 · html-to-image 492.4 |
+| Web fonts — article with Inter 400/700 + mono spans | **11.5** | modern-screenshot 27.0 | dom-to-image-more 31.0 · html-to-image 43.1 |
+| Image grid — 40 same-origin PNGs fetched over HTTP | **48.8** | html-to-image 62.9 | domlens 66.8 · modern-screenshot 70.2 · dom-to-image-more 78.9 |
+| Photo gallery — 9 photos, 16 Mpx of sources, 960px wide | **35.6** | html2canvas 70.2 | html-to-image 265.3 · dom-to-image-more 462.8 · modern-screenshot 560.1 · domlens 1,005.0 |
+| Polling — 20 captures of a live dashboard | **23.3** | modern-screenshot 128.4 | dom-to-image-more 333.3 · domlens 333.3 |
+| Deep nested tree — 16 chains × 10 levels, ~2,100 nodes, a `::before` stripe on every leaf | **275.6** | html2canvas 785.4 | domlens 1,172.3 · modern-screenshot 1,467.3 · html-to-image 2,666.7 |
 
-The polling row uses automatic memoization. The image grid includes HTTP fetches. In the photo gallery, SnapDOM downsamples source images to visible resolution; html2canvas paints images already decoded by the browser. Those paths have different first-capture costs.
+The polling row uses automatic memoization. The image grid includes HTTP fetches. In the photo gallery every mount uses photos of its own, so no cache serves one capture's work to the next; SnapDOM draws the images the page has already decoded at their visible size, as html2canvas does, and keeps each original for a later export at a higher scale.
 
 ## Cold vs steady — per element
 
 | Arm | ms |
 | --- | --- |
-| SnapDOM — fresh element each capture | **180.1** |
-| domlens.js — fresh element each capture | 211.6 |
-| modern-screenshot — fresh element each capture | 592.8 |
-| *SnapDOM — same element re-captured, for reference* | *127.4* |
+| SnapDOM — fresh element each capture | **181.9** |
+| domlens.js — fresh element each capture | 257.2 |
+| modern-screenshot — fresh element each capture | 686.9 |
+| *SnapDOM — same element re-captured, for reference* | *162.1* |
 
 ## On a real page
 
 | Scene (per-element cold, docs page) | SnapDOM | domlens 0.1.0 | html2canvas 1.4.1 | modern-screenshot 4.7.0 | html-to-image 1.11.13 |
 | --- | --- | --- | --- | --- | --- |
-| Table, 500 rows (640×17312) | **191.1** | 275.0 | 375.7 | 599.0 ¹ | 1,450.1 ¹ |
-| Deep nested tree (1232×15506) | **442.9** | 1,192.7 | 739.4 | 1,227.2 | 2,181.7 |
-| Photo gallery (960×654) | 208.3 | 1,112.6 | **185.7** | 590.8 | 573.6 |
+| Table, 500 rows (640×17312) | **210.1** | 308.2 | 382.5 | 705.8 ¹ | 1,648.4 ¹ |
+| Deep nested tree (1232×15506) | **520.0** | 1,467.1 | 825.0 | 1,435.3 | 2,570.5 |
+| Photo gallery (960×654) | **154.9** | 1,359.1 | 183.1 | 948.8 | 946.3 |
 
 Each scene is mounted fresh inside the docs site; five captures per cell, median. ¹ Different output dimensions: modern-screenshot produced 640×17311 and html-to-image 605×16384. Those two table cells are not directly comparable.
 
@@ -207,6 +207,6 @@ npm run test:benchmark:legacy
 npx vitest run __tests__/category.capabilities.test.js --browser.headless --reporter=verbose
 ```
 
-For the comparison inside the docs page, run `npm run site` in one terminal and `node scripts/realpage-bench.mjs` in another. `BROWSER=all` selects Chromium, Firefox and WebKit for the browser suites that support it.
+For the comparison inside the docs page, run `npm run bench:realpage`: it compiles, and serves the site itself when none is running. `BROWSER=all` selects Chromium, Firefox and WebKit for the browser suites that support it.
 
 The live lab and tests share [the same adapters and scenes](docs/compare/live/harness.js). Keep the output stage, scale, DPR, version and memoization mode in any report of these numbers.
