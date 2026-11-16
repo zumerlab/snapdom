@@ -698,42 +698,29 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   let dyn = null
   const shared = shareInfo && shareInfo.st.snaps.get(shareInfo.id)
   if (shared) {
-    // Identity hit: copy the shared full read, then re-read only the layout-varying props on
-    // THIS node. The non-enumerable riders carry over: __bgClipTextFix derives from colors,
-    // and __needsBgInline from the PRESENCE of url()/gradient/mask/border-image values —
-    // all non-geometry computed values, identical between identity twins by construction
-    // (same matched rules; animations disable the share). Recomputing the flag per twin was
-    // 7 live reads a node for an answer the identity already holds.
-    snap = { ...shared.snap }
-    // Direct loop over the identity's re-read list (built on its first twin): the old form
-    // walked all ~150 keys with a regex test per key, per twin (10.8ms of getSnapshot
-    // self-time on the 500-row table, profiled). The values feed `dyn`, the part of this
-    // twin's key that the identity does not already hold.
+    // Identity hit: the twin inherits the shared full read and holds only the used-value
+    // props, re-read here. Copying the ~150 keys instead was 5 of the 34 ms of a first
+    // capture of the 250-row table. The riders (__needsBgInline, __bgClipTextFix) are
+    // inherited too: they derive from non-geometry computed values, the same for every
+    // twin. An empty re-read is stored as undefined so it hides the shared value; nothing
+    // may `delete` from a snapshot for the same reason. The values feed `dyn`, the part of
+    // this twin's key that the identity does not already hold.
     const rrList = shared.rr || shareLists(shared, el, shareInfo.st)
+    snap = Object.create(shared.snap)
     dyn = []
     for (let i = 0; i < rrList.length; i++) {
-      const p = rrList[i]
-      const v = style.getPropertyValue(p)
-      if (v) snap[p] = v
-      else delete snap[p]
+      const v = style.getPropertyValue(rrList[i])
+      snap[rrList[i]] = v || undefined
       dyn.push(v)
-    }
-    Object.defineProperty(snap, '__needsBgInline', { value: shared.snap.__needsBgInline, enumerable: false })
-    if (shared.snap.__bgClipTextFix !== undefined) {
-      Object.defineProperty(snap, '__bgClipTextFix', { value: shared.snap.__bgClipTextFix, enumerable: false })
     }
   } else {
     snap = snapshotComputedStyleFull(style, options, el, universeFor(el, session))
     if (shareInfo) {
-      // Stored by REFERENCE, with the riders it already carries: the copy that used to be
-      // made here, plus a re-read list and a base signature per identity, cost 27 ms of a
-      // 134 ms pipeline on a tree whose nodes are all unique (the deep-tree scene: 1,936
-      // leaves, each with its own inline background) for lists no twin ever read. One
-      // pass mutates this object after it is stored:
-      // stripHeightForWrappers judges this node's OWN children, so it may delete height /
-      // block-size that a twin keeps — the flags let shareLists put them back on the
-      // re-read list, where the twin reads its own.
-      shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null, h: 'height' in snap, b: 'block-size' in snap })
+      // Stored by REFERENCE: a copy, a re-read list and a base signature per identity cost
+      // 27 ms of a 134 ms pipeline on a tree whose nodes are all unique (the deep-tree
+      // scene: 1,936 leaves, each with its own inline background) for lists no twin ever
+      // read. shareLists copies it on the first twin.
+      shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null })
     }
   }
   const used = usedValuesOf(snap, el, flexItem)
@@ -773,10 +760,10 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     if (restoredAutoMargin) dyn.push('\u0005', ...MARGIN_PROPS.map(prop => snap[prop]))
     if (clipped) dyn.push('\u0006' + clipped)
     if (gutter) dyn.push('\u0007' + snap.width, snap.height)
-    // AFTER the strip: it deletes at most height/block-size, and two twins with different
+    // AFTER the strip: it blanks at most height/block-size, and two twins with different
     // strip outcomes must not collide onto one key. Everything else a twin holds is the
     // identity's, so within one share record the tail alone keys the class (inlineAllStyles).
-    shareInfo.tail = dyn.join('\u0001') + ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004')
+    shareInfo.tail = dyn.join('\u0001') + (snap.height === undefined ? '\u0003' : '') + (snap['block-size'] === undefined ? '\u0004' : '')
     shareInfo.rec = shared
   }
   const hosts = shadowHostsOf(el)

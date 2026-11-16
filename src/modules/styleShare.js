@@ -189,15 +189,15 @@ export function identityFor(el, st) {
  *  columns. A probe of twins with different boxes on all three engines gave the full set.
  *  Building it on the first twin, and copying the snapshot once on the first hit, is what
  *  keeps the share free on a tree with no twins: per identity it cost the deep tree 27 ms of
- *  134, and twins spreading the identity's dictionary-mode object cost the 500-row table 6 ms.
+ *  134.
  *  Pinned by __tests__/module.styles.identityShare.test.js.
- *  @param {{snap: object, rr: string[]|null, h: boolean, b: boolean}} rec
+ *  @param {{snap: object, rr: string[]|null}} rec
  *  @param {Element} el the identity's first twin
  *  @returns {string[]} the re-read list, also stored on `rec.rr` */
 export function shareLists(rec, el, st) {
-  // Re-copied once here, riders included: the identity's own object was built by keyed
-  // stores (dictionary mode in V8) and every twin spreads it — off a spread-made copy the
-  // 500-row table's twins clone 6 ms faster, and only identities WITH twins pay the copy.
+  // Copied once here, riders included: every twin inherits from this object, so it must not
+  // be the first node's own snapshot, which the passes keep writing to (the height strip
+  // leaves `height: undefined` there, and the key stays on the re-read list below).
   const src = rec.snap
   const stored = rec.snap = { ...src }
   Object.defineProperty(stored, '__needsBgInline', { value: src.__needsBgInline, enumerable: false })
@@ -224,8 +224,6 @@ export function shareLists(rec, el, st) {
         (rrM && k.charCodeAt(0) === 109 && k.startsWith('margin-')) ||
         (rrP && k.charCodeAt(0) === 112 && k.startsWith('padding-'))) rrList.push(k)
   }
-  if (rec.h && !('height' in stored)) rrList.push('height')
-  if (rec.b && !('block-size' in stored)) rrList.push('block-size')
   rec.rr = rrList
   return rrList
 }
@@ -270,6 +268,6 @@ export function pseudoSnapshotFor(source, pseudo, style, session) {
   // pseudo was paid on the deep tree for 1,936 identities that never had a twin. The one
   // write the pass makes afterwards (a flex-item min-width floor) depends on the host's
   // display, identical for twins.
-  snaps.set(key, { snap, rr: null, h: 'height' in snap, b: 'block-size' in snap })
+  snaps.set(key, { snap, rr: null })
   return snap
 }

@@ -451,7 +451,8 @@ export function stripHeightForWrappers(el, cs, snap) {
   const TOL = 2
   if (Number.isFinite(usedH) && Number.isFinite(autoH) && Math.abs(usedH - autoH) > TOL) return
 
-  // 7) Now drop height and block-size from the snapshot
-  delete snap.height
-  delete snap['block-size']
+  // 7) Now drop height and block-size from the snapshot. Assigned, not deleted: a twin's
+  // snapshot inherits from its identity's (getSnapshot), and a delete would uncover that one.
+  snap.height = undefined
+  snap['block-size'] = undefined
 }
