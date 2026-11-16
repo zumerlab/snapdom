@@ -324,8 +324,11 @@ export async function prepareClone(element, options = {}, session = createCaptur
   // Re-anchor fixed/sticky clones where they paint, in clip mode and when the root itself is
   // scrolled (stuck stickies freeze where stuck, horizontal included). After class application
   // (the sticky placeholder inherits the twin's class) and BEFORE the scroll wrapper below,
-  // whose +scrollY on fixed/absolute boxes cancels its translate for them.
-  if ((sessionCache.clip || element.scrollTop || element.scrollLeft) && clone?.nodeType === 1) {
+  // whose +scrollY on fixed/absolute boxes cancels its translate for them. A <body> root never
+  // scrolls itself, the window does: without this its fixed bar painted at the page top.
+  const view = element.ownerDocument.defaultView
+  const pageScrolled = element === element.ownerDocument.body && view && (view.scrollX || view.scrollY)
+  if ((sessionCache.clip || element.scrollTop || element.scrollLeft || pageScrolled) && clone?.nodeType === 1) {
     try {
       const edge = sessionCache.clip && clipWindow ? { x: clipWindow.x, y: clipWindow.y } : { x: 0, y: 0 }
       freezeViewportPositioned(element, clone, sessionCache.nodeMap, sessionCache.styleCache, edge)
