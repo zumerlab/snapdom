@@ -17,7 +17,6 @@
 
 import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS } from '../utils/index.js'
 import { isFirefox, isSafari } from '../utils/browser.js'
-import { cache } from '../core/cache.js'
 import {
   seq, env, bumpEpoch, bumpSeq, stampNode, stampSubtree, stampOf, shadowHostsOf, setupInvalidationOnce,
 } from '../core/changes.js'
@@ -35,12 +34,6 @@ const MARGIN_PROPS = [
   'margin-top', 'margin-right', 'margin-bottom', 'margin-left',
   'margin-block-start', 'margin-block-end', 'margin-inline-start', 'margin-inline-end',
 ]
-/** style signature -> class key. FIFO-bounded at insertion, see MAX_SNAPSHOT_KEY_CACHE. */
-const snapshotKeyCache = new Map()
-/** PERF-4: evict snapshotKeyCache when it grows beyond this size.
- *  Each entry stores a long CSS signature string → key string. In SPAs with many
- *  unique element styles, this Map can grow without bound and leak memory. */
-const MAX_SNAPSHOT_KEY_CACHE = 2000
 
 /** Deletes cached style snapshots under a root. Animated subtrees re-snapshot per diff
  *  frame: animations repaint without mutation records, so the epoch never bumps and the
@@ -535,40 +528,12 @@ function usedWidthDiffersFromAvailable(el, cs) {
 }
 /* c8 ignore stop */
 
-const __snapshotSig = new WeakMap()
-/** The snapshot's key into snapshotKeyCache, memoized per snapshot object. */
-function styleSignature(snap, tag) {
-  let sig = __snapshotSig.get(snap)
-  if (sig) return sig
-  // Built in INSERTION order, not sorted. This string is only ever a key into
-  // snapshotKeyCache — never rendered, serialized, or compared for ordering — and
-  // snapshotComputedStyleFull fills every snapshot by walking the same property universe, so
-  // two equal snapshots already come out in the same order. The sort was a per-element
-  // reordering of an already-ordered list, paid on the COLD path that every one-shot capture
-  // takes: Object.entries + sort + map + join over ~130 properties, once per element.
-  // Measured on a 1500-node table, per-element cold cost: 118ms sorted -> 77ms here (-35%),
-  // with the warm path unchanged.
-  //
-  // Use push + join, NOT `sig +=`. The concatenating form builds a cons-string that V8 has
-  // to flatten the moment it is used as a Map key, which moved the cost rather than removing
-  // it (warm went 21ms -> 30ms while cold improved). join produces a flat string directly.
-  //
-  // The separator is U+0001 rather than the old `:`/`;` because both of those occur inside
-  // real property values (a data: URL, a quoted font-family), so the old format could in
-  // principle collide two different snapshots onto one key. A control character cannot
-  // appear in a computed value.
-  //
-  // The only cost of dropping the sort is that two elements whose INLINE style properties
-  // were authored in a different order now miss each other in the key cache — one extra
-  // getStyleKey call, never a wrong key. `__needsBgInline` is non-enumerable, so for...in
-  // sees exactly what Object.entries saw.
-  // The diff depends on the tag's defaults even when snapshots are equal (#505).
-  const parts = [tag]
-  for (const k in snap) parts.push(k, snap[k])
-  sig = parts.join('\u0001')
-  __snapshotSig.set(snap, sig)
-  return sig
-}
+/** snapshot -> the style key it last produced and the flags it was made under. A snapshot
+ *  served again from the cache keeps its key without a second getStyleKey. There is no memo
+ *  across snapshots: it was keyed on a signature of every value, and building that string
+ *  cost more than the key it saved (9.1% of a capture of 240 unique cards against 0.6%). */
+const snapshotKey = new WeakMap()
+
 /** A cached snapshot is current while its version is still the newest among what it depends
  *  on: the environment and whatever a selector could follow to this node (changes.js). */
 function snapshotIsCurrent(rec, el) {
@@ -742,9 +707,8 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     snap = { ...shared.snap }
     // Direct loop over the identity's re-read list (built on its first twin): the old form
     // walked all ~150 keys with a regex test per key, per twin (10.8ms of getSnapshot
-    // self-time on the 500-row table, profiled). The values feed `dyn`, which composes this
-    // twin's snapshotKeyCache signature from the identity's base signature — styleSignature
-    // re-hashed the whole snapshot per twin for another 11ms otherwise.
+    // self-time on the 500-row table, profiled). The values feed `dyn`, the part of this
+    // twin's key that the identity does not already hold.
     const rrList = shared.rr || shareLists(shared, el, shareInfo.st)
     dyn = []
     for (let i = 0; i < rrList.length; i++) {
@@ -769,7 +733,7 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
       // stripHeightForWrappers judges this node's OWN children, so it may delete height /
       // block-size that a twin keeps — the flags let shareLists put them back on the
       // re-read list, where the twin reads its own.
-      shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null, sig: null, h: 'height' in snap, b: 'block-size' in snap })
+      shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null, h: 'height' in snap, b: 'block-size' in snap })
     }
   }
   const used = usedValuesOf(snap, el, flexItem)
@@ -800,7 +764,7 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     }
   }
   stripHeightForWrappers(el, style, snap)
-  // Before the twin signature below: it keys this node's final values.
+  // Before the twin tail below: it keys this node's final values.
   const clipped = freezeBorderBox(el, style, snap)
   // Here and not in inlineAllStyles: a snapshot served from the cache already carries its
   // gutter, and adding it per capture grew the box by one scrollbar every time.
@@ -809,13 +773,10 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     if (restoredAutoMargin) dyn.push('\u0005', ...MARGIN_PROPS.map(prop => snap[prop]))
     if (clipped) dyn.push('\u0006' + clipped)
     if (gutter) dyn.push('\u0007' + snap.width, snap.height)
-    // Seed the signature memo AFTER the strip: it deletes at most height/block-size, and two
-    // twins with different strip outcomes must not collide onto one key.
-    const tail = dyn.join('\u0001') + ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004')
-    __snapshotSig.set(snap, shared.sig + '\u0002' + tail)
-    // The signature is shared.sig + tail, so within one share record the tail alone keys the
-    // class (inlineAllStyles), without hashing the full signature per twin.
-    shareInfo.tail = tail
+    // AFTER the strip: it deletes at most height/block-size, and two twins with different
+    // strip outcomes must not collide onto one key. Everything else a twin holds is the
+    // identity's, so within one share record the tail alone keys the class (inlineAllStyles).
+    shareInfo.tail = dyn.join('\u0001') + ('height' in snap ? '' : '\u0003') + ('block-size' in snap ? '' : '\u0004')
     shareInfo.rec = shared
   }
   const hosts = shadowHostsOf(el)
@@ -889,11 +850,11 @@ export function flexRowOverflows(parent, session) {
   return overflow
 }
 
-/** Turns whatever inlineAllStyles was given into `{ session, persist, options }`: a ready ctx
+/** Turns whatever inlineAllStyles was given into `{ session, options }`: a ready ctx
  *  as is, a session cache with one ctx memoized on it per options object, or nothing, which
  *  gets throwaway maps so a direct caller never touches the global session. */
 function _resolveCtx(sessionOrCtx, opts) {
-  if (sessionOrCtx && sessionOrCtx.session && sessionOrCtx.persist) return sessionOrCtx
+  if (sessionOrCtx && sessionOrCtx.session) return sessionOrCtx
   if (sessionOrCtx && (sessionOrCtx.styleMap || sessionOrCtx.styleCache || sessionOrCtx.nodeMap)) {
     // Amortize to one ctx allocation per capture: deepClone calls this per node with the
     // same sessionCache + options references.
@@ -901,14 +862,6 @@ function _resolveCtx(sessionOrCtx, opts) {
     if (!ctx || sessionOrCtx.stylesCtxOpts !== opts) {
       ctx = {
         session: sessionOrCtx,
-        persist: {
-          snapshotKeyCache,
-          defaultStyle: cache.defaultStyle,
-          baseStyle: cache.baseStyle,
-          image: cache.image,
-          resource: cache.resource,
-          background: cache.background,
-        },
         options: opts || {},
       }
       sessionOrCtx.stylesCtx = ctx
@@ -920,14 +873,6 @@ function _resolveCtx(sessionOrCtx, opts) {
   return {
     // Direct callers without a session get isolated throwaway maps — never the global.
     session: { styleMap: new Map(), styleCache: new WeakMap(), nodeMap: new Map() },
-    persist: {
-      snapshotKeyCache,
-      defaultStyle: cache.defaultStyle,
-      baseStyle: cache.baseStyle,
-      image: cache.image,
-      resource: cache.resource,
-      background: cache.background,
-    },
     options: (sessionOrCtx || opts || {}),
   }
 }
@@ -1025,11 +970,10 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
 
   if (resetMode === 'disabled' && !ctx.session.bumpedForDisabled) {
     bumpEpoch()
-    snapshotKeyCache.clear()
     ctx.session.bumpedForDisabled = true
   }
 
-  const { session, persist } = ctx
+  const { session } = ctx
 
   if (!session.styleCache.has(source)) {
     // ROB-1: getComputedStyle() on detached nodes can return an empty or unstable
@@ -1162,7 +1106,6 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // getStyleKey only softens width for inline-sized / table / inline boxes, and only there does
   // its output depend on content/flex-item-ness. For every other node (the vast majority — divs,
   // headings, paragraphs…) skip that bookkeeping entirely so the hot path stays untouched.
-  let sig = styleSignature(snap, tag)
   let sizedByContent = true
   let flags = floor && '|m' + floor
   if (softensWidth(tag, (snap.display || '').toLowerCase())) {
@@ -1175,8 +1118,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
         hasSpecifiedWidth(source, pre, flexItem)) {
       sizedByContent = false
     }
-    // Fold content/flex into the cache key so soften-eligible elements with identical styles
-    // but different shape don't collide on the shared snapshotKeyCache.
+    // Content and flex-item state change what getStyleKey writes for a soften-eligible box.
     flags += (sizedByContent ? '|c' : '') + (flexItem ? '|f' : '')
     // This is the exact condition getStyleKey uses to actually drop the width (the #429/#433/
     // #434 family): tally it so capture.js can suggest `reconcile: true` when it's never used —
@@ -1187,24 +1129,17 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
       session.reconcileRisk = (session.reconcileRisk || 0) + 1
     }
   }
-  sig += flags
-  // A twin first asks its share record by tail (see getSnapshot): a few dozen short keys per
-  // identity in place of one lookup by the full signature per node.
+  // A twin asks its share record by tail (see getSnapshot): a few dozen short keys per
+  // identity. Any other node asks the snapshot itself, which answers when it was served again
+  // from the cache under the same flags.
   const memo = shareInfo && shareInfo.tail !== undefined ? (shareInfo.rec.keys ||= new Map()) : null
   const mk = memo && shareInfo.tail + flags
-  let key = memo ? memo.get(mk) : undefined
+  const kept = memo ? null : snapshotKey.get(snap)
+  let key = memo ? memo.get(mk) : kept && kept.flags === flags ? kept.key : undefined
   if (key === undefined) {
-    key = persist.snapshotKeyCache.get(sig)
-    if (key === undefined) {
-      key = getStyleKey(snap, tag, sizedByContent, flexItem, floor)
-      // Bound at INSERTION: evicting only on an epoch bump left the Map unbounded for as long
-      // as the page's styles held still. Map iterates in insertion order, so this is FIFO.
-      if (persist.snapshotKeyCache.size >= MAX_SNAPSHOT_KEY_CACHE) {
-        persist.snapshotKeyCache.delete(persist.snapshotKeyCache.keys().next().value)
-      }
-      persist.snapshotKeyCache.set(sig, key)
-    }
+    key = getStyleKey(snap, tag, sizedByContent, flexItem, floor)
     if (memo) memo.set(mk, key)
+    else snapshotKey.set(snap, { flags, key })
   }
   session.styleMap.set(clone, key)
 }

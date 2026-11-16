@@ -33,8 +33,8 @@
  * __tests__/core.capture.fast.test.js and scripts/safari-release-smoke.mjs (tornSinceStart).
  * Nothing in src reads it: the engines take the session as an argument. A frame sets none.
  *
- * Never name a ClonePass slot `session` or `persist`: _resolveCtx (styles.js) tells a ready
- * styles ctx from a pass by those two keys.
+ * Never name a ClonePass slot `session`: _resolveCtx (styles.js) tells a ready styles ctx
+ * from a pass by that key.
  * @module session
  */
 

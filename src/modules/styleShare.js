@@ -173,16 +173,14 @@ export function identityFor(el, st) {
   return id
 }
 
-/** The identity's re-read list and base signature, decided once on its first twin (`el`,
+/** The identity's re-read list, decided once on its first twin (`el`,
  *  whose style attribute is the identity's — the attribute is part of the key) and kept on
  *  the share record: the
  *  always-geometry props, plus the box offsets unless the identity is position:static, the
  *  margin/padding families only when the document-level
  *  scan or that inline style gives them an unstable value, the grid track lists on a grid
- *  container, and `transform` when the identity has one. The base signature covers the props
- *  twins NEVER re-read plus the re-read prop NAMES: a twin's full signature is base + its own
- *  re-read VALUES (+ the strip outcome), injective for the same reason the flat signature
- *  was — every name and value of the final snapshot is represented exactly once.
+ *  container, and `transform` when the identity has one. A twin's own re-read VALUES (plus
+ *  the strip outcome) are all that tells its style key from another twin's.
  *
  *  The list is the set of properties CSSOM resolves to USED values, and it was found by a
  *  defect: with the share on, the deep-tree scene rendered 18.6% of its pixels wrong because
@@ -193,7 +191,7 @@ export function identityFor(el, st) {
  *  keeps the share free on a tree with no twins: per identity it cost the deep tree 27 ms of
  *  134, and twins spreading the identity's dictionary-mode object cost the 500-row table 6 ms.
  *  Pinned by __tests__/module.styles.identityShare.test.js.
- *  @param {{snap: object, rr: string[]|null, sig: string|null, h: boolean, b: boolean}} rec
+ *  @param {{snap: object, rr: string[]|null, h: boolean, b: boolean}} rec
  *  @param {Element} el the identity's first twin
  *  @returns {string[]} the re-read list, also stored on `rec.rr` */
 export function shareLists(rec, el, st) {
@@ -228,11 +226,7 @@ export function shareLists(rec, el, st) {
   }
   if (rec.h && !('height' in stored)) rrList.push('height')
   if (rec.b && !('block-size' in stored)) rrList.push('block-size')
-  const rrSet = new Set(rrList)
-  const staticParts = [el.tagName.toLowerCase()]
-  for (const k in stored) { if (!rrSet.has(k)) staticParts.push(k, stored[k]) }
   rec.rr = rrList
-  rec.sig = staticParts.join('\u0001') + '\u0002' + rrList.join('\u0001')
   return rrList
 }
 
@@ -276,6 +270,6 @@ export function pseudoSnapshotFor(source, pseudo, style, session) {
   // pseudo was paid on the deep tree for 1,936 identities that never had a twin. The one
   // write the pass makes afterwards (a flex-item min-width floor) depends on the host's
   // display, identical for twins.
-  snaps.set(key, { snap, rr: null, sig: null, h: 'height' in snap, b: 'block-size' in snap })
+  snaps.set(key, { snap, rr: null, h: 'height' in snap, b: 'block-size' in snap })
   return snap
 }
