@@ -239,7 +239,8 @@ async function buildResult(url, context, session) {
     ? (Number.isFinite(context.width) ? meta.targetW / meta.vbW : meta.targetH / meta.vbH) : 1
   const intrinsicY = sizedSVG
     ? (Number.isFinite(context.height) ? meta.targetH / meta.vbH : meta.targetW / meta.vbW) : 1
-  const exportSource = (options) => {
+  // Async: an original can still be on its way (drawDecodedImages, compress.js).
+  const exportSource = async (options) => {
     if (engineCanvas || !originals?.size) return pixelSource
     let w = meta.vbW, h = meta.vbH
     const crop = options.crop
@@ -300,43 +301,43 @@ async function buildResult(url, context, session) {
       if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toImg } = await import('../exporters/toImg.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toImg(exportSource(options), options, env)
+      return toImg(await exportSource(options), options, env)
     },
     svg: async (ctx, opts) => {
       if (engineCanvas) return rasterEngineImage(ctx, opts)
       const { toSvg } = await import('../exporters/toImg.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toSvg(exportSource(options), options, env)
+      return toSvg(await exportSource(options), options, env)
     },
     canvas: async (ctx, opts) => {
       const { toCanvas } = await import('../exporters/toCanvas.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toCanvas(exportSource(options), options, env)
+      return toCanvas(await exportSource(options), options, env)
     },
     blob: async (ctx, opts) => {
       const { toBlob } = await import('../exporters/toBlob.js')
       const options = { ...ctx, ...(opts || {}) }
-      return toBlob(exportSource(options), options, env)
+      return toBlob(await exportSource(options), options, env)
     },
     png: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
       const options = { ...ctx, ...(opts || {}), format: 'png' }
-      return rasterize(exportSource(options), options, env)
+      return rasterize(await exportSource(options), options, env)
     },
     jpeg: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
       const options = { ...ctx, ...(opts || {}), format: 'jpeg' }
-      return rasterize(exportSource(options), options, env)
+      return rasterize(await exportSource(options), options, env)
     },
     webp: async (ctx, opts) => {
       const { rasterize } = await import('../modules/rasterize.js')
       const options = { ...ctx, ...(opts || {}), format: 'webp' }
-      return rasterize(exportSource(options), options, env)
+      return rasterize(await exportSource(options), options, env)
     },
     download: async (ctx, opts) => {
       const { download } = await import('../exporters/download.js')
       const options = { ...ctx, ...(opts || {}) }
-      return download(exportSource(options), options, env)
+      return download(await exportSource(options), options, env)
     },
   }
 

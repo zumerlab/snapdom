@@ -23,6 +23,7 @@ import { forceContentVisibility, FORCED_VISIBILITY } from '../utils/prepare.help
 import { prepareSelectionContext } from '../modules/selection.js'
 import { resolveClipRect, freezeViewportPositioned, freezeRootPercentSizes } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
+import { drawDecodedImages } from '../modules/compress.js'
 
 /** In-flight #488 reveals, `{ root, promise }`. A concurrent capture whose root contains or
  *  sits inside one of these waits for it instead of forcing the same styles twice. */
@@ -259,6 +260,8 @@ export async function prepareClone(element, options = {}, session = createCaptur
   // Firefox gradient text (#530): last of the node passes, since the overlay it inserts is a
   // clone child with no live counterpart.
   if (sessionCache.bgClipText) paintClippedText(sessionCache.bgClipText)
+  // Before any pass that reads an image source: what this draws they find done.
+  drawDecodedImages(clone, options, sessionCache.nodeMap, { session, clip: clipWindow })
   await resolveBlobUrlsInTree(clone, sessionCache)
 
   // Kept light-DOM <style> clones travel into the SVG. The differential path never splices

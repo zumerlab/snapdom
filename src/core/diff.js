@@ -19,7 +19,7 @@ import { applyStyleClass, wrapScrolledClone } from './prepare.js'
 import { inlinePseudoElements } from '../modules/pseudo.js'
 import { inlineImages } from '../modules/images.js'
 import { inlineBackgroundImages } from '../modules/background.js'
-import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
+import { compressCloneAssets, drawDecodedImages, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { ligatureIconToImage, pinIconStruts } from '../modules/iconFonts.js'
 import { inlineAllStyles, flexRowOverflows, marginsHold, sizeHolds } from '../modules/styles.js'
 import { universeFor, stylesLeakAcrossSubtrees } from '../modules/authorStyles.js'
@@ -308,6 +308,7 @@ async function diffCapture(element, state, context, animated) {
     if (sessionCache.pseudoCSS) return null
     // The first placeholder input needs PLACEHOLDER_RULE, absent from the retained prefix.
     if (sessionCache.usesPlaceholder && !R.classPrefixCSS?.includes('[data-sd-ph]')) return null
+    drawDecodedImages(sub, context, delta, { session: frame, rootTransform: R.rootTransform2D })
     await resolveBlobUrlsInTree(sub, sessionCache)
     // The #426 zeroes of the rebuilt nodes, written where the full pipeline writes them:
     // after the clone passes, before the assets.

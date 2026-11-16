@@ -5,13 +5,16 @@
  * Each inlined raster (<img> including cloned canvas/video, no-repeat CSS background, SVG
  * <image href>) is downsampled to the resolution its output needs, never upscaled; uncertain
  * geometry keeps extra pixels. PNG stays lossless, JPEG/WebP encode at LOSSY_QUALITY. Originals
- * are kept privately for later exports that need more resolution.
+ * are kept privately for later exports that need more resolution. An <img> the page has
+ * already decoded is drawn from the live element instead of being read again
+ * (drawDecodedImages), its original read in the background.
  *
  * @module compress
  */
 
 import { cache } from '../core/cache.js'
 import { getStyle } from '../utils/css.js'
+import { snapFetch } from './snapFetch.js'
 import { readTotalTransformMatrix } from '../utils/transforms.helpers.js'
 
 const ASSET_ATTRIBUTE = 'data-snapdom-asset'
@@ -78,7 +81,7 @@ export function numberCompressedAssets(clone, registry) {
 
 /** Restore frozen originals only for a later export that needs more resolution. Each
  * value is checked again so an after-render plugin's replacement is never overwritten. */
-export function restoreCompressedAssets(url, snapshot) {
+export async function restoreCompressedAssets(url, snapshot) {
   if (!snapshot?.size || typeof url !== 'string' || !url.startsWith('data:image/svg+xml')) return url
   const comma = url.indexOf(',')
   const svg = new DOMParser().parseFromString(decodeURIComponent(url.slice(comma + 1)), 'image/svg+xml')
@@ -87,9 +90,13 @@ export function restoreCompressedAssets(url, snapshot) {
   for (const node of svg.querySelectorAll(`[${ASSET_ATTRIBUTE}]`)) {
     for (const property of snapshot.get(node.getAttribute(ASSET_ATTRIBUTE)) || []) {
       if (assetValue(node, property) !== property.compressed) continue
-      if (property.kind === 'style') node.style.setProperty(property.name, property.original, node.style.getPropertyPriority(property.name))
-      else if (property.name === 'xlink:href') node.setAttributeNS(XLINK_NS, property.name, property.original)
-      else node.setAttribute(property.name, property.original)
+      // A string, or the read drawDecodedImages started: null when it failed, and the asset
+      // then keeps the resolution it has.
+      const original = await property.original
+      if (original == null) continue
+      if (property.kind === 'style') node.style.setProperty(property.name, original, node.style.getPropertyPriority(property.name))
+      else if (property.name === 'xlink:href') node.setAttributeNS(XLINK_NS, property.name, original)
+      else node.setAttribute(property.name, original)
       changed = true
     }
   }
@@ -508,6 +515,72 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
     return result
   } finally {
     if (compressInFlight.get(cacheKey) === entry) compressInFlight.delete(cacheKey)
+  }
+}
+
+/**
+ * Draw every oversized <img> the page has already decoded to its visible size, from the live
+ * element, and write that to the clone. Run before the passes that read sources, which then
+ * find a small data: URL and leave it: the photo gallery of the real-page bench (9 photos,
+ * 16 Mpx shown in 0.6) re-read 24.5 MB of base64, wrote it to the clone (42 ms) and decoded it
+ * again on every capture.
+ *
+ * Taken only for a loaded <img> that compress would shrink, whose pixels a canvas may read:
+ * same origin, blob:, data:, or cross-origin with a `crossorigin` attribute. SVG stays vector
+ * and a GIF keeps its file. Anything else is left to the passes as before.
+ *
+ * The original is still owed to a later export at a higher density (exportSource, snapdom.js):
+ * its read starts here, unawaited, and the promise stands where the string would.
+ * Pinned by __tests__/compress.decodedImages.test.js.
+ * @param {Element} clone
+ * @param {object} options - normalized capture context
+ * @param {Map<Node, Node>} nodeMap - clone to source
+ * @param {CompressGeometry} geometry
+ */
+export function drawDecodedImages(clone, options, nodeMap, geometry) {
+  if (!options.compress || !nodeMap) return
+  // Sizing under a dropped root transform needs the matrix captureDOM resolves after the clone.
+  if (options.outerTransforms === false && (Number.isFinite(options.width) || Number.isFinite(options.height))) return
+  const imgs = Array.from(clone.querySelectorAll('img'))
+  if (clone.tagName === 'IMG') imgs.unshift(clone)
+  let canvas = null
+  for (const img of imgs) {
+    const source = nodeMap.get(img)
+    if (!source || source.localName !== 'img' || !source.complete || !(source.naturalWidth > 0)) continue
+    const src = source.currentSrc || source.src || ''
+    if (!src || /^data:image\/(?:svg|gif)|\.(?:svg|gif)(?:$|[?#])/i.test(src)) continue
+    const cssW = parseFloat(img.dataset.snapdomWidth) || parseFloat(img.style.width) || img.width || 0
+    const cssH = parseFloat(img.dataset.snapdomHeight) || parseFloat(img.style.height) || img.height || 0
+    if (!cssW || !cssH) continue
+    const resolved = geometry.value ||= compressionGeometry(clone, options, geometry)
+    const eff = resolved.density * resolved.stretch(source)
+    const raw = gainFactor(source.naturalWidth, source.naturalHeight, Math.ceil(cssW * eff), Math.ceil(cssH * eff))
+    if (!raw) continue
+    // Last of the gates: a page of images at their own size never parses a URL here.
+    if (!/^(?:data|blob):/i.test(src) && source.crossOrigin == null) {
+      try { if (new URL(src, source.baseURI).origin !== source.ownerDocument.defaultView.location.origin) continue } catch { continue }
+    }
+    canvas ||= document.createElement('canvas')
+    canvas.width = Math.max(1, Math.round(source.naturalWidth * raw * RES_FACTOR))
+    canvas.height = Math.max(1, Math.round(source.naturalHeight * raw * RES_FACTOR))
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    let out
+    try {
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height)
+      out = canvas.toDataURL(/^data:image\/jpe?g|\.jpe?g(?:$|[?#])/i.test(src) ? 'image/jpeg'
+        : /^data:image\/webp|\.webp(?:$|[?#])/i.test(src) ? 'image/webp' : 'image/png', LOSSY_QUALITY)
+    } catch {
+      // A redirect to another origin tainted the canvas, and it stays tainted: a new one next.
+      canvas = null
+      continue
+    }
+    img.setAttribute('src', out)
+    const original = /^data:/i.test(src) ? src
+      : snapFetch(src, { as: 'dataURL', useProxy: options.useProxy }).then((r) => r.ok && typeof r.data === 'string' ? r.data : null)
+    rememberOriginal(img, 'attribute', 'src', original, out, geometry.session)
   }
 }
 
