@@ -14,6 +14,7 @@ import { cache } from '../core/cache.js'
 import { runHook } from '../core/plugins.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { isInternalNode, markInternalNode } from '../utils/ownership.js'
+import { freezeLineBreaks } from '../modules/lineBreaks.js'
 import {
   assembleCaptureCSS,
   estimateKeptHeight,
@@ -624,7 +625,17 @@ export async function composeAndSerialize(state, ex) {
   fo.appendChild(container)
 
   const serializer = new XMLSerializer()
-  const foString = serializer.serializeToString(fo)
+  // Under the layout zoom a line can come out wider than on the page and break a word early:
+  // serialize a copy that keeps the page's line breaks, and leave the clone as it is.
+  let tree = fo
+  if (layoutZoom !== 1) {
+    try {
+      tree = freezeLineBreaks(fo, state.clone, state.nodeMap, elDoc) || fo
+    } catch (e) {
+      sessionWarn(state.options.__session, 'line-breaks-failed', 'line break pass failed', e)
+    }
+  }
+  const foString = serializer.serializeToString(tree)
   const wantsSize = hasW || hasH
 
   // `contentX/contentY` locate the capture box in the viewBox; `(vbW - w0) / 2` is wrong under
@@ -664,7 +675,7 @@ export async function composeAndSerialize(state, ex) {
   ].join(' ').trim()
   const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">${group ? `<g transform="${group}">` : ''}`
   const svgFooter = group ? '</g></svg>' : '</svg>'
-  svgString = svgHeader + internInlineStyles(foString, fo) + svgFooter
+  svgString = svgHeader + internInlineStyles(foString, tree) + svgFooter
   // #552: macOS Preview / Quick Look drew an inline <svg> under `zoom` at twice its size, so
   // svg files swap in the unzoomed wrapper tags kept here.
   // Pinned by __tests__/engine.svg.layoutZoom.test.js.

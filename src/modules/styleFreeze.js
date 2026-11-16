@@ -186,6 +186,9 @@ export function freezeOneLine(source, clone, snap, flexItem, session) {
   clone.style.setProperty(ONE_LINE_PROP, 'nowrap')
 }
 
+/** Letters, digits and plain punctuation: text with no soft wrap opportunity in it. */
+export const UNBREAKABLE_TEXT = /^[\wÀ-ɏ.,:;!?'"()%]*$/
+
 /**
  * Whether every text run under `el` sits on one line box. False on whatever it cannot vouch
  * for (a <br>, a textarea, a shadow root, over 64 runs, no text, a content box taller than two
@@ -204,7 +207,7 @@ function textOnOneLine(el, snap, session) {
   // Letters, digits and plain punctuation hold no break opportunity: nothing to pin, nothing
   // to read. Most single-word labels and every number end here.
   if (snap['word-break'] === 'normal' && snap['overflow-wrap'] === 'normal' &&
-    /^[\w\u00C0-\u024F.,:;!?'"()%]*$/.test(el.textContent.trim())) return false
+    UNBREAKABLE_TEXT.test(el.textContent.trim())) return false
   const doc = el.ownerDocument || document
   const walker = doc.createTreeWalker(el, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT)
   const range = doc.createRange()
@@ -238,7 +241,7 @@ function textOnOneLine(el, snap, session) {
 }
 
 /** axesOf results: rotated or skewed somewhere up the chain, untouched, scaled or zoomed. */
-const SKEWED = 0
+export const SKEWED = 0
 const PLAIN = 1
 const SCALED = 2
 
@@ -250,7 +253,7 @@ const SCALED = 2
  * @param {WeakMap<Element, number>} memo
  * @returns {number} SKEWED, PLAIN or SCALED
  */
-function axesOf(el, memo) {
+export function axesOf(el, memo) {
   let v = memo.get(el)
   if (v !== undefined) return v
   const cs = getStyle(el)
