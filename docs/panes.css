@@ -315,7 +315,7 @@
 .pane-list li { margin-bottom: 6px; padding-left: 4px; }
 .pane-list li::marker { color: var(--c-dot); }
 
-/* ── Converted content pages (scripts/docs-site/sections.py) ── */
+/* Converted content pages */
 .doc-links { margin-top: 18px; }
 .pane-content > :first-child { margin-top: 0; }
 .pane-content .prose h2 { font-weight: 700; font-size: 26px; letter-spacing: -.025em; }

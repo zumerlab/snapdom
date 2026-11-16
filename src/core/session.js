@@ -11,8 +11,7 @@
  * name a slot `session`: _resolveCtx (styles.js) tells a styles ctx from a pass by that key.
  *
  * `context.__session` aliases a full capture's session (captureDOM); nothing in src reads it.
- * Readers: packages/vector/src/adapters/snapdom.js, __tests__/core.capture.fast.test.js and
- * scripts/safari-release-smoke.mjs.
+ * Readers: packages/vector/src/adapters/snapdom.js and __tests__/core.capture.fast.test.js.
  * @module session
  */
 
