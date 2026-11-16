@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Demo: herencia de visibility — un hijo visible bajo un padre oculto</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    .lede { font-size: 13px; color: #475569; margin: 0 0 20px; max-width: 780px; line-height: 1.5; }
+    code { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+    #target {
+      display: grid;
+      grid-template-columns: repeat(3, 220px);
+      gap: 16px;
+      background: #f8fafc;
+      padding: 12px;
+      width: max-content;
+    }
+    .case {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .case h2 {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 10px;
+      background: #0f172a;
+      color: #fff;
+      letter-spacing: .03em;
+    }
+    .case .expect {
+      font-size: 11px;
+      line-height: 1.45;
+      color: #475569;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      min-height: 62px;
+    }
+    /* Tablero a cuadros: hace evidente qué se pintó y qué quedó transparente. */
+    .stage {
+      height: 120px;
+      padding: 10px;
+      background-color: #fff;
+      background-image:
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%),
+        linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 8px 8px;
+    }
+    .box {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 15px;
+      color: #fff;
+      border-radius: 6px;
+    }
+    .outer { background: #7c3aed; }
+    .inner {
+      background: #dc2626;
+      height: 64px;
+      margin-top: 18px;
+      border: 3px solid #fff;
+    }
+    .middle {
+      background: #0891b2;
+      height: 80px;
+      width: 90%;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      padding: 6px;
+    }
+    .hidden { visibility: hidden; }
+    .shown { visibility: visible; }
+    .cv-hidden { content-visibility: hidden; }
+  </style>
+</head>
+<body>
+  <h1>Herencia de <code>visibility</code> en la captura</h1>
+  <p class="lede">
+    <code>visibility</code> se hereda, pero un descendiente puede restaurarla con
+    <code>visibility: visible</code> y sigue pintándose. Aplanar el ancestro oculto a
+    <code>opacity: 0</code> hacía ese caso irrecuperable. Cada tarjeta dice qué se tiene
+    que ver: la captura debe coincidir con el DOM vivo tarjeta por tarjeta.
+  </p>
+
+  <div id="target">
+    <section class="case">
+      <h2>A · control</h2>
+      <p class="expect">Padre visible, hijo visible.<br><strong>Se ven los dos.</strong></p>
+      <div class="stage">
+        <div class="box outer">PADRE
+          <div class="box inner">HIJO</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="case">
+      <h2>B · el caso arreglado</h2>
+      <p class="expect">Padre <code>hidden</code>, hijo <code>visible</code>.<br><strong>Solo se ve el hijo rojo.</strong></p>
+      <div class="stage">
+        <div class="box outer hidden">PADRE
+          <div class="box inner shown">HIJO</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="case">
+      <h2>C · oculto heredado</h2>
+      <p class="expect">Padre <code>hidden</code>, hijo sin override.<br><strong>No se ve nada.</strong></p>
+      <div class="stage">
+        <div class="box outer hidden">PADRE
+          <div class="box inner">HIJO</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="case">
+      <h2>D · re-ocultado</h2>
+      <p class="expect">Padre <code>hidden</code>, hijo <code>visible</code>, nieto <code>hidden</code>.<br><strong>Se ve el hijo, no el nieto.</strong></p>
+      <div class="stage">
+        <div class="box outer hidden">PADRE
+          <div class="box inner shown">
+            <span class="hidden">NIETO</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="case">
+      <h2>E · restaurado a dos niveles</h2>
+      <p class="expect">Padre <code>hidden</code>, medio sin override, nieto <code>visible</code>.<br><strong>Se ve solo el nieto.</strong></p>
+      <div class="stage">
+        <div class="box outer hidden">PADRE
+          <div class="box middle">MEDIO
+            <div class="box inner shown" style="margin:0;height:40px;width:100%">NIETO</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="case">
+      <h2>G · content-visibility</h2>
+      <p class="expect"><code>content-visibility: hidden</code>, hijo con <code>visible</code>.<br><strong>Solo la caja violeta, sin contenido.</strong></p>
+      <div class="stage">
+        <div class="box outer cv-hidden">PADRE
+          <div class="box inner shown">HIJO</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="case">
+      <h2>F · hermano visible</h2>
+      <p class="expect">Padre <code>hidden</code> con dos hijos, solo uno restaura.<br><strong>Se ve un solo bloque rojo.</strong></p>
+      <div class="stage">
+        <div class="box outer hidden" style="flex-direction:column;gap:6px">
+          <div class="box inner shown" style="height:44px;margin:0;width:100%">SÍ</div>
+          <div class="box inner" style="height:44px;margin:0;width:100%">NO</div>
+        </div>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trading card: an image background, svg icons and a QR code in one card</title>
+  <style>
+    body {
+  margin: 0;
+  font-family: sans-serif;
+  color: white;
+  background-color: white;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  background: white;
+}
+
+.download-button-container {
+  padding-bottom: 0.5rem;
+}
+
+.download-button-container button {
+  border: 1px solid black;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  color: black;
+  background: white;
+  cursor: pointer;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  aspect-ratio: 58 / 35;
+  background-color: #1e293b; /* slate-800 */
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow: hidden;
+  z-index: 10;
+}
+
+.card-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -10;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo-small {
+  width: 1rem;
+  height: auto;
+}
+
+.logo-large {
+  width: 2rem;
+  height: auto;
+}
+
+.ticker-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.market-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.symbol {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 1.125rem;
+}
+
+.long-label {
+  font-size: 0.875rem;
+  color: #00ff9d;
+  text-transform: uppercase;
+}
+
+.pnl {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #00ff9d;
+}
+
+.prices {
+  display: flex;
+  gap: 2.25rem;
+  align-items: center;
+  flex-grow: 1;
+}
+
+.price-column {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+}
+
+.collateral {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  flex-grow: 1;
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.referral {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 0.5rem;
+  flex-grow: 1;
+}
+
+.referral-info {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.75rem;
+  width: 100%;
+}
+
+  </style>
+</head>
+<body>
+  <main class="main">
+    <div class="download-button-container">
+      <button id="download-btn">Download</button>
+    </div>
+
+    <div class="card" id="capture-area">
+      <!-- Background -->
+      <img src="assets/card-bg.png" class="card-bg" alt="" />
+
+      <!-- Logos -->
+      <div class="card-header">
+        <img src="assets/card-mark.svg" class="logo-small" alt="" />
+        <img src="assets/card-wordmark.svg" class="logo-large" alt="" />
+      </div>
+
+      <!-- Ticker and PnL -->
+      <div class="ticker-info">
+        <div class="market-row">
+          <span class="symbol">
+            <img src="assets/coin-a.svg" class="icon" alt="" />
+            ABC
+          </span>
+          <span class="long-label">Long 100x</span>
+        </div>
+        <span class="pnl">3.80%</span>
+      </div>
+
+      <!-- Prices -->
+      <div class="prices">
+        <div class="price-column">
+          <span class="label">Entry Price</span>
+          <span class="value">$151.4562</span>
+        </div>
+        <div class="price-column">
+          <span class="label">Exit Price</span>
+          <span class="value">$162.3901</span>
+        </div>
+      </div>
+
+      <!-- Collateral -->
+      <div class="collateral">
+        <span>Collateralized with</span>
+        <img src="assets/coin-a.svg" class="icon" alt="" />
+        <img src="assets/coin-b.svg" class="icon" alt="" />
+        <img src="assets/coin-c.svg" class="icon" alt="" />
+        <span>+ 3</span>
+      </div>
+
+      <!-- Referral QR -->
+      <div class="referral">
+        <div id="qr-code"></div>
+        <div class="referral-info">
+          <span class="label">Referral Link</span>
+          <span class="value">https://example.com</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { snapdom } from '../dist/snapdom.mjs';
+
+    const captureArea = document.getElementById('capture-area');
+    const downloadBtn = document.getElementById('download-btn');
+
+    downloadBtn.addEventListener('click', async () => {
+      downloadBtn.disabled = true;
+      downloadBtn.textContent = 'Downloading...';
+
+      let papa = await snapdom.toImg(captureArea, {
+        format: 'png',
+       // width: 580 * 2,
+       // height: 350 * 2,
+        embedFonts: true,
+      });
+document.body.appendChild(papa)
+      downloadBtn.disabled = false;
+      downloadBtn.textContent = 'Download';
+
+    });
+  </script>
+</body>
+</html>
