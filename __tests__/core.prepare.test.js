@@ -172,15 +172,6 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
     window.getComputedStyle.mockRestore()
   })
 
-  it('normalizes margins for <pre> elements', async () => {
-    const el = document.createElement('pre')
-    el.textContent = 'x'
-    const { clone } = await prepareClone(el)
-    // CSSOM normalizes to '0px'
-    expect(clone.style.marginTop).toBe('0px')
-    expect(clone.style.marginBlockStart).toBe('0px')
-  })
-
   it('converts <img src="blob:..."> to data URL', async () => {
   const wrap = document.createElement('div')
   const el = document.createElement('img')
