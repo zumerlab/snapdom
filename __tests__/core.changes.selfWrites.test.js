@@ -93,7 +93,10 @@ describe('snapdom\'s own transient edits are not page changes', () => {
     // once per property. Third capture (index 2), against the scene without the writer.
     const base = results[0].reads[2]
     for (const r of results) {
-      expect(Math.abs(r.reads[2] - base) / base, msg).toBeLessThanOrEqual(0.2)
+      // The writes still move the sequence, so the used values beside them are probed: one
+      // margin read per box where the engine has no Typed OM (Firefox, 889 to 1,194). Taken
+      // for page changes they cost 12,839.
+      expect(Math.abs(r.reads[2] - base) / base, msg).toBeLessThanOrEqual(0.5)
     }
   }, 60000)
 

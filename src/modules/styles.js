@@ -1045,7 +1045,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   // a grid's tracks are read first, before the inline declarations and the snapshot: a
   // right-aligned grid was captured at the left.
   // Pinned by __tests__/module.styles.inlineAutoMargin.test.js.
-  if ((firefox ??= isFirefox()) && pre.display.includes('grid')) pre.getPropertyValue('grid-template-columns')
+  if ((firefox ??= isFirefox()) && pre.display?.includes('grid')) pre.getPropertyValue('grid-template-columns')
 
   // Replace authored inline style with computed values so !important in stylesheets
   // correctly overrides inline styles in the clone (fixes #328)
