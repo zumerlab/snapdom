@@ -506,6 +506,10 @@ function collectControls(element, state) {
   state.controls = controls
 }
 
+const FORM_CONTROL = /^(?:INPUT|TEXTAREA|SELECT)$/
+const NO_SCROLLPORT = /^(?:visible|clip)$/
+const SCROLLPORT_KEY = /(?:^|;)overflow(?:-[xy])?:(?!visible|clip)/
+
 /** Discover scroll offsets that can repaint without a MutationRecord. The layout reads happen
  *  only when state is created or a full capture commits; memo hits sample the short list.
  *  An inline box has no scrollport, yet Firefox reports its text as `scrollWidth` against a
@@ -516,11 +520,26 @@ function collectControls(element, state) {
  *  Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
 function collectScrollNodes(element, state) {
   const out = []
+  // Only a box with a scrollport is listed. The retained capture knows which have none: a key
+  // without an overflow declaration is `visible`, and those boxes skip the six layout reads
+  // below, which were 12% of each differential frame of the 1,506-node table. Without a
+  // retained capture every box is read, and one that overflows asks its computed overflow, so
+  // both ways list the same boxes. Form controls scroll their text whatever their overflow.
+  const R = state.retained
   const add = (el, force = false) => {
     try {
-      if (force || el.scrollLeft || el.scrollTop ||
-          ((el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
-            (el.clientWidth || el.clientHeight || getComputedStyle(el).display !== 'inline'))) out.push(el)
+      if (force) { out.push(el); return }
+      const control = FORM_CONTROL.test(el.tagName)
+      if (R && !control) {
+        const key = R.styleMap.get(R.srcToClone.get(el))
+        if (key !== undefined && !SCROLLPORT_KEY.test(key)) return
+      }
+      if (el.scrollLeft || el.scrollTop) { out.push(el); return }
+      if ((el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
+          (el.clientWidth || el.clientHeight || getComputedStyle(el).display !== 'inline')) {
+        const cs = control ? null : getComputedStyle(el)
+        if (!cs || !NO_SCROLLPORT.test(cs.overflowX) || !NO_SCROLLPORT.test(cs.overflowY)) out.push(el)
+      }
     } catch { }
   }
   // No dedupe needed: querySelectorAll excludes the scope itself (the element is already in
