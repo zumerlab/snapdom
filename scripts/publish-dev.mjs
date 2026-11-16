@@ -11,8 +11,8 @@
  *   npm run publish:dev               3.0.1-dev.0
  *   npm run publish:dev -- 3.1.0      3.1.0-dev.0, when the next release is a minor
  *   npm run publish:dev -- --dry-run  everything except the upload
- *   npm run publish:plugins:dev       the same for packages/plugins (5.0.1-dev.0); publish:pdf:dev,
- *                                     publish:vector:dev and publish:stream:dev for the other packages
+ *   npm run publish:dev -- --package plugins   the same for packages/plugins (5.0.1-dev.0);
+ *                                     pdf, vector and stream likewise
  *
  * The `canvas` dist-tag (3.x-canvas.n, the html-in-canvas engine compiled in behind a flag)
  * is history: the engine ships in every build since Chrome 157 exposes the API unflagged.

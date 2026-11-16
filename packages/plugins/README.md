@@ -541,14 +541,14 @@ Run `npm run compile` and `npm run site` from the monorepo root, then open `/plu
 ## Releasing from the repository root
 
 ```sh
-npm run bump:plugins:dry
-npm run bump:plugins
+npm run bump:dry -w packages/plugins
+npm run bump -w packages/plugins
 # review packages/plugins/CHANGELOG.md
-npm run release:plugins
+npm run release -w packages/plugins
 npm run publish:plugins
 ```
 
-`release:plugins` commits the plugin version, the lockfile and the changelog, then pushes. `publish:plugins` runs the packaging check (`scripts/check-pack.mjs`), then publishes only `@zumer/snapdom-plugins` under `latest`. PDF, Vector and Stream have the same scripts under their own suffix (`bump:pdf`, `release:pdf`, `publish:pdf`, `publish:pdf:dev`). `bump:plugins` runs `@zumerbox/bump` followed by `@zumerbox/changelog` inside the plugin workspace, matching the core's tools. The bump command requires a clean Git working tree and prompts for the next version. It updates the plugin version and root lockfile; the changelog command writes `packages/plugins/CHANGELOG.md`. `bump:plugins:dry` previews the bump without updating the version or changelog. Skip the bump if the version has already been prepared.
+`bump` asks for the next version, commits and tags it, and writes the changelog; it needs a clean working tree, and `bump:dry` previews it. `release` commits the version, the lockfile and the changelog, then pushes. `publish:plugins` runs the packaging check (`scripts/check-pack.mjs`) and publishes only `@zumer/snapdom-plugins` under `latest`. PDF, Vector and Stream release the same way from `packages/pdf`, `packages/vector` and `packages/stream`, with `publish:pdf`, `publish:vector` and `publish:stream`.
 
 ## Migrating from 4.x
 

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "bump:dry": "npx @zumerbox/bump -d",
-    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog"
+    "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
+    "release": "git add package.json CHANGELOG.md ../../package-lock.json && git commit -m \"Bumped plugins version\" && git push"
   },
   "exports": {
     ".": "./index.js",
