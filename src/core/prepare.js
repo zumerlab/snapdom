@@ -405,13 +405,6 @@ export async function prepareClone(element, options = {}, session = createCaptur
     }
   }
 
-  // #75: a <pre>'s top margin pushed its last line out of the capture box.
-  for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
-    if (originalNode.tagName === 'PRE') {
-      cloneNode.style.marginTop = '0'
-      cloneNode.style.marginBlockStart = '0'
-    }
-  }
   return {
     clone,
     classCSS,

@@ -179,17 +179,6 @@ describe('differential recapture whole-tree bailouts', () => {
     await expectFullFallback(root, opts, () => { selected.className = 'selected' }, { attempt: 'optional' })
   })
 
-  it('bails when a rebuilt PRE needs the full-pipeline margin reset', async () => {
-    const { root, inner } = nestedRoot()
-    const pre = document.createElement('pre')
-    pre.style.cssText = 'font:20px monospace;background:#f90;margin:32px 0 0'
-    pre.textContent = 'before'
-    inner.appendChild(pre)
-
-    const opts = await prime(root)
-    await expectFullFallback(root, opts, () => { pre.textContent = 'after' })
-  })
-
   it('bails when backdrop-filter pre-composition is present in the retained tree', async () => {
     const { root, inner } = nestedRoot('background:repeating-linear-gradient(90deg,#000 0 8px,#fff 8px 16px)')
     const frosted = document.createElement('div')

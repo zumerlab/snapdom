@@ -31,7 +31,7 @@ import { hasImpureRenderPlugins } from './plugins.js'
 
 /** Content whose capture involves whole-tree or root-coupled machinery (svg defs hoisting,
  *  nested rasterization, shadow scoping…): a dirty subtree touching any of these goes full. */
-const HEAVY_SUBTREE = 'svg,iframe,canvas,video,audio,object,embed,slot,template,picture,style,pre'
+const HEAVY_SUBTREE = 'svg,iframe,canvas,video,audio,object,embed,slot,template,picture,style'
 
 /** A style key of a box out of the flow, which no sibling or ancestor lays out around. */
 const OUT_OF_FLOW_KEY = /(?:^|;)position:(?:absolute|fixed)(?:;|$)/
