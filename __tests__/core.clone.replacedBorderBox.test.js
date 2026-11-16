@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { snapdom } from '../src/index.js'
+import { isSafari } from '../src/utils/browser.js'
 
 const OPTS = { dpr: 1, scale: 1, embedFonts: false }
 const POSTER = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#0a0"/></svg>')
@@ -46,5 +47,40 @@ describe('a replaced element with a border keeps its box', () => {
   it('content-box <video> showing its poster', async () => {
     const { live, captured } = await markerRows(`<video poster="${POSTER}" style="display:block;width:100px;height:50px;border:10px solid #f00;padding:5px"></video>`)
     expect(captured).toBe(live)
+  })
+})
+
+// Not on WebKit: its downsample softens every hard edge at 2:1, border or not, so a compressed
+// capture never matches a plain one there.
+describe.skipIf(isSafari())('a <canvas> with a border under compress', () => {
+  /** Share of pixels that differ between a compressed capture and a plain one. */
+  async function compressDrift(style) {
+    host = document.createElement('div')
+    host.style.cssText = 'position:absolute;left:0;top:0;width:260px;background:#fff'
+    host.innerHTML = `<canvas width="400" height="240" style="display:block;width:200px;height:120px;${style}"></canvas>`
+    document.body.appendChild(host)
+    const ctx = host.firstChild.getContext('2d')
+    ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 400, 240)
+    // Hard edges on even backing pixels: crisp at the 2:1 the page shows.
+    ctx.fillStyle = '#fbbf24'
+    for (let i = 0; i < 9; i++) ctx.fillRect(20 + i * 40, 20, 20, 200)
+    const pixels = async (compress) => {
+      const canvas = await (await snapdom(host, { ...OPTS, compress, cache: 'disabled' })).toCanvas()
+      return canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data
+    }
+    const [a, b] = [await pixels(false), await pixels(true)]
+    let off = 0
+    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 48) off++
+    return off / (a.length / 4)
+  }
+
+  // Downsampled to the border box and then scaled into the content box, every edge moved.
+  it('is resampled once, to its content box', async () => {
+    expect(await compressDrift('border:1px solid #999')).toBeLessThan(0.005)
+    expect(await compressDrift('padding:10px')).toBeLessThan(0.005)
+  })
+
+  it('without a border it already was', async () => {
+    expect(await compressDrift('')).toBeLessThan(0.005)
   })
 })

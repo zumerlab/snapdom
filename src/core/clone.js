@@ -1282,6 +1282,12 @@ async function cloneCanvas(node, sessionCache, options) {
   if (width > 0) img.style.width = `${width}px`
   if (height > 0) img.style.height = `${height}px`
   img.style.boxSizing = 'border-box'
+  // compress sizes the bitmap from these: the content box it is drawn into. From the border
+  // box it was downsampled to one size and scaled to another, and every edge moved.
+  const cs = getStyle(node)
+  const px = (v) => parseFloat(v) || 0
+  img.dataset.snapdomWidth = String(width - px(cs.paddingLeft) - px(cs.paddingRight) - px(cs.borderLeftWidth) - px(cs.borderRightWidth))
+  img.dataset.snapdomHeight = String(height - px(cs.paddingTop) - px(cs.paddingBottom) - px(cs.borderTopWidth) - px(cs.borderBottomWidth))
 
   sessionCache.nodeMap.set(img, node)
   inlineAllStyles(node, img, sessionCache, options)
