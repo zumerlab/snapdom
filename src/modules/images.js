@@ -1,19 +1,14 @@
 /**
- * Inline every <img> and SVG <image> (since #341) in the clone as a data URL.
- *
- * An svg-as-image document loads no external resources, so a remote src paints nothing inside
- * the foreignObject. Each one is fetched through snapFetch and written onto the clone; an <img>
- * that cannot be fetched keeps its box and shows a sized placeholder (nothing with
- * `placeholders: false`).
+ * Inline every <img> and SVG <image> (since #341) in the clone as a data URL: an svg-as-image
+ * document loads no external resources. An <img> that cannot be fetched keeps its box and shows
+ * a sized placeholder (nothing with `placeholders: false`).
  *
  * One contract, measured: an inlined data: URL is written to the clone ONCE. Every src write
- * re-parses and re-decodes the payload and every `src` getter read re-serializes it. The 9-photo
- * gallery (26 MB of base64) paid four writes (cloneNode, freezeImgSrcset, this pass, compress);
- * keeping only the first took the warm pipeline from 172 ms to 62. What is left is cloneNode's
- * own 41 ms copy, which starts a load. Skipping it would leave the clone without `src` until
- * serialization, visible to plugins, and a clone in a document without a browsing context only
- * defers it to adoption. On d-compress (19 images, 44M characters) that write is 85 of the 99 ms
- * a Chromium recapture takes.
+ * re-decodes the payload and every `src` getter read re-serializes it. The 9-photo gallery
+ * (26 MB of base64) paid four writes (cloneNode, freezeImgSrcset, this pass, compress); only
+ * cloneNode's is left, and the warm pipeline went from 172 ms to 62. That 41 ms copy stays: a
+ * clone without `src` until serialization would be visible to plugins. On d-compress (19
+ * images, 44M characters) it is 85 of the 99 ms a Chromium recapture takes.
  * Pinned by __tests__/modules.images.dataUrlPassthrough.test.js, which counts the writes.
  * @module images
  */
@@ -53,16 +48,13 @@ function extractImageDimensions(img) {
 }
 
 /**
- * Inline every <img> and SVG <image> in the clone, six at a time. Per <img>: one concrete src
- * (srcset and sizes dropped), a cached data URL or a fetch. A failed fetch tries `fallbackURL`
- * (string or async callback), then a grey "img" box of the estimated size with an
- * `image-fallback` session warning, or an empty image under `placeholders: false`.
- * Also runs on the differential path (diff.js) for the rebuilt subtree.
+ * Inline every <img> and SVG <image> in the clone, six at a time. A failed <img> fetch tries
+ * `fallbackURL` (string or async callback), then a grey "img" box of the estimated size with an
+ * `image-fallback` session warning. Also runs on the differential path (diff.js).
  * Pinned by __tests__/modules.images.test.js.
  * @param {Element} clone - the clone, or the <img> itself when that is the capture root
  * @param {object} [options={}] - capture context; reads useProxy, fallbackURL, placeholders
- * @param {{warnings?: Array|null}|null} [session=null] - the run that takes the warning; a
- *   differential frame passes its own, which keeps no log
+ * @param {{warnings?: Array|null}|null} [session=null] - the run that takes the warning
  * @returns {Promise<void>}
  */
 export async function inlineImages(clone, options = {}, session = null) {
@@ -153,9 +145,8 @@ export async function inlineImages(clone, options = {}, session = null) {
     if (!img.height) img.height = fbH
   }
 
-  // Batch size 6 matches the typical per-origin HTTP/1.1 connection limit;
-  // raising it further doesn't help once the connection pool is saturated
-  // and could degrade other in-flight requests on the page.
+  // Batch of 6, the typical per-origin HTTP/1.1 connection limit: more does not help once the
+  // pool is saturated and can slow the page's other requests.
   const BATCH = 6
   for (let i = 0; i < imgs.length; i += BATCH) {
     const group = imgs.slice(i, i + BATCH).map(processImg)

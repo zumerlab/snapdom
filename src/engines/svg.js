@@ -1,12 +1,9 @@
 /**
  * SVG render engine: the default way a finished clone becomes pixels.
  *
- * The pipeline splits at the clone (the halves `stages.js` names). `captureDOM`
- * (src/core/capture.js) owns element to clone and hands over a self-contained clone plus its
- * CSS. This file owns clone to render: base reset, bbox and bleed math, foreignObject
- * assembly and data-URL encoding. It is an ENGINE, not core; htmlInCanvas.js is its peer and
- * consumes the same finished clone, never the live page. Burst's differential recapture
- * re-enters it with retained state.
+ * Owns clone to render (`captureDOM` owns element to clone, stages.js): base reset, bbox and
+ * bleed math, foreignObject assembly and encoding. An ENGINE, not core; htmlInCanvas.js is its
+ * peer on the same finished clone. Burst's differential recapture re-enters it.
  *
  * @module engines/svg
  */
@@ -74,15 +71,12 @@ function canvasBackground(doc) {
 const OUTER_INK_SIGNATURE = /(?:^|;)(?:box-shadow|text-shadow|outline-style|filter|-webkit-filter):/
 
 /**
- * Intern repeated inline style attributes as attribute-selector rules in the serialized
- * markup. A repetitive tree repeats the same block thousands of times: a 500-row table had
- * 3005 style attributes with 12 distinct values, and interning took its fresh-decode draw from
- * 52.6ms to 37.4ms with identical pixels.
- * String-level on purpose: the retained clone is untouched, so a differential recapture
- * re-interns the same way. A rule's 0,1,0 specificity beats generated classes by order but not
- * author rules with IDs, nor inline !important: those signatures stay inline, as do editable
- * assets. Not on Safari: fixSafariShadows rewrites shadows in style attributes, not in the
- * sheet. Pinned by __tests__/engine.svg.intern.test.js.
+ * Intern repeated inline style attributes as attribute-selector rules (500-row table, 12
+ * distinct values in 3005 attributes: draw 52.6ms to 37.4ms). String-level, so the retained
+ * clone is untouched. Styles that compete with author ID rules or inline !important, and
+ * editable assets, stay inline. Not on Safari:
+ * fixSafariShadows reads style attributes, not the sheet.
+ * Pinned by __tests__/engine.svg.intern.test.js.
  * @param {string} foString serialized <foreignObject> markup (first <style> holds the CSS)
  * @param {Element} fo finished foreignObject, used only if styles compete or assets are editable
  * @returns {string}
@@ -197,12 +191,9 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
 /**
  * Turn the finished clone into an SVG data URL.
  *
- * Shared by captureDOM and burst's differential recapture. `state` is the capture context or,
- * from diff, a wrapper (element/options/plugins/clone/classCSS/styleCache/nodeMap) folded
- * back onto it. Writes `options.meta` on the context and `layoutZoom`, `fileSvg` and
- * `artifacts` on `ex.session`, then drops the clone and maps. `ex.signatures` (clone to style
- * key) filters the body-room bleed and anchors page-positioned boxes; a differential frame
- * passes null, so it measures every node and does not re-anchor.
+ * Shared by captureDOM and burst's differential recapture. Writes `options.meta` on the
+ * context and `layoutZoom`, `fileSvg`, `artifacts` on the session, then drops the clone.
+ * A differential frame passes null `signatures`, so it measures every node and re-anchors none.
  * @param {object} state - capture context, or diff's wrapper around one
  * @param {{clipWindow: object|null, outerTransforms: boolean, outerShadows: boolean|'subtree', rootTransform2D: object|null, fontsCSS: string, universe: Set<string>|null, session: import('../core/session.js').CaptureSession, signatures: Map<Element, string>|null}} ex
  * @returns {Promise<string>} SVG data URL
@@ -210,10 +201,8 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
 export async function composeAndSerialize(state, ex) {
   const { clipWindow, outerTransforms, outerShadows, rootTransform2D, fontsCSS, universe, session, signatures } = ex
   const options = state.options
-  // ONE context: fold diff's wrapper onto the capture context so every hook sees one object.
-  // That context never entered captureDOM, so pin its `options` self-reference here. The
-  // wrapper's own `options` stays out of the fold: it IS the target, and copying it would
-  // write an enumerable cycle or throw in strict mode.
+  // Fold diff's wrapper onto the context and pin `options` (it never entered captureDOM). The
+  // wrapper's `options` IS the target: copying it writes a cycle or throws in strict mode.
   if (state !== options) {
     const { options: _self, ...stageFields } = state
     state = Object.assign(options, stageFields)
@@ -235,11 +224,9 @@ export async function composeAndSerialize(state, ex) {
   // body/documentElement: measure clone in-document to get true content height (Chrome clamps offset/scroll)
   // Use element's ownerDocument for iframe support (#371)
   const elDoc = state.element.ownerDocument || document
-  // #449: an iframe doc pinned by rasterizeIframe is captured at its viewport size, or the
-  // full page gets squashed into the iframe box. The pin is an option of the nested capture,
-  // not an attribute on the frame's <html>: the frame's invalidation observer saw that
-  // attribute and killed the outer element's burst memo.
-  // Clip mode windows the viewBox, so it skips the expansion and the in-document measurement.
+  // #449: an iframe doc pinned by rasterizeIframe keeps its viewport size. The pin is an
+  // option, not an attribute on <html>, which the frame's observer saw and killed the outer
+  // burst memo. Clip mode windows the viewBox and skips the expansion.
   const isRoot = !clipWindow && (state.element === elDoc.body || state.element === elDoc.documentElement) &&
     !state.__pinned
   // The room between <html> and a captured body, and what the body's descendants paint
@@ -262,13 +249,10 @@ export async function composeAndSerialize(state, ex) {
     // The measurement mount lays the clone out at the document's width, whatever box the
     // capture ends up with.
     const layoutW = Math.max(w0, limitDecimals(docW))
-    // The document extents also count the body's margins and child margins collapsing through
-    // it, an empty band at the bottom (16px with the default body margin). bodyExtent keeps
-    // the document extent only where content overflows the in-flow box.
+    // Document extents count the body's margins, an empty band at the bottom; bodyExtent keeps
+    // only real overflow.
     const isBody = state.element === elDoc.body
-    // A right-to-left page overflows to the left: the extra width goes to rtlSpill, which the
-    // bleed turns into room on the left. Grown on the right, the capture clipped the left
-    // spill and left as much empty on the right.
+    // A right-to-left page overflows to the left, so its extra width becomes left bleed.
     const rtl = isBody && getStyle(elDoc.documentElement).direction === 'rtl'
     const growW = (v) => {
       if (!(v > 0)) return
@@ -285,9 +269,8 @@ export async function composeAndSerialize(state, ex) {
       }
       bodyRoom = room
       if (outerShadows !== 'subtree' && (room.top || room.right || room.bottom || room.left)) {
-        // Only a signature with an outer effect can ink the room, so filter by signature:
-        // 600-card body (3001 nodes, Chromium, 2026-10-23): 1.9 ms to 0.5 ms. A node with no
-        // signature is measured.
+        // Only a signature with an outer effect can ink the room (600-card body, Chromium:
+        // 1.9 ms to 0.5 ms). A node with no signature is measured.
         const inked = new Map()
         const candidates = new Map()
         for (const [clone, source] of state.nodeMap) {
@@ -316,10 +299,8 @@ export async function composeAndSerialize(state, ex) {
     }
     if (docH > 0) h0 = Math.max(h0, limitDecimals(docH))
     growW(docW)
-    // Also measure the styled clone in a temp container; it may lay out differently. The
-    // round trip is expensive on large DOMs, so the result is cached per element. docH/docW
-    // belong in the key: a stale hint only grows the raster (Math.max), and without them a
-    // page that got shorter kept an empty band at the bottom for good.
+    // Measure the styled clone too, cached per element. docH/docW belong in the key: a stale
+    // hint only grows (Math.max), so a page that got shorter kept an empty band for good.
     try {
       const cssLen = (state.scrollbarCSS || '').length + (state.baseCSS || '').length +
                      (state.fontsCSS || '').length + (state.classCSS || '').length
@@ -361,14 +342,11 @@ export async function composeAndSerialize(state, ex) {
     const hEst = estimateKeptHeight(state.element, state.options) // border+padding+contentSpan
     // Safety: never larger than the original, with an epsilon so rounding cannot clip
     const EPS = 1 // px
-    // …and only shrink a box whose height COMES FROM its content. An author-set height does
-    // not shrink live when a child goes: a 400px card with one excluded button captured 19px
-    // tall. Measured, not parsed: a content-sized box's height equals border + padding + the
-    // span of its children (absolutely positioned children do not count, on purpose).
+    // Shrink only a box whose height comes from its content: a 400px card with one excluded
+    // button captured 19px tall. Measured, not parsed.
     const hAll = estimateKeptHeight(state.element, {})
-    // Proportional tolerance: a content-sized box runs a few px taller than its span (on
-    // Firefox a 40px auto card measures 36px), while an imposed height is off by multiples.
-    // A height set within ~15% of the content may still mis-shrink by a few px.
+    // Proportional: on Firefox a 40px auto card spans 36px, while an imposed height is off by
+    // multiples.
     const slack = Math.max(2, h0 * 0.15)
     const contentSized = Number.isFinite(hAll) && hAll >= h0 - slack
     if (contentSized && Number.isFinite(hEst) && hEst > 0) {
@@ -376,8 +354,7 @@ export async function composeAndSerialize(state, ex) {
     }
     // Width almost never needs the same adjustment; the analogous helper would be estimateKeptWidth(...)
   }
-  // Opt-in layout reconciliation: measure the styled clone in-document and pin only the
-  // boxes whose size diverges from the live tree (measurement over heuristics).
+  // Opt-in: pin only the boxes whose measured size diverges from the live tree.
   if (state.options?.reconcile) {
     try {
       // No fontsCSS here (#474): the families already resolve to loaded faces, and data: URL
@@ -398,8 +375,7 @@ export async function composeAndSerialize(state, ex) {
 
   const optW = coerceNum(state.options.width)
   const optH = coerceNum(state.options.height)
-  // Output basis: the element box, or the clip window in clip mode (width/height
-  // options and the default output size scale against what will be shown).
+  // Output basis: the element box, or the clip window.
   const baseW = clipWindow ? limitDecimals(clipWindow.width) : w0
   const baseH = clipWindow ? limitDecimals(clipWindow.height) : h0
   let w = baseW, h = baseH
@@ -419,7 +395,7 @@ export async function composeAndSerialize(state, ex) {
     w = Math.max(1, limitDecimals(h * (aspect0 || 1)))
   }
 
-  // ——— BBOX ———
+  // BBOX
   let minX = 0, minY = 0, maxX = w0, maxY = h0
 
   if (clipWindow) {
@@ -491,24 +467,21 @@ export async function composeAndSerialize(state, ex) {
     }
   }
 
-  // ——— BLEED ———
+  // BLEED
   const bleedShadow = parseBoxShadow(csEl)
   const bleedText = parseTextShadow(csEl)
   const bleedBlur = parseFilterBlur(csEl)
   const bleedOutline = parseOutline(csEl)
   const drop = parseFilterDropShadows(csEl)
 
-  // What a child paints past the root's box (outerShadows: 'subtree'), measured on the page.
-  // The bbox to page-box ratio converts page pixels to root pixels, leaving out what an
-  // ancestor scaled. From @frostin/snapdom (element-mirror).
+  // What children paint past the root (outerShadows: 'subtree'), in root pixels: the bbox to
+  // page-box ratio removes what an ancestor scaled. From @frostin/snapdom.
   const perX = rect.width > 0 ? (maxX - minX) / rect.width : 1
   const perY = rect.height > 0 ? (maxY - minY) / rect.height : 1
   let subtree = outerShadows === 'subtree' && !clipWindow
     ? measureSubtreeBleed(state.element, state.nodeMap, state.styleCache, perX, perY)
     : { top: 0, right: 0, bottom: 0, left: 0 }
-  // A body capture keeps what descendants paint into its margins (d40: a child's 1px outline
-  // on the right margin). Bounded by that room and net of the content measurement, it never
-  // outgrows the document extent.
+  // A body capture keeps what descendants paint into its margins (d40), bounded by that room.
   if (bodyInk) {
     subtree = {
       top: bodyInk.top,
@@ -519,9 +492,8 @@ export async function composeAndSerialize(state, ex) {
   }
   if (rtlSpill > 0) subtree = { ...subtree, left: Math.max(subtree.left, rtlSpill) }
 
-  // A region capture has exact edges: no root bleed. blur() is not an outer shadow: the root
-  // keeps it, so its bleed always counts; shadows, outline and drop-shadow only under
-  // outerShadows.
+  // A clip has exact edges. blur() is not an outer shadow: the root keeps it, so its bleed
+  // always counts.
   const bleed = clipWindow
     ? { top: 0, right: 0, bottom: 0, left: 0 }
     : outerShadows
@@ -553,44 +525,33 @@ export async function composeAndSerialize(state, ex) {
   const extraPad = !outerTransforms ? 1 : 0
   const pad = limitDecimals(basePad + extraPad)
 
-  // Ceil so a fractional extent never loses its bottom/right edge to whole pixels. A stream
-  // patch lays out at the page's subpixel offset (options.__subpixel) through padding, which
-  // is layout and snaps like the full frame; a viewBox shift left rounded corners 8 pixels
-  // off. Pinned by __tests__/engine.svg.subpixel.test.js.
+  // Ceil, or the bottom/right edge is lost. A stream patch takes its subpixel phase as padding,
+  // which snaps like the full frame; a viewBox shift left rounded corners 8 pixels off.
+  // Pinned by __tests__/engine.svg.subpixel.test.js.
   const phaseX = options.__subpixel?.x || 0
   const phaseY = options.__subpixel?.y || 0
   const vbW = Math.ceil(vbW0 + pad * 2 + phaseX)
   const vbH = Math.ceil(vbH0 + pad * 2 + phaseY)
 
-  // Stable Chrome does not paint foreignObject overflow in svg-as-image (headless does, do not
-  // trust it), so the fo covers the whole viewBox and the offset moves the CONTENT. Not fo
-  // x/y (leaves an unpainted band) nor position/margin/transform on its root (Chrome paints
-  // those twice at browser zoom other than 100%): padding on the container survives both.
-  // A negative offset (clip window right of or below the origin) uses fo x/y: the band it
-  // leaves is the culled region.
+  // Stable Chrome does not paint fo overflow (headless does: do not trust it), so the offset
+  // is padding on the container. Not fo x/y (unpainted band), nor position/margin/transform
+  // (painted twice at browser zoom other than 100%). A negative offset uses fo x/y: its band
+  // is the culled region.
   const offX = limitDecimals(-(limitDecimals(minX) - pad))
   const offY = limitDecimals(-(limitDecimals(minY) - pad))
-  // Lay the clone out on the live device-pixel grid (#508). Chromium implements DPR AS zoom:
-  // it rounds `line-height: normal` line boxes and snaps borders on the device grid, while the
-  // svg image lays out at 1x (2164px of text where the page took 2203.5px). `zoom` on the
-  // container reproduces the grid and scale(1/zoom) on a <g> outside the fo returns to CSS
-  // pixels; viewBox, size and meta do not change. The #508 page went from 10.9% to 2.3%
-  // mismatch against a live screenshot in real Chrome; a 3,000-cell table at DPR 2.625 pays
-  // 37.5 to 39 ms, nothing at DPR 1. Firefox rounds line boxes the same way
-  // (real Firefox 156 at devPixelsPerPx 2.625); WebKit does not. The support check is for
-  // Firefox before 126, where `zoom` does not exist and the scale group alone would shrink the
-  // capture. Pinned by __tests__/engine.svg.layoutZoom.test.js.
-  // devicePixelRatio alone does not prove the grid: device emulation (`deviceScaleFactor`,
-  // DevTools device mode) reports dpr 2 and lays out at 1x (liveLayoutZoom below).
+  // #508: Chromium and Firefox lay the page out on the device-pixel grid, the svg image at 1x,
+  // so line boxes drift apart. `zoom` on the container restores the grid and scale(1/zoom) on
+  // the outer <g> undoes it (the #508 page: 10.9% to 2.3% mismatch in real Chrome; a 3,000-cell
+  // table at DPR 2.625 pays 37.5 to 39 ms). WebKit does not round by DPR.
+  // Pinned by __tests__/engine.svg.layoutZoom.test.js.
   const view = elDoc.defaultView || window
+  // The support check is for Firefox before 126, where the scale alone would shrink the capture.
   const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? liveLayoutZoom(view) : 1
   // toCanvas rasterizes Firefox exports smaller than this grid at it first (#516).
   session.layoutZoom = layoutZoom
-  // fo x/y and padding snap to a whole layout pixel, so a clip on a finer output grid (#526,
-  // or scale 2) lost its fraction (playwright-lite #302). The fraction goes to a translate on
-  // the outer <g> and the fo reaches one layout pixel further left and up to still cover the
-  // viewBox. Not WebKit: it moves no box with its own layer by an ancestor translate
-  // (cropSvgText, svgText.js). Pinned by __tests__/core.clip.test.js.
+  // fo x/y and padding snap to a layout pixel, so a clip's fraction (#526, playwright-lite
+  // #302) goes to a translate on the outer <g>. Not WebKit: it moves no box with its own layer
+  // by an ancestor translate (cropSvgText). Pinned by __tests__/core.clip.test.js.
   const split = clipWindow && !isSafari()
   const shiftX = split ? limitDecimals(offX - Math.floor(offX * layoutZoom + 0.01) / layoutZoom) : 0
   const shiftY = split ? limitDecimals(offY - Math.floor(offY * layoutZoom + 0.01) / layoutZoom) : 0
@@ -621,14 +582,12 @@ export async function composeAndSerialize(state, ex) {
 
   const container = document.createElement('div')
   container.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml')
-  // #372: isolate wrapper from iframe CSS cascade (e.g. div { border: 10px solid red })
-  // The container spans the whole fo, so the (rotated/bled) content never overflows
-  // its border-box — standalone-SVG Chromium clips fo content at the container box.
+  // #372: isolate the wrapper from iframe CSS (div { border: 10px solid red }). It spans the
+  // whole fo: standalone-SVG Chromium clips fo content at the container box.
   container.style.cssText =
     'all:initial;box-sizing:border-box;display:block;overflow:visible;' +
-    // A stream patch needs the exact live width (w0 is a rounded offsetWidth: a 38.69px cell
-    // drew 39.31px). Keyed on the option, not a non-zero phase: a patch resting on a whole
-    // pixel drew 0.03px narrow too.
+    // A stream patch needs the exact live width (rounded w0 drew a 38.69px cell 39.31px). Keyed
+    // on the option, not a non-zero phase.
     `width:${options.__subpixel ? limitDecimals(padL + rect.width) : foW}px;height:${foH}px` +
     // !important: Chromium 140 serializes `padding-inline: initial` from `all:initial` AFTER
     // this shorthand, which would reset the left/right padding on re-parse.
@@ -654,9 +613,8 @@ export async function composeAndSerialize(state, ex) {
   const foString = serializer.serializeToString(fo)
   const wantsSize = hasW || hasH
 
-  // Public export geometry. `contentX/contentY` are the exact viewBox-space origin of
-  // the logical capture box; unlike `(vbW - w0) / 2`, they stay correct for asymmetric
-  // shadow bleed, transformed roots and clip windows.
+  // `contentX/contentY` locate the capture box in the viewBox; `(vbW - w0) / 2` is wrong under
+  // asymmetric bleed, transformed roots and clips.
   const captureMeta = Object.freeze({
     w0: baseW, h0: baseH, vbW, vbH, targetW: w, targetH: h,
     contentX: limitDecimals(offX + (clipWindow ? minX : 0)),
@@ -668,17 +626,14 @@ export async function composeAndSerialize(state, ex) {
       })
       : null,
   })
-  // Read-only so a hook cannot desync the SVG from its geometry. CONFIGURABLE: a direct
-  // captureDOM call reuses its options bag, and a second capture must redefine it without
-  // "Cannot redefine property".
+  // Read-only so a hook cannot desync it. Configurable: a reused options bag is redefined on
+  // the next capture.
   Object.defineProperty(options, 'meta', {
     value: captureMeta, enumerable: true, writable: false, configurable: true,
   })
 
-  // `width`/`height` are the ABSOLUTE OUTPUT SIZE of the whole viewBox, bleed included, the
-  // one rule of every exporter (types/snapdom.d.ts). Sizing the ELEMENT to `w` instead made
-  // svg and png exports of one capture disagree. Safari keeps the viewBox size: toImg patches
-  // these attributes itself to stay vector.
+  // `width`/`height` size the whole viewBox, bleed included, as every exporter does. Safari
+  // keeps the viewBox size: toImg patches it to stay vector.
   const svgOutW = (!wantsSize || isSafari())
     ? vbW
     : (hasW ? w : limitDecimals(vbW * (h / vbH)))
@@ -696,10 +651,8 @@ export async function composeAndSerialize(state, ex) {
   const svgHeader = `<svg xmlns="${svgNS}" width="${svgOutW}" height="${svgOutH}" viewBox="0 0 ${vbW} ${vbH}" font-size="${rootFontSize}px">${group ? `<g transform="${group}">` : ''}`
   const svgFooter = group ? '</g></svg>' : '</svg>'
   svgString = svgHeader + internInlineStyles(foString, fo) + svgFooter
-  // #552: the layout zoom is for the browser's own raster. macOS Preview / Quick Look drew an
-  // inline <svg> under the container's `zoom` at twice its size, so file exports (toBlob svg,
-  // download svg, svgString) swap in the unzoomed wrapper. Only the wrapper tags differ, so
-  // only they are kept, serialized from shallow clones. Null at zoom 1.
+  // #552: macOS Preview / Quick Look drew an inline <svg> under `zoom` at twice its size, so
+  // svg files swap in the unzoomed wrapper tags kept here.
   // Pinned by __tests__/engine.svg.layoutZoom.test.js.
   if (layoutZoom !== 1) {
     const openTag = (el) => {
@@ -737,8 +690,7 @@ export async function composeAndSerialize(state, ex) {
   // Export hooks read `url` / `artifacts` instead.
   state.clone = state.nodeMap = state.styleCache = state.svgString = null
 
-  // The id is public and may belong to the page. Duplicate ids are possible while our
-  // short-lived sandbox exists, so inspect every match and remove only private provenance.
+  // The id is public: remove only our own sandbox.
   const sandbox = [...document.querySelectorAll('#snapdom-sandbox')].find(isInternalNode)
   if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()
   return state.dataURL
@@ -753,13 +705,10 @@ function hasTFBBox(el) {
 /**
  * The zoom the live document is actually laid out at, for the #508 layout zoom.
  *
- * A real hi-DPI screen makes Chromium lay out on the device grid (zoom-for-DSF). CDP device
- * emulation (`deviceScaleFactor`, DevTools device mode) reports dpr 2 and lays out at 1x, and
- * a zoomed clone there re-wrapped text the unzoomed one matched exactly.
- * The probe: border widths snap to the layout grid, so a 0.5px border computes to 0.5px on a
- * 2x grid and 1px on a 1x grid. 1px or more means 1x whatever dpr says. An engine that does
- * not snap reports 0.5px and keeps zoom = dpr. Not cached: dpr, browser zoom and the root's
- * `zoom` can change between captures.
+ * Device emulation (`deviceScaleFactor`, DevTools device mode) reports dpr 2 but lays out at
+ * 1x, where a zoomed clone re-wrapped text. A 0.5px border computes to 1px on a 1x grid, so
+ * 1px means 1x; an engine that does not snap keeps zoom = dpr. Not cached: dpr and browser
+ * zoom change between captures.
  * @param {Window} view - the captured element's window
  * @returns {number} devicePixelRatio, or 1 when the live layout grid is CSS pixels
  */

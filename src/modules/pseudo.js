@@ -1,18 +1,15 @@
 /**
  * Pseudo-elements, materialized into the clone.
  *
- * The svg carries snapdom's class CSS, not the page's sheets, so an author's `::before` never
- * reaches the foreignObject. (A `<style>` inside the subtree is cloned; its native pseudos are
- * suppressed so they do not paint twice, #359.) This pass reads each pseudo's computed style
- * and builds it: `::before`, `::after` and `::first-letter` become a <span> (icon glyphs drawn
- * to <img>, `content: url()` fetched, counters resolved); `::marker` and `::first-line` become
- * a scoped rule on `sessionCache.pseudoCSS`, which prepareClone folds into the class CSS,
- * because a span can neither re-fragment a first line nor replace a native marker.
+ * The svg carries snapdom's class CSS, not the page's sheets, so author pseudos are rebuilt
+ * from computed style: `::before`, `::after` and `::first-letter` as a <span>, `::marker` and
+ * `::first-line` as a scoped rule on `sessionCache.pseudoCSS` (a span can neither re-fragment
+ * a first line nor replace a marker). A cloned `<style>` gets its native pseudos suppressed
+ * so they do not paint twice (#359).
  *
- * Cost control, in order: a document preflight (does any sheet mention a pseudo), one subtree
- * `querySelector` over the selector gates (canSkipPseudoWalk), then one `matches()` per node
- * before any getComputedStyle. Pinned by __tests__/module.pseudo.test.js and the
- * module.pseudo.*.test.js siblings.
+ * Cost control, in order: a document preflight, one subtree `querySelector` over the selector
+ * gates (canSkipPseudoWalk), one `matches()` per node before any getComputedStyle.
+ * Pinned by __tests__/module.pseudo.test.js and the module.pseudo.*.test.js siblings.
  * @module pseudo
  */
 
@@ -63,11 +60,8 @@ function safeRules(sheet) {
 }
 
 /**
- * Builds a cheap fingerprint of the document's stylesheet landscape.
- * Includes:
- *  - count and basic hash of <style> and <link rel="stylesheet">
- *  - adoptedStyleSheets length
- *  - total rules count (safe, no cssText) to reflect CSSOM insertRule changes
+ * A cheap fingerprint of the document's sheets. Rule counts are in it so a CSSOM insertRule
+ * moves it.
  * @param {Document} doc
  * @returns {string}
  */
@@ -533,27 +527,22 @@ function resolvePseudoContentAndIncs(node, ps, baseCtx, siblingCounters) {
 }
 
 /**
- * Can the whole pseudo walk be skipped for this subtree?
- *
- * `shouldProcessPseudos` asks whether any sheet in the DOCUMENT mentions a pseudo, and every
- * real page says yes, so the pass walks every node to find, usually, nothing. On a 500-row
- * table one `.zz::before` rule matching zero nodes took `toRaw` from 75 ms to 197 ms; one
- * `querySelector` over the subtree brought it to 66. Two cases must still walk:
- *  - a `null` gate: the scan could not be trusted (cross-origin CSS), nothing may be ruled out;
- *  - a shadow root whose own CSS declares a pseudo: those sheets are never scanned, so the walk
- *    probes there. `shadowPseudo` is set by deepClone, which always runs first (prepare.js);
- *    diff.js bails on shadow content before this pass. Not `shadowScopes.size`: that is a
- *    WeakMap, always undefined, and the pinned shadow ::after was skipped.
+ * Can the whole pseudo walk be skipped for this subtree? Every real page has a pseudo somewhere
+ * in the DOCUMENT. 500-row table, one `.zz::before` matching nothing: `toRaw` went from 75 ms
+ * to 197 ms with the walk, 66 with this one subtree `querySelector`.
  * Pinned by __tests__/module.pseudo.subtreeGate.test.js, whose descendant-match test goes red
  * without the querySelector half.
  * @returns {boolean}
  */
 function canSkipPseudoWalk(source, sessionCache) {
+  // Shadow sheets are never scanned. deepClone sets shadowPseudo and always runs first; not
+  // `shadowScopes.size`: a WeakMap, always undefined, and the pinned shadow ::after was skipped.
   if (sessionCache.shadowPseudo) return false
   const gates = pseudoGatesFor(source)
   const sels = []
   for (const kind of ['before', 'after', 'firstLetter', 'marker', 'firstLine']) {
     const gate = gates[kind]
+    // Unreliable scan (cross-origin CSS): nothing may be ruled out.
     if (gate === null) return false
     if (gate) sels.push(gate)
   }
@@ -569,15 +558,9 @@ function canSkipPseudoWalk(source, sessionCache) {
 /**
  * Inline every pseudo-element under `source` into `clone`, recursing through nodeMap.
  *
- * `::before`, `::after` and `::first-letter` become a <span> (data-snapdom-pseudo) keyed into
- * sessionCache.styleMap; `::marker` and `::first-line` become scoped rules. A pseudo that
- * paints nothing and takes no space is skipped, unless it incremented a counter the next
- * sibling needs.
- *
  * Deep tree with a 2px stripe on each of 1,936 leaves: 150 to 24 µs per `::before` (435 ms to
- * 172), from four things: the preflight runs on the root call only, the snapshot reads a
- * pseudo universe (~45 props, not ~130), the per-tag defaults cover the props enumeration
- * skips, and twin pseudos share one read (pseudoSnapshotFor). Pinned by
+ * 172), from the root-only preflight, the pseudo universe (~45 props, not ~130), complete
+ * per-tag defaults, and twin pseudos sharing one read (pseudoSnapshotFor). Pinned by
  * __tests__/module.pseudo.test.js, module.pseudo.subtreeGate, module.pseudo.twinShare,
  * module.pseudo.unreliableScan and module.pseudo.adoptedReplace.
  * @param {Element} source - live element
@@ -788,11 +771,9 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         continue
       }
 
-      // SVG-as-<img> resolves system fonts (system-ui) with other metrics, so inline pseudo
-      // text like ' Pro' can wrap a host that is one line live. Then the host AND the span get
-      // nowrap. Not for single-char (icon) or url()/image-set() content, and not off the
-      // host's line (#516): a positioned, floated or block pseudo lays out its own lines, and
-      // pinning it put a 50px tooltip that wraps live onto one line.
+      // SVG-as-<img> gives system-ui other metrics, so pseudo text like ' Pro' can wrap a host
+      // that is one line live: host AND span get nowrap. Not off the host's line (#516): a
+      // positioned, floated or block pseudo wraps on its own (a 50px tooltip came out on one line).
       const isImageContent = cleanContent.startsWith('url(') || /^-?(?:webkit-)?image-set\(/i.test(cleanContent)
       const onHostLine = display === 'inline' && style.cssFloat === 'none' &&
         style.position !== 'absolute' && style.position !== 'fixed'
@@ -848,11 +829,10 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
           await iconToImage(cleanContent, fontFamily, fontWeight, fontSize, color, fontStyle)
         const imgEl = document.createElement('img')
         imgEl.src = dataUrl
-        // The bitmap starts at the em-square top, so it drops by its depth under the baseline.
-        // The host keeps its display and vertical-align: pinIconStruts (iconFonts.js) holds the
-        // line metrics, and #176's forced `inline` + `middle` lifted the text 5px. The width is
-        // the glyph's exact advance, not whole pixels: Font Awesome's <i> frozen at 23.25px
-        // wrapped a 24px image to a second line. Pinned by __tests__/module.iconStrut.test.js.
+        // The host keeps its display and vertical-align (pinIconStruts holds the line metrics;
+        // #176's forced `inline` + `middle` lifted the text 5px). Width is the exact advance:
+        // Font Awesome's <i> frozen at 23.25px wrapped a 24px image. Pinned by
+        // __tests__/module.iconStrut.test.js.
         imgEl.style = `height:${fontSize}px;width:${(advance / h) * fontSize}px;object-fit:contain;vertical-align:${-descent}px;`
         pseudoEl.appendChild(imgEl)
       } else if (cleanContent && isImageContent) {

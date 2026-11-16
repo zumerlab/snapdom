@@ -9,12 +9,10 @@
 import { getStyle, isHTMLEl, shadowHost } from '../utils/index.js'
 
 /**
- * #498: on a content-box scroll container `getComputedStyle().width/height` leave out its
- * classic (non-overlay) scrollbars. Frozen bare, the box shrinks by the scrollbar, the content
- * no longer fits, and a vertical scrollbar the live page does not have steals width from the
- * rows. The measured gutters go back in. Border-box values already include them; overlay
- * scrollbars (macOS default) measure 0.
- * Runs once per fresh snapshot (getSnapshot): `snap` is the object the cache keeps.
+ * #498: on a content-box scroll container computed width/height leave out classic scrollbars,
+ * so a box frozen bare loses their width and grows a scrollbar the live page does not have.
+ * The measured gutters go back in; overlay scrollbars (macOS) measure 0. Runs once per fresh
+ * snapshot (getSnapshot): `snap` is the object the cache keeps.
  * Pinned by __tests__/snapdom.issue498.test.js and __tests__/snapdom.issue508.test.js.
  * @param {Element} source
  * @param {CSSStyleDeclaration} pre
@@ -51,26 +49,11 @@ export const BORDER_WIDTHS = ['border-top-width', 'border-right-width', 'border-
 const BOX_SIZES = ['width', 'inline-size', 'height', 'block-size']
 
 /**
- * Freeze the BORDER box of a content-box element whose borders the live page snapped to a
- * fractional CSS width.
- *
- * Browsers snap borders to whole device pixels: at devicePixelRatio 2.625 a `1px` border reads
- * `0.761905px` and `3px` reads `2.666667px` (Chrome and WebKit). The svg image lays out at 1x
- * and snaps them again, to 1px and 2px, so a frozen content-box size moves every outer edge
- * (#508: fifty stacked `border: 1px` rows grew 24px on a phone). Under border-box only the
- * content box absorbs the difference. Integer borders (all of a 1x or 2x page with ordinary
- * CSS) never enter. Chromium and Firefox also
- * lay out at the live devicePixelRatio (`layoutZoom`, engines/svg.js); this pass is what
- * keeps WebKit right.
- *
- * A twin copies a converted snapshot and re-reads its own width/height (LAYOUT_ALWAYS_RE), so
- * it converts once. Min and max sizes are not re-read for twins and change meaning under
- * border-box, so any non-neutral value leaves the element as it was.
- *
- * The content box ends up to a pixel smaller than its live content, so an `auto` scroller
- * shows a bar for that sliver (Chrome painted one under every #508 row). An axis with nothing
- * to scroll live is clipped as `hidden` instead. That depends on content, not identity, so
- * the decision is returned for the twin signature.
+ * Freeze the BORDER box of a content-box element whose borders the page snapped to a fraction:
+ * at devicePixelRatio 2.625 a `1px` border reads `0.761905px` (Chrome, WebKit), the 1x svg image
+ * snaps it again to 1px, and a frozen content box moves every outer edge (#508: fifty
+ * `border: 1px` rows grew 24px on a phone). Chromium and Firefox also lay out at the live DPR
+ * (`layoutZoom`, engines/svg.js); this pass is what keeps WebKit right.
  * Pinned by __tests__/snapdom.issue508.test.js.
  * @param {Element} el
  * @param {CSSStyleDeclaration} style - the live computed style
@@ -86,6 +69,7 @@ export function freezeBorderBox(el, style, snap) {
   // this node's own read (re-read, or identical between twins by construction).
   if (style.getPropertyValue('box-sizing') === 'border-box') return ''
   if (snap.display === 'inline') return ''
+  // Min and max sizes change meaning under border-box and are not re-read for twins.
   for (const axis of ['width', 'height']) {
     const min = snap[`min-${axis}`]
     const max = snap[`max-${axis}`]
@@ -103,6 +87,9 @@ export function freezeBorderBox(el, style, snap) {
     snap[prop] = `${Math.round((parseFloat(v) + extra) * 1000) / 1000}px`
   }
   snap['box-sizing'] = 'border-box'
+  // The content box ends up to a pixel short of its live content, and an `auto` scroller
+  // showed a bar for that sliver under every #508 row (Chrome). An idle axis clips as hidden,
+  // returned for the twin signature because it depends on content, not identity.
   let clipped = ''
   if (style.getPropertyValue('overflow-x') === 'auto') {
     const idle = el.scrollWidth <= el.clientWidth
@@ -129,10 +116,9 @@ const INLINE_BORDER_BOX_RE = /(?:box-sizing|width|height|inline-size|block-size|
  * @param {Record<string, string>} snap
  */
 export function syncInlineBorderBox(source, clone, snap) {
-  // One test on the SOURCE's attribute text, which the clone's inline style started as.
-  // Seven CSSOM reads per node were 4 ms of a 107 ms capture of 6,000 bordered, inline-styled
-  // nodes that declared no size, and the clone's own attribute is worse (8 ms): its style was
-  // already written through CSSOM, so every read re-serializes it.
+  // One test on the SOURCE's attribute text: seven CSSOM reads per node were 4 ms of a 107 ms
+  // capture of 6,000 bordered, inline-styled nodes, and the clone's attribute, re-serialized
+  // on every read, 8 ms.
   if (!INLINE_BORDER_BOX_RE.test(source.getAttribute('style'))) return
   for (const p of INLINE_BORDER_BOX) {
     if (clone.style.getPropertyValue(p) && snap[p]) {
@@ -162,17 +148,11 @@ function hasBox(cs) {
 export const ONE_LINE_PROP = typeof CSS !== 'undefined' && CSS.supports?.('text-wrap-mode', 'nowrap') ? 'text-wrap-mode' : 'white-space'
 
 /**
- * Keep a shrink-to-fit box on one line in the clone when its text is on one line live.
- *
- * #516: the box is frozen at the width of its own text, so a capture that lays the text out a
- * hair wider wraps it (Firefox at devicePixelRatio 2.727, by under 1/60px: "aa bb" broke and
- * every box below slid out of its frozen parent). Do not widen the box instead: across a row
- * in a shrink-to-fit parent that accumulates (#491), and a 1/60px nudge wrapped rows of two.
- * With no soft wrap live, `nowrap` is faithful and the drift can only overflow sub-pixel, the
- * #474 trade. Every element under a pinned box gets its own inline pin, unmeasured: inheriting
- * it is not enough, because the base reset restates `white-space:normal` per tag
- * (ALWAYS_PROPS) and "Home" in a pinned row broke into "Hom / e" (conciv-dev/conciv#764).
- * Pinned by __tests__/snapdom.issue516.test.js and
+ * Keep a shrink-to-fit box on one line in the clone when its text is on one line live (#516:
+ * Firefox at devicePixelRatio 2.727 laid "aa bb" out under 1/60px wider and wrapped it). Do not
+ * widen the box instead: across a row in a shrink-to-fit parent a 1/60px nudge accumulates and
+ * wrapped rows of two (#491). With no soft wrap live, `nowrap` can only overflow sub-pixel, the
+ * #474 trade. Pinned by __tests__/snapdom.issue516.test.js and
  * __tests__/regression.oneLinePinDescendants.test.js.
  * @param {Element} source
  * @param {Element} clone
@@ -184,8 +164,10 @@ export function freezeOneLine(source, clone, snap, flexItem, session) {
   const mode = snap['text-wrap-mode'] || snap['white-space'] || ''
   const noWrap = mode === 'nowrap' || mode === 'pre' || (ONE_LINE_PROP === 'white-space' && mode !== 'normal')
   const pinned = session.oneLine ||= new WeakSet()
-  // Parents are cloned before their children, so the parent alone says whether the box is
-  // under a pin. A box that cannot wrap live carries its own mode in its class rule.
+  // Every element under a pin gets its own inline pin: the base reset restates
+  // `white-space:normal` per tag (ALWAYS_PROPS), so inherited, "Home" broke into "Hom / e"
+  // (conciv-dev/conciv#764). Parents are cloned first, so the parent alone tells. A box that
+  // cannot wrap live carries its own mode in its class rule.
   if (pinned.has(source.parentElement)) {
     pinned.add(source)
     if (!noWrap && clone.style) clone.style.setProperty(ONE_LINE_PROP, 'nowrap')
@@ -203,11 +185,9 @@ export function freezeOneLine(source, clone, snap, flexItem, session) {
 
 /**
  * Whether every text run under `el` sits on one line box. False on whatever it cannot vouch
- * for: a <br>, a textarea, a shadow root, more than 64 runs, no text, or a content box taller
- * than two runs, which holds something the runs do not show (a second line of images, an
- * authored height). Under a rotation only a box holding one bare text node can vouch: the
- * node returns one rect per line it spans at any angle (the rotated chip of the site's
- * compare scene wrapped at zero slack).
+ * for (a <br>, a textarea, a shadow root, over 64 runs, no text, a content box taller than two
+ * runs). Under a rotation only one bare text node can vouch, since it returns one rect per line
+ * at any angle (the rotated chip of the site's compare scene wrapped at zero slack).
  * @param {Element} el
  * @param {Record<string,string>} snap
  * @param {object} session - the capture's sessionCache
@@ -299,13 +279,10 @@ export function isFlexOrGridItem(el) {
 }
 
 /**
- * Whether the element has in-flow content of its own: a direct non-empty text node (no
- * layout), an immediate <br>, or an in-flow element child.
- *
- * Neither `textContent` nor scrollHeight can answer it: `textContent` sees text inside
- * absolutely positioned descendants, and scrollHeight is floored at clientHeight. Trusting
- * either let stripHeightForWrappers drop the height of a wrapper whose children are all out of
- * flow; it collapsed to 0 in the foreignObject and every later section shifted up over it.
+ * Whether the element has in-flow content of its own. Not `textContent` (it sees text inside
+ * absolutely positioned descendants) nor scrollHeight (floored at clientHeight): trusting
+ * either collapsed a wrapper of out-of-flow children to 0 and pulled every later section up
+ * over it.
  * @param {Element} el
  */
 function hasFlowFast(el) {
@@ -328,15 +305,10 @@ function hasFlowFast(el) {
 }
 
 /**
- * Height this block would take with `height: auto`, measured from the live layout, or NaN
- * when nothing in flow could be measured.
- *
- * Called only after every other guard in stripHeightForWrappers passed, so the element is a
- * plain block with no vertical padding/border and `overflow: visible`: its content top is its
- * border top and its children's margins collapse through it. The auto height is the distance
- * from its top edge to the lowest in-flow bottom edge; absolute, fixed and floated children do
- * not count. Direct text nodes are measured with a Range, which leaves the DOM alone.
- *
+ * Height this block would take with `height: auto`, from the live layout, or NaN when nothing
+ * in flow could be measured. Valid only past stripHeightForWrappers' guards: with no vertical
+ * padding, border or overflow the children's margins collapse through, so the auto height runs
+ * from its top edge to the lowest in-flow bottom.
  * @param {Element} el
  * @returns {number}
  */
@@ -413,13 +385,10 @@ export function stripHeightForWrappers(el, cs, snap) {
   // 6) Only wrappers with in-flow content of their own
   if (!hasFlowFast(el)) return
 
-  // 6b) Last filter: drop the height only when it equals what `height: auto` would give.
-  // Otherwise the author set it, wherever it came from (stylesheet, <style>, CSSOM, inline),
-  // and it stays. Not `el.scrollHeight`: it returns the padding-box height when the content
-  // is shorter, so a `height: 400px` around one line of text read as auto, was dropped, and
-  // the rest of the canvas came out blank. Last on purpose: hasBox has ruled out vertical
-  // padding/border and overflow, which makes autoContentHeight valid, and only the few nodes
-  // that clear every guard pay for the measurement.
+  // 6b) Drop the height only when it equals what `height: auto` gives; otherwise the author
+  // set it, wherever from. Not `el.scrollHeight`: it returns the padding-box height when the
+  // content is shorter, so a `height: 400px` around one line read as auto and the rest of the
+  // canvas came out blank. Last: it measures, and hasBox has made the measurement valid.
   const usedH = parseFloat(cs.height)
   const autoH = autoContentHeight(el)
   const TOL = 2

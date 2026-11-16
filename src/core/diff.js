@@ -1,15 +1,12 @@
 /**
  * Differential recapture (burst v2): when only SUBTREES of a burst-tracked element mutated,
- * rebuild those subtrees against the retained clone of the last full capture, splice them in,
- * regenerate the class CSS and re-serialize. Per-node work (computed style reads, snapshots,
- * pseudo inlining, asset passes) becomes O(dirty subtree); the whole-tree steps left (class
- * re-application, XML serialization) measure ~1-2ms even on large captures.
+ * rebuild those against the retained clone of the last full capture, splice them in and
+ * re-serialize. Per-node work becomes O(dirty subtree); the whole-tree steps left measure
+ * ~1-2ms even on large captures.
  *
- * Contract: a FAST PATH with a hard fallback. `tryDiffCapture` returns null on ANY doubt
- * (unsupported option, heavy content in the subtree, structure drift, selector semantics that
- * can leak across subtrees) and the caller runs the full pipeline. What it serves must be
- * visually identical to a full capture of the same DOM (regression tests compare both
- * pixel-wise).
+ * Contract: a FAST PATH with a hard fallback. `tryDiffCapture` returns null on ANY doubt and
+ * the caller runs the full pipeline. What it serves must be pixel-identical to a full capture
+ * of the same DOM.
  * @module diff
  */
 
@@ -149,11 +146,9 @@ function pruneSubtreeFromMaps(oldRoot, R) {
 }
 
 /**
- * Take the one-line pin of an earlier pass off a retained clone that is about to be read
- * again (freezeOneLine, styleFreeze.js). The re-read puts it back when the text is still on
- * one line; left in place, a label whose text grew to two lines stayed on one in the frame.
- * A clone under a pinned parent keeps it: the pin is the parent's to give.
- * Pinned by __tests__/core.capture.diff.oneLine.test.js.
+ * Take an earlier pass's one-line pin (freezeOneLine) off a retained clone about to be re-read:
+ * left in place, a label grown to two lines stayed on one. A clone under a pinned parent keeps
+ * it. Pinned by __tests__/core.capture.diff.oneLine.test.js.
  * @param {Element} source
  * @param {Element} clone
  */
@@ -163,7 +158,7 @@ function unpinOneLine(source, clone) {
       clone.parentElement?.style.getPropertyValue(ONE_LINE_PROP) !== 'nowrap') clone.style.removeProperty(ONE_LINE_PROP)
 }
 
-/** Test/diagnostic counters — how often the fast path was attempted and actually served. */
+/** Test and diagnostic counters: how often the fast path was attempted and served. */
 export const __diffStats = { attempts: 0, served: 0, reconciled: 0 }
 
 /**
@@ -179,12 +174,9 @@ export const __diffStats = { attempts: 0, served: 0, reconciled: 0 }
  */
 export async function tryDiffCapture(element, state, context, animated = null) {
   __diffStats.attempts++
-  // The retained clone was read with its content-visibility:auto boxes forced visible, as
-  // their clones still say inline. Against the page as it stands, a box the engine is not
-  // rendering (off screen, or restored by the capture before) gave its empty height to its
-  // ancestors: a 140px capture came back 40px tall. Only those boxes are forced, so a page
-  // without one pays one attribute query.
-  // Pinned by __tests__/core.capture.diff.contentVisibility.test.js.
+  // Re-force the content-visibility:auto boxes the retained clone was read with: one the
+  // engine is not rendering gives its empty height to its ancestors (a 140px capture came
+  // back 40px tall). Pinned by __tests__/core.capture.diff.contentVisibility.test.js.
   const R = state.retained
   const forced = []
   if (R?.clone && R.nodeMap) {
@@ -207,11 +199,9 @@ export async function tryDiffCapture(element, state, context, animated = null) {
 }
 
 /**
- * The fast path itself. Every early `return null` is a bail: the caller runs the full
- * pipeline and nothing is lost. Cheap checks come first (options, plugins, retained state),
- * then the stylesheet scan, then the dirty roots. Pixel-equal to a full capture by
- * __tests__/core.capture.diff.test.js; that it engages at all, by
- * __tests__/core.capture.diff.engagement.test.js.
+ * The fast path. Every early `return null` bails to the full pipeline, cheap checks first.
+ * Pixel-equal to a full capture by __tests__/core.capture.diff.test.js; that it engages at
+ * all, by __tests__/core.capture.diff.engagement.test.js.
  */
 async function diffCapture(element, state, context, animated) {
   const R = state.retained
@@ -262,23 +252,18 @@ async function diffCapture(element, state, context, animated) {
   }
   if (!roots.length) return null
 
-  // #426: the full pipeline zeroes, in the clone, each margin that collapses through the
-  // root's top or bottom edge, and nothing else depends on that chain. A retained node keeps
-  // its zero and a rebuilt one gets it back below, so the splice is exact when the live DOM's
-  // zeroed list is the retained one, element for element. That covers a dirty root at any
-  // depth and every way the chain moves (a node entering or leaving the flow, a margin
-  // appearing, a sibling turning inline).
-  //
-  // A box that was and still is absolutely positioned is in no one's layout, so it needs no
-  // walk, and it is the one kind of DIRECT child served here. An in-flow direct child can
-  // resize the root, and not everything that follows the root's box is compared below (a
-  // sibling's `margin: 0 auto` under a shrink-to-fit root kept its old offset): full pipeline.
+  // #426: the full pipeline zeroes, in the clone, each margin collapsing through the root's
+  // top or bottom edge. A rebuilt node gets its zero back below, so the splice is exact while
+  // the live DOM's zeroed list is the retained one, element for element.
   // Pinned by __tests__/core.capture.diff.collapseChain.test.js.
   const zeroed = R.marginZeroed
   if (!zeroed) return null
+  // A box that was and still is absolutely positioned is in no one's layout: no walk.
   const inFlow = roots.filter((r) => !(OUT_OF_FLOW_KEY.test(R.styleMap.get(R.srcToClone.get(r)) || '') &&
     /^(?:absolute|fixed)$/.test(getComputedStyle(r).position)))
   if (inFlow.length) {
+    // An in-flow direct child can resize the root, and not all that follows the root's box is
+    // compared (a sibling's `margin: 0 auto` under a shrink-to-fit root kept its old offset).
     if (inFlow.some((r) => r.parentElement === element)) return null
     const live = neutralizeRootMarginCollapse(element, null)
     if (live.length !== zeroed.length || live.some((n, i) => n !== zeroed[i])) return null
@@ -360,10 +345,8 @@ async function diffCapture(element, state, context, animated) {
   }
 
   // Geometry reconcile: a subtree mutation can reflow its NEIGHBORHOOD (grid/flex/table
-  // tracks, float wrapping) and stale frozen sibling boxes (softened min-widths, measured
-  // sizes). One pass over the retained pairs refreshes the key of every box whose computed
-  // geometry drifted, as a full pipeline would snapshot it now, so byte-fidelity holds
-  // without bailing on layout-changing mutations.
+  // tracks, float wrapping), so every retained box whose computed geometry drifted is read
+  // again, as a full pipeline would read it now.
   const sessionLike = createClonePass(frame, context, frame.nodeMap)
   const resizedParents = new WeakSet()
   // What may have changed a flex row's overflow: every ancestor of a rebuilt or re-read box
@@ -390,14 +373,11 @@ async function diffCapture(element, state, context, animated) {
     for (const p in frozen) {
       cs ||= getComputedStyle(srcN)
       let live = cs.getPropertyValue(p)
-      // Width softening and overflowing flex items synthesize a floor from the used width,
-      // which always drifts against the live "auto", and against "0px", how every engine
-      // reports `auto` on a box that is neither a flex nor a grid item. min-width does not
-      // apply to the parts of a table, yet the 250-row benchmark table re-read 1,253 of 1,506
-      // nodes on every frame for it, so table boxes read "0px" as the floor too (the table
-      // itself as well, or its drift hands every row to the as-written comparison through
-      // resizedParents). Every other box keeps drifting: that re-read refreshes used values
-      // nothing else compares (an absolutely positioned box's static position, grid tracks).
+      // A synthesized min-width floor always drifts against a live "auto", and against "0px"
+      // (`auto` outside flex and grid). Table boxes, the table too, read "0px" as the floor:
+      // min-width does not apply there, and the 250-row table re-read 1,253 of 1,506 nodes a
+      // frame. Other boxes keep drifting on "0px": that re-read refreshes an absolutely
+      // positioned box's static position and grid tracks.
       // Pinned by __tests__/core.capture.diff.collapseChain.test.js.
       if (p === 'min-width' && (live === 'auto' || (live === '0px' && frozen[p] !== '0px' &&
           cs.display.startsWith('table') && !OUT_OF_FLOW_KEY.test(key))) &&
@@ -442,12 +422,9 @@ async function diffCapture(element, state, context, animated) {
       if (zeroed.includes(srcN)) rezero = true
     }
   }
-  // A flex row that starts or stops overflowing flips the min-width floor of all its items
-  // (inlineAllStyles), but only the changed item drifts above: the others keep their width,
-  // and a 0px floor is not in their key. So each row a change touched is asked again, and its
-  // items are re-read when the answer differs from their keys'. Diff fuzz, seeds 347 and 10:
-  // a span given a width overflowed its row while its siblings kept shrinking, and a box taken
-  // out of the flow ended an overflow two rows up whose items kept their floors.
+  // A flex row that starts or stops overflowing flips the min-width floor of all its items,
+  // yet only the changed one drifts above, so each row a change touched is asked again (diff
+  // fuzz, seeds 347 and 10: siblings kept shrinking beside a span given a width).
   // Pinned by __tests__/core.capture.diff.flexFloor.test.js.
   for (const row of rows) {
     if (!row.isConnected || !getComputedStyle(row).display.includes('flex')) continue
@@ -473,9 +450,8 @@ async function diffCapture(element, state, context, animated) {
   if (rezero) neutralizeRootMarginCollapse(element, R.clone, R.nodeMap)
 
   // Class numbering is positional over the sorted key set, so a new key renumbers every class.
-  // A frame that brought none keeps the previous numbering and class CSS and renames only the
-  // clones it rebuilt or re-read (renaming all was a fifth of a frame of the 1,506-node
-  // table). A key that lost its last user stays an unused rule until a frame renumbers.
+  // A frame that brought none renames only the clones it rebuilt or re-read (renaming all was
+  // a fifth of a frame of the 1,506-node table); a key left unused stays until a renumber.
   let keyToClass = R.keyToClass
   let classCSS = R.classCSS
   let renumber = !keyToClass

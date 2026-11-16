@@ -98,11 +98,9 @@ export function counterPairs(decl, dflt) {
 }
 
 /**
- * Build a counter context by walking the DOM once: per Element, a Map<counterName, number[]>
- * (stack). counter-reset pushes (nests) when the parent has that counter and starts a fresh
- * stack otherwise; counter-increment adds to the top, creating top=0; list-item numbers an LI
- * in OL/UL (start, li[value]). Built lazily once per capture (pseudo.js lazyCounterContext),
- * so a page with no counter in a pseudo never walks. Pinned by __tests__/module.counter.test.js.
+ * Build each Element's counter stacks in one DOM walk. Built lazily once per capture
+ * (pseudo.js lazyCounterContext), so a page with no counter in a pseudo never walks.
+ * Pinned by __tests__/module.counter.test.js.
  * @param {Document|Element} root
  * @returns {{ get(node: Element, name: string): number, getStack(node: Element, name: string): number[] }}
  */

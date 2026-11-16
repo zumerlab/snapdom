@@ -33,9 +33,8 @@ import { isInternalNode, markInternalNode } from './ownership.js'
 /**
  * A tag's default styles, memoized in cache.defaultStyle.
  *
- * Read from a fresh `all: initial` element in a hidden sandbox, so the map holds INITIAL
- * values, not the UA sheet's: the base reset re-states them inside the foreignObject, where
- * the UA sheet would add its own margins and paddings. getStyleKey keeps only what differs.
+ * Read from an `all: initial` element, so the map holds INITIAL values, not the UA sheet's:
+ * the base reset re-states them, or the UA sheet adds margins inside the foreignObject.
  * NO_DEFAULTS_TAGS get `{}`: no reset, no class.
  * @param {string} tagName
  * @returns {Record<string, string>}
@@ -270,13 +269,10 @@ const SHRINK_TO_FIT_DISPLAYS = new Set([
 /**
  * Whether softening this box relies on its width being `auto`.
  *
- * The `min-width` floor reproduces a box only when `width: auto` is shrink-to-fit. Two shapes
- * break that (#484), and for them the caller keeps an author-specified width:
- *   - a blockified box in normal flow (`span { display: block; width: 16px }`): `auto`
- *     stretches it to the container and the box renders full width;
- *   - a flex/grid item, which gets no floor at all (#406) and collapses to its content.
- * Real inline boxes ignore `width` and the table box tree is sized by the table algorithm
- * (#429), so neither carries an author width worth keeping.
+ * The `min-width` floor reproduces a box only when `width: auto` is shrink-to-fit (#484). A
+ * blockified box in flow (`span { display: block; width: 16px }`) would stretch full width,
+ * and a flex/grid item gets no floor (#406) and collapses, so the caller keeps their author
+ * width. Real inline boxes ignore `width` and table boxes are sized by the table (#429).
  * @param {string} tagName
  * @param {Record<string,string>} snapshot computed-style snapshot
  * @param {boolean} isFlexItem whether the element is a flex/grid item
@@ -321,12 +317,10 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   const display = (snapshot.display || '').toLowerCase()
   const isInline = display === 'inline'
   const softenTag = softensWidth(tagName, display)
-  // Soften only a box sized by its content, where a frozen width wraps the text (#429) or pins
-  // the table (#434). An empty box sized by a class (#433 inline-block span, ExtJS button-icon
-  // spans) keeps its width. A box whose text cannot wrap (nowrap/pre) stays frozen (#474):
-  // softened, it GROWS under raster metric drift, and in a min-content layout like KaTeX that
-  // line-wraps its siblings, far worse than a sub-pixel overflow. Real inline boxes ignore
-  // `width`, so dropping it there costs nothing.
+  // Soften only a box sized by its content, where a frozen width wraps text (#429) or pins a
+  // table (#434); an empty box sized by a class keeps it (#433, ExtJS button-icon spans). A
+  // nowrap/pre box stays frozen (#474): softened, it GROWS under raster drift, and in KaTeX's
+  // min-content layout that line-wraps its siblings. Real inline boxes ignore `width` anyway.
   const noWrapMode = (snapshot['text-wrap-mode'] || snapshot['white-space'] || '')
   // A box whose own text cannot break can only clip sub-pixel, so it skips the width epsilon
   // below, whatever its tag or display (#491). The softening gate does depend on them.
@@ -353,14 +347,12 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
       }
     }
     if (value && value !== defaults[prop]) {
-      // Blink serializes a computed length to 6 significant digits, sometimes DOWN, and a box
-      // frozen a hair under its true width re-wraps its text. So a frozen size is nudged up by
-      // SIZE_EPSILON (1/1000px). Keep it that small: every box in a row carries its own nudge
-      // and the shrink-to-fit parent only one, so the old 1/16px ceil wrapped two buttons (#491).
-      // Not applied to a width whose text cannot break (#474). Heights take it too: a
-      // 38.390625px paragraph read back as "38.3906px" put the lower lines of a 4136px page one
-      // pixel high. Do not snap to 1/64 instead: the zoomed ancestor of d508 is not on that
-      // grid. Pinned by __tests__/snapdom.frozenHeightPrecision.test.js.
+      // Blink serializes lengths to 6 significant digits, sometimes DOWN, so a frozen size gets
+      // SIZE_EPSILON (1/1000px) or its text re-wraps. Keep it that small: each box in a row
+      // carries one and the parent only one, so a 1/16px ceil wrapped two buttons (#491).
+      // Widths whose text cannot break skip it (#474). Heights need it: "38.3906px" put the
+      // lower lines of a 4136px page 1px high, and snapping to 1/64 breaks d508's zoomed
+      // ancestor. Pinned by __tests__/snapdom.frozenHeightPrecision.test.js.
       const sized = prop === 'height' || prop === 'block-size' ||
         (!noWrapBox && (prop === 'width' || prop === 'inline-size'))
       if (sized && value.endsWith('px') && value.includes('.')) {
@@ -562,10 +554,9 @@ function computeStyle(el, pseudo) {
 /**
  * Gets the computed style for an element or pseudo-element, with caching.
  *
- * cache.computedStyle maps an element to its declaration, and that declaration to a Map of
- * pseudo declarations made on the first pseudo request, so a pseudo-free element gets no Map
- * and one reset drops both levels. The declaration is live: a later read sees the element's
- * state then, not at the first call. Non-elements bypass the memo.
+ * cache.computedStyle maps an element to its declaration and that declaration to its pseudo
+ * Map, so one reset drops both. The declaration is live: a later read sees the state then,
+ * not at the first call. Non-elements bypass the memo.
  * @param {Element} el - The element
  * @param {string|null} [pseudo=null] - The pseudo-element
  * @returns {CSSStyleDeclaration} The computed style
@@ -615,11 +606,9 @@ export function parseContent(content) {
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left']
 
 /**
- * Read a computed style into a plain map. With `universe` (the properties author CSS can
- * touch, from styleScan) only those are read: the rest sit at their UA default, which
- * getStyleKey drops anyway. This is the pseudo-element path: deep-tree scene with a `::before`
- * on every leaf, 1,936 pseudos, 435 ms reading all ~400 properties against 125 without the
- * rule. Null (unreliable scan, shadow content) reads everything.
+ * Read a computed style into a plain map, only the `universe` props when given (the rest sit
+ * at the UA default getStyleKey drops). Deep tree, a `::before` on each of 1,936 leaves:
+ * 435 ms reading all ~400 properties against 125. Null (unreliable scan, shadow) reads all.
  * @export
  * @param {CSSStyleDeclaration} style
  * @param {Set<string>|null} [universe]

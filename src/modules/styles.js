@@ -26,7 +26,7 @@ import {
   isFlexOrGridItem, BORDER_WIDTHS,
 } from './styleFreeze.js'
 
-/** element -> { v, checked, hosts, snapshot, embedFonts, excludeStyleProps, used }.
+/** Per element: { v, checked, hosts, snapshot, embedFonts, excludeStyleProps, used }.
  *  Cross-capture; a hit needs `v` unchanged (snapshotIsCurrent) and the used values to hold. */
 const snapshotCache = new WeakMap()
 const MARGIN_PROPS = [
@@ -49,12 +49,10 @@ export function invalidateSnapshotsUnder(root) {
 }
 
 /**
- * List the longhands each animation target has animated. An animation or a transition
- * outranks the target's inline declarations, so inlineAllStyles re-resolves those, and only
- * those: re-resolving them all wrote the used `width` of a flex item over its authored one,
- * and the clone shrank it a second time. A script-made effect keeps its shorthand, which a
- * detached declaration expands. An effect on a pseudo-element animates nothing of the
- * element's own.
+ * List the longhands each animation target has animated. inlineAllStyles re-resolves only
+ * those: re-resolving every inline declaration wrote a flex item's used `width` over its
+ * authored one and the clone shrank it twice. A script-made effect keeps its shorthand, which
+ * a detached declaration expands.
  * Pinned by `__tests__/core.capture.animationFrames.test.js`.
  * @param {Iterable<Animation>} animations
  * @returns {Map<Element, Set<string>>|null} null when nothing is animated
@@ -88,8 +86,8 @@ const BG_INLINE_FLAG_PROPS = [
 
 /**
  * Whether the background-inline pass has work on this element, per its cached style snapshot.
- * Unknown (no fresh snapshot — STYLE tags, SVG template descendants) → true, so callers fall
- * back to processing the node like before.
+ * True when unknown (no fresh snapshot: STYLE tags, SVG template descendants), so the node
+ * is processed.
  * @param {Element} source
  * @returns {boolean}
  */
@@ -104,11 +102,9 @@ export function needsBackgroundInline(source) {
 
 /**
  * The element's current style snapshot, or null when there is none to trust. The background
- * pass reads through it instead of the CSSOM: a prop in the snapshot is the value the capture
- * resolved, and a prop ABSENT from it was pruned by the universe, so it holds its default and
- * there is nothing to copy. Null under the Firefox background-clip:text fallback, whose
- * background props were swapped (applyBgClipTextFallback): the background pass must see the
- * live values.
+ * pass reads it instead of the CSSOM: a prop ABSENT from it was pruned by the universe and
+ * holds its default. Null under the Firefox background-clip:text fallback, whose background
+ * props were swapped (applyBgClipTextFallback) while that pass must see the live ones.
  * @param {Element} source
  * @returns {object|null}
  */
@@ -133,10 +129,7 @@ function readableProps(universe) {
 
 /**
  * The full computed-style read for one element: every property in `universe` (all of them
- * when null) plus the element's own inline props, with the fix-ups the snapshot needs. An
- * external url() becomes none, text-decoration and text-stroke are read by name because some
- * engines do not enumerate them, four zero borders collapse to `border: none` (#362), and
- * Firefox gets the background-clip:text fallback.
+ * when null) plus its own inline props.
  * @param {CSSStyleDeclaration} style
  * @param {object} [options] - embedFonts adds the font-feature props; excludeStyleProps filters
  * @param {Element|null} [el] - for its inline style
@@ -163,8 +156,8 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
     readProp(prop)
   }
   if (universe) {
-    // Pruned read: only properties the page's CSS (or this element's inline style) can
-    // move off their UA defaults — anything else diffs empty downstream anyway.
+    // Pruned read: only props the page's CSS or the inline style can move off their UA
+    // defaults; anything else diffs empty downstream anyway.
     const list = readableProps(universe)
     for (let i = 0; i < list.length; i++) readProp(list[i])
     const inline = el && el.style
@@ -231,10 +224,8 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
     if (cv === 'hidden') out['content-visibility'] = 'hidden'
   } catch { /* ignore */ }
 
-  // Flag whether inlineBackgroundImages has any work on this node (bg/mask/border-image or a
-  // background-color that needs its layout longhands for background-clip:text). Read from the
-  // live declaration (not `out`) so excludeStyleProps or the url()→none rewrite can't hide it.
-  // Stored non-enumerable so key generation/signature iteration never sees it.
+  // Read from the live declaration, not `out`, so excludeStyleProps or the url() rewrite cannot
+  // hide it. Non-enumerable, so key iteration never sees it.
   Object.defineProperty(out, '__needsBgInline', { value: computeNeedsBgInline(style), enumerable: false })
 
   // #362: Tailwind's * { border: 0 solid } renders incorrectly in capture.
@@ -300,23 +291,20 @@ function applyBgClipTextFallback(out) {
   out['background-color'] = 'transparent'
   delete out['background-clip']
   delete out['-webkit-background-clip']
-  // Other passes re-inline the live values onto the clone over the class this snapshot
-  // becomes (resolveCSSVars materializes the transparent colour, the authored inline-style
-  // normalization re-inlines the gradient), so the fallback is also written inline with
-  // !important; inlineAllStyles reads this marker. Non-enumerable: signature and key
-  // iteration must not see it.
+  // resolveCSSVars and the inline-style normalization re-inline the live colour and gradient
+  // over the class, so inlineAllStyles also writes the fallback inline with !important from
+  // this marker. Non-enumerable: key iteration must not see it.
   Object.defineProperty(out, '__bgClipTextFix', { value: solid, enumerable: false })
   /* c8 ignore stop */
 }
 
 /**
- * WebKit paints no text-shadow under `-webkit-text-stroke` inside an SVG foreignObject image
- * (real Safari 27.0.1 and Playwright WebKit: 802 shadow pixels without the stroke, 0 with it),
- * while `filter: drop-shadow()` still paints (662). The clone swaps one for the other where
- * they are the same picture: a leaf whose only ink is its text, with a single shadow (chained
- * drop-shadows shadow each other). WebKit reads a drop-shadow blur as a deviation, twice a
- * text-shadow's, hence the halving. #531, pinned by
- * __tests__/module.styles.strokedTextShadow.test.js.
+ * WebKit paints no text-shadow under `-webkit-text-stroke` in an SVG foreignObject image (real
+ * Safari 27.0.1 and Playwright WebKit: 802 shadow pixels without the stroke, 0 with it) but
+ * still paints `filter: drop-shadow()`. Swapped only on a leaf whose only ink is its text, with
+ * one shadow (chained drop-shadows shadow each other). WebKit reads a drop-shadow blur as a
+ * deviation, twice a text-shadow's, hence the halving.
+ * #531, pinned by __tests__/module.styles.strokedTextShadow.test.js.
  * @param {Element} source
  * @param {HTMLElement} clone
  * @param {CSSStyleDeclaration} cs - the source's computed style
@@ -363,11 +351,10 @@ export function colorToRgba(color) {
 }
 
 /**
- * A single colour standing in for a clipped-to-text background: the channel average of every
- * visible colour in the background-image, else the background-color. Firefox serializes
- * oklch(), lab(), color-mix() and display-p3 stops as colour functions, and before they were
- * resolved the text captured with 0 painted pixels. Pinned by
- * __tests__/module.styles.bgClipText.test.js.
+ * A single colour standing in for a clipped-to-text background: the average of its visible
+ * colours. Firefox serializes oklch(), lab(), color-mix() and display-p3 stops as colour
+ * functions; unresolved, the text captured with 0 painted pixels.
+ * Pinned by __tests__/module.styles.bgClipText.test.js.
  * @param {string} [backgroundImage]
  * @param {string} [backgroundColor]
  * @returns {string|null}
@@ -418,9 +405,8 @@ function computeNeedsBgInline(style) {
 function hasRenderedContent(el) {
   for (let n = el.firstChild; n; n = n.nextSibling) {
     if (n.nodeType === 3 && /\S/.test(n.nodeValue || '')) return true
-    // #454: an out-of-flow child doesn't size its parent — KaTeX's .hide-tail span
-    // (width:100%, abspos svg inside) is sized by CSS, not content, so its width
-    // must be kept verbatim instead of softened away.
+    // #454: an out-of-flow child does not size its parent: KaTeX's .hide-tail span
+    // (width:100%, abspos svg inside) is sized by CSS, so its width must not be softened.
     if (n.nodeType === 1) {
       const pos = getStyle(n).position
       if (pos !== 'absolute' && pos !== 'fixed') return true
@@ -448,9 +434,8 @@ function hasSpecifiedWidth(el, cs, isFlexItem) {
   /* c8 ignore start -- reached without Typed OM (Firefox); coverage runs on chromium */
   const inlineWidth = el.style && (el.style.width || el.style.inlineSize)
   if (inlineWidth && !isContentWidthKeyword(String(inlineWidth).trim().toLowerCase())) return true
-  // A box that hugs its content is sized by it — `width: max-content` / `fit-content` land here
-  // too, and those must keep softening. For a block-level box, also require that the used width
-  // is not simply the available width (that is what plain `width: auto` gives).
+  // A box that hugs its content (`max-content` and `fit-content` too) keeps softening. A block
+  // box must also differ from the available width, which plain `width: auto` gives.
   if (!contentNarrowerThanBox(el, cs)) return false
   return isFlexItem || usedWidthDiffersFromAvailable(el, cs)
   /* c8 ignore stop */
@@ -517,10 +502,9 @@ function usedWidthDiffersFromAvailable(el, cs) {
 }
 /* c8 ignore stop */
 
-/** snapshot -> the style key it last produced and the flags it was made under. A snapshot
- *  served again from the cache keeps its key without a second getStyleKey. There is no memo
- *  across snapshots: it was keyed on a signature of every value, and building that string
- *  cost more than the key it saved (9.1% of a capture of 240 unique cards against 0.6%). */
+/** Per snapshot: the style key it last produced and its flags, so a cache hit skips
+ *  getStyleKey. No memo across snapshots: a signature of every value cost more than the key it
+ *  saved (9.1% of a capture of 240 unique cards against 0.6%). */
 const snapshotKey = new WeakMap()
 
 /** A cached snapshot is current while its version is still the newest among what it depends
@@ -587,18 +571,16 @@ export function marginsHold(el, style) {
 }
 
 /**
- * Note what a fresh snapshot froze that layout can move while the cascade stands still: the
- * node's box, a positioned box's offsets, the margins a flex line, a grid area or an
- * absolutely positioned box hands out, and a grid's tracks. All-0px offsets on a relative box
- * hold nothing and are left out; so are all-0px margins (zero by the cascade, or an `auto` the
- * Typed OM read in getSnapshot puts back), except in Firefox, where Typed OM cannot tell.
- * Read off the snapshot before any pass rewrites it, so it costs no computed-style read.
+ * Note what a fresh snapshot froze that layout can move while the cascade stands still: its
+ * box, a positioned box's offsets, the margins a flex line, grid area or absolute box hands
+ * out, a grid's tracks. All-zero offsets on a relative box and all-zero margins are left out,
+ * except margins in Firefox, where Typed OM cannot restore an `auto`. Read before any pass
+ * rewrites the snapshot.
  * @param {Record<string, string>} snap
  * @param {Element} el
  * @param {boolean} flexItem - its parent is a flex or grid container
  * @returns {{w: string|undefined, h: string|undefined, box: number[]|null|false, inset: string|null, margin: string|null, tracks: string|null}}
- *   `box` is false when the snapshot froze no box (an inline one, or excludeStyleProps took
- *   it), null until the first check reads the rectangle
+ *   `box` is false when no box was frozen, null until the first check reads the rectangle
  */
 function usedValuesOf(snap, el, flexItem) {
   const w = snap.width, h = snap.height
@@ -625,10 +607,9 @@ function usedValuesOf(snap, el, flexItem) {
 
 /**
  * Whether the used values a cached snapshot froze still read the same. The box goes through
- * getBoundingClientRect: on a recapture of the 250-row table after a nested edit it costs 5%,
- * where `width`/`height` cost 10%, and `offsetWidth`/`offsetHeight` 4% but miss a change below
- * one pixel (Chromium). The first check after a read compares the strings once and keeps the
- * rectangle.
+ * getBoundingClientRect: on a 250-row table recapture after a nested edit it costs 5%, where
+ * `width`/`height` cost 10%, and `offsetWidth`/`offsetHeight` 4% but miss sub-pixel changes
+ * (Chromium).
  * @param {ReturnType<typeof usedValuesOf>} used
  * @param {Element} el
  * @param {CSSStyleDeclaration} style
@@ -650,11 +631,10 @@ function usedValuesHold(used, el, style) {
 }
 
 /**
- * The element's snapshot: the cached one while it is current, else a fresh full read, or on an
- * identity hit a copy of the twin's read with only the used-value props re-read. Current means
- * the stamp AND the used values; a re-read that finds another box passes the miss to what
- * resolves against it (stamp note below). Used values are read again only once some stamp has
- * moved since they last held, so a recapture where nothing happened pays one comparison a node.
+ * The element's snapshot: cached while its stamp AND its used values hold, else a fresh read,
+ * or on an identity hit the twin's read with only the used-value props re-read. Used values
+ * are re-checked only once some stamp has moved, so an idle recapture pays one comparison a
+ * node.
  * @param {Element} el
  * @param {CSSStyleDeclaration|null} [preStyle] - getComputedStyle(el), when the caller has it
  * @param {object} [options]
@@ -681,12 +661,9 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   let dyn = null
   const shared = shareInfo && shareInfo.st.snaps.get(shareInfo.id)
   if (shared) {
-    // Identity hit: the twin inherits the shared read and holds only the re-read props
-    // (copying the ~150 keys was 5 of the 34 ms of a first capture of the 250-row table). The
-    // riders (__needsBgInline, __bgClipTextFix) come from non-geometry values, the same for
-    // every twin. An empty re-read is stored as undefined to hide the shared value, which is
-    // also why nothing may `delete` from a snapshot. The values feed `dyn`, the part of this
-    // twin's key the identity does not hold.
+    // Inherit the shared read, riders included (non-geometry, the same for every twin):
+    // copying ~150 keys was 5 of the 34 ms of a first 250-row table capture. An empty re-read
+    // is stored as undefined to hide the shared value, so nothing may `delete` from a snapshot.
     const rrList = shared.rr || shareLists(shared, el, shareInfo.st)
     snap = Object.create(shared.snap)
     dyn = []
@@ -698,10 +675,8 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
   } else {
     snap = snapshotComputedStyleFull(style, options, el, universeFor(el, session))
     if (shareInfo) {
-      // Stored by REFERENCE: a copy, a re-read list and a base signature per identity cost
-      // 27 ms of a 134 ms pipeline on a tree whose nodes are all unique (the deep-tree
-      // scene: 1,936 leaves, each with its own inline background) for lists no twin ever
-      // read. shareLists copies it on the first twin.
+      // By REFERENCE, copied by shareLists on the first twin: a copy per identity cost 27 ms
+      // of a 134 ms pipeline on the deep tree, whose 1,936 leaves are all unique.
       shareInfo.st.snaps.set(shareInfo.id, { snap, rr: null })
     }
   }
@@ -747,12 +722,9 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     shareInfo.rec = shared
   }
   const hosts = shadowHostsOf(el)
-  // Before the stamp below is read: a box that changed since the last read passes the miss on.
-  // A query container, to its whole subtree, whose rules it selects. Any other box, to its
-  // children (slotted ones included, shadow content through its own stamp) when what their
-  // percentages and auto margins resolve against moved: the inline size (the height under a
-  // vertical writing mode), a grid's tracks, or a block size that was zero. A block size alone
-  // is left to each node's own check: re-reading every subtree under a box that grew cost a
+  // A changed box passes the miss on, before the stamp below is read: a query container to its
+  // subtree, any other box to its children when what their % and auto margins resolve against
+  // moved. Not on every block-size change: re-reading each subtree under a box that grew cost a
   // recapture after one added line 61 to 139% (40 panels, 400 cards).
   const before = rec && rec.used
   if (before && (before.w !== used.w || before.h !== used.h || before.tracks !== used.tracks)) {
@@ -837,7 +809,7 @@ function _resolveCtx(sessionOrCtx, opts) {
   }
 
   return {
-    // Direct callers without a session get isolated throwaway maps — never the global.
+    // Direct callers without a session get isolated throwaway maps, never the global.
     session: { styleMap: new Map(), styleCache: new WeakMap(), nodeMap: new Map() },
     options: (sessionOrCtx || opts || {}),
   }
@@ -851,21 +823,10 @@ const CONTEXT_DEPENDENT_VALUE_RE =
 const isTextField = (el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'
 let firefox
 /**
- * Re-resolves the source's inline declarations through the cascade onto the clone, in four
- * cases. Anything else is an absolute value the clone's style attribute already holds.
- *  - A stylesheet `!important` must still beat an inline declaration in the clone (#328).
- *  - An animation or transition outranks the inline declaration of what it animates: one
- *    started through `el.style` holds the END value inline mid-frame. Only the animated
- *    properties are re-resolved (animatedProps).
- *    Pinned by __tests__/core.capture.animationFrames.test.js.
- *  - `background` on text fields only, where the selection highlight composes over the
- *    longhands written on an input's clone. Elsewhere it cost the 500-row table 13.5k reads
- *    plus 13.5k writes for nothing.
- *  - Context-dependent values (`width:100%`, `1.2em`, `calc()`, `auto`) resolve against a
- *    containing block the foreignObject does not have.
- * The context test is one regex over the whole attribute on purpose: per longhand it got
- * 67.6 ms down to 63 where the single regex gets 49.7. A null important set (unreliable scan)
- * re-resolves everything. Pinned by __tests__/module.styles.inlineImportant.test.js.
+ * Re-resolves the source's inline declarations onto the clone where the cascade can differ:
+ * a stylesheet `!important` (#328), an animated property, `background` on a text field, and a
+ * value relative to a containing block the foreignObject does not have (`width:100%`, `auto`).
+ * Pinned by __tests__/module.styles.inlineImportant.test.js.
  * @param {Element} source
  * @param {Element} clone
  * @param {CSSStyleDeclaration} computed - getComputedStyle(source)
@@ -876,6 +837,8 @@ function normalizeInlineStyleToComputed(source, clone, computed, attr, animated)
   const inline = source.style
   if (!inline || inline.length === 0) return
   const important = importantPropsFor(source)
+  // One regex over the whole attribute on purpose: per longhand it got 67.6 ms down to 63
+  // where this gets 49.7. A null important set (unreliable scan) re-resolves everything.
   const canSkip = important != null && !CONTEXT_DEPENDENT_VALUE_RE.test(attr)
   // With no `!important` rule in the document only a border width can still differ, and the
   // loop skips every other prop. `all` expands to the border longhands too.
@@ -895,6 +858,10 @@ function normalizeInlineStyleToComputed(source, clone, computed, attr, animated)
         BORDER_WIDTHS.every(p => previous.snapshot[p] === authored)) || computed.borderWidth === authored
       if (sameBorderWidths && bordersOnly) return
     }
+    // An animation outranks the inline value: one started through `el.style` holds the END
+    // value inline mid-frame. Pinned by __tests__/core.capture.animationFrames.test.js.
+    // `background` only on text fields, where the selection highlight composes over it:
+    // elsewhere it cost the 500-row table 13.5k reads plus 13.5k writes.
     if (canSkip && !important.has(prop) && !animated?.has(prop) && (!borderWidth || sameBorderWidths) && !(prop.startsWith('background') && isTextField(source))) continue
     const val = computed.getPropertyValue(prop)
     // A retained <style> can still contain an important ID selector. The live inline
@@ -905,15 +872,7 @@ function normalizeInlineStyleToComputed(source, clone, computed, attr, animated)
 
 /**
  * Snapshots the source's computed style and records the clone's style-class key on the
- * session's styleMap. deepClone calls it for every element in the capture.
- *
- * Per node: wire invalidation for the node's own document, re-resolve the inline style where
- * the cascade can differ (normalizeInlineStyleToComputed), pin `animation` off so a static
- * frame does not replay from its 0% keyframe, take or share the snapshot, floor a flex item's
- * min-width at 0 (#406), then key it. Soften-eligible boxes (softensWidth) fold tag, content
- * and flex-item state into the key and tally reconcileRisk for capture.js's warning.
- * `<style>` is skipped. NO_DEFAULTS_TAGS (SVG shapes) get an empty key and only the
- * background-inline flag. Pinned by __tests__/module.styles.test.js.
+ * session's styleMap; deepClone calls it per element. Pinned by __tests__/module.styles.test.js.
  * @param {Element} source
  * @param {Element} clone
  * @param {object} [sessionOrCtx] - the session cache (styleMap / styleCache / nodeMap), a
@@ -959,13 +918,11 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const styleAttr = source.getAttribute?.('style')
   if (styleAttr) normalizeInlineStyleToComputed(source, clone, pre, styleAttr, session.animated?.get(source))
 
-  // A static snapshot must not animate. The class already drops animation props
-  // (shouldIgnoreProp), but `animation` can still reach the SVG through the inline style above
-  // or a cloned `<style>`, and the rasterized SVG replays it from 0%: an entry animation from
-  // `opacity: 0` or an off-screen `transform` blanks an element that finished animating live.
-  // So `animation` is pinned off inline with `!important` where there is one, and the
-  // snapshot's settled opacity/transform renders. Asked of the live style every capture, never
-  // cached: a state set by script (`input.value`) can name an animation with no record at all.
+  // A static snapshot must not animate: `animation` can still reach the SVG through the inline
+  // style or a cloned `<style>`, and the rasterized SVG replays it from 0%, so an entry
+  // animation from `opacity: 0` blanks an element that finished animating live. Asked of the
+  // live style every capture, never cached: a state set by script (`input.value`) can name an
+  // animation with no record at all.
   // Pinned by __tests__/core.capture.animation.test.js.
   const animName = pre.getPropertyValue('animation-name')
   if (clone && clone.style && animName && animName !== 'none') {
@@ -973,11 +930,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   }
 
   const tag = source.tagName?.toLowerCase() || 'div'
-  // NO_DEFAULTS_TAGS (SVG shapes/containers, head stuff) never get a style class —
-  // getStyleKey returns '' and the empty key is dropped at emit. Skip the full universe
-  // snapshot + signature they'd pay for nothing; their paint survives via clone.js's
-  // SVG_PAINT_PROPS pass. Only the bg/mask flag probe runs (CSS masks DO apply to SVG
-  // graphics elements) so needsBackgroundInline stays accurate.
+  // NO_DEFAULTS_TAGS (SVG shapes, head tags) never get a style class, so they skip the full
+  // snapshot; clone.js's SVG_PAINT_PROPS keeps their paint. Only the bg/mask flag is probed
+  // (CSS masks DO apply to SVG graphics) so needsBackgroundInline stays accurate.
   if (NO_DEFAULTS_TAGS.has(tag)) {
     const stub = {}
     Object.defineProperty(stub, '__needsBgInline', { value: computeNeedsBgInline(pre), enumerable: false })
@@ -997,9 +952,9 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     const id = identityFor(source, st)
     const doc = source.ownerDocument || document
     const active = doc.activeElement
-    // A shadow host and a slotted node are styled by a root sheet the scan never read:
-    // `:host(:not(:first-child))` split three identical #488 groups and the twins painted
-    // the first one's zero margin (the same rule inside ::slotted() splits slotted twins).
+    // Never shared: the focused element (UA :focus-visible ring), and a shadow host or slotted
+    // node, styled by a root sheet the scan never read: `:host(:not(:first-child))` split three
+    // identical #488 groups and the twins painted the first one's zero margin.
     const eligible = id !== -1 &&
       !SHARE_SKIP_TAGS.has(source.tagName) &&
       !(active && active !== doc.body && active !== doc.documentElement && active === source) &&
@@ -1017,10 +972,8 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     }
   }
 
-  // Firefox background-clip:text fallback (see applyBgClipTextFallback): the class carries the
-  // substitute colour, but resolveCSSVars and the authored inline-style normalization re-inline
-  // the live transparent colour and the gradient over any class. Inline !important outranks
-  // them all.
+  // Firefox background-clip:text fallback: resolveCSSVars and the inline-style normalization
+  // re-inline the live colour and gradient over the class, and only inline !important wins.
   if (snap.__bgClipTextFix && clone && clone.style) {
     clone.style.setProperty('background-image', 'none', 'important')
     clone.style.setProperty('background-color', 'transparent', 'important')
@@ -1039,11 +992,10 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
 
   freezeOneLine(source, clone, snap, flexItem, session)
 
-  // #406: foreignObject may resolve min-width:auto differently for flex/grid items, so items
-  // with the default auto get min-width:0 in their class instead of a blanket foreignObject
-  // *{min-width:0} rule (which breaks inline-flex+gap). The floor goes into the key, never
-  // into `snap`: the snapshot outlives the capture and is shared with twins, and there an item
-  // kept the floor of the first twin read, or of the capture before its row overflowed.
+  // #406: foreignObject may resolve min-width:auto differently for flex/grid items, and a
+  // blanket *{min-width:0} breaks inline-flex+gap. The floor goes into the key, never `snap`,
+  // which outlives the capture and is shared with twins: there an item kept the floor of the
+  // first twin read, or of the capture before its row overflowed.
   // Pinned by __tests__/module.styles.flexFloor.test.js.
   let floor = ''
   if (flexItem) {
@@ -1061,27 +1013,23 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
     }
   }
 
-  // getStyleKey only softens width for inline-sized / table / inline boxes, and only there does
-  // its output depend on content/flex-item-ness. For every other node (the vast majority — divs,
-  // headings, paragraphs…) skip that bookkeeping entirely so the hot path stays untouched.
+  // Only soften-eligible boxes (inline-sized, table, inline) key on content and flex-item
+  // state; every other node skips that bookkeeping, so the hot path stays untouched.
   let sizedByContent = true
   let flags = floor && '|m' + floor
   if (softensWidth(tag, (snap.display || '').toLowerCase())) {
     sizedByContent = hasRenderedContent(source)
-    // #484: softening only reproduces the box when its `width` is auto. On a blockified box in
-    // normal flow (`span{display:block;width:16px}`) the min-width floor cannot cap the stretch,
-    // and a flex/grid item gets no floor at all (#406) — both lost the authored width. Treat an
-    // author-specified width as "not sized by content" so it is kept verbatim.
+    // #484: softening reproduces the box only when its `width` is auto: a blockified
+    // `span{display:block;width:16px}` and a flex/grid item (no floor, #406) lost the authored
+    // width. An author-specified width counts as not sized by content.
     if (sizedByContent && softenNeedsAutoWidth(tag, snap, flexItem) &&
         hasSpecifiedWidth(source, pre, flexItem)) {
       sizedByContent = false
     }
     // Content and flex-item state change what getStyleKey writes for a soften-eligible box.
     flags += (sizedByContent ? '|c' : '') + (flexItem ? '|f' : '')
-    // This is the exact condition getStyleKey uses to actually drop the width (the #429/#433/
-    // #434 family): tally it so capture.js can suggest `reconcile: true` when it's never used —
-    // cheap, since softensWidth/sizedByContent are already computed for this node regardless.
-    // Nowrap/pre boxes stay frozen (#474), so they carry no re-wrap risk.
+    // The exact condition getStyleKey drops the width on (#429/#433/#434 family), tallied so
+    // capture.js can suggest `reconcile: true`. Nowrap/pre boxes stay frozen (#474).
     const wsMode = snap['text-wrap-mode'] || snap['white-space'] || ''
     if (sizedByContent && wsMode !== 'nowrap' && wsMode !== 'pre') {
       session.reconcileRisk = (session.reconcileRisk || 0) + 1

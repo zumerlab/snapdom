@@ -12,21 +12,18 @@ import { rasterize } from '../modules/rasterize'
 import { zoomSvgText, decodeSvgFromDataURL, encodeSvgToDataURL, patchSvgHeader } from './svgText.js'
 import { fixSafariShadows } from './safariShadows.js'
 /**
- * Load a capture's data URL into an <img> sized by the shared exporter rule.
- *
- * `width`/`height` win, `scale` applies when neither is set, and the aspect reference is the
- * post-bleed viewBox (`meta.vbW/vbH`), so an asymmetric bleed does not stretch the picture.
- * A `scale` patches the svg header before decode. The final URL must always finish decoding.
- * On Safari any scale or size takes the vector path above, falling back to a PNG.
- * Pinned by __tests__/exporter.toImg.test.js, __tests__/exporter.safariPaths.test.js and
- * __tests__/exporter.webkitLayerScale.test.js (the positioned-layer geometry of the vector path).
+ * Load a capture's data URL into an <img> sized by the shared exporter rule, against the
+ * post-bleed viewBox. The final URL must always finish decoding. On Safari any scale or size
+ * takes the vector path, falling back to a PNG. Pinned by __tests__/exporter.toImg.test.js,
+ * __tests__/exporter.safariPaths.test.js and __tests__/exporter.webkitLayerScale.test.js
+ * (the vector path's positioned layers).
  * @param {string} url - the capture's data URL
  * @param {object} options
  * @param {number} [options.scale=1]
  * @param {number} [options.width] - output width in CSS px
  * @param {number} [options.height] - output height in CSS px
  * @param {object} [options.meta] - capture geometry from the svg engine (vbW/vbH, w0/h0)
- * @param {import('./toCanvas.js').ExportEnv} [env] - the PNG fallback warns through it and draws with it
+ * @param {import('./toCanvas.js').ExportEnv} [env] - for the PNG fallback
  * @returns {Promise<HTMLImageElement>} decoded, with style.width/height set
  */
 export async function toImg(url, options, env = {}) {

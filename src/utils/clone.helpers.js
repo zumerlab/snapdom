@@ -1,13 +1,9 @@
 /**
- * The parts of a clone that cloneNode cannot produce on its own.
- *
- * Shadow DOM: a root's CSS is flattened into a host-scoped <style> with specificity 0
- * (`rewriteShadowCSS`, `injectScopedStyle`), and slotted subtrees are marked so a parent scope
- * cannot pierce a child's (#488). <img>: the responsive choice is frozen into `src`
- * (`freezeImgSrcset`). Same-origin <iframe>: rendered to a bitmap at its content box
- * (`rasterizeIframe`). Range, checkbox and radio inputs, which Firefox does not paint inside
- * a foreignObject: rebuilt as inline SVG. And blob: URLs, resolved to data: before the page
- * can revoke them (`resolveBlobUrlsInTree`).
+ * What cloneNode cannot produce: shadow CSS flattened to a host-scoped, zero-specificity
+ * <style> with slotted subtrees marked so a parent scope cannot pierce a child's (#488);
+ * the <img> responsive choice frozen into `src`; same-origin <iframe> bitmaps; range,
+ * checkbox and radio inputs as inline SVG (Firefox paints none in a foreignObject); blob:
+ * URLs resolved to data: before the page can revoke them.
  * @module utils/clone.helpers
  */
 
@@ -38,11 +34,9 @@ const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|(?<!\\):(?:before|after|
 const SPAN_PSEUDO_RE = /^::?(?:before|after|first-letter)$/
 
 /**
- * Wrap a selector list with :where(scope ...), lowering specificity to 0, and optionally
- * exclude slotted elements on the rightmost selector.
- * A pseudo-element stays OUTSIDE the wrapper: `:where(… .k::after)` and `.k::after:not(…)` are
- * invalid, and the parser dropped the rule (a shadow `li::marker` never coloured its marker).
- * ::before/::after/::first-letter belong to the pseudo pass, so their rule never matches.
+ * Wrap a selector list in :where(scope ...) for zero specificity. A pseudo-element stays
+ * OUTSIDE the wrapper, or the selector is invalid and the rule dropped. ::before, ::after
+ * and ::first-letter belong to the pseudo pass, so their rule never matches.
  */
 function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scopeId) {
   // #503: commas inside :is/:not (or attribute strings) belong to one selector.
@@ -94,7 +88,7 @@ export function rewriteShadowCSS(cssText, scopeSelector, scopeId) {
   })
   cssText = cssText.replace(/:host\b/g, `:where(${scopeSelector})`)
 
-  // 3) ::slotted(X) -> a descendant inside the scope, without excluding slotted nodes
+  // 3) ::slotted(X) becomes a descendant inside the scope, without excluding slotted nodes
   cssText = cssText.replace(/::slotted\(([^)]+)\)/g, (_, sel) => {
     return `:where(${scopeSelector} ${sel.trim()})`
   })
@@ -194,10 +188,8 @@ export function injectScopedStyle(hostClone, cssText, depth) {
 }
 
 /**
- * Freeze the responsive choice of an <img> into `src` and drop `srcset`/`sizes`, so the clone
- * needs no layout to pick a candidate. Inside a <picture>, resolve the source through
- * pictureResolver: Chromium sets currentSrc after this point (WebKit before), and trusting it
- * froze the wrong source in 5 of 5 runs.
+ * Freeze the responsive choice of an <img> into `src` and drop `srcset`/`sizes`. Inside a
+ * <picture>, ask pictureResolver: Chromium sets currentSrc after this point, not before.
  * The write-once rule below is pinned by __tests__/modules.images.dataUrlPassthrough.test.js.
  * @param {HTMLImageElement} original - Image in the live DOM.
  * @param {HTMLImageElement} cloned - Just-created cloned <img>.
@@ -327,11 +319,9 @@ export function getUnscaledDimensions(el) {
 const pinSheets = new WeakMap()
 
 /**
- * Pin the iframe's internal viewport to (w, h) CSS px with an adopted sheet; returns the undo.
- * #393: `overflow: hidden` clamps the root scroll to 0 and removing it does not restore it,
- * so the scroll state is recorded first and put back after.
- * #448: body pinned to (w, h) carries its background over the content box. Zeroing its margin
- * lost the content inset, so the margin is folded into the padding.
+ * Pin the iframe's internal viewport to (w, h) CSS px; returns the undo. The scroll state is
+ * restored after, since `overflow: hidden` clamps it to 0 (#393). Body margin folds into its
+ * padding, keeping the content inset while body carries the background (#448).
  * @param {Document} doc
  * @param {number} w
  * @param {number} h
@@ -360,11 +350,8 @@ export function pinIframeViewport(doc, w, h) {
 
   const css = `html {margin: 0 !important;padding: 0 !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}` +
     `body {margin: 0 !important;padding: ${pt}px ${pr}px ${pb}px ${pl}px !important;width: ${w}px !important;height: ${h}px !important;min-width: ${w}px !important;min-height: ${h}px !important;box-sizing: border-box !important;overflow: hidden !important;background-clip: border-box !important;}`
-  // Adopted first, so a frame CSP of `style-src 'self'` cannot refuse it (an inline <style> is
-  // refused and the frame is captured unpinned). One sheet per document keeps the frame's
-  // adopted-sheet signature (burst.js renderStateOf) stable across captures; the <style> is
-  // the fallback where constructable sheets are missing.
-  // Pinned by __tests__/snapdom.csp.test.js.
+  // Adopted, so a frame CSP of `style-src 'self'` cannot refuse it. One sheet per document
+  // keeps burst.js renderStateOf stable. Pinned by __tests__/snapdom.csp.test.js.
   let unmount
   try {
     let sheet = pinSheets.get(doc)
@@ -373,11 +360,9 @@ export function pinIframeViewport(doc, w, h) {
     doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, sheet]
     unmount = () => { doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter(s => s !== sheet) }
   } catch {
-    // Owned, so the frame's invalidation observer (changes.js) ignores it: unmarked, it bumped
-    // the shared epoch twice per capture and dirtied the OUTER element's burst memo. The flag
-    // travels as the `__pinned` option, not an attribute on <html>: a record there is the
-    // all-stamp and invalidates every snapshot in every document.
-    // Pinned by __tests__/core.burst.nestedIframe.test.js.
+    // Owned, or its mutation bumps the shared epoch and dirties the OUTER burst memo. The flag
+    // is the `__pinned` option, never an attribute on <html>: a record there invalidates every
+    // snapshot in every document. Pinned by __tests__/core.burst.nestedIframe.test.js.
     const style = doc.createElement('style')
     style.setAttribute('data-sd-iframe-pin', '')
     markInternalNode(style)
@@ -449,15 +434,12 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
     throw new Error('Iframes are only captured through snapdom(el).')
   }
 
-  // Avoid double scaling; parent capture decides final scale. Drop clip: a visible iframe
-  // is captured whole (offscreen ones were already culled), and 'viewport' would re-resolve
-  // against the iframe's own window.
-  // `__pinned`: the svg engine captures this documentElement at the pinned viewport, not
-  // at scrollHeight (#449); the flag lives here and not on the frame's <html>, see the pin.
-  // `__styleShare`: the parent's share verdict, which the nested capture takes as its override.
+  // The parent decides the scale. No clip: 'viewport' would resolve against the frame's window.
+  // `__pinned` captures at the pinned viewport, not scrollHeight (#449). `__styleShare` passes
+  // the parent's verdict down.
   const nested = { ...options, scale: 1, clip: null, __pinned: true, __styleShare: sessionCache.styleShare }
 
-  // Pin viewport so body background fills exactly content box (fixes 400x110 → 400x150)
+  // Pin the viewport so the body background fills the content box (400x110 became 400x150).
   const unpin = pinIframeViewport(doc, contentWidth, contentHeight)
   // Every capture owns its session from its first synchronous tick (snapdom.capture), so the
   // nested one cannot disturb this one's maps. No save/restore.
@@ -494,12 +476,10 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
 // Checkbox/radio replacement (Firefox fix)
 
 /**
- * What `accent-color: auto` paints with: the system colours, which resolve in the capture as
- * on the page (#560, Firefox 160 and Chrome 157). Chromium uses them on a light page only; on
- * a dark one its controls are #99c8ff with a Field mark while AccentColor stays #0075ff. It
- * paints AccentColor only as a whole attribute value, not in light-dark(), so the scheme is
- * settled here, and the blue comes first: Chromium 140, the suite's, has no AccentColorText.
- * Without the keywords, a blue in the range every desktop UA ships.
+ * What `accent-color: auto` paints with: the system colours (#560). On a dark page Chromium
+ * paints #99c8ff under a Field mark while AccentColor stays #0075ff, and cannot take
+ * light-dark() here, so the scheme is settled in JS. The blue comes first: Chromium 140, the
+ * suite's, has no AccentColorText. Without the keywords, a blue every desktop UA ships.
  * @param {boolean} dark whether the control is in the dark colour scheme
  * @returns {{ fill: string, mark: string }}
  */
@@ -562,11 +542,9 @@ function isColor(color) {
 }
 
 /**
- * The paints of a drawn control: `fill` for a checked or indeterminate box, a checked radio
- * and a slider's run; `mark` for the tick, dash or ring; `rim` for the outline when off; and
- * `text`, which the UA greys on a disabled control. An unset `accent-color` computes to
- * `auto`, which SVG cannot paint. Off, Firefox outlines in ButtonBorder in either scheme
- * (Firefox 160); Chromium's ButtonBorder is black, so elsewhere the rim is the text colour.
+ * The paints of a drawn control: `fill` when on, `mark` for the tick, dash or ring, `rim` for
+ * the outline when off, `text` for the disabled grey. The rim is ButtonBorder in Firefox
+ * only: Chromium's is black, so elsewhere it is the text colour.
  * @param {CSSStyleDeclaration | undefined} cs computed style of the control
  * @returns {{ fill: string, mark: string, rim: string, text: string }}
  */
@@ -784,7 +762,7 @@ export function createCheckboxRadioReplacement(node) {
 
 // Blob URL helpers
 
-/** blob: URL -> data URL, or the read still in flight. 80 entries, FIFO. */
+/** blob: URL to data URL, or the read still in flight. 80 entries, FIFO. */
 var _blobToDataUrlCache = new EvictingMap(80)
 
 /**
@@ -956,18 +934,12 @@ const VALUE_FIELDS = new Set(['text', 'search', 'email', 'url', 'tel', 'number',
 const FIELD_WORD = /[^\s\uD800-\uDFFF]{2,}/
 
 /**
- * Write the font size and line height Firefox's font inflation paints onto the clone of every
- * element with text of its own, and of every text field with a value.
- *
- * #516: Firefox for Android inflates text on a page wider than the screen (no meta viewport),
- * and getComputedStyle still reports the authored sizes, so labels came out at 16px beside
- * checkboxes sized for 30px text. The foreignObject never inflates, so the painted size is
- * measured: a word's live width (for a field, between its first and last character centers)
- * against the same word in a probe under a zero-width box, where inflation is off. Inert
- * unless the layout viewport is wider than the screen. A field without a value, a <select> and
- * an off-screen field keep the authored size: nothing reads their text without changing it.
+ * Write the font size Firefox for Android's font inflation paints onto the clones (#516).
+ * getComputedStyle reports the authored size and the foreignObject never inflates, so the
+ * size is measured against a probe under a zero-width box, where inflation is off. A field
+ * with no value, a <select> or off screen keeps the authored size: nothing can read it.
  * Pinned by __tests__/snapdom.issue516.test.js.
- * @param {Map<Node, Node>} nodeMap - clone -> source, from deepClone
+ * @param {Map<Node, Node>} nodeMap - clone to source, from deepClone
  * @param {Document} [doc]
  */
 export function freezeInflatedFontSizes(nodeMap, doc = document) {

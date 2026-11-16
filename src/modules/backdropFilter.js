@@ -1,29 +1,21 @@
 /**
- * Emulates backdrop-filter in the clone.
- *
- * Chromium's svg-as-image rasterizer (every export goes through it) drops backdrop-filter, or
- * paints it over a misplaced region when a filtered element sits in the backdrop (#457). The
- * capture is static, so the effect is pre-composed: copy what paints *below* the element (by
- * tree order: content that precedes it), clip it to the box and apply the same functions as
- * `filter`, which the rasterizer supports. Runs after image and background inlining, so the
- * copy reuses the inlined resources.
- *
+ * Emulates backdrop-filter in the clone. Chromium's svg-as-image rasterizer drops it, or paints
+ * it over a misplaced region when a filtered element sits in the backdrop (#457). So the effect
+ * is pre-composed: a copy of what precedes the element in tree order, clipped to its box, under
+ * `filter`, which the rasterizer supports. Runs after inlining, so the copy reuses resources.
  * @module backdropFilter
  */
 
 import { getStyle } from '../utils'
 
 /**
- * Pre-compose every backdrop-filter in the clone as a frost layer.
- *
- * Each target gets its own copy of the clone, taken before any frost goes in, pruned to what
- * can reach its box and cut at the target in tree order. The capture root (its backdrop is
- * outside the capture) and replaced elements are skipped. Pinned by the frosted-vs-control
- * pixel check in __tests__/core.capture.diff.test.js and __tests__/audit.tier5.fidelity.test.js.
+ * Pre-compose every backdrop-filter in the clone as a frost layer. The capture root (its
+ * backdrop is outside the capture) and replaced elements are skipped. Pinned by the
+ * frosted-vs-control pixel check in __tests__/core.capture.diff.test.js and
+ * __tests__/audit.tier5.fidelity.test.js.
  * @param {Element} root - Original capture root (for viewport rects)
  * @param {Element} clone - Prepared clone (styles and resources already inlined)
- * @param {Map<Node, Node>} [nodeMap] - Session clone-to-source map; pass the capture's own
- *   reference, since the global fallback can be stale after nested iframe captures.
+ * @param {Map<Node, Node>} [nodeMap] - the capture's own; the global one is stale in nested iframes
  */
 export function emulateBackdropFilters(root, clone, nodeMap = new Map()) {
   const targets = []

@@ -1,11 +1,10 @@
 /**
  * Icon fonts: which families count as one, and Material ligatures drawn to <img>.
  *
- * Icon glyphs are never embedded. fonts.js skips any family `isIconFont` recognizes, and the
- * pseudo pass draws a single-glyph `content` from one to an image. This module owns the
- * recognition and the Material case: a ligature like "home" has no font inside the svg, so it
- * would render as the word. `ligatureIconToImage` paints it on a canvas in the live document,
- * where the font is loaded, and puts the bitmap in the clone (#275).
+ * Icon glyphs are never embedded: fonts.js skips any family `isIconFont` recognizes, and the
+ * pseudo pass draws a single-glyph `content` to an image. A Material ligature like "home" has
+ * no font inside the svg and would render as the word, so `ligatureIconToImage` paints it on a
+ * canvas in the live document and puts the bitmap in the clone (#275).
  * @module iconFonts
  */
 
@@ -83,11 +82,9 @@ export function isIconFont(input, matchers) {
 }
 
 /**
- * Whether a stylesheet URL holds only icon fonts and can be skipped wholesale.
- * Do not run `isIconFont` over the whole URL: Google Fonts puts every family in the query, and
- * one icon-ish name (`Noto+Sans+Symbols`) discarded the text families beside it (#493). With
- * `family` params, skip only when every name is an icon font (the per-face check downstream
- * drops the icon ones); without them, the path heuristic applies.
+ * Whether a stylesheet URL holds only icon fonts and can be skipped wholesale. Do not run
+ * `isIconFont` over the whole URL: Google Fonts puts every family in the query, and one
+ * icon-ish name (`Noto+Sans+Symbols`) discarded the text families beside it (#493).
  * @param {string} href
  * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
  * @returns {boolean}
@@ -187,10 +184,10 @@ export function isMaterialFamily(family = '') {
   return /\bmaterial\s*icons\b/.test(s) || /\bmaterial\s*symbols\b/.test(s)
 }
 
-/** alias -> true once loaded, false once a load failed. A failure is never retried. */
+/** Alias to true once loaded, false once a load failed. A failure is never retried. */
 const loadedCanvasFamilies = new Map()
 
-/** `'FILL' 1, 'wght' 400` -> `{ FILL: 1, WGHT: 400 }`. Axis tags are upper-cased. */
+/** `'FILL' 1, 'wght' 400` gives `{ FILL: 1, WGHT: 400 }`. Axis tags are upper-cased. */
 function parseAxes(variation = '') {
   const out = Object.create(null)
   const v = String(variation || '')
@@ -214,14 +211,14 @@ async function ensureLigatureCanvasFont(cssFamily, className, axes) {
   const lowerFam = fam.toLowerCase()
   const cls = String(className || '').toLowerCase()
 
-  // Already non-variable icons → keep as-is
+  // Material Icons is not variable: keep it
   if (/\bmaterial\s*icons\b/.test(lowerFam) && !/\bsymbols\b/.test(lowerFam)) {
     return { familyForMeasure: fam, familyForCanvas: fam }
   }
 
   const isSymbols = /\bmaterial\s*symbols\b/.test(lowerFam)
   if (!isSymbols) {
-    // Not Symbols → keep incoming family (Font Awesome / Lucide / etc.)
+    // Not Symbols: keep the incoming family (Font Awesome, Lucide, etc.)
     return { familyForMeasure: fam, familyForCanvas: fam }
   }
 
@@ -309,7 +306,7 @@ function resolvePaintColor(cs) {
  * @param {number} [opts.fontSize=32]
  * @param {string} [opts.color='#000']
  * @param {string} [opts.variation=''] - font-variation-settings, read for the FILL axis
- * @param {string} [opts.className=''] - where Material Symbols puts the style (outlined, rounded, sharp)
+ * @param {string} [opts.className=''] - where Symbols puts the style (outlined, rounded, sharp)
  * @returns {Promise<{dataUrl: string, width: number, height: number}>}
  */
 export async function materialIconToImage(
@@ -382,7 +379,7 @@ export async function materialIconToImage(
  * Pinned by __tests__/module.iconFonts.test.js.
  * @param {Element} cloneRoot
  * @param {Element} sourceRoot
- * @param {Map<Node, Node>} [nodeMap] - clone -> source, built by deepClone
+ * @param {Map<Node, Node>} [nodeMap] - clone to source, built by deepClone
  * @returns {Promise<number>} how many nodes were replaced
  */
 export async function ligatureIconToImage(cloneRoot, sourceRoot, nodeMap = new Map()) {
@@ -463,18 +460,15 @@ const FONT_FAMILY_SIGNATURE = /(?:^|;)font-family:([^;]*)/
 const strutClones = new WeakSet()
 
 /**
- * Keep an icon font's share of the line in the clone. Icon fonts are never embedded, so in the
- * svg an icon element's strut comes from the fallback font: an empty 28px Material Icons <i>
- * made its line 4px taller in Chromium and WebKit (Times is taller), line after line, until the
- * last block fell off the capture. The line box is measured once per font in the live document; the clone gets
- * `line-height: 0` and a zero-width inline-block of that height on that baseline. The probe
- * uses the exact font stack, so a family the name test mistakes for an icon font keeps the
- * strut it had. One icon test per style signature.
+ * Keep an icon font's share of the line in the clone. Icon fonts are never embedded, so the svg
+ * takes the strut from the fallback font: an empty 28px Material Icons <i> made its line 4px
+ * taller in Chromium and WebKit (Times is taller), until the last block fell off the capture.
+ * The probe measures the live line box with the exact font stack, so a family the name test
+ * mistakes for an icon font keeps the strut it had.
  * Pinned by __tests__/module.iconStrut.test.js.
- * @param {Iterable<Element>} clones - the clone nodes to visit: every key of the session's
- *   styleMap for a full capture, the rebuilt subtree for a differential one
- * @param {Map<Element, string>} styleMap - clone -> style signature (session.styleMap)
- * @param {Map<Node, Node>} nodeMap - clone -> source
+ * @param {Iterable<Element>} clones - styleMap's keys, or the rebuilt subtree of a diff
+ * @param {Map<Element, string>} styleMap - clone to style signature (session.styleMap)
+ * @param {Map<Node, Node>} nodeMap - clone to source
  * @param {RegExp[]} [matchers] - this capture's extra matchers (context.__iconMatchers)
  * @returns {number} how many elements got a strut
  */

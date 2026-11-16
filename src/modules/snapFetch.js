@@ -1,12 +1,9 @@
 /**
- * The one fetch every asset pass goes through: images, backgrounds, fonts, SVG defs.
- *
- * It never throws. Every call resolves `{ ok, data, status, url, reason, ... }`, so a
- * missing image is a placeholder, not a failed capture. Identical requests in flight share
- * one promise, failures are remembered for `errorTTL` so a broken URL is not retried per
- * node (the cache is capped at 50, sweeping expired entries first), and each request has
- * a timeout of its own. A cross-origin URL goes through `useProxy` when one is set.
- * Console noise is deduplicated per reason and origin, with a cap per page.
+ * The one fetch every asset pass goes through: images, backgrounds, fonts, SVG defs. It never
+ * throws: every call resolves `{ ok, data, status, url, reason, ... }`, so a missing image is a
+ * placeholder, not a failed capture. Requests in flight are shared, failures are remembered for
+ * `errorTTL` so a broken URL is not retried per node, each request has its own timeout, and a
+ * cross-origin URL takes `useProxy`. Console noise is deduplicated, with a cap per page.
  * Pinned by __tests__/module.snapFetch.test.js and module.snapFetch.errorCache.test.js.
  * @module snapFetch
  */
@@ -72,10 +69,9 @@ const snapLogger = createSnapLogger('[SnapDOM]', { ttlMs: 3 * 60_000, maxEntries
 
 const _inflight = new Map()
 
-// Errors are memoized per key with their own TTL, but an expired entry is only dropped when
-// that exact key is requested again, and a page that fails many distinct URLs never asks
-// twice. Bounded the same way as the logger above (TTL + cap): at the cap, expired entries
-// go first, and only if that frees nothing does the oldest live one go.
+// An expired error entry is dropped only when its key is asked again, which a page failing
+// many distinct URLs never does. So the cache is capped: expired entries go first, then the
+// oldest live one.
 const ERROR_CACHE_MAX = 50
 const _errorCache = new Map()
 
@@ -166,11 +162,11 @@ function applyProxy(url, useProxy) {
   return `${useProxy}${sep}url=${encodeURIComponent(url)}`
 }
 
-/** FileReader round-trip. Rejects with `read_failed`, which the caller reports as a network error.
- *  The header loses its whitespace: Firefox copies the response's content type verbatim
- *  (cdnjs serves fonts as `application/octet-stream; charset=utf-8`), and the space ended an
- *  unquoted `url(data:…)` in the embedded @font-face, so the face was dropped and the text fell
- *  back (d22, Firefox). Pinned by __tests__/module.snapFetch.dataUrlHeader.test.js. */
+/** FileReader round-trip; rejects with `read_failed`, reported as a network error. Keep the
+ *  header whitespace strip: Firefox copies the content type verbatim (cdnjs fonts carry
+ *  `application/octet-stream; charset=utf-8`), and the space ended an unquoted `url(data:…)`
+ *  in the @font-face, dropping the face (d22).
+ *  Pinned by __tests__/module.snapFetch.dataUrlHeader.test.js. */
 function blobToDataURL(blob) {
   return new Promise((res, rej) => {
     const fr = new FileReader()
@@ -180,10 +176,9 @@ function blobToDataURL(blob) {
   })
 }
 
-/** Requests carrying custom headers bypass shared caches: headers can contain credentials
- *  and must neither cross request boundaries nor survive in a global cache key. Credential
- *  mode participates for ordinary requests, so an anonymous failure cannot suppress an
- *  authenticated retry. JSON keeps URL/proxy delimiters unambiguous. */
+/** Null for a request with custom headers: they can carry credentials and stay out of shared
+ *  caches. Credential mode is in the key, so an anonymous failure cannot suppress an
+ *  authenticated retry. JSON keeps URL and proxy delimiters unambiguous. */
 function makeKey(url, o) {
   if (!new Headers(o.headers || {}).keys().next().done) return null
   return JSON.stringify([
@@ -209,12 +204,10 @@ function notifyError(options, result) {
 // snapFetch
 
 /**
- * Fetch a URL as text, Blob or data URL, and never throw.
- * data:, blob: and about:blank skip the network, the caches and the proxy (about:blank as a
- * data URL is a 1x1 transparent png); a blob: failure is not remembered, since a revoked URL is
- * usually transient. For http(s), a remembered failure returns with `fromCache: true`, an
- * identical request in flight is shared, and credentials default to `include` same-origin and
- * `omit` otherwise. In dataURL mode the Blob rides on the result, for compress's worker.
+ * Fetch a URL as text, Blob or data URL, and never throw. data:, blob: and about:blank skip
+ * the network, caches and proxy; a blob: failure is not remembered (a revoked URL is usually
+ * transient). Credentials default to `include` same-origin and `omit` otherwise. In dataURL
+ * mode the Blob rides on the result, for compress's worker.
  * @param {string} url
  * @param {SnapFetchOptions} [options]
  * @returns {Promise<SnapFetchResult>}
@@ -374,10 +367,9 @@ export async function snapFetch(url, options = {}) {
       return { ok: true, data: blob, status: resp.status, url: finalURL, fromCache: false, mime }
 
     } catch (err) {
-      // `ctrl.abort('timeout')` makes fetch reject with the bare string 'timeout', not a
-      // DOMException, so testing `err` alone reported our own deadlines as 'network' and told
-      // the user to set up a CORS proxy for a slow server. Only this controller aborts the
-      // request, so its signal is the answer.
+      // `ctrl.abort('timeout')` rejects with the bare string 'timeout', not a DOMException, so
+      // testing `err` alone called our own deadlines 'network' and advised a CORS proxy for a
+      // slow server. Only this controller aborts the request: its signal is the answer.
       const reason = ctrl.signal.aborted
         ? (ctrl.signal.reason === 'timeout' ? 'timeout' : 'abort')
         : (err && typeof err === 'object' && err.name === 'AbortError') ? 'abort' : 'network'

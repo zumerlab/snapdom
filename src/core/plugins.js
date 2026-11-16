@@ -11,11 +11,8 @@
  *  - afterExport(context, { format, options, result })
  *  - afterSnap(context)
  *
- * Hook signature: (context, payload?) => void | any | Promise<void|any>
- *
- * Global plugins are registered via registerPlugins(). Per-capture plugins come in through
- * `snapdom(el, { plugins })` and attachSessionPlugins(), and win over globals by name.
- * Spec: PLUGIN_SPEC.md.
+ * Hook signature: (context, payload?) => void | any | Promise<void|any>. Per-capture plugins
+ * (`snapdom(el, { plugins })`) win over registerPlugins() globals by name. Spec: PLUGIN_SPEC.md.
  * @module plugins
  */
 
@@ -47,12 +44,9 @@ export function normalizePlugin(spec) {
 }
 
 /**
- * Register global plugins (deduped by name, order kept).
- *
- * A global plugin may NOT lower the stage: resolveStage runs over the merged list, so a global
- * `needs: 'clone'` would stop every capture in the application before pixels, including call
- * sites that never heard of it. Rejected here rather than surfacing later as a result with no
- * url.
+ * Register global plugins (deduped by name, order kept). A global plugin may NOT lower the
+ * stage: a global `needs: 'clone'` would stop every capture in the application before pixels,
+ * including call sites that never heard of it.
  * @param  {...any} defs
  * @throws {Error} when a global plugin declares `needs` other than 'render'
  */

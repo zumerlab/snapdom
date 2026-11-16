@@ -2,11 +2,8 @@
  * Bleed and transform math for the bbox the engine draws.
  *
  * Bleed is how far each outer effect (box-shadow, text-shadow, blur, outline, drop-shadow)
- * paints past a box, per side, so the viewBox grows by that much and no more. The transform
- * half reads the root's matrix with translation and rotation removed
- * (`normalizeRootTransforms`), the individual rotate/scale/translate properties as strings,
- * and the bbox of a box under a matrix. Every bleed function takes a computed style and
- * returns px per side.
+ * paints past a box, in px per side, so the viewBox grows by that much and no more. The
+ * transform half strips the root's translation and rotation and bounds a box under a matrix.
  * @module utils/transforms.helpers
  */
 
@@ -79,11 +76,10 @@ export function parseFilterBlur(cs) {
   const re = /blur\(\s*([0-9.]+)px\s*\)/gi
   let total = 0, m
   while ((m = re.exec(raw))) total += parseFloat(m[1]) || 0
-  // `blur(R)` sets R as the Gaussian STANDARD DEVIATION (Filter Effects §blur): bleeding by R
-  // cut the halo with a hard edge. The factor 2 is MEASURED, not the 3σ rule: the ink reaches
-  // within 2% of the background at 8/15/30px for R=4/8/16 on Chromium, 8/16/31px on Firefox.
-  // 3 would grow every blurred raster by half for nothing. (box-shadow's blur-radius is 2σ,
-  // so parseBoxShadow needs half this factor.)
+  // `blur(R)` sets R as the STANDARD DEVIATION (Filter Effects §blur), so R alone cut the halo.
+  // 2 is MEASURED, not the 3σ rule: ink reaches within 2% of the background at 8/15/30px for
+  // R=4/8/16 on Chromium, 8/16/31px on Firefox; 3 grows every blurred raster by half for
+  // nothing. box-shadow's blur-radius is 2σ, so parseBoxShadow needs half this factor.
   const b2 = Math.ceil(total * 2)
   return { top: b2, right: b2, bottom: b2, left: b2 }
 }
@@ -183,20 +179,9 @@ function clipsPaint(cs) {
 }
 
 /**
- * How far the ink of DESCENDANTS reaches past the root's own box.
- *
- * A ring or shadow a child draws against the root's edge is clipped by the
- * viewBox. Measuring the overhang widens the capture by exactly that ink
- * instead of padding it on the chance. Only elements with an outer effect are
- * measured (the clone already read their styles), and clipping ancestors are
- * honoured, which also keeps a scrolled container's offscreen rows out.
- *
- * Boxes are measured in page pixels, inflated by any scale above the root;
- * effects come from computed style, in the element's own pixels. The work is
- * done in page pixels, where clipping ancestors bound the ink, and the
- * caller's `perX`/`perY` convert back at the end.
- *
- * Imported from @frostin/snapdom (element-mirror).
+ * How far the ink of DESCENDANTS reaches past the root's own box: a ring or shadow a child
+ * draws against the root's edge would be clipped by the viewBox. Widens by exactly that ink,
+ * not by padding on the chance. Imported from @frostin/snapdom (element-mirror).
  *
  * @param {Element} root
  * @param {Map<Node, Node>} nodeMap from clone to source, from the clone pass
@@ -221,6 +206,8 @@ export function measureSubtreeBleed(root, nodeMap, styleCache, perX = 1, perY = 
     const pad = outerInkBleed(cs)
     if (!(pad.top || pad.right || pad.bottom || pad.left)) continue
 
+    // Boxes are in page pixels (inflated by any scale above the root), effects in the
+    // element's own: work in page pixels, and perX/perY convert back at the end.
     const box = source.getBoundingClientRect()
     const ink = {
       left: box.left - pad.left / perX,
@@ -228,6 +215,7 @@ export function measureSubtreeBleed(root, nodeMap, styleCache, perX = 1, perY = 
       right: box.right + pad.right / perX,
       bottom: box.bottom + pad.bottom / perY
     }
+    // Clipping ancestors bound the ink, which also keeps a scrolled container's offscreen rows out.
     for (let a = source.parentElement; a; a = a.parentElement) {
       const clip = clipsPaint(styleCache.get(a) || getStyle(a))
       if (clip.x || clip.y) {
@@ -265,11 +253,9 @@ export function measureSubtreeBleed(root, nodeMap, styleCache, perX = 1, perY = 
 /**
  * Strip translate and rotate from the CLONE ROOT's transform, keeping scale and skew.
  *
- * The `outerTransforms: false` path. The matrix left on the clone is returned so the caller
- * can grow the viewBox by it; transform-origin is pinned to 0 0 so that scale never pushes
- * content into negative coordinates. Reads `matrix()`, `matrix3d()` (#216, the 2D part of
- * the 4x4) and, through DOMMatrix, any other function. Pinned by
- * __tests__/utils.transforms.helpers.test.js.
+ * The `outerTransforms: false` path. Returns the matrix left on the clone, for the viewBox;
+ * the origin is pinned to 0 0 so scale never pushes content negative. `matrix3d()` uses the
+ * 2D part of the 4x4 (#216). Pinned by __tests__/utils.transforms.helpers.test.js.
  * @param {Element} originalEl
  * @param {HTMLElement} cloneRoot
  * @returns {{a:number,b:number,c:number,d:number}|null} the matrix without translation, or null when not applicable
@@ -521,7 +507,7 @@ export function readIndividualTransforms(el) {
     return out
   }
 
-  // Legacy path – no Typed OM
+  // Legacy path: no Typed OM
   const cs = getComputedStyle(el)
   out.rotate = (cs.rotate && cs.rotate !== 'none') ? cs.rotate : '0deg'
   out.scale = (cs.scale && cs.scale !== 'none') ? cs.scale : null
@@ -559,11 +545,10 @@ function getMeasureHost() {
 }
 
 /**
- * Compose in CSS order: translate, rotate, scale, then transform. Computed `transform`
- * excludes the individual properties, so setting them on a probe and reading that property
- * silently returned identity for e.g. scale:2. Ordinary computed px/angle/number values
- * compose directly, with no live-DOM writes or layout flush. Relative lengths/calc use a
- * bounded probe fallback with the SAME transform functions and the caller's reference box.
+ * Compose in CSS order: translate, rotate, scale, then transform. Not through a probe's
+ * computed `transform`: it excludes the individual properties and read identity for scale:2.
+ * Plain values compose with no DOM write; relative lengths fall back to a probe sized to
+ * the caller's reference box.
  * @param {{baseTransform?: string, rotate?: string, scale?: string|null, translate?: string|null, width?: number, height?: number}} t
  * @returns {DOMMatrix}
  */

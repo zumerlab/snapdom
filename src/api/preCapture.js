@@ -1,19 +1,14 @@
 /**
  * `snapdom.preCapture()`: the capture that is ready before the click.
  *
- * Link prefetch, translated: capture on intent (pointer over, focus, pointer down), before
- * the click. A capture has no href, so the destination is learned: a capture started in the
- * same event task as a pointerdown, click or Enter/Space keydown belongs to the pressed
- * control, and later intent over it captures that element with the call's top-level options.
- * Memoization engages on the first capture (core/burst.js), so the click pays only the
- * export; a changed element goes through invalidation or the diff path as always.
+ * Link prefetch, translated: capture on intent (pointer over, focus), before the click. The
+ * destination is learned: a capture begun in the same event task as a press belongs to the
+ * pressed control, and later intent over it recaptures that element, so the click is a memo
+ * hit (core/burst.js) and pays only the export.
  *
- * Before any control is known, the first intent captures the visible viewport once and
- * discards it, warming styles, fonts and images on screen (79-demo corpus, 2026-09-03: a
- * visible element then captures at 1.1x its steady state, against 3.3x cold).
- *
- * No argument, no attribute, no background work until an intent event. A programmatic
- * capture is its own notice: capture early and the later call is a memo hit or a diff.
+ * Before any control is known, the first intent warms the visible viewport once (79-demo
+ * corpus, 2026-09-03: a visible element then captures at 1.1x its steady state, 3.3x cold).
+ * Nothing runs until an intent event.
  * Pinned by __tests__/api.preCapture.test.js.
  * @module api/preCapture
  */
@@ -29,7 +24,7 @@ const CONTROL = 'button, a[href], [role="button"], input, select, summary, label
 let armed = false
 /** @type {{control: Element}|null} */
 let lastIntent = null
-/** control -> { element, options } learned from the capture that followed a press. */
+/** Control to { element, options }, learned from the capture that followed a press. */
 const targets = new WeakMap()
 let viewportWarmed = false
 

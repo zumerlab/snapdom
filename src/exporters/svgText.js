@@ -7,19 +7,13 @@
 import { isSafari } from '../utils/browser'
 
 /**
- * Window an SVG before decode, in viewBox units (result.meta), so a document exporter can
- * rasterize a long capture page by page under the decode limits.
- *
- * WebKit draws every foreignObject box with its own layer (position, opacity, transform) as
- * if the viewBox started at 0 0, ignoring min-x/min-y and an ancestor <g> translate; only
- * the foreignObject's x/y moves it. Normal-flow blocks do move, so solid bands look right
- * while text stays put: windows 2-4 of a 4-slide strip showed window 1's text (Playwright
- * WebKit). There the root foreignObject is shifted instead, viewBox `0 0 w h`. A header-only
- * svg (toLargeImage's sizing) has no foreignObject and keeps the viewBox rewrite.
+ * Window an SVG before decode, in viewBox units (result.meta). WebKit draws every box with
+ * its own layer as if the viewBox started at 0 0, ignoring min-x/min-y and an ancestor <g>
+ * translate (windows 2-4 of a strip showed window 1's text), so there the root foreignObject
+ * moves instead. A header-only svg (toLargeImage's sizing) keeps the viewBox rewrite.
  * @param {string} svg - decoded svg text
  * @param {{x:number,y:number,width:number,height:number}} crop - in viewBox units
- * @param {{shiftContent?: boolean}} [opts] - move the root foreignObject instead of the
- *   viewBox origin; defaults to WebKit, the engine that needs it
+ * @param {{shiftContent?: boolean}} [opts] - move the foreignObject instead; defaults to WebKit
  * @returns {string}
  */
 export function cropSvgText(svg, crop, { shiftContent = isSafari() } = {}) {
@@ -94,12 +88,10 @@ function shiftRootForeignObject(svg, tag, dx, dy) {
 }
 
 /**
- * Size an svg to `w` x `h` the way WebKit can draw it: viewBox at the output size, the root
- * foreignObject scaled and `zoom` on its wrapper. WebKit draws every box with its own layer
- * (position, opacity, transform) without the viewBox scale (WebKit bug 23113): a card exported
- * at 2x put its positioned layer at half size in the corner (LodyAI/Lody#2250). The zoom lays
- * out at k times every length, so layout and layers agree. Uniform, centred, like `xMidYMid
- * meet`. Null when there is nothing to scale; the caller keeps the plain patch.
+ * Size an svg to `w` x `h` the way WebKit can draw it: viewBox at the output size and `zoom` on
+ * the wrapper. WebKit draws every box with its own layer without the viewBox scale
+ * (WebKit bug 23113): at 2x a positioned layer came out half size (LodyAI/Lody#2250).
+ * Null when there is nothing to scale.
  * Pinned by __tests__/exporter.webkitLayerScale.test.js.
  * @param {string} svg - decoded svg text
  * @param {number} w - output width in CSS px
@@ -140,7 +132,7 @@ export function zoomSvgText(svg, w, h) {
   return sized + fo + zoomed
 }
 
-// ——— helpers ———
+// Helpers
 export function isSvgDataURL(u) {
   return typeof u === 'string' && /^data:image\/svg\+xml/i.test(u)
 }
@@ -154,8 +146,7 @@ export function decodeSvgFromDataURL(u) {
   const i = u.indexOf(',')
   return i >= 0 ? decodeURIComponent(u.slice(i + 1)) : ''
 }
-/** Decode only the leading chunk of an SVG data URL — enough to read the <svg ...> header
- *  without paying a full decodeURIComponent on a multi-MB payload. */
+/** Decode only the leading chunk of an SVG data URL, enough for the <svg ...> header. */
 export function peekSvgHeader(u) {
   const i = u.indexOf(',')
   if (i < 0) return ''

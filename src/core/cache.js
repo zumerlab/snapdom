@@ -41,10 +41,9 @@ class EvictingMap extends Map {
  *  - background ... background-image data URLs by URL (utils/image.js)
  *  - resource ..... blob: URL contents (clone.helpers resolveBlobUrl; fonts.js reads it)
  *  - defaultStyle . per-tag UA defaults from the sandbox (utils/css.js)
- *  - baseStyle .... the base reset CSS per tag set, with the universe it was pruned by (capture.helpers)
+ *  - baseStyle .... base reset CSS per tag set, with the universe that pruned it (capture.helpers)
  *  - compress ..... downsampled images (compress.js), see below
- *  - computedStyle  getStyle's memo: element -> its CSSStyleDeclaration, and that declaration
- *                    -> Map of pseudo -> declaration once a pseudo is asked for (utils/css.js)
+ *  - computedStyle  getStyle's memo: element to declaration, then to its pseudos (utils/css.js)
  *  - measureHints . the clone-in-document measurement (engines/svg.js), see below
  */
 export const cache = {
@@ -68,10 +67,9 @@ export { EvictingMap }
 
 /**
  * Normalizes the `cache` option: `false` or 'disabled' opt out of every cache (a debug and
- * test escape hatch); anything else, the legacy 'soft', 'auto' and 'full' included, is 'soft'.
- * Sessions are per capture (createCaptureSession), so no value shares one: 'full' would bring
- * back the shared mutable state the session refactor removed. Repeat-capture speed comes from
- * burst and differential recapture instead.
+ * test escape hatch); anything else, legacy 'auto' and 'full' included, is 'soft'. Do not
+ * bring back 'full': sharing a session across captures is the mutable state the session
+ * refactor removed.
  * @param {unknown} v
  * @returns {"soft"|"disabled"}
  */

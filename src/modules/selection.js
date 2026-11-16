@@ -1,26 +1,16 @@
 /**
  * Renders the user's text selection into the clone (SEL-1, fork addition).
  *
- * A selection is paint without DOM, so a structural clone loses it. The live
- * Selection is read once per capture, and the clone pass wraps each selected
- * run in a <span> with the styles the browser paints it with: the authored
- * `::selection` where a rule matches, the UA highlight where none does.
+ * A selection is paint without DOM, so each selected run is wrapped in a <span> styled as
+ * the browser paints it (the authored `::selection`, else the UA highlight), and a field's
+ * selection becomes background layers on its clone (inlineTextFieldSelection).
  *
- * An <input>/<textarea> selection lives on selectionStart/End and the field
- * paints its own value, so there is no text node to wrap. Its highlight goes
- * on the clone as background layers (behind the value, like the browser's),
- * measured from a hidden twin of the value (inlineTextFieldSelection).
+ * Limits: shadow-root selections are not on the document's Selection; `::selection
+ * { background: transparent }` reads like no rule and paints the UA highlight; a field's
+ * `::selection` color and email/number inputs (selectionStart stays null) cannot be read.
  *
- * Limits of what a page can observe: shadow-root selections are not on the
- * document's Selection; `::selection { background: transparent }` reads like
- * no rule and paints the UA highlight; a field's `::selection` color cannot
- * recolor its value, so only the highlight renders; and email or number
- * inputs report no selection (selectionStart is null mid-selection), since
- * the API exists only on text/search/url/tel/password.
- *
- * Imported from @frostin/snapdom (element-mirror), where it was written as SEL-1.
- * Pinned by __tests__/module.selection.test.js (the clone) and
- * module.selection.raster.test.js (the pixels).
+ * Imported from @frostin/snapdom (element-mirror). Pinned by __tests__/module.selection.test.js
+ * (the clone) and module.selection.raster.test.js (the pixels).
  * @module selection
  */
 
@@ -58,12 +48,9 @@ export function prepareSelectionContext(root) {
 }
 
 /**
- * The styles the browser paints this element's selected text with, as a CSS
- * declaration list, or null when it paints no highlight here.
- *
- * Only highlight-paintable properties count. One no ::selection rule set
- * computes to the element's own value, so a diff against the element finds
- * the authored rule; an authored value equal to the element's paints the same.
+ * The styles the browser paints this element's selected text with, or null for
+ * no highlight. A property no ::selection rule sets computes to the element's
+ * own value, so a diff against the element finds the authored rule.
  *
  * @param {Element} parent
  * @param {{ styles: Map<Element, string|null> }} ctx
@@ -118,10 +105,9 @@ function selectionStyleFor(parent, ctx) {
 /**
  * Clones a text node with its selected runs wrapped in highlight spans.
  *
- * Returns null when nothing in the node is selected, letting the caller fall
- * through to a plain clone. The wrapper spans are absent from the session
- * nodeMap on purpose: the style, pseudo and background walkers key off it, and
- * a highlight span has nothing for any of them to do.
+ * Null when nothing in it is selected. The spans stay out of the nodeMap on
+ * purpose: the style, pseudo and background walkers key off it and have
+ * nothing to do on a highlight span.
  *
  * @param {Text} textNode - The SOURCE text node being cloned.
  * @param {{ ranges: Range[], styles: Map<Element, string|null> }} ctx
@@ -215,11 +201,10 @@ function textFieldSelectionBackground(field, own) {
 /**
  * Paints an <input>/<textarea>'s own selection onto its clone (SEL-1).
  *
- * The field paints its own value, so the highlight goes on the clone as
- * background layers, behind the value like the browser's. The rectangles come
- * from a hidden twin laid out in the field's text styles, the only way to know
- * where a wrapped or scrolled run paints. Only on a focused field: an
- * unfocused one keeps its selection but paints no highlight.
+ * The field paints its own value, so the highlight becomes background layers,
+ * measured on a hidden twin in the field's text styles (the only way to know
+ * where a wrapped or scrolled run paints). Focused fields only: an unfocused
+ * one paints no highlight.
  *
  * @param {HTMLInputElement|HTMLTextAreaElement} field - The SOURCE field.
  * @param {Element} clone - Its clone, already carrying the field's styles.

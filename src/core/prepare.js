@@ -1,9 +1,8 @@
 /**
  * The clone step: prepare the live element, deepClone it, then run every pass that needs the
  * clone and the source side by side.
- *
  * Before the clone: content-visibility forced, lazy shadow icons revealed (#488), all undone
- * in a finally so the page is as it was when this returns.
+ * in a finally.
  * After the clone, in this order: svg defs, pseudo-elements, blob URLs, @media freezing,
  * shadow CSS extraction, class generation, top-layer lift, fixed/sticky re-anchoring, scroll
  * compensation, root neutralization. Several depend on the one before; each comment says which.
@@ -39,17 +38,14 @@ const REPLACED_INLINE = /^(?:IMG|VIDEO|CANVAS|IFRAME|EMBED|OBJECT|SVG|svg|INPUT|
 const PLACEHOLDER_RULE = '[data-sd-ph]::placeholder{color:var(--sd-ph)!important;opacity:var(--sd-ph-o)!important;-webkit-text-fill-color:var(--sd-ph)!important}'
 
 /**
- * Clone an element for capture and return the clone with everything the render step needs.
- * Each call is one clone attempt with one ClonePass (session.js) over the session's maps;
- * the walk's memos die with the call. Without a session a direct caller gets fresh maps.
+ * Clone an element and return what the render step needs. One call is one clone attempt
+ * with one ClonePass (session.js); its memos die with the call.
  * @param {Element} element - Element to clone
  * @param {Object} [options={}] - the normalized context (createContext)
  * @param {import('./session.js').CaptureSession} [session] - the run's session, whose maps the clone fills
  * @returns {Promise<{clone: Element, classCSS: string, classPrefixCSS: string, shadowCSS: boolean, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, reconcileRisk: number, clipWindow: {x: number, y: number, width: number, height: number}|null, standIns: Map<Element, Element>|null, universe: Set<string>|null}>}
- *   classCSS includes the prefix; classPrefixCSS (shadow, pseudo, suppression) is what burst
- *   re-prepends after a diff; clipWindow is in the root's layout pixels; standIns maps each
- *   culled source to its husk, which nodeMap leaves out; shadowCSS: the prefix carries
- *   shadow-root rules; universe: what the snapshots were pruned by, for the base reset
+ *   classPrefixCSS is what burst re-prepends after a diff; clipWindow is in the root's layout
+ *   pixels; standIns maps culled sources to husks, which nodeMap leaves out
  */
 export async function prepareClone(element, options = {}, session = createCaptureSession(options)) {
   // MutationObserver delivers in a microtask, so same-tick mutations would meet a stale epoch.
@@ -265,20 +261,19 @@ export async function prepareClone(element, options = {}, session = createCaptur
   if (sessionCache.bgClipText) paintClippedText(sessionCache.bgClipText)
   await resolveBlobUrlsInTree(clone, sessionCache)
 
-  // Kept light-DOM <style> clones travel into the SVG, whose tiny viewport would re-evaluate
-  // their @media, so they are frozen to the live viewport now. Each then goes into an anonymous
-  // @layer below the class CSS (#562): in the SVG `:root` is the <svg> and an outside var()
-  // resolves differently, yet `.card` tied the card's generated class and won by coming later.
-  // The layer still paints what no class carries (pseudo-elements, keyframes). @import and
-  // @namespace are invalid in a layer and stay unlayered. The differential path never splices
-  // a <style> (HEAVY_SUBTREE, diff.js). Pinned by `__tests__/snapdom.issue562.test.js`.
+  // Kept light-DOM <style> clones travel into the SVG. The differential path never splices
+  // one (HEAVY_SUBTREE, diff.js).
   for (const [cloneNode, srcNode] of sessionCache.nodeMap.entries()) {
     if (srcNode?.tagName === 'STYLE' && cloneNode?.tagName === 'STYLE' && !cloneNode.hasAttribute('data-sd')) {
       let css = cloneNode.textContent || ''
       try {
         const rules = srcNode.sheet && srcNode.sheet.cssRules
+        // The SVG's tiny viewport would re-evaluate @media: freeze it to the live viewport.
         if (rules && /@media/i.test(css)) css = resolveMediaQueries(rules)
       } catch { /* unreadable sheet: leave verbatim */ }
+      // #562: below the class CSS, or `.card` ties the card's generated class and wins by
+      // coming later. @import and @namespace are invalid in a layer.
+      // Pinned by `__tests__/snapdom.issue562.test.js`.
       if (!/@(?:import|namespace)\b/i.test(css)) css = `@layer{${css}}`
       cloneNode.textContent = css
     }
@@ -400,12 +395,10 @@ export async function prepareClone(element, options = {}, session = createCaptur
     // Its containing block stayed in the page too: a percentage min/max size would resolve
     // against the foreignObject instead. No-op unless one of them holds a `%`.
     freezeRootPercentSizes(element, clone, computed)
-    // So did its language, which picks default fonts and per-script fallback: under <html
-    // lang="zh"> Chromium set a CJK heading 15px wider than under none, and Firefox moved d42's
-    // heading from serif to sans-serif, its digits in Times. Firefox and WebKit honour it in
-    // the svg; Chromium's svg images keep their default fonts per language (13.8px off with or
-    // without it, `xml:lang` too).
-    // Pinned by __tests__/core.prepare.lang.test.js.
+    // So did its language, which picks default fonts per script: under <html lang="zh">
+    // Firefox set d42's heading in sans-serif. Firefox and WebKit honour it in the svg;
+    // Chromium's svg images do not (13.8px off either way). Pinned by
+    // __tests__/core.prepare.lang.test.js.
     if (!clone.hasAttribute('lang')) {
       const lang = element.closest?.('[lang]')?.getAttribute('lang') ?? element.ownerDocument?.documentElement?.getAttribute('lang')
       if (lang) clone.setAttribute('lang', lang)
@@ -442,7 +435,7 @@ export async function prepareClone(element, options = {}, session = createCaptur
  * Pinned by __tests__/core.toplayer.test.js.
  * @param {Element} element - source root
  * @param {Element} clone - clone root
- * @param {Map<Node, Node>} nodeMap - clone -> source
+ * @param {Map<Node, Node>} nodeMap - clone to source
  */
 function liftTopLayerClones(element, clone, nodeMap) {
   const tops = []
@@ -472,7 +465,7 @@ function liftTopLayerClones(element, clone, nodeMap) {
           (bgImg && bgImg !== 'none' && bgImg.includes('data:') ? `background-image:${bgImg};` : '')
         clone.appendChild(bdiv)
       }
-    } catch { /* no ::backdrop support → just the lift */ }
+    } catch { /* no ::backdrop support: just the lift */ }
     z += 1
     topClone.style.zIndex = String(z)
     clone.appendChild(topClone) // move to end: paints above the rest, out-of-flow so layout keeps
@@ -504,15 +497,13 @@ const SCROLLER_LAYOUT = ['grid-template-columns', 'grid-template-rows', 'grid-te
   'align-items', 'justify-items', 'align-content', 'justify-content', 'flex-direction', 'flex-wrap']
 
 /**
- * Scroll compensation for one clone/source pair: hides scrollbars and wraps the clone's
- * children in a translate(-scrollX,-scrollY) inner div, compensating positioned
- * descendants with external containing blocks (#364/#518). A grid or flex scroller hands
- * its layout to the wrapper. No-op for unscrolled sources.
- * Shared by prepareClone's whole-map pass and differential recapture (delta entries only).
- * Pinned by __tests__/snapdom.issue518.test.js and __tests__/regression.scrolledLayout.test.js.
+ * Scroll compensation for one clone/source pair: the children move into a translated wrapper,
+ * and positioned descendants with outside containing blocks are compensated (#364/#518).
+ * Also run by differential recapture. Pinned by __tests__/snapdom.issue518.test.js and
+ * __tests__/regression.scrolledLayout.test.js.
  * @param {Element} cloneNode
  * @param {Element} originalNode
- * @param {Map<Node, Node>} nodeMap - clone → source
+ * @param {Map<Node, Node>} nodeMap - clone to source
  * @param {WeakMap<Element, CSSStyleDeclaration>} styleCache
  */
 export function wrapScrolledClone(cloneNode, originalNode, nodeMap, styleCache) {

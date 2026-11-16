@@ -199,7 +199,7 @@ export async function fixSafariShadows(svg) {
   const { native, flippedY } = await probeSvgShadowSupport()
   try {
     let out = svg
-    // No native box-shadow: emulate via drop-shadow (correct Y, ~2x blur → halved).
+    // No native box-shadow: emulate via drop-shadow (correct Y, blur halved from ~2x).
     if (!native) out = rewriteSvgBoxShadowToDropShadow(out)
     // Flipped Y: pre-negate box-shadow (only while still native) and text-shadow.
     if (flippedY) out = rewriteSvgShadowOffsets(out, native)

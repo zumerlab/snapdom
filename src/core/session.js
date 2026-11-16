@@ -1,33 +1,18 @@
 /**
- * Per-capture session state.
+ * Per-capture session state. A capture OWNS its session from its first synchronous tick; only
+ * cross-capture caches (cache.js) live at module scope, since the shared `cache.session`
+ * global was #463 and the double scroll-compensation race. Not here: options (context.js),
+ * plugin stage fields, return values, arguments, burst's per-element state and RetainedCapture.
  *
- * A capture OWNS its session from its first synchronous tick and threads it through every
- * stage. Module-level mutable state is only for cross-capture caches (cache.js): the shared
- * `cache.session` global was behind #463 and the double scroll-compensation race.
+ * Burst creates it for a full run it starts, snapdom.capture otherwise; diff.js builds a
+ * frame's over burst's retained capture. The factory is pure: captureDOM applies the cache policy.
  *
- * Who creates it: burst for a full run it starts, snapdom.capture otherwise; captureDOM hands
- * it to prepareClone, and direct callers of either get one from a default parameter. A
- * differential frame (diff.js) builds its own over burst's retained capture. The factory is
- * pure: captureDOM applies the cache policy at its entry and on the torn retry.
+ * A ClonePass is one clone attempt; every memo of the clone walk lives and dies with it. Never
+ * name a slot `session`: _resolveCtx (styles.js) tells a styles ctx from a pass by that key.
  *
- * A ClonePass is one clone attempt: prepareClone makes one per attempt, diff.js one per dirty
- * root and one for its reconcile. Every memo of the clone walk lives and dies with it, and
- * createClonePass declares every slot so a pass keeps one shape.
- *
- * Not here: options (context.js, including the private ones read after the pipeline:
- * __iconMatchers, __explicitFormat, __pinned, __subpixel, the __styleShare override,
- * __needsLoweredBy), the plugin stage fields (PLUGIN_SPEC.md), return values (prepareClone's
- * record, the url), arguments (the render input, the compress geometry, ExportEnv),
- * cross-capture caches (cache.js and module caches), burst's per-element state and its
- * RetainedCapture (burst.js), node and snapshot expandos.
- *
- * `context.__session` is an ALIAS of a full capture's session, set by captureDOM; a frame sets
- * none. Nothing in src reads it. Published readers: packages/vector/src/adapters/snapdom.js
- * (styleMap, in beforeRender), __tests__/core.capture.fast.test.js and
- * scripts/safari-release-smoke.mjs (tornSinceStart).
- *
- * Never name a ClonePass slot `session`: _resolveCtx (styles.js) tells a ready styles ctx
- * from a pass by that key.
+ * `context.__session` aliases a full capture's session (captureDOM); nothing in src reads it.
+ * Readers: packages/vector/src/adapters/snapdom.js, __tests__/core.capture.fast.test.js and
+ * scripts/safari-release-smoke.mjs.
  * @module session
  */
 
@@ -36,59 +21,47 @@
  * @property {Map<Element, string>} styleMap - clone to style signature
  * @property {WeakMap<Element, CSSStyleDeclaration>} styleCache - source to computed style
  * @property {Map<Node, Node>} nodeMap - clone to source (clone.js contract)
- * @property {Array<{code: string, message: string, detail?: unknown}>|null} warnings - the
- *   degradation log, exposed as result.warnings: entries pushed by the curated failure
- *   branches (image placeholder, raster clamp, Safari PNG fallback, reconcile risk). Null on
- *   a differential frame, which keeps no log.
- * @property {Array<(node: Node, ctx: object) => any>|null} resolveNodeHooks - the plugins'
- *   resolveNode hooks, collected by captureDOM at its entry; null on a differential frame,
- *   which bails on resolveNode plugins
- * @property {Map<Element, Set<string>>|null} animated - what each animation target animates
- *   (animatedProps, styles.js). Written by captureDOM before the clone loop, kept on the torn
- *   retry; on a differential frame, the value burst read before the attempt
- * @property {boolean|undefined} styleShare - the identity-share verdict, seeded with the
- *   context's `__styleShare` override. Written by captureDOM after beforeClone, kept on the
- *   torn retry; a differential frame keeps the seed, so sharing stays off there
+ * @property {Array<{code: string, message: string, detail?: unknown}>|null} warnings -
+ *   result.warnings (image placeholder, raster clamp, Safari PNG fallback, reconcile risk);
+ *   null on a differential frame
+ * @property {Array<(node: Node, ctx: object) => any>|null} resolveNodeHooks - collected
+ *   by captureDOM at its entry; null on a differential frame, which bails on them
+ * @property {Map<Element, Set<string>>|null} animated - animatedProps
+ *   (styles.js), by captureDOM before the clone and kept on the torn retry; burst's on a frame
+ * @property {boolean|undefined} styleShare - seeded from `__styleShare`,
+ *   by captureDOM after beforeClone, kept on the torn retry; a frame keeps the seed (sharing off)
  * @property {{due: () => boolean, pause: () => Promise<void>, yielded: boolean}|null} slicer -
- *   fast: false | 'auto' (#503). Written by captureDOM before each clone attempt, null on the
- *   torn retry and after the clone stage; null on a differential frame, which never yields
- * @property {{required: Set<string>, usedCodepoints: Set<number>}|null} fontUsage - the font
- *   usage the Safari pre-step walked (snapdom.capture), reused by captureDOM's fonts phase on
- *   a capture without a clip; null elsewhere
- * @property {(() => boolean)|null} tornSinceStart - burst's watcher, asked by captureDOM after
- *   a yielding clone (fast: false | 'auto'). Written by burst before a full run it starts,
- *   nulled in its finally; null on any other run
- * @property {[number, number]|null} rootBox - the root's offset size while prepareClone still
- *   held content-visibility:auto boxes visible, for the engine; null when it forced none and on
- *   a differential frame, which forces them for its whole run
- * @property {((art: object) => void)|null} retain - burst's hand-off of the artifacts a
- *   differential frame splices onto, called by captureDOM after the svg render. Written by
- *   burst on a run that may become the memo, nulled in its finally; null on any other run
+ *   fast: false | 'auto' (#503), by captureDOM per clone attempt; null on the torn retry, after
+ *   the clone stage and on a frame
+ * @property {{required: Set<string>, usedCodepoints: Set<number>}|null} fontUsage - walked by
+ *   the Safari pre-step (snapdom.capture), reused by captureDOM's fonts phase when there is no clip
+ * @property {(() => boolean)|null} tornSinceStart - burst's watcher, set for a full
+ *   run it starts and nulled in its finally; captureDOM asks it after a yielding clone
+ * @property {[number, number]|null} rootBox - the root's offset size while prepareClone
+ *   held content-visibility:auto boxes visible; null when it forced none and on a frame
+ * @property {((art: object) => void)|null} retain - burst's hand-off for the diff
+ *   path, set on a run that may become the memo; captureDOM calls it after the svg render
  *
- * Compress outputs, written through the geometry holder captureDOM and diff.js hand to
- * compressCloneAssets (compress.js). A frame starts from burst's retained capture.
+ * Compress outputs (compressCloneAssets); a frame starts from burst's retained capture.
  * @property {WeakMap<Node, {token: string, properties: object[]}>|null|undefined} compressedAssets -
- *   the originals of the assets compress shrank, created on the first one. buildResult nulls
- *   it: the registry stays with burst
+ *   originals of the shrunk assets; buildResult nulls it, the registry stays with burst
  * @property {number|undefined} compressionDensity - the output density compress resolved
- * @property {Map<string, ReadonlyArray<object>>|null} compressedSnapshot - the originals still
- *   in the rendered clone, which the result keeps for exports that need more resolution
+ * @property {Map<string, ReadonlyArray<object>>|null} compressedSnapshot - originals still in
+ *   the rendered clone, kept by the result for exports that need more resolution
  *
- * Render outputs, written by the engine that rendered (svg.js, htmlInCanvas.js), read by
- * buildResult.
+ * Render outputs, written by the engine (svg.js, htmlInCanvas.js), read by buildResult.
  * @property {number} layoutZoom - the #508 grid, into ExportEnv
- * @property {{zoomed: string[], flat: string[]}|null} fileSvg - the #552 wrappers, written by
- *   the svg engine only when layoutZoom is not 1
+ * @property {{zoomed: string[], flat: string[]}|null} fileSvg - the #552
+ *   wrappers, when layoutZoom is not 1
  * @property {{classCSS: string, fontsCSS: string, baseCSS: string, scrollbarCSS: string}|null} artifacts -
- *   the CSS strings export plugins read as `ctx.artifacts`
+ *   `ctx.artifacts` for export plugins
  */
 
 /**
  * Creates the session of one run of the pipeline.
  * @param {object} [options] - the context; only its `__styleShare` override is read
  * @param {{styleMap: Map<Element, string>, styleCache: WeakMap<Element, CSSStyleDeclaration>, nodeMap: Map<Node, Node>, compressedAssets?: WeakMap<Node, object>|null, compressionDensity?: number}|null} [retained]
- *   burst's retained capture, for a differential frame: the frame grows its maps, keeps no log
- *   and starts compress from it
+ *   burst's retained capture, which a differential frame grows in place
  * @returns {CaptureSession}
  */
 export function createCaptureSession(options = {}, retained = null) {
@@ -122,13 +95,11 @@ export function createCaptureSession(options = {}, retained = null) {
  * @property {Map<Element, string>} styleMap
  * @property {WeakMap<Element, CSSStyleDeclaration>} styleCache
  * @property {Map<Node, Node>} nodeMap - the run's map, or a fresh delta for a diff root
- * @property {CaptureSession['warnings']} warnings - the run's log, which clone.js and pseudo.js
- *   write through the pass
+ * @property {CaptureSession['warnings']} warnings - written by clone.js and pseudo.js
  * @property {CaptureSession['styleShare']} styleShare - read by inlineAllStyles,
- *   pseudoSnapshotFor and rasterizeIframe, which hands it to the nested capture
+ *   pseudoSnapshotFor and rasterizeIframe (for the nested capture)
  * @property {CaptureSession['resolveNodeHooks']} resolveNodeHooks - read by deepClone, per node
- * @property {CaptureSession['animated']} animated - read by inlineAllStyles, per node with a
- *   style attribute
+ * @property {CaptureSession['animated']} animated - read by inlineAllStyles
  * @property {CaptureSession['slicer']} slicer - read by deepClone, prepareClone and
  *   inlinePseudoElements
  *
@@ -139,7 +110,7 @@ export function createCaptureSession(options = {}, retained = null) {
  * Shadow DOM (#558), written and read by deepClone.
  * @property {WeakMap<ShadowRoot, string>|null} shadowScopes
  * @property {WeakMap<ShadowRoot, boolean>|null} shadowShare - roots whose CSS cannot split
- *   identity twins, with whether it gives a margin or a padding a box-relative value
+ *   identity twins, and whether it gives a margin or padding a box-relative value
  * @property {WeakMap<object, string>|null} shadowSheets
  * @property {Array<Map<string, object>>|null} shadowGroups
  * @property {number} shadowScopeSeq
@@ -171,8 +142,8 @@ export function createCaptureSession(options = {}, retained = null) {
  */
 
 /**
- * Creates one clone attempt of a run. Every initial value reads as its reader's empty case
- * (`||`, `??`, `?.` or truthiness), so a lazily filled pass and a declared one behave alike.
+ * Creates one clone attempt of a run. Each initial value is its reader's empty case, so a
+ * declared slot behaves like an unfilled one.
  * @param {CaptureSession} run
  * @param {object} options - the context
  * @param {Map<Node, Node>} nodeMap - run.nodeMap, or a fresh delta for a diff root

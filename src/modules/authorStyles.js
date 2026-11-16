@@ -33,10 +33,9 @@ export function importantPropsFor(el) {
 }
 
 /**
- * The properties the page's CSS can move off their UA default (styleScan.js), or null (full
- * reads) for an unreadable scan. The base reset and diff.js prune with the same set. With a
- * session, document content reads the scan pinned on it (scanOf) and shadow content the
- * capture's own union (shadowUniverseOf); without one, shadow content reads everything.
+ * The properties the page's CSS can move off their UA default, or null (full reads). The base
+ * reset and diff.js prune with the same set. Shadow content gets the session's union
+ * (shadowUniverseOf), or full reads without a session.
  * @param {Element} el
  * @param {object} [session] - the capture's sessionCache
  * @returns {Set<string>|null}
@@ -54,12 +53,9 @@ export function universeFor(el, session) {
 const sheetPropsCache = new WeakMap()
 
 /**
- * The universe for shadow-root content: the document's, plus the sheets and WAAPI keyframes of
- * every root a node's style can come from: its own, the roots above it (::part, inheritance),
- * its shadow root if it is a host (:host), and the root of each slot it is assigned through
- * (::slotted). A root joins with every root above it, so the walk order does not matter; the
- * set only grows, which only costs reads. One per session. An unreadable sheet sends the rest
- * of the capture's shadow content to full reads. #503 ArcGIS table (2178 nodes, 281 roots):
+ * The universe for shadow content: the document's plus every root its style can come from
+ * (its own and those above, its :host root, each ::slotted slot's root). One per session and
+ * it only grows, so walk order does not matter. #503 ArcGIS table (2178 nodes, 281 roots):
  * first capture 590-614 to 472 ms, second 488 to 345 ms, raster identical.
  * Pinned by __tests__/module.styles.shadowUniverse.test.js.
  * @param {Element} el
@@ -115,11 +111,9 @@ export function svgGeometryFor(el) {
   return scanFor(doc).svgGeometry
 }
 
-/** Whether a rule declaring one of those props can reach `el`: one matches() against the
- *  selectors of those rules (styleScan's svgGeometrySel). True when there is no selector
- *  gate (shadow content, an unreadable scan, a WAAPI animation or a selectorless block) or
- *  the gate cannot be matched, so the fallback is the per-property gate alone. Inheritance
- *  cannot carry these props: none of them is inherited, so the element itself must match.
+/** Whether a rule declaring one of those props can reach `el` (styleScan's svgGeometrySel).
+ *  True without a usable gate (shadow, unreadable scan, WAAPI, selectorless block). None of
+ *  these props is inherited, so the element itself must match.
  *  @param {Element} el document content (svgGeometryFor answered a Set for it) */
 export function svgGeometryReaches(el) {
   const sel = scanFor(el.ownerDocument || document).svgGeometrySel

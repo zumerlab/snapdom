@@ -1,12 +1,10 @@
 /**
  * Text truncation, baked into the live text before the clone is taken.
  *
- * Firefox and Safari ignore `-webkit-line-clamp` and `text-overflow: ellipsis` inside a
- * foreignObject, so the ellipsis is resolved on the real node, against its real layout, and
- * undone after cloning. The one place the pipeline writes the LIVE tree: every write goes
- * through textNodeWriter so node identity survives (#485), and undo leaves text the page
- * changed meanwhile alone. capture.js runs it before prepareClone, diff.js on a dirty subtree
- * before the splice. Pinned by __tests__/module.lineClamp.test.js.
+ * Firefox and Safari ignore `-webkit-line-clamp` and `text-overflow: ellipsis` in a
+ * foreignObject, so the ellipsis is baked into the real node and undone after cloning. The one
+ * place the pipeline writes the LIVE tree: writes keep node identity (#485), and undo spares
+ * text the page changed meanwhile. Pinned by __tests__/module.lineClamp.test.js.
  * @module lineClamp
  */
 
@@ -178,9 +176,8 @@ export function textEllipsis(el, cs) {
 
 /* helpers */
 
-/** Restore the pre-clamp text, unless the page changed it during the capture. `prepareClone`
- *  is awaited in between, long enough for the app to write the same node, and a blind restore
- *  would silently undo the app's update. If what we wrote is gone, the node has a new owner. */
+/** Restore the pre-clamp text, unless the page wrote the node during the awaited clone: a
+ *  blind restore would silently undo the app's update. */
 function undoText(el, written, text) {
   return () => {
     if (el.textContent === written) text.restore()
@@ -190,12 +187,10 @@ function undoText(el, written, text) {
 /**
  * Rewrites an element's text WITHOUT replacing its text nodes.
  *
- * `el.textContent = value` replaces the text node, and frameworks holding the original (React
- * fibers, Vue vnodes, Svelte blocks) fail on their next update with
- * `NotFoundError: Failed to execute 'removeChild'`, long after the capture (#485). Writing
- * `node.data` keeps the node, as React does for a single text child. Callers pass
- * isPlainTextContainer(), so the whole string in the first text node and the rest blanked lays
- * out like a textContent write, and restore() puts every chunk back.
+ * Never `el.textContent = value`: it replaces the text node, and frameworks holding it (React,
+ * Vue, Svelte) later fail with `NotFoundError: Failed to execute 'removeChild'` (#485).
+ * Callers pass isPlainTextContainer(), so the string in the first node and the rest blanked
+ * lays out like a textContent write.
  *
  * @param {Element} el
  * @returns {{text: string, write: (value: string) => void, restore: () => void}}

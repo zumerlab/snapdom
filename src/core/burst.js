@@ -1,65 +1,41 @@
 /**
  * Burst memoization: a scoped MutationObserver plus the last result per element, so repeated
- * captures of an unchanged subtree return instantly (dashboard polling, static UI export
- * loops). Engages on the first capture; mutated subtrees rebuild through diff.js.
+ * captures of an unchanged subtree return instantly. Engages on the first capture; mutated
+ * subtrees rebuild through diff.js. State lives in a WeakMap and a 64-entry LRU whose
+ * eviction disconnects every observer and listener.
  *
- * INVALIDATION MATRIX: every way a rendered frame can change, and who observes it
- * (ARCHITECTURE.md carries the prose version; THIS list is the wiring's source of truth):
- *  - DOM mutations ......... scoped MutationObserver (+ takeRecords flush pre-serve), below
+ * INVALIDATION MATRIX: every way a rendered frame can change, and who observes it. THIS list
+ * is the wiring's source of truth (ARCHITECTURE.md has the prose); add a row for a new way.
+ *  - DOM mutations ......... scoped MutationObserver, its records flushed before a serve
  *  - opaque/frame sources .. video/canvas/iframe/SMIL and known animated images bypass burst
- *  - <img> loads/srcset .... pending load/error listeners plus currentSrc/dimensions signature
+ *  - <img> loads/srcset .... pending load/error listeners plus a currentSrc/dimensions signature
  *  - font loads ............ style-environment epoch (changes.js getStyleEnvEpoch)
- *  - scroll ................ capture-phase scroll listener per element (no records), PLUS one
- *                            per open shadow root, since scroll is composed:false; known
- *                            offsets are sampled too, so a same-task programmatic scroll
- *                            cannot beat event delivery
- *  - form-control state .... capture-phase input/change listeners (value/checked are
- *                            properties: no records), plus a synchronous signature for
- *                            programmatic writes; `change` is composed:false, hence one
- *                            listener per shadow root
+ *  - scroll ................ capture-phase listener on the element and on each open shadow root
+ *                            (composed:false), plus sampled offsets for same-task scrolls
+ *  - form-control state .... capture-phase input/change listeners (`change` also per shadow
+ *                            root) plus a synchronous signature for programmatic writes
  *  - :hover ................ scoped document/shadow signatures before a possible memo serve
- *  - outside selector state  root style stamp from changes.js after a synchronous flush
- *                            (ancestors/siblings/:has()/container dependencies)
+ *  - outside selector state  root style stamp (changes.js) after a synchronous flush:
+ *                            ancestors, siblings, :has(), container dependencies
  *  - window resize ......... env epoch (media queries flip with no mutation)
  *  - <head> CSS ............ env epoch (head observer)
  *  - same-tick <style> ..... flushStyleInvalidations at capture start (records are async)
- *  - CSS/WAAPI animations .. getAnimations({subtree}) per capture: the memo never serves or
- *                            persists while one runs; targeted subtrees become diff dirty
- *                            roots, with invalidateSnapshotsUnder before AND after each frame.
- *                            Below burst, captureDOM drops the snapshots under every animation
- *                            target (light DOM and walked open shadow roots) before the clone
- *                            and after the asset phase, so no animated frame outlives its
- *                            capture. What each target animates travels on the session
- *                            (animated) and outranks the inline declarations, which are
- *                            re-resolved
- *  - layout beside a change  no record names the box a neighbour pushed. Below burst, a cached
- *                            snapshot is served only while the box, offsets, margins and
- *                            tracks it froze read the same (styles.js usedValuesHold), asked
- *                            once any stamp moved; an animation and a resource `load` move
- *                            that clock, and the diff reconcile compares the same values
- *                            (diff.js)
- *  - mid-capture edits ..... records landing WHILE a capture runs are judged when it ends
- *                            (hasTornMutation): a net change that is not the pipeline's own
- *                            self-undoing work leaves the element dirty and the frame unmemoized
- *  - mid-capture EVENTS .... the record-less sources above (scroll/input/change/focus/pointer)
- *                            set `state.torn`. They leave nothing to judge (no target, no
- *                            oldValue), and the pipeline never types, scrolls or moves focus
- *                            in the captured subtree, so any of them tears the frame
- *  - yielding captures ..... fast: false | 'auto' read the page across several tasks; the
- *                            two judgements above run again when the clone stage ends
- *                            (session.tornSinceStart), and a torn clone is redone in one task
- *  - shadow DOM ............ one observer per open root, plus the composed:false listeners
- *                            and the <img> tracker (querySelectorAll stops at the boundary
- *                            too), rescanned per capture to catch roots attached after the
- *                            memo (trackShadowRoots): ~1ms at 8k nodes, against the ~100ms
- *                            pipeline a memo replaces. Closed roots are unobservable, so
- *                            they are `invalidate: true` territory
+ *  - CSS/WAAPI animations .. no memo serve or store while one runs; light-DOM targets become
+ *                            diff dirty roots. Below burst, captureDOM drops their snapshots
+ *                            per frame, and session.animated outranks their inline styles
+ *  - layout beside a change  below burst, a snapshot is served only while its used values
+ *                            hold (styles.js usedValuesHold); the diff reconcile compares them
+ *  - mid-capture edits ..... records are judged when the capture ends (hasTornMutation): a net
+ *                            change leaves the element dirty and the frame unmemoized
+ *  - mid-capture EVENTS .... the record-less sources set `state.torn`: the pipeline never
+ *                            scrolls, types or moves focus in the subtree, so they tear the frame
+ *  - yielding captures ..... fast: false | 'auto' rerun both judgements after the clone stage
+ *                            (session.tornSinceStart); a torn clone is redone in one task
+ *  - shadow DOM ............ an observer, the listeners and the <img> tracker per open root,
+ *                            rescanned per capture (trackShadowRoots); closed roots: `invalidate`
  *  - canvas pixel draws .... bypass burst (invisible to every observer)
  *  - CSSOM rule edits ...... EXCLUDED (insertRule/rule.style.*): `invalidate: true`
  *  - impure render plugins . suspend auto memo/diff (plugins.js hasImpureRenderPlugins)
- *
- * State lives in a WeakMap and a bounded 64-entry LRU. Eviction disconnects every observer
- * and listener, including pending-image listeners.
  * @module burst
  */
 
@@ -93,11 +69,9 @@ const knownFrameDriven = new WeakSet()
 const animationSources = new WeakMap()
 
 /**
- * Memoization engages on an element's FIRST capture (api/snapdom.js), with no threshold: an
- * unchanged element is served and a changed one invalidated or rebuilt through diff either
- * way (the threshold of three captures in two seconds went on 2026-09-04). What it guarded is
- * capped here: how many elements keep a live memo. Past the cap the least recently served
- * memo is torn down (disposeState), and its element captures fresh and re-enters at the back.
+ * Memoization engages on an element's FIRST capture, with no threshold (removed 2026-09-04).
+ * What bounds it is this cap on live memos: past it the least recently served one is torn
+ * down (disposeState) and its element captures fresh.
  * Pinned by __tests__/core.burst.firstCapture.test.js.
  */
 const MAX_LIVE_MEMOS = 64
@@ -219,9 +193,8 @@ export function isAutoBurstSafe(element) {
 
 /**
  * A MutationObserver with `subtree: true` does NOT cross a shadow boundary, so each open root
- * gets its own observer feeding the same markDirty, or a web component's updates never reach
- * the memo. Re-scanned per capture, which catches roots attached AFTER the memo: content the
- * retained clone never saw, so they invalidate on sight. Closed roots stay unreachable.
+ * gets its own. Re-scanned per capture (~1ms at 8k nodes, against a ~100ms pipeline), and a
+ * root attached AFTER the memo invalidates on sight. Closed roots stay unreachable.
  */
 function trackShadowRoots(element, state) {
   if (!element.querySelectorAll) return false
@@ -335,15 +308,10 @@ function trackPendingImages(element, state) {
 }
 
 /**
- * Do the records collected during a capture describe a real change? Dropping them lets a
- * concurrent external mutation vanish and a TORN frame (half before, half after) be memoized.
- * Flagging every external-looking record kills the memo on any page using text-overflow,
- * line-clamp or content-visibility:auto, whose LIVE nodes the pipeline mutates and undoes (10
- * such records on a two-div page). So the test is the NET effect: attributes and character
- * data compare the OLDEST recorded value with the current one, text-only childList records
- * balance text added against text removed, and an element added or removed is a real change.
- * Character data is in the net-zero group because the truncation bake writes `textNode.data`
- * rather than `textContent` (#485). Once per capture, over its own records.
+ * Whether the records of a capture make a NET change, so the frame is torn. Not every
+ * external record: the pipeline mutates and undoes LIVE nodes for text-overflow, line-clamp
+ * and content-visibility:auto (10 records on a two-div page). Character data counts as
+ * net-zero because the truncation bake writes `textNode.data` (#485).
  * @param {MutationRecord[]} records
  * @returns {boolean}
  */
@@ -491,20 +459,12 @@ const FORM_CONTROL = /^(?:INPUT|TEXTAREA|SELECT)$/
 const NO_SCROLLPORT = /^(?:visible|clip)$/
 const SCROLLPORT_KEY = /(?:^|;)overflow(?:-[xy])?:(?!visible|clip)/
 
-/** Discover scroll offsets that can repaint with no MutationRecord. Layout is read only when
- *  state is created or a full capture commits; memo hits sample the short list. An inline box
- *  has no scrollport, yet Firefox reports its text as `scrollWidth` over a client size of 0,
- *  so listing it made each inserted `<span>` send the next capture down the full pipeline. A
- *  scroll container can have no client size either (scrollbars alone, or under half a pixel
- *  and enlarged by a transform), so `display` settles those.
- *  Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
+/** List the boxes whose scroll offsets can repaint with no MutationRecord; memo hits sample
+ *  the list. Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
 function collectScrollNodes(element, state) {
   const out = []
-  // Only a box with a scrollport is listed. In the retained capture a key with no overflow
-  // declaration is `visible`, and those boxes skip the six layout reads below (12% of each
-  // differential frame of the 1,506-node table). Without one every box is read and an
-  // overflowing one asks its computed overflow, so both ways list the same boxes. Form
-  // controls scroll their text whatever their overflow.
+  // A retained key with no overflow declaration is `visible`: those boxes skip the layout
+  // reads below (12% of each differential frame of the 1,506-node table).
   const R = state.retained
   const add = (el, force = false) => {
     try {
@@ -515,6 +475,9 @@ function collectScrollNodes(element, state) {
         if (key !== undefined && !SCROLLPORT_KEY.test(key)) return
       }
       if (el.scrollLeft || el.scrollTop) { out.push(el); return }
+      // An inline box has no scrollport, yet Firefox reports its text as `scrollWidth` over a
+      // client size of 0 (listed, each inserted <span> cost the memo). A scroll container may
+      // have no client size either, hence `display`.
       if ((el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
           (el.clientWidth || el.clientHeight || getComputedStyle(el).display !== 'inline')) {
         const cs = control ? null : getComputedStyle(el)
@@ -703,12 +666,9 @@ function createState(element) {
       noteDirtyRoot(rec.target)
     }
   }
-  // The record-less half of the matrix (scroll, input/change, focus, pointer) gets the
-  // mid-capture handling markDirty gives mutations. Dropped while `capturing`, an <input> that
-  // went OLD to NEW during a capture was answered with OLD forever. There is nothing to judge
-  // afterwards (no target, no oldValue), and no need: the listeners sit on the captured
-  // element and the pipeline never types, scrolls or moves focus inside it (its DOM work is
-  // on clones in a sandbox). So the frame is torn.
+  // An event during a capture tears the frame, never dropped: an <input> that changed mid-
+  // capture was otherwise answered with its old value forever. Nothing needs judging, since
+  // the pipeline never types, scrolls or moves focus inside the captured element.
   const onMediaDirty = () => {
     if (state.capturing) { state.torn = true; return }
     dirtyAll()
@@ -755,11 +715,9 @@ function refTag(value) {
   return tag
 }
 
-/** Deterministic serializer for the options signature. Not `JSON.stringify(rest, sortedKeys)`:
- *  an ARRAY replacer filters nested keys against the TOP-LEVEL list, so `{clip:{x:0,…}}` and
- *  `{clip:{x:900,…}}` both became `{"clip":{}}` and shared a memo, and dropped functions made
- *  two `exclude` predicates collide. Returns null only when nothing comparable can be built,
- *  which the caller treats as a one-off. */
+/** Deterministic serializer for the options signature; null when nothing comparable can be
+ *  built. Not `JSON.stringify(rest, sortedKeys)`: an array replacer filters NESTED keys too, so
+ *  two `clip` rects shared a memo, and dropped functions made two `exclude` predicates collide. */
 function stableStringify(value, seen) {
   const t = typeof value
   if (t === 'undefined') return null
@@ -814,23 +772,18 @@ function optionsSignature(userOptions, plugins) {
 }
 
 /**
- * Run a capture through the burst memoization for this element.
- *
- * Calls for the same element are serialized on one queue. Options that differ from the
- * element's baseline make the call a one-off: it captures fresh and leaves the memo alone,
- * until a second call repeats the new options and they become the baseline. A frame that
- * tore mid-capture is never memoized. This is where v3's large wins live: a mutating poll
- * went from 563 ms to 16 and an animated one from 39 to 7.5 (the polling scene in
- * docs/compare/live/harness.js). Pinned by __tests__/core.capture.burst.test.js,
- * __tests__/core.burst.transactional.test.js and __tests__/core.capture.autoburst.rebase.test.js.
+ * Run a capture through the burst memoization for this element, one queue per element. A call
+ * with options other than the baseline is a one-off until a second call repeats them. Polling
+ * scene (docs/compare/live/harness.js): a mutating poll went from 563 ms to 16. Pinned by
+ * __tests__/core.capture.burst.test.js, __tests__/core.burst.transactional.test.js and
+ * __tests__/core.capture.autoburst.rebase.test.js.
  * @param {Element} element
  * @param {object} userOptions - the raw options passed to this call (pre-normalization)
  * @param {object} context - normalized capture context (reads context.invalidate)
  * @param {(session?: import('./session.js').CaptureSession) => Promise<object>} runCapture -
- *   performs the actual full capture + export build, on the session burst hands it (with its
- *   watcher and, unless a one-off, its retain hand-off), or on a fresh one when none is given
- * @param {(url: string, session: object) => Promise<object>} [makeResult] - builds an export result from a
- *   differential frame's URL and session
+ *   the full capture and export build, on the session burst hands it or a fresh one
+ * @param {(url: string, session: object) => Promise<object>} [makeResult] - a differential
+ *   frame's result
  * @returns {Promise<object>} the memoized or freshly captured result
  */
 export function captureWithBurst(element, userOptions, context, runCapture, makeResult = null) {
@@ -959,7 +912,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
           invalidateSnapshotsUnder(t)
         }
       } else if (animationDirty && !targets) state.dirtyAll()
-    } catch { /* no Web Animations API — animations won't be detected */ }
+    } catch { /* no Web Animations API: animations go undetected */ }
     const frameDriven = liveRenderState.frameDriven
     const dynamic = animationRunning || frameDriven
     // Targetable WAAPI/CSS animations retain their scoped dirty roots and use diff per frame.

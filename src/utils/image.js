@@ -31,7 +31,7 @@ export async function inlineSingleBackgroundEntry(entry, options = {}) {
   const rawUrl = resolveImageSetURL(entry, (typeof devicePixelRatio !== 'undefined' && devicePixelRatio) || 1) ??
     extractURL(entry)
   if (!rawUrl) {
-    // Not a URL(...) we recognize → keep original as a safe fallback
+    // Not a url() we recognize: keep the original
     return entry
   }
   // Resolve relative URLs to absolute (fixes #343: background url() missing when relative)

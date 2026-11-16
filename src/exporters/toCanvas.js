@@ -15,19 +15,14 @@ import { markInternalNode } from '../utils/ownership.js'
 import { cropSvgText, isSvgDataURL, decodeSvgFromDataURL, peekSvgHeader, patchSvgHeader, encodeSvgToDataURL } from './svgText.js'
 import { fixSafariShadows } from './safariShadows.js'
 
-// #425: browsers cap the image they will decode and the canvas they will back. Past either, a
-// capture (element x scale x dpr, and dpr doubles on Retina) throws an opaque async
-// "EncodingError" from img.decode(), so we clamp, downscale slightly and warn instead.
-// 16384 is WebKit's side limit only. Chromium decodes an svg at 640x32768 and Gecko's canvas
-// side limit is 32767, so a 16384 clamp there downscaled a 640x17298 page for nothing, and the
-// clamp path is slower (500-row table: 5.2 ms/Mpx clamped against 3.1 ms/Mpx just under). The
-// AREA cap still catches what a browser will not allocate.
+// #425: past the decode or canvas limit img.decode() throws an opaque "EncodingError", so we
+// clamp and warn instead. 16384 is WebKit's side only: Chromium and Gecko go to 32767, and the
+// clamp path is slower (500-row table: 5.2 ms/Mpx clamped, 3.1 ms/Mpx just under).
 // Pinned by __tests__/exporters.rasterLimit.test.js (skipped on webkit, which does cap at 16384).
 export const MAX_RASTER_SIDE = isSafari() ? 16384 : 32767
 export const MAX_RASTER_AREA = 16384 * 16384
-// #536: WebP stores each side in 14 bits, so nothing encodes past 16383px. Chromium answers a
-// larger canvas with "data:," from toDataURL and a truncated blob from toBlob. A canvas bound
-// for WebP is clamped to it like any other limit.
+// #536: WebP stores each side in 14 bits; past 16383px Chromium returns "data:," or a
+// truncated blob, so a canvas bound for WebP is clamped to it.
 export const WEBP_MAX_SIDE = 16383
 
 /**
@@ -68,15 +63,10 @@ function clampSvgTextRasterSize(svg, options, env) {
 const frame = () => new Promise(r => { requestAnimationFrame(r); setTimeout(r, 50) })
 
 /**
- * The ink test for the Safari paint waits: six full-width strips of `img`, eight source rows
- * each, drawn at the scale of the real draw. Returns whether any pixel has alpha plus a pixel
- * signature, so a wait can tell when they stop changing. Null without a 2d context.
- *
- * Keep the draw's own scale. A 16x16 probe left WebKit caching its colour emoji at that size,
- * keyed by the URL, and every later draw lost them (Safari 27.0.1, d5's headings). Another
- * scale still costs sharpness (1155 coloured pixels against 1195 at 2x). No test iframe
- * reproduces it; the live parity check holds it (d5 on WebKit, `npm run test:parity`),
- * verified in Safari 27.0.1 on 2026-10-23.
+ * The ink test for the Safari paint waits: strips of `img` drawn at the real draw's scale,
+ * returning ink and a pixel signature. Keep that scale: a 16x16 probe left WebKit caching its
+ * colour emoji at that size and every later draw lost them (Safari 27.0.1, d5's headings).
+ * No test reproduces it; the live parity check holds it (d5 on WebKit, `npm run test:parity`).
  * @param {HTMLImageElement} img - decoded, so its natural size is known
  * @param {number} kx - device pixels per source pixel of the real draw, across
  * @param {number} ky - the same, down
@@ -106,12 +96,9 @@ function inkProbe(img, kx, ky) {
 }
 
 /**
- * WebKit paints svg-as-image resources late: img.decode() resolves before embedded
- * @font-face fonts (#219770) and nested raster images (#394) are ready, so the first draw
- * comes out blank or in a fallback font. Attach offscreen and probe until ink appears,
- * bounded. A blind two-frame wait cost ~33ms on every Safari export, and most have ink at
- * once. Svgs with fonts or nested images get the longer deadline and must read the same
- * twice; a truly blank capture runs out the short one.
+ * WebKit resolves img.decode() before embedded @font-face fonts (#219770) and nested raster
+ * images (#394) paint, so the first draw is blank or in a fallback font. Probe until ink
+ * appears, bounded; a blind two-frame wait cost ~33ms on every Safari export.
  * @param {HTMLImageElement} img
  * @param {boolean} verify - Svg has fonts/nested images (longer deadline, stable reads)
  * @param {(() => {ink: boolean, sig: number}) | null} probe - from inkProbe()
@@ -127,10 +114,8 @@ async function waitForImgPaint(img, verify, probe) {
       await frame()
       return false
     }
-    // With fonts or nested images, ink is not enough: text paints at once and a nested image
-    // lands later (d449's iframe raster, 12 ms into the decode, Safari 27.0.1), so wait for two
-    // equal reads in a row. Costs +10 to 25 ms on such an export in Safari (d5, d449). The
-    // live parity check holds it (d449 on WebKit).
+    // With nested images first ink is not enough: d449's iframe raster lands 12 ms into the
+    // decode (Safari 27.0.1). Two equal reads cost +10 to 25 ms. Held by live parity (d449).
     const deadline = performance.now() + (verify ? 600 : 150)
     let last = null
     for (;;) {
@@ -146,19 +131,10 @@ async function waitForImgPaint(img, verify, probe) {
   }
 }
 
-// Decode host for per-capture data URLs (from @frostin/snapdom, element-mirror).
-// A browser keeps a cache entry for every image URL for the life of the document that fetched
-// it, with no way to evict it, so a capture loop grows the renderer by one multi-MB data: URL
-// per frame. blob: URLs are revocable, but Chromium taints a canvas that draws a foreignObject
-// SVG from one. So the URLs stay data: and decode in a hidden throwaway iframe, recycled on a
-// byte budget: its cached resources die with it.
-// Recycle only while nothing is mid-decode: an image's pixels belong to its document, and
-// tearing it down before the final drawImage pulls the bitmap away.
-// Idle release: users and tab-suspender extensions report a leftover iframe as a leak, so it
-// goes after DECODE_FRAME_IDLE_MS without a decode. An acquire cancels the timer and the
-// release that reaches zero in flight re-arms it, so bursts and GIF/video frames keep one
-// document. Recreating it after a gap costs 0-2 ms on the three engines (2026-10-17).
-// Pinned by __tests__/exporter.toCanvas.decodeFrame.test.js.
+// Decode host (from @frostin/snapdom). A document caches every image URL for life, so a capture
+// loop grows the renderer by one data: URL per frame. blob: URLs would be revocable, but
+// Chromium taints a canvas drawing a foreignObject SVG from one. So decode in a throwaway
+// iframe, recycled on a byte budget. Pinned by __tests__/exporter.toCanvas.decodeFrame.test.js.
 const DECODE_FRAME_BUDGET_BYTES = 24 * 1024 * 1024
 const DECODE_FRAME_IDLE_MS = 5000
 let _decodeFrame = null
@@ -190,6 +166,7 @@ function acquireDecodeImage(src) {
   if (_decodeFrame && !_decodeFrame.contentDocument) {
     dropDecodeFrame()
   }
+  // Never recycle mid-decode: the pixels belong to the frame's document until the last drawImage.
   if (_decodeFrame && _decodeFrameBytes > DECODE_FRAME_BUDGET_BYTES && _decodeInFlight === 0) {
     dropDecodeFrame()
   }
@@ -204,8 +181,7 @@ function acquireDecodeImage(src) {
       _decodeFrame = frame
       _decodeFrameBytes = 0
     } else {
-      // Sandboxed or otherwise inert: fall back to the main document, which only costs the
-      // old behaviour.
+      // Sandboxed or inert: decode in the main document.
       try { frame.remove() } catch { /* already gone */ }
       return new Image()
     }
@@ -213,9 +189,7 @@ function acquireDecodeImage(src) {
   _decodeFrameBytes += src.length
   _decodeInFlight += 1
   const img = _decodeFrame.contentDocument.createElement('img')
-  // Flagged rather than checked by ownerDocument at release: the Safari paint wait appends the
-  // image to the main body, which adopts it into the main document, and the guard must still
-  // be released for it.
+  // A flag, not ownerDocument: the Safari paint wait adopts the image into the main document.
   img.__snapdomDecodeFrame = true
   return img
 }
@@ -232,6 +206,8 @@ function releaseDecodeImage(img, retire = false) {
     _retireDecodeFrame = false
     dropDecodeFrame()
   } else {
+    // Users and tab-suspender extensions report a leftover iframe as a leak. Bursts and video
+    // frames keep one document; recreating it after a gap costs 0-2 ms (2026-10-17).
     _decodeFrameIdleTimer = setTimeout(dropDecodeFrame, _decodeFrameIdleMs)
   }
 }
@@ -245,26 +221,20 @@ function startDecode(image, src) {
   return image.decode()
 }
 
-// Chromium's svg-as-image draw is superlinear in destination size: the deep-tree bench
-// (1232x13572, ~20k boxes) took 517 ms as one draw and 123 ms as 8 horizontal bands from the
-// one decoded image into the same canvas (WebKit 71 to 15, Firefox flat). A 640x17298 table
-// does not move, so the gate is area: one draw below 4 Mpx, above it a band per ~2 Mpx, at
-// most 8 (16 was slower). Bands sit on whole device rows with the whole draw's scale, so only
-// Chromium's own 256px tile seams can differ (68 of 16.7M pixels, one grey level).
-// `crop` is not this: it re-decodes the svg per window.
-// Every band re-reads the whole payload, ~1.8 ms per MB of embedded data: resources
-// (chromium, 2026-09-03), so a 19 MB photo took 42 ms in one draw and 288 in eight. Bands stay
-// off when the payload looks resource-dominated (resourceHeavy).
+// Chromium's svg-as-image draw is superlinear in size: the deep-tree bench (1232x13572) took
+// 517 ms as one draw and 123 ms as 8 bands of the same decoded image. Bands sit on whole
+// device rows at the whole draw's scale, so only Chromium's 256px tile seams can differ
+// (68 of 16.7M pixels). More than 8 bands was slower.
 const BAND_MIN_AREA = 4e6
 const BAND_AREA = 2e6
 const MAX_BANDS = 8
 
 const MARKUP_MARKS = ['%3C', '%3E', '%20', '%7B', '%7D', '%3B']
 /**
- * Guess whether an encoded payload is mostly embedded data rather than markup: sample 200
- * 48-character windows and count those with no encoded markup delimiter. Not a parser on
- * purpose: a wrong guess only costs time, never content. Exact counting took 359 ms on 300
- * thumbnails (6.7 MB); the sample costs microseconds at any size.
+ * Guess, from 200 sampled windows, whether a payload is mostly embedded data. Such a payload
+ * draws in one piece: every band re-reads it, ~1.8 ms per MB (a 19 MB photo took 42 ms in one
+ * draw, 288 in eight). A wrong guess costs only time; exact counting took 359 ms on 300
+ * thumbnails (6.7 MB).
  * @param {string} src
  * @returns {boolean}
  */
@@ -329,10 +299,8 @@ function drawBanded(ctx, img, devW, devH, src) {
 /**
  * Rasterize a capture (svg data URL, or any image URL) into a canvas.
  *
- * Sizing: `width`/`height` are the output size in CSS px and win, `scale` applies only when
- * neither is set, `dpr` multiplies device pixels. `backgroundColor` is filled in the same
- * draw. `crop` windows the svg's viewBox before decode (svg payloads only, throws otherwise),
- * so a document exporter can go page by page. `canvas` draws into yours, saving a copy.
+ * `width`/`height` win over `scale`, `dpr` multiplies device pixels. `crop` windows an svg's
+ * viewBox before decode and throws for anything else. `canvas` draws into yours.
  * @param {string} url
  * @param {{
  *   width?:number,
@@ -350,20 +318,16 @@ function drawBanded(ctx, img, devW, devH, src) {
 export async function toCanvas(url, options, env = {}) {
   let { width: optW, height: optH, scale = 1, dpr = 1, meta = {}, backgroundColor, crop = null } = options
 
-  // engine:'html-in-canvas' hands over the painted canvas, so nothing below decodes. A PNG
-  // round trip instead cost 62 vs 4 ms on a card (2026-09-03), slower than the svg path.
-  // The string-only guards below already pass a canvas through.
+  // engine:'html-in-canvas' hands over its painted canvas: nothing to decode. A PNG round trip
+  // cost 62 vs 4 ms on a card (2026-09-03).
   const srcCanvas = (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) ? url : null
 
-  // Peek the <svg> header (#425 clamp check) without decoding the payload; decode and
-  // re-encode ONCE only when a crop, clamp or Safari shadow fix needs the text.
-  // Must stay a data: URL: Chromium taints the canvas when a foreignObject SVG is drawn from a
-  // blob: URL, and every toDataURL/toBlob export breaks.
+  // Decode the payload at most once, only for a crop, clamp or Safari shadow fix. Must stay a
+  // data: URL: Chromium taints a canvas drawing a foreignObject SVG from a blob: URL.
   let src = url
   let shadowNaturalOnly = false
   let needsPaintVerify = false
-  // A crop is a viewBox rewrite. Any other source would hand a document exporter the whole
-  // bitmap where it asked for one page, so fail loudly.
+  // A crop is a viewBox rewrite; anything else would return the whole page silently.
   if (crop && !isSvgDataURL(url)) {
     throw new RangeError('[SnapDOM] Only SVG captures can be cropped.')
   }
@@ -390,8 +354,7 @@ export async function toCanvas(url, options, env = {}) {
             // only then is the verified-draw ladder worth waiting on.
             needsPaintVerify = /@font-face|data:image\//i.test(svgText)
           }
-          // A crop can turn an oversized source into a safe page-sized decode: clamp the
-          // TRANSFORMED header, not the original full document.
+          // Clamp the cropped header, not the full document's.
           if (oversized || crop) svgText = clampSvgTextRasterSize(svgText, options, env) // #425: keep within decode limits
           src = encodeSvgToDataURL(svgText)
         }
@@ -409,15 +372,12 @@ export async function toCanvas(url, options, env = {}) {
     if (!srcCanvas) await startDecode(img, src)
   } catch (e) {
     if (!img.__snapdomDecodeFrame) throw e
-    // Gecko swaps a new iframe's about:blank document asynchronously, aborting loads started
-    // on it; by then the settled document is in place, so one retry lands. Acquire before
-    // releasing: a release reaching zero after a tiled export asked to retire would remove
-    // the settled frame and the retry would abort again in a fresh one.
+    // Gecko swaps a new iframe's about:blank asynchronously and aborts loads begun on it; one
+    // retry lands. Acquire before releasing, or a pending retire drops the settled frame.
     const failed = img
     img = acquireDecodeImage(src)
     releaseDecodeImage(failed)
-    // Outside the try/finally below: a failed retry must release its guard, or the in-flight
-    // count never reaches zero and the decode frame grows for the page's lifetime.
+    // Outside the finally below: a failed retry must release, or the frame is never recycled.
     try {
       await startDecode(img, src)
     } catch (retryErr) {
@@ -427,12 +387,10 @@ export async function toCanvas(url, options, env = {}) {
   }
 
   try {
-    // #506: Chromium resolves the decode before embedded fonts load; a microtask still paints
-    // missing glyphs, so give it one task (a message, which timer clamps do not delay).
-    // Firefox resolves it before a nested svg image not yet in its cache has parsed, and the
-    // first export drew that layer blank; one task paints it (up to 40 nested svgs in 2.8 MB).
-    // `.` skips the outer data:image/svg+xml at index 0. WebKit has its own ladder below.
-    // Pinned by __tests__/exporter.toCanvas.nestedSvg.test.js.
+    // One task (a message, never timer-clamped) before drawing. Chromium resolves the decode
+    // before embedded fonts load, and a microtask still misses glyphs (#506). Firefox resolves
+    // it before an uncached nested svg image parses and draws it blank. `.` skips the outer
+    // data:image/svg+xml. Pinned by __tests__/exporter.toCanvas.nestedSvg.test.js.
     if (!srcCanvas && !isSafari() && isSvgDataURL(src) &&
       (isFirefox() ? /.data(?:%3A|:)image(?:%2F|\/)svg/i : /(?:%40|@)font-face/i).test(src)) {
       await new Promise(resolve => {
@@ -448,9 +406,8 @@ export async function toCanvas(url, options, env = {}) {
     const natW = srcCanvas ? srcCanvas.width : img.naturalWidth
     const natH = srcCanvas ? srcCanvas.height : img.naturalHeight
 
-    // Prefer the post-bleed viewBox (vbW/vbH) to the content box (w0/h0): an asymmetric
-    // shadow, blur or outline under outerShadows changes the aspect ratio. A crop's decoded
-    // bitmap is its own reference, or a one-sided crop takes the whole document's ratio.
+    // The post-bleed viewBox, not w0/h0: an asymmetric bleed changes the aspect ratio. A crop
+    // is its own reference, or a one-sided crop takes the document's ratio.
     const refW = crop ? natW
       : Number.isFinite(meta.vbW) ? meta.vbW : Number.isFinite(meta.w0) ? meta.w0 : natW
     const refH = crop ? natH
@@ -489,8 +446,7 @@ export async function toCanvas(url, options, env = {}) {
     // the whole draw, keeping the aspect ratio.
     const devW = outW * dpr, devH = outH * dpr
     const overCanvas = Math.max(devW / MAX_RASTER_SIDE, devH / MAX_RASTER_SIDE, Math.sqrt((devW * devH) / MAX_RASTER_AREA))
-    // The exporters that encode the canvas name the codec in `env.codec`; a plain
-    // toCanvas() is held to the canvas limits only.
+    // Encoding exporters name their codec in `env.codec`.
     const overWebp = env.codec === 'webp' ? Math.max(devW, devH) / WEBP_MAX_SIDE : 0
     const over = Math.max(overCanvas, overWebp)
     if (over > 1) {
@@ -509,8 +465,7 @@ export async function toCanvas(url, options, env = {}) {
     const canvas = (isHTMLEl(options.canvas) && isTag(options.canvas, 'canvas'))
       ? options.canvas
       : document.createElement('canvas')
-    // Positive CSS sizes may become subpixel after downscaling (e.g. a 1px divider at
-    // scale: 0.5). Canvas truncates those to zero, producing null Blobs/data:, URLs.
+    // A subpixel size (1px divider at scale 0.5) truncates to zero and encodes to null.
     canvas.width = Math.max(1, outW * dpr)
     canvas.height = Math.max(1, outH * dpr)
     canvas.style.width = `${outW}px`
@@ -519,11 +474,9 @@ export async function toCanvas(url, options, env = {}) {
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('[SnapDOM] The canvas you passed has no 2D context (is it already used for WebGL?).')
 
-    // #516: an export smaller than the device-pixel grid the svg laid out on (a download is dpr
-    // 1, the grid the live devicePixelRatio) shrinks snapped borders below one output pixel,
-    // and Firefox drops some edges (DPR 2.727: 1px boxes lost their sides at 1x; at DPR 1,
-    // scale 0.5 lost 18 of 40 edges). Rasterize at the grid and resample. Chromium antialiases
-    // and needs nothing. Pinned by __tests__/exporter.toCanvas.downscaledBorders.test.js.
+    // #516: below the layout grid (a download at DPR 2.727, or scale 0.5 at DPR 1) Firefox drops
+    // edges of snapped borders, so rasterize at the grid and resample. Chromium antialiases.
+    // Pinned by __tests__/exporter.toCanvas.downscaledBorders.test.js.
     let fine = null
     const grid = env.layoutZoom || 1
     if (!srcCanvas && isFirefox()) {
@@ -543,8 +496,7 @@ export async function toCanvas(url, options, env = {}) {
     }
 
     const paint = () => {
-      // save/restore hands the canvas back with an identity transform: a dpr scale left on it
-      // put a caller's bitmap-pixel draws (a badge at canvas.width - 20) off a 2x canvas.
+      // Hand the canvas back untransformed: a leftover dpr scale moved callers' pixel draws.
       ctx.save()
       if (dpr !== 1) ctx.scale(dpr, dpr)
 
@@ -557,9 +509,8 @@ export async function toCanvas(url, options, env = {}) {
 
       if (naturalOnly) {
         /* c8 ignore start -- WebKit only (shadowNaturalOnly); coverage runs on chromium */
-        // WebKit corrupts box-/text-shadows when the svg rasterizes at a non-natural
-        // scale: render 1:1 first, then resample pixels (canvas→canvas draws never
-        // re-rasterize the svg). Trades a bit of sharpness for correct shadows.
+        // WebKit corrupts box-/text-shadows at a non-natural svg scale: draw 1:1, then
+        // resample the pixels (a canvas-to-canvas draw never re-rasterizes the svg).
         const tmp = document.createElement('canvas')
         tmp.width = natW
         tmp.height = natH
@@ -567,8 +518,7 @@ export async function toCanvas(url, options, env = {}) {
         ctx.drawImage(tmp, 0, 0, outW, outH)
         /* c8 ignore stop */
       } else {
-        // Device pixels, identity transform: the bands are cut on whole device rows, and the
-        // dpr scale is folded into the destination size instead of the transform.
+        // Identity transform: bands are cut on whole device rows.
         ctx.save()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         if (fine) {
@@ -576,10 +526,8 @@ export async function toCanvas(url, options, env = {}) {
           tmp.width = fine.w
           tmp.height = fine.h
           drawBanded(tmp.getContext('2d'), img, fine.w, fine.h, src)
-          // #516: bilinear resampling without mipmaps reads 2x2 source pixels per output
-          // pixel, so past 2x it skips rows and columns and the 1-2px borders on them vanish.
-          // Halve until the last draw is under 2x (100 bordered boxes at DPR 2.727: 15404 of
-          // 98341 edge samples lost in one draw, 81 halved first).
+          // #516: bilinear resampling past 2x skips whole rows and the borders on them, so
+          // halve first (DPR 2.727: 15404 of 98341 edge samples lost in one draw, 81 halved).
           while (tmp.width > outW * dpr * 2) {
             const half = document.createElement('canvas')
             half.width = Math.ceil(tmp.width / 2)
@@ -599,14 +547,11 @@ export async function toCanvas(url, options, env = {}) {
     paint()
 
     if (probe && inkBefore && needsPaintVerify) {
-      // #394, the other half: WebKit decodes a large nested raster ASYNCHRONOUSLY at a
-      // subsampling level picked from the draw's scale, so the real draw can ask for a finer
-      // level than the probe saw and paint blank until it lands (measured: probe ink, full
-      // draw 0, both correct 100ms later). So probe AFTER the draw too: blank means wait and
-      // redraw at the same scale. A check before the draw cannot see this. Pinned by the crop
-      // case in __tests__/visual.fidelity.crossengine.test.js, which must stay the first
-      // capture of that sprite in the page (the first decode is the trigger). Real Safari
-      // 26.5.1, 2026-09-02: 100/100 captures identical.
+      // #394: WebKit decodes a large nested raster asynchronously at a level picked from the
+      // draw's scale, so the real draw can come out blank where the probe had ink. Only a probe
+      // AFTER the draw sees it; then wait and redraw at the same scale (real Safari 26.5.1:
+      // 100/100 identical). Pinned by the crop case in
+      // __tests__/visual.fidelity.crossengine.test.js, which must stay that sprite's first capture.
       let ink = true
       try { ink = probe().ink } catch { /* keep the draw */ }
       if (!ink) {

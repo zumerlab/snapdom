@@ -1,12 +1,9 @@
 /**
- * Private provenance for helper nodes snapdom mounts in the live document.
- *
- * Public markers (`data-snapdom-internal`, `data-snapdom-sandbox`, `#snapdom-sandbox`,
- * `data-snapdom="injected-import"`) serve CSS, tests and cleanup, but authors may use the same
- * names, so they prove nothing. Dropping or removing a subtree asks this module's WeakSet.
- *
- * Also tracks snapdom's transient edits to page nodes (`noteSelfWrite`), so their mutation
- * records are not taken for the page changing.
+ * Private provenance for helper nodes snapdom mounts in the live document. Public markers
+ * (`data-snapdom-internal`, `#snapdom-sandbox` and the like) prove nothing, since authors may
+ * use the same names: dropping or removing a subtree asks this module's WeakSet.
+ * Also tracks snapdom's transient edits to page nodes, so their mutation records are not
+ * taken for the page changing.
  * @module utils/ownership
  */
 
@@ -32,7 +29,7 @@ export function isInternalNode(node) {
   return internalNodes.has(node)
 }
 
-/** node -> [what it held before snapdom wrote to it, what snapdom last wrote]. */
+/** node to [what it held before snapdom wrote to it, what snapdom last wrote]. */
 const selfWrites = new WeakMap()
 
 /**

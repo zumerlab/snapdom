@@ -113,11 +113,9 @@ export function stripTranslate(transform) {
 }
 
 /**
- * Swap the layout-zoom wrapper of a capture svg for the 1x one, for an svg that leaves as a
- * file (#552). The svg engine records both wrappers in the session's `fileSvg`: the svg header
- * with the foreignObject tag, the container tag right after the engine's <style>, and the
- * footer. Any other shape (no zoom, or a plugin rewrote the markup after render) comes back
- * unchanged. Pinned by __tests__/engine.svg.layoutZoom.test.js.
+ * Swap the layout-zoom wrapper of a capture svg for the 1x one recorded in `fileSvg`, for an
+ * svg that leaves as a file (#552). Any other shape (no zoom, a plugin rewrote the markup)
+ * comes back unchanged. Pinned by __tests__/engine.svg.layoutZoom.test.js.
  * @param {string} svgText - decoded capture svg
  * @param {{ zoomed: string[], flat: string[] } | null | undefined} fileSvg
  * @returns {string}

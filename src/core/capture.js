@@ -1,9 +1,7 @@
 /**
- * Core capture: element -> finished, self-contained clone.
- *
- * The pipeline splits at the clone. This module owns `element -> clone` (freeze, style
- * snapshot, image and font inlining); turning that clone into pixels belongs to a render
- * engine, and the default one lives in src/engines/svg.js.
+ * Core capture: an element to a finished, self-contained clone.
+ * The pipeline splits at the clone: this module owns element to clone (freeze, style
+ * snapshot, image and font inlining), a render engine owns the pixels (src/engines/svg.js).
  * @module capture
  */
 
@@ -55,18 +53,20 @@ function collectResolveNodeHooks(options) {
 }
 
 /**
- * Captures an HTML element as an SVG data URL, inlining styles, images, backgrounds, and optionally fonts.
- *
+ * Capture an element as an SVG data URL, inlining styles, images, backgrounds and fonts.
  * @param {Element} element - DOM element to capture
  * @param {Object} [options={}] - Capture options
  * @param {boolean|'auto'} [options.embedFonts='auto'] - Font embedding ('auto': only document-declared webfonts actually used)
  * @param {number} [options.scale=1] - Output scale multiplier
  * @param {string[]} [options.exclude] - CSS selectors for elements to exclude
  * @param {boolean} [options.outerTransforms=true] - Keep root translate/rotate; false strips them (keeps scale/skew)
- * @param {boolean|'subtree'} [options.outerShadows=false] - When false, outer-shadow effects (box/text-shadow, outline, drop-shadow) are stripped from the root and add no bleed. Root blur() always renders and always bleeds. 'subtree' additionally widens the capture for the outer-shadow ink DESCENDANTS paint past the root's box (a child's ring drawn against the root's edge), measured per side and bounded by any ancestor that clips.
+ * @param {boolean|'subtree'} [options.outerShadows=false] - false strips the root's outer
+ *   shadows and their bleed (root blur() always renders); 'subtree' also widens for what
+ *   descendants paint past the root's box, bounded by any clipping ancestor
  * @param {boolean|object} [options.compress] - Downsample inlined raster images to their visible resolution
  * @param {boolean} [options.reconcile=false] - Measure the clone against the live DOM and pin diverging boxes (roughly doubles capture time)
- * @param {boolean} [options.burst] - Memoize eligible static captures from the first call. Selection and frame-driven/opaque trees always capture fresh; true overrides only the automatic impure-plugin gate, while false disables memoization.
+ * @param {boolean} [options.burst] - memoize eligible static captures; true overrides only the
+ *   impure-plugin gate (selection and frame-driven trees stay fresh), false disables it
  * @param {import('./session.js').CaptureSession} [session] - this run's session (burst or snapdom.capture creates it)
  * @returns {Promise<string|null>} SVG data URL, or null when the attached plugins declared
  *   a shallower stage (`needs: 'clone'`) and no render artifact was produced
@@ -119,15 +119,13 @@ export async function captureDOM(element, options, session = createCaptureSessio
   // Kept as given rather than coerced: 'subtree' also widens the capture for what descendants
   // paint outside the root's box, and every truthy value means "the root keeps its shadows".
   const outerShadows = state.outerShadows === 'subtree' ? 'subtree' : !!state.outerShadows
-  // Region capture (clip: 'viewport' | {x,y,width,height}). The GEOMETRY window is resolved
-  // once, inside prepareClone (same instant as culling), and returned as clipWindow in
-  // element-local coords. This rect is only a cheap pre-clone PERF filter (lineClamp/fonts).
+  // Only a cheap pre-clone PERF filter (lineClamp, fonts). The GEOMETRY window is resolved in
+  // prepareClone, at the instant culling reads, and comes back as clipWindow.
   const preClipRect = state.clip ? resolveClipRect(state.element, state.clip) : null
 
-  // An animation changes computed styles with no mutation record, so the snapshot cache would
-  // serve an earlier capture's frame. Each target's subtree is dropped before the clone reads
-  // it and again once nothing reads the cache; the second drop asks the shadow roots again,
-  // since the clone has met new ones. A capture that throws in between leaves its reads behind.
+  // An animation changes computed styles with no mutation record, so its targets' snapshots
+  // are dropped before the clone and again after the last cache read; the second drop asks
+  // the shadow roots again, since the clone met new ones.
   // Pinned by `__tests__/core.capture.animationFrames.test.js`.
   let animations = []
   try {
@@ -280,8 +278,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
   })()
 
   let fontsPhase = Promise.resolve()
-  // 'auto' pre-gate: no FontFace registered in the element's document → no webfonts to
-  // embed, skip even the usage walk. Explicit true keeps the full pass unconditionally.
+  // 'auto': no FontFace in the element's document means no webfont to embed, so skip even the
+  // usage walk.
   const fontsWanted = options.embedFonts === 'auto'
     ? ((state.element.ownerDocument || document).fonts?.size || 0) > 0
     : !!options.embedFonts
@@ -329,16 +327,11 @@ export async function captureDOM(element, options, session = createCaptureSessio
   }
 
   await Promise.all([assetsPhase, fontsPhase])
-  // The background pass above was the last reader of the snapshot cache (needsBackgroundInline,
-  // snapshotFor). Dropping the animated reads earlier sends every node under them down the
-  // live-read path there.
+  // Not earlier: the background pass is the last snapshot reader, and would read live.
   dropAnimated()
 
-  // Render engine. Both engines take the same finished clone. The canvas one is opt-in
-  // (`engine: 'html-in-canvas'`) behind a lazy import; on ANY doubt (no drawElementImage,
-  // geometry it does not do, a tainted or blank paint) it returns null and the SVG engine runs
-  // on the same clone. beforeRender/afterRender hooks force SVG: the native bitmap cannot be
-  // handed to them without making a different artifact.
+  // The opt-in canvas engine returns null on ANY doubt, and the SVG engine runs on the same
+  // clone. beforeRender/afterRender hooks force SVG: they cannot get the native bitmap.
   const hasRenderBoundaryHooks = (state.options.plugins || []).some((plugin) => plugin &&
     (typeof plugin.beforeRender === 'function' || typeof plugin.afterRender === 'function'))
   if (state.options.engine === 'html-in-canvas' && !hasRenderBoundaryHooks) {

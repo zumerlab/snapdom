@@ -1,35 +1,16 @@
 /**
- * Second render engine: WICG html-in-canvas (`ctx.drawElementImage`), opt-in through
- * `engine: 'html-in-canvas'`. The browser's OWN painter draws scrollbars and native controls
- * as the page does, with no svg-as-image quirks. It paints the clone, so a control the clone
- * already redraws looks as in the svg engine: `<audio controls>` is a drawn player (#444), and
- * a bare `<progress>` or `<meter>` loses Chromium's native look (Chrome 157, 2026-10-28,
- * docs/labs/into-the-dock/).
+ * Second render engine, opt-in: WICG html-in-canvas (`ctx.drawElementImage`), the browser's own
+ * painter, so scrollbars and native controls look as on the page. A PEER of engines/svg.js: it
+ * paints the same finished clone (cross-origin resources already inlined, which the spec would
+ * leave out of the paint), so plugins, clip and exclude work. Chrome 157 ships it; Firefox and
+ * WebKit fall to svg through `detectDrawApi`. In Chrome 155 live parity put every demo it
+ * accepts at or below the svg engine's mismatch (2026-10-26). Opt-in on speed: ~35 ms on a
+ * card against 3 for svg (BENCHMARKS.md).
  *
- * A PEER OF engines/svg.js: same input, the finished clone. Re-copying the LIVE element is
- * what any page can do with drawElement, and it skipped the passes behind plugins, clip,
- * exclude and reconcile. Mounting the clone with core's CSS gets them all.
- *
- * CONTRACT WITH CORE: core knows only the lazy-import seam in captureDOM. On ANY doubt (API
- * missing, unsupported options, tainted or blank paint) return null and the caller runs the
- * SVG engine on the same clone. Opt-in on the speed goal: the native paint waits for a
- * rendering update, about 35 ms on a card against 3 for svg (BENCHMARKS.md).
- *
- * PLATFORM. Chrome 157 ships it unflagged (MDN BCD: `drawElementImage`, `content="drawable"`,
- * `drawable`, `requestPaint`). Firefox and WebKit have none, so `detectDrawApi` sends them to
- * svg. Live parity in Chrome 155 (2026-10-26) put every demo it accepts at or below the svg
- * engine's mismatch. The spec leaves sensitive content (cross-origin resources, :visited,
- * system colors, IME, subpixel AA) out of the paint, which is why it draws the clone, whose
- * cross-origin images and fonts are already inlined. The taint probe is the safety net.
- *
- * Markup: `drawable` on the drawn element; on the canvas both `content="drawable"` (shipped)
- * and `layoutsubtree` (trial builds through Chrome 155 and forks on them). One rendering
- * update after the mount is the sync point. Never call `canvas.requestPaint()`: in Chrome 155
- * a removed canvas that had requested one crashed the renderer at the next iframe, and
+ * On ANY doubt (API missing, unsupported options, tainted or blank paint) return null and the
+ * caller runs the svg engine on the same clone. Never call `canvas.requestPaint()`: in Chrome
+ * 155 a removed canvas that had requested one crashed the renderer at the next iframe, and
  * toCanvas creates one per decode (2026-10-26).
- *
- * NOT OPTIMIZED: no bbox/bleed math, root expansion or scroll anchoring; `tryCanvasEngine`
- * lists those bails.
  * @module engines/htmlInCanvas
  */
 
@@ -38,9 +19,8 @@ import { isInternalNode, markInternalNode } from '../utils/ownership.js'
 import { adoptShadowCSS } from '../utils/capture.helpers.js'
 
 /**
- * Name the draw method this browser exposes, or null. Null sends every capture to the svg
- * engine, which is where Firefox, WebKit and Chrome before 157 land. The M138 dev-trial
- * name (`drawElement`) is no longer checked: no shipping build has it.
+ * Name the draw method this browser exposes, or null (Firefox, WebKit, Chrome before 157).
+ * The M138 dev-trial `drawElement` is not checked: no shipping build has it.
  * @returns {'drawElementImage'|null}
  */
 export function detectDrawApi() {
@@ -53,18 +33,18 @@ export function detectDrawApi() {
 
 /**
  * Mount the FINISHED CLONE for painting: canvas[layoutsubtree] > wrapper > #shadow > clone.
- *
- * The clone carries its styles as generated classes, so `all:initial` on the wrapper isolates
- * it from the page, as the foreignObject container does in the SVG engine.
- *
- * @param {Element} clone - the finished clone (moved into the mount; the caller still holds
- *   the reference, so a bail can hand it straight to the SVG engine)
+ * `all:initial` on the wrapper isolates it, as the foreignObject container does for svg.
+ * A control the clone redraws looks as in svg: `<audio controls>` is a drawn player (#444), a
+ * bare `<progress>` or `<meter>` loses Chromium's native look (docs/labs/into-the-dock/).
+ * @param {Element} clone - moved into the mount; a bail hands the same node to the SVG engine
  * @param {string} css - baseCSS + scrollbarCSS + fontsCSS + classCSS
  * @param {number} width
  * @param {number} height
  */
 function mountClone(clone, css, width, height) {
   const canvas = document.createElement('canvas')
+  // Both names: `content="drawable"` shipped, `layoutsubtree` for trial builds through Chrome
+  // 155 and the forks on them.
   canvas.setAttribute('layoutsubtree', '')
   canvas.setAttribute('content', 'drawable')
   markInternalNode(canvas)
@@ -77,9 +57,8 @@ function mountClone(clone, css, width, height) {
   wrapper.style.cssText =
     `all:initial;box-sizing:border-box;display:block;overflow:visible;width:${width}px;height:${height}px`
 
-  // Shadow root, as in the svg engine's measurement mounts: a page CSP of `style-src 'self'`
-  // refuses an inline <style> (the clone painted transparent in real Chrome 155, 2026-10-23),
-  // and in the light DOM page rules still reached the clone through its kept class names.
+  // A shadow root: a CSP of `style-src 'self'` refuses an inline <style> (transparent clone in
+  // real Chrome 155), and page rules reached the light DOM clone through its class names.
   const shadow = wrapper.attachShadow({ mode: 'open' })
   adoptShadowCSS(shadow, css)
   shadow.appendChild(clone)
@@ -88,9 +67,8 @@ function mountClone(clone, css, width, height) {
 }
 
 /**
- * Paint a finished clone into a canvas. Returns the canvas, or null when this engine cannot
- * honor the capture (the caller then runs the SVG engine on the same clone).
- *
+ * Paint a finished clone into a canvas, or return null for the SVG engine. Lists the bails:
+ * no bbox/bleed math, root expansion or scroll anchoring here.
  * @param {object} state - capture state: `clone`, `element`, and the assembled CSS strings
  * @param {object} context - normalized capture context
  * @param {import('../core/session.js').CaptureSession} session - receives `artifacts` on success
@@ -114,9 +92,8 @@ export async function tryCanvasEngine(state, context, session) {
       (typeof context.filter === 'function' && context.filterMode === 'remove')) return null
   if (context.width != null || context.height != null) return null
   try {
-    // The mounted clone has none of the ancestors whose transforms/zoom getBoundingClientRect
-    // includes, so those go to the svg engine, along the composed chain (slots, shadow hosts).
-    // A root filter paints past the box and needs the svg bleed math too.
+    // The mount drops the ancestors whose transforms/zoom getBoundingClientRect includes, so
+    // any on the composed chain goes to svg, as does a root filter (bleed).
     for (let box = element; box; box = box.assignedSlot || box.parentElement || box.getRootNode?.().host) {
       const style = getComputedStyle(box)
       if (style.transform && style.transform !== 'none') return null
@@ -156,11 +133,9 @@ export async function tryCanvasEngine(state, context, session) {
   let out
   try {
     canvas.getBoundingClientRect() // force layout of the subtree
-    // One rendering update records the drawable snapshot (no requestPaint, see the header): a
-    // task queued from rAF runs once it has painted, 16 against 33 ms for a double rAF in
-    // Chrome 155 (2026-10-26). Drawing before any snapshot throws into the SVG fallback.
-    // Bounded like toCanvas's frame(): a hidden Chromium 152 window stalled rAF ~2s per
-    // capture (Electron probe, 2026-09-03).
+    // One rendering update records the snapshot (no requestPaint): a task queued from rAF runs
+    // after the paint, 16 against 33 ms for a double rAF (Chrome 155). Bounded: a hidden
+    // Chromium 152 window stalled rAF ~2s per capture (Electron probe, 2026-09-03).
     await new Promise((r) => { requestAnimationFrame(() => setTimeout(r, 0)); setTimeout(r, 50) })
     const ctx2d = canvas.getContext('2d')
     const fn = ctx2d && ctx2d[drawApi]

@@ -1,13 +1,9 @@
 /**
- * Inline url() backgrounds, masks and border-images onto the clone, per node.
- *
- * The style snapshot writes a class rule with `background-image: none` for any remote url()
- * so the shared CSS never points at a resource the svg cannot load. This pass is the one
- * that reads the real value from the live node, fetches it, and puts the data URL on the
- * clone's inline style, together with the layout longhands (position, size, repeat, mask
- * mode) that keep it where it was. Only nodes the snapshot flagged (needsBackgroundInline)
- * are visited, and one with nothing to inline only when author CSS travels with the clone.
- * A fixed-attachment layer is frozen to the viewport slice the user saw.
+ * Inline url() backgrounds, masks and border-images onto the clone, per node. The style
+ * snapshot writes `background-image: none` for any remote url(), so the shared CSS never points
+ * at a resource the svg cannot load; this pass reads the real value live, fetches it and puts
+ * the data URL inline with the longhands that keep it in place. A fixed-attachment layer is
+ * frozen to the viewport slice the user saw.
  * @module background
  */
 import { isFirefox, isIOS } from '../utils/browser.js'
@@ -86,15 +82,9 @@ const BORDER_AUX_PROPS = [
 async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) {
   const style = styleCache.get(srcNode) || getStyle(srcNode)
   if (!styleCache.has(srcNode)) styleCache.set(srcNode, style)
-  // Same-capture snapshot reuse (validated independently by v2 PR #492): most of the ~19
-  // CSSOM reads per flagged node repeat what inlineAllStyles resolved. A prop absent from the
-  // snapshot was pruned as default, so '' skips it. No snapshot (stale stamps, or the Firefox
+  // Reuse this capture's snapshot (validated independently by v2 PR #492): a prop absent from
+  // it was pruned as default, so '' skips it. No snapshot (stale stamps, or the Firefox
   // bg-clip:text fallback) reads live.
-  //
-  // URL-BEARING reads stay LIVE: the snapshot rewrites a non-data url() background-image to
-  // 'none', and this pass inlines the real value (d12-backgrounds moved 2.7% on all three
-  // engines when they read the snapshot). Shorthand fallbacks (#343) are live too, since
-  // snapshots hold longhands only.
   const snap = snapshotFor(srcNode)
   const read = snap
     ? (prop) => (prop in snap ? snap[prop] : '')
@@ -130,6 +120,8 @@ async function inlineBackgroundForNode(srcNode, cloneNode, styleCache, options) 
   // 1) Inline URL-bearing properties
   for (const prop of URL_PROPS) {
     if (skipBackground && prop === 'background-image') continue
+    // URL-bearing reads stay LIVE: the snapshot holds 'none' for a remote url() (d12-backgrounds
+    // moved 2.7% on all three engines when they read it). So does the shorthand fallback.
     let val = style.getPropertyValue(prop)
     // Fallback: when background-image is none/empty, parse url() from background shorthand (#343)
     if ((prop === 'background-image') && (!val || val === 'none')) {
@@ -272,28 +264,16 @@ async function freezeFixedBackground(srcNode, cloneNode, style) {
 const limitPx = (n) => Math.round(n * 100) / 100
 
 /**
- * Inline background images and masks from the source tree onto the clone.
- *
- * The worklist walks the clone (through clone-only wrappers like the scroll-translate one),
- * pairs each node through nodeMap and keeps only those the snapshot flagged with
- * needsBackgroundInline, so unflagged nodes cost nothing. Pairing by child index instead
- * shifted every background one sibling over past a clone-only <svg> of inlined defs (#439).
- * Also runs on the differential path (diff.js) for the rebuilt subtree. Pinned by
- * __tests__/module.background.test.js and __tests__/module.background.masks.test.js.
- *
- * With `plain` (no author CSS travels with the clone), a flagged node whose URL-bearing values
- * all read none, live, is left alone: it was flagged for its colour, and the longhands it would
- * get are the ones its class already gives it. They matter only when a kept `<style>` or a
- * shadow sheet can outrank the class. The test reads live, so a node whose snapshot is behind
- * the page (a `:checked` set through the property, a twin a selector split) is still inlined.
- * Pinned by __tests__/module.background.plain.test.js.
- *
+ * Inline background images and masks onto the clone, for the nodes the snapshot flagged with
+ * needsBackgroundInline. Pair through nodeMap, not child index: a clone-only <svg> of inlined
+ * defs shifted every background one sibling over (#439). Also runs on the differential path
+ * (diff.js). Pinned by __tests__/module.background.test.js and
+ * __tests__/module.background.masks.test.js.
  * @param {HTMLElement} source The original source element.
  * @param {HTMLElement} clone The cloned element receiving inline styles.
  * @param {WeakMap} styleCache
  * @param {Object} [options={}]
- * @param {Map<Node, Node>} [nodeMap] Session clone-to-source map (the capturing session's
- *   own reference; the empty-map default only serves direct test calls).
+ * @param {Map<Node, Node>} [nodeMap] Session clone-to-source map (the empty default serves tests)
  * @param {boolean} [plain] no author CSS travels with the clone (captureDOM decides)
  * @returns {Promise<void>}
  */
@@ -303,6 +283,10 @@ export async function inlineBackgroundImages(source, clone, styleCache, options 
   const jobs = []
   const add = (src, cn) => {
     if (!needsBackgroundInline(src)) return
+    // With no author CSS in the clone, a node flagged only for its colour would get just the
+    // longhands its class gives it. Read live, so a snapshot behind the page (a `:checked` set
+    // through the property, a twin a selector split) still inlines.
+    // Pinned by __tests__/module.background.plain.test.js.
     if (plain && snapshotFor(src)) {
       const style = styleCache.get(src) || getStyle(src)
       if (URL_PROPS.every((prop) => (style.getPropertyValue(prop) || 'none') === 'none') &&

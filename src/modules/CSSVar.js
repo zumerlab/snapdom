@@ -57,10 +57,9 @@ function tplLookup(el) {
 }
 
 /**
- * Resolves var() in the element's inline styles and attributes, materializing the
- * computed value onto the clone. var() applied by stylesheet rules needs no pass of its
- * own: the style snapshot (inlineAllStyles) already captures the resolved values, and
- * SVGs with no snapshot get deepClone's SVG_PAINT_PROPS pass.
+ * Write the computed value of var() in the element's inline style and attributes onto the
+ * clone. Stylesheet var() needs no pass: the style snapshot holds resolved values, and SVGs
+ * with no snapshot get deepClone's SVG_PAINT_PROPS pass.
  * Pinned by __tests__/module.CSSVar.test.js.
  * @param {Element} sourceEl
  * @param {Element} cloneEl

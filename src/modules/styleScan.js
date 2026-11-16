@@ -1,18 +1,13 @@
 /**
  * Stylesheet-driven property universe.
  *
- * A computed property leaves its UA default only through author CSS (rules, inline styles,
- * keyframes) or programmatic animation. One scan of the sheets yields the properties any rule
- * can touch, and the per-node snapshot reads ONLY those plus ALWAYS_PROPS instead of all ~400,
- * the dominant cost of a capture (8-9x faster reads at 45 props, on all three engines). A
- * property outside the universe sits at the UA default the downstream diff drops anyway.
- * Escape hatches:
- * - An unreadable (cross-origin) sheet makes it null and callers read everything, unless the
- *   caller hands scanAuthorStyles a parsed copy (styles.js fetches one per href).
- * - Shadow-root sheets are not part of this scan: styles.js unions them per capture through
- *   scanSheetProps, and shadow content without a capture session keeps full reads.
- * - Element inline-style props are unioned in per node at snapshot time.
- * - Web Animations API keyframe props are unioned in (CSS animations come from rules).
+ * A property leaves its UA default only through author CSS or animation, so the snapshot
+ * reads only what the sheets can touch plus ALWAYS_PROPS, not all ~400 (8-9x faster reads at
+ * 45 props, on all three engines). Escape hatches:
+ * - An unreadable (cross-origin) sheet makes it null (full reads), unless the caller hands a
+ *   parsed copy (styles.js fetches one per href).
+ * - Shadow sheets are unioned per capture (scanSheetProps); without a session, full reads.
+ * - Inline-style props are unioned per node at snapshot time, WAAPI keyframe props here.
  * @module styleScan
  */
 
@@ -191,22 +186,17 @@ function scanRules(rules, universe, pseudoSels, state) {
         if (p.selectorText) sel = sel.replace(/&/g, `:is(${p.selectorText})`)
       }
     }
-    // Selectors that can style two elements with IDENTICAL tag, attributes and ancestors
-    // DIFFERENTLY: position, siblings, interaction/UA state, :has(). Collected, not flagged:
-    // whether one splits twins is a question about the CAPTURED SUBTREE (styleShareSafe asks
-    // it with one querySelector). A document flag turned the share off on every real page:
-    // `.btn:hover` in the host CSS cost a 500-row capture 536k reads instead of 77k. A
-    // substring test, on purpose: a false positive only adds a selector. Every selector inside
-    // @container joins too (twins under parents of different widths resolve it differently),
-    // and so does a rule that MAKES a query container (`10cqw`: a 30px padding painted 10px).
-    // The pseudo-element is stripped first: querySelector never matches
-    // `li:nth-child(odd)::before`, so the gate answered "safe".
+    // Selectors that can split identity twins: position, siblings, UA state, :has(), and every
+    // rule inside or making a query container (`10cqw`: a 30px padding painted 10px).
+    // Collected, not flagged: styleShareSafe asks the CAPTURED SUBTREE, and a document flag over
+    // one `.btn:hover` cost a 500-row capture 536k reads instead of 77k.
     // Pinned by __tests__/module.styles.shareContainerUnits.test.js and sharePseudoGate.test.js.
     if (sel && (container || state.inContainer || SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
       for (const part of splitTopLevel(sel, ',')) {
         const one = part.trim()
         if (one && (container || state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) {
           // `x-card:nth-child(2)::part(title)` splits what two hosts hold: gate it by its host.
+          // Pseudos are stripped: querySelector never matches `li:nth-child(odd)::before`.
           const bare = one.replace(/::part\([^)]*\)/g, '') || '*'
           state.shareUnsafeSels.add(PSEUDO_ELEMENT_SEL_RE.test(bare) ? stripPseudo(bare) : bare)
         }
@@ -300,16 +290,11 @@ export function scanSheetProps(sheet) {
 const CENSUS_NESTED_MAX = 64
 
 /**
- * List what a document scan reads, cheap enough to compare instead of scanning again: per
- * sheet its rule list, length, first and last rule, then the props WAAPI animates. A sheet
- * injected, adopted, loaded or replaced changes a list; a top-level insertRule or deleteRule
- * changes a length or an end. A short sheet also lists each top-level rule's child count,
- * where a library that keeps its rules in a few `@media` or `@layer` groups inserts them.
- *
- * Not seen, left to `invalidate: true`: a rule edited in place, a delete plus an insert that
- * keep the count and both ends, an insert two levels down or in a group of a sheet longer
- * than CENSUS_NESTED_MAX. Null for an unreadable sheet, or one that imports another, whose
- * late load changes nothing listed here.
+ * List what a document scan reads, cheap enough to compare instead of scanning again. A short
+ * sheet also lists each top-level rule's child count, where libraries insert into `@media` or
+ * `@layer` groups. Not seen, left to `invalidate: true`: an in-place edit, a delete plus an
+ * insert keeping the count and both ends, an insert deeper or in a longer sheet. Null for an
+ * unreadable sheet or one with an @import, whose late load changes nothing listed.
  * Pinned by __tests__/module.styles.ruleEpoch.test.js.
  * @param {Document} doc
  * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - as scanAuthorStyles
@@ -360,10 +345,9 @@ export function splitTopLevel(sel, sep) {
 }
 
 /** A necessary condition for `sel` to match an element, as a cheap subtree-presence key:
- *  the first class, else the id, else the tag of its RIGHTMOST compound. null = no usable
- *  key, always a candidate. Tailwind sheets carry thousands of `.hover\:x:hover` rules; all
- *  queried against a 3000-node subtree cost 55 ms (276 ms at 15k), and the index makes the
- *  gate O(nodes + rules). */
+ *  the first class, else id, else tag of its RIGHTMOST compound; null = always a candidate.
+ *  Querying Tailwind's thousands of `.hover\:x:hover` rules against a 3000-node subtree cost
+ *  55 ms (276 ms at 15k); the index makes the gate O(nodes + rules). */
 function subjectKeyOf(sel) {
   let depth = 0, quote = null, cut = 0
   for (let i = 0; i < sel.length; i++) {
@@ -423,33 +407,23 @@ function composePseudoGates(probe, pseudoSels) {
  *  values for privacy, so it cannot split identical elements. */
 const SHARE_UNSAFE_RE = /:(nth-|first-child|last-child|only-|first-of-type|last-of-type|empty|hover|focus|active|target|checked|indeterminate|disabled|enabled|read-only|read-write|placeholder-shown|autofill|valid|invalid|user-valid|user-invalid|in-range|out-of-range|required|optional|default|link|any-link|scope|defined|modal|fullscreen|picture-in-picture|playing|paused|muted|seeking|buffering|stalled|volume-locked|open|popover-open|state\(|dir\(|lang\(|has\()/
 
-/** What in a shadow root's own CSS can style two nodes of one identity differently, tested
- *  on the text: the structural and state selectors above, sibling combinators, container
- *  queries and their units, and the rules that look out of the tree (`:host()`, `::slotted()`).
- *  Hover, focus and active are left out: styleShare asks the host instead, which matches
- *  them whenever something in its tree does. A false positive costs the share, nothing else. */
+/** What in a shadow root's own CSS text can split two nodes of one identity. Hover, focus and
+ *  active are left out: styleShare asks the host, which matches them whenever something in
+ *  its tree does. A false positive costs the share, nothing else. */
 export const SHADOW_SPLIT_RE = new RegExp(SHARE_UNSAFE_RE.source.replace('hover|focus|active|', '') +
   '|[+~]|@container|container-|\\dcq[whibm]|:host(?:-context)?\\(|::slotted\\(|sibling-|random\\(')
 
 /**
- * Scans the document's author styles once: every sheet, the adopted sheets, WAAPI keyframes.
- * Pure; changes.js memoizes it per document and style epoch, and keeps a scan across epochs
- * while sheetCensus reads the same (scanFor).
- *
- * Every field rides the same rule walk:
- * - `universe`: the properties any rule can touch, plus ALWAYS_PROPS. Null when the scan
- *   cannot be trusted (a cross-origin sheet, the budget blown); every field is then unreliable.
- * - `pseudoUniverse`: what a pseudo's snapshot reads (PSEUDO_BOX_PROPS, the inherited props
- *   in the universe, the props pseudo rules declare).
- * - `pseudoGates`: per kind, one selector for `el.matches()`. '' = no rule, skip every node;
- *   null = unreliable, probe every node.
- * - `usesHas`: some rule uses `:has()`, so per-node stamp narrowing is off. True if unreliable.
- * - `leaksAcrossSubtrees`: relational selectors, counters or container queries can restyle
- *   retained nodes. True if unreliable, so differential capture takes the full pipeline.
- * - `shareGate`: the selectors that can split identity twins, each with its subject key for
- *   styleShareSafe's presence index. Null when one cannot be matched (share off).
- * - `marginUnstable` / `paddingUnstable`: a %, auto, calc() or var() value in that family
- *   anywhere, so twins re-read it.
+ * Scan the document's author styles once: sheets, adopted sheets, WAAPI keyframes. Pure;
+ * changes.js memoizes it per epoch and keeps it while sheetCensus reads the same (scanFor).
+ * When the scan cannot be trusted (cross-origin sheet, budget blown) every field is unreliable.
+ * - `universe`: the properties any rule can touch, plus ALWAYS_PROPS; null if unreliable.
+ * - `pseudoUniverse`: what a pseudo's snapshot reads.
+ * - `pseudoGates`: one `el.matches()` selector per kind; '' skips every node, null probes all.
+ * - `usesHas`: a `:has()` rule turns per-node stamp narrowing off.
+ * - `leaksAcrossSubtrees`: a rule can restyle retained nodes, so diff takes the full pipeline.
+ * - `shareGate`: selectors that can split identity twins, with subject keys; null = share off.
+ * - `marginUnstable` / `paddingUnstable`: a %, auto, calc() or var() value; twins re-read it.
  * - `importantProps`: every property some rule declares `!important`.
  * Pinned by __tests__/module.styleScan.test.js.
  * @param {Document} doc

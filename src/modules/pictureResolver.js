@@ -1,10 +1,7 @@
 /**
- * Which URL an <img> is really showing: <picture> sources, srcset candidates, lazy-load
- * attributes.
- *
- * Four pure helpers, no DOM writes. freezeImgSrcset (utils/clone.helpers.js) calls them while
- * building the clone, so a lazy placeholder or a srcset-only image reaches inlineImages with a
- * concrete src, and the page's own src is never touched.
+ * Which URL an <img> is really showing (<picture> sources, srcset candidates, lazy-load
+ * attributes), as pure helpers. freezeImgSrcset (utils/clone.helpers.js) calls them while
+ * building the clone, so inlineImages gets a concrete src and the page's own is never touched.
  * Pinned by __tests__/module.pictureResolver.test.js.
  * @module pictureResolver
  */

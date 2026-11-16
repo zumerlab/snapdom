@@ -62,11 +62,9 @@ export function hasExternalMutation(records) {
  *  @returns {boolean} */
 export function isExternalRecord(rec) {
   if (isOwnedNode(rec.target)) return false
-  // snapdom's own edit of a page node, or its undo (ownership.js), is not the page's. Counted
-  // as one, each capture stamped the neighbourhood of every clamped or content-visibility box
-  // (a 300-node page: 12,839 computed reads for 889, and neither the memo nor the differential
-  // path served it). The sequence still moves, so used values read beside the forced box are
-  // probed.
+  // snapdom's own edit of a page node, or its undo (ownership.js), is not the page's: counted
+  // as one, a 300-node page took 12,839 computed reads for 889 and was never served. The
+  // sequence still moves, so used values beside the forced box are probed.
   // Pinned by __tests__/core.changes.selfWrites.test.js.
   if (rec.type === 'characterData' ? isSelfWrite(rec.target, rec.target.data)
     : rec.attributeName === 'style' && isSelfWrite(rec.target, rec.target.style.cssText)) {
@@ -107,13 +105,10 @@ export function getOutsideMutationCount(element) {
   return (mutationCounts.get(doc) || 0) - (mutationCounts.get(element) || 0)
 }
 
-/** There is no separate rule epoch, on purpose. The scanned universe and the pseudo gates
- *  derive from rule text alone, yet their memo is keyed on epoch. A rule-only epoch was
- *  reverted: three rule sources emit no record (adoptedStyleSheets, a <link> finishing its
- *  load, insertRule), and covering them took a census of every sheet on EVERY capture, which
- *  timed WebKit out under BROWSER=all. So the epoch stays the trigger and the miss is cheap:
- *  scanFor compares sheetCensus (styleScan.js) with the last scan's and keeps that scan while
- *  they match, so the census runs only where a full scan ran.
+/** There is no separate rule epoch, on purpose: three rule sources emit no record
+ *  (adoptedStyleSheets, a <link> finishing its load, insertRule), and covering them took a
+ *  census of every sheet on EVERY capture, which timed WebKit out under BROWSER=all. The epoch
+ *  stays the trigger; on a miss scanFor keeps the last scan while sheetCensus matches.
  *  Pinned by __tests__/module.styles.ruleEpoch.test.js. */
 
 /** Style-ENVIRONMENT epoch: bumps only on <head> mutations and font loads, the events that
@@ -152,29 +147,11 @@ export function invalidateStyleCaches() {
   bumpEnv()
 }
 
-/** Per-node style stamps: how far a DOM mutation is allowed to reach.
- *
- *  A style snapshot is ~340 computed properties per node; dropped document-wide on every
- *  mutation, an unrelated re-render between captures cost a cold pass (73-node card: 1.6ms
- *  became 5.7ms).
- *
- *  A mutation at T can only restyle what a selector reaches from T: the subtree of T's parent
- *  covers descendant selectors, inheritance and sibling combinators, and stamping each
- *  ancestor covers `:has()` reaching up. `:has()` reaching SIDEWAYS (`.a:has(.b) ~ .c`)
- *  restyles a cousin no walk from T visits, so a document whose author rules use `:has()` at
- *  all gets document-wide invalidation.
- *
- *  LAYOUT reaches further than the cascade. A node no selector connects to T can move when T
- *  does, and its snapshot holds used values (its box, a positioned box's offsets, the margins
- *  a flex line hands out): a footer pinned with `bottom: 0` kept its old `top` on every engine
- *  since 3.0.0. So a stamp is necessary, not sufficient: once any stamp moved, getSnapshot
- *  re-reads those values before serving (usedValuesHold), and a box that changed passes the
- *  miss to what resolves against it (the end of getSnapshot). What moves a box with no stamp
- *  moves the clock: an animation (invalidateSnapshotsUnder) and a resource load
- *  (setupInvalidationOnce). Pinned by __tests__/module.styles.usedValues.test.js.
- *
- *  Rule and head changes, font loads, viewport resizes and the invalidate escape hatch are
- *  document-wide and bump env, which the snapshot cache reads with the stamp. */
+/** Per-node style stamps: how far a DOM mutation reaches, so an unrelated re-render does not
+ *  cost a cold snapshot pass (73-node card: 1.6ms became 5.7ms). Necessary, not sufficient:
+ *  layout reaches nodes no selector does (a footer pinned with `bottom: 0` kept its old `top`
+ *  on every engine since 3.0.0), so once any stamp moved getSnapshot re-checks used values
+ *  (usedValuesHold). Pinned by __tests__/module.styles.usedValues.test.js. */
 const nodeStamp = new WeakMap()
 /** Moves the sequence for a change no stamp names (an animation, a resource load): cached
  *  used values are probed again. */
@@ -194,7 +171,9 @@ export function stampSubtree(root) {
   for (let i = 0; i < all.length; i++) nodeStamp.set(all[i], v)
 }
 
-/** Invalidate everything a change at `el` can restyle (see the note above). */
+/** Stamp what a change at `el` can restyle: its parent's subtree (descendants, inheritance,
+ *  siblings) and each ancestor (`:has()` reaching up). `:has()` reaching SIDEWAYS
+ *  (`.a:has(.b) ~ .c`) escapes this, so a `:has()` document never narrows (canNarrow). */
 function invalidateAround(el) {
   stampSubtree(el.parentElement || el)
   for (let p = el.parentElement; p; p = p.parentElement) stampNode(p)
@@ -224,17 +203,10 @@ export function shadowHostsOf(el) {
   return hosts
 }
 
-/** Whether narrowing is sound for this document: no author rule uses `:has()`.
- *
- *  Memoized on env, NOT epoch. The answer derives from rule TEXT alone, and onDomRecords bumps
- *  epoch right before asking, so behind scanFor's epoch memo every external mutation in the
- *  host page (a React commit, a virtualised scroll) paid a full scanAuthorStyles with no
- *  capture in flight, and onInteraction paid it again on every focus and change. Moving the
- *  call above the bump does not help: the previous batch's bump already dropped the entry.
- *
- *  env covers the rule changes that matter: <head> mutations, font loads, resizes and
- *  `invalidate`. The one it misses, a <style>/<link> mounted outside <head>, makes onDomRecords
- *  drop this entry. A failed scan answers "cannot narrow", document-wide and always sound. */
+/** Whether narrowing is sound for this document: no author rule uses `:has()`. Memoized on
+ *  env, NOT epoch: onDomRecords bumps epoch right before asking, so an epoch memo made every
+ *  host-page mutation (a React commit) pay a full scanAuthorStyles with no capture in flight.
+ *  A <style>/<link> outside <head> moves no env, so onDomRecords drops this entry for it. */
 const hasMemo = new WeakMap()
 function canNarrow(doc) {
   doc = doc || document
@@ -264,21 +236,11 @@ function ruleSourceDoc(records) {
   return null
 }
 
-/** Open shadow roots wired into the same invalidation.
- *
- *  Neither the document observer nor stampSubtree (querySelectorAll) crosses a shadow
- *  boundary, so a web component that re-rendered between captures kept its snapshots
- *  forever. Colours too: rewriteShadowCSS emits shadow rules at specificity zero, so the stale
- *  generated class OUTRANKS the re-injected sheet and a `.box` to `.box.active` flip kept the
- *  old colours (verified in pixels; the payload carries the new rule, which loses).
- *
- *  Not in __observers: that prune keys on defaultView, which a ShadowRoot lacks, so it would
- *  disconnect these on the first flush. These prune when the host leaves the document, and
- *  drop the WeakSet entry so a re-attached host is re-armed.
- *
- *  Stamping covers the changed tree and its host's light subtree, since ::slotted and
- *  inheritance through slots restyle assigned nodes and their descendants. Nested shadows
- *  depend on these hosts through their cached shadowHostsOf list. */
+/** Open shadow roots, wired into the same invalidation: neither the document observer nor
+ *  querySelectorAll crosses a shadow boundary. A stale shadow snapshot keeps old colours too:
+ *  rewriteShadowCSS emits rules at specificity zero, so the stale class OUTRANKS the
+ *  re-injected sheet (verified in pixels). Not in __observers: that prune keys on defaultView,
+ *  which a ShadowRoot lacks, so it would disconnect these on the first flush. */
 const shadowObserved = new WeakSet()
 const __shadowObservers = []
 
@@ -292,6 +254,7 @@ function onShadowRecords(records) {
     const root = rec.target.getRootNode && rec.target.getRootNode()
     if (!root || root.nodeType !== 11 || stamped.has(root)) continue
     stamped.add(root)
+    // The host's light subtree too: ::slotted and inheritance through slots restyle it.
     if (root.host) stampSubtree(root.host)
     else seq++
     const all = root.querySelectorAll('*')
@@ -312,11 +275,9 @@ export function observeShadowRoot(root) {
 }
 
 /**
- * Add the animations inside the open shadow roots under `element` to `animations`.
- * `getAnimations({ subtree: true })` stops at a shadow boundary on all three engines, so
- * captureDOM asks each root itself. Only roots a capture already walked are asked, since a
- * node of any other root has no snapshot to go stale, and a page without shadow roots pays
- * an empty loop (3,000 observed roots under the capture root cost 0.5 ms a call in Chromium).
+ * Add the animations inside the open shadow roots under `element` to `animations`:
+ * `getAnimations({ subtree: true })` stops at a shadow boundary on all three engines. Only
+ * roots a capture walked are asked (3,000 of them cost 0.5 ms a call in Chromium).
  * Pinned by `__tests__/core.capture.animationFrames.test.js`.
  * @param {Element} element - the capture root
  * @param {Set<Animation>} animations - collects them
@@ -378,10 +339,8 @@ const __wiredDocs = new WeakSet()
  *  the WeakSet is read once per iframe. */
 let __lastWiredDoc = null
 /** Every observer wired, in any document; `head` ones also bump env. Entries carry their
- *  document so dead ones can be dropped: flushStyleInvalidations walks the list on EVERY
- *  capture, and each <iframe> created, captured and removed (a test suite, an SPA) would leave
- *  two observers forever, a per-capture takeRecords() over every document the page ever
- *  touched: the cost profile that timed WebKit out. */
+ *  document so flushStyleInvalidations, which walks them on EVERY capture, drops removed
+ *  iframes: kept, they grew into a per-capture census, the cost that timed WebKit out. */
 const __observers = []
 export function setupInvalidationOnce(doc = document) {
   if (doc === __lastWiredDoc) return
@@ -411,11 +370,9 @@ export function setupInvalidationOnce(doc = document) {
     view?.addEventListener('resize', onFonts, { passive: true })
   } catch { }
   try {
-    // Interaction pseudo-classes (:focus, :focus-visible, :checked, :disabled) restyle with no
-    // mutation record. focusin/out bubble (focus/blur do not); change covers checkbox, radio
-    // and select. :hover is NOT wired: pointer events fire continuously and would flush the
-    // snapshot cache on every move. Each bumps the epoch AND stamps the neighbourhood, because
-    // the snapshot cache reads stamps, not the epoch.
+    // Interaction pseudo-classes (:focus, :checked, :disabled) restyle with no record, and the
+    // snapshot cache reads stamps, so each event stamps too. focusin/out bubble, focus/blur do
+    // not. :hover is NOT wired: pointer events would flush the snapshot cache on every move.
     const onInteraction = (event) => {
       bumpEpoch()
       // Document listeners see a shadow event retargeted to its host. The first composed
@@ -530,6 +487,7 @@ export function flushStyleInvalidations() {
       const { o, root } = __shadowObservers[i]
       if (!root.host || !root.host.isConnected) {
         try { o.disconnect() } catch { }
+        // So a re-attached host is re-armed.
         shadowObserved.delete(root)
         __shadowObservers.splice(i, 1)
         continue
@@ -544,15 +502,14 @@ export function flushStyleInvalidations() {
  *  epoch miss while the sheet census and the env epoch stand (see the rule-epoch note above
  *  getStyleEnvEpoch). A capture reads it through scanOf, never directly. */
 const universeCache = new WeakMap()
-/** href -> the rules of a parsed copy, or null while it loads or when it cannot be read. */
+/** href to the rules of a parsed copy, or null while it loads or when it cannot be read. */
 const crossOriginCopies = new Map()
 
-/** Read a cross-origin sheet through a fetched copy. One unreadable sheet makes the scan
- *  unreliable: a Google Fonts <link> alone turned off the universe, the pseudo gates, the share
- *  and stamp narrowing, so any mutation on the page (a ticking counter) re-captured every
- *  memoized element. The first scan stays unreliable; the copy lands, bumps both epochs like a
- *  font load, and later scans read it. A copy with @import stays unreliable, since replaceSync
- *  drops those rules. Pinned by __tests__/module.styles.crossOriginScan.test.js.
+/** Read a cross-origin sheet through a fetched copy, which lands later and bumps both epochs.
+ *  One unreadable sheet (a Google Fonts <link>) turns off the universe, the pseudo gates, the
+ *  share and stamp narrowing, so a ticking counter re-captured every memo. A copy with @import
+ *  stays unreliable: replaceSync drops those rules.
+ *  Pinned by __tests__/module.styles.crossOriginScan.test.js.
  *  @param {CSSStyleSheet} sheet
  *  @returns {CSSRuleList|null} */
 function crossOriginRules(sheet) {
@@ -598,20 +555,17 @@ export function scanFor(doc) {
   return rec
 }
 
-/** The document scan one capture reads, pinned on its clone session at the first read with
- *  its env epoch (getSnapshot stores that epoch, so a snapshot read under a pin the page has
- *  moved past is stale for the next capture). The base reset and the snapshots must be pruned
- *  by the same universe: a reset prop no snapshot read overrides the class value (a resolved
- *  black `-webkit-text-fill-color` over a white `color`), and a snapshot prop the reset does
- *  not restate is inherited (#554: a black child took its pink parent's fill). The scan can
- *  change mid-capture: a Google Fonts copy (crossOriginRules) can land in the fonts phase.
- *  Pinned by __tests__/regression.resetUniverse.test.js.
+/** The document scan one capture reads, pinned on its clone session: the base reset and the
+ *  snapshots must be pruned by the same universe, or the reset overrides a class value or
+ *  misses one that is then inherited (#554), and a Google Fonts copy (crossOriginRules) can
+ *  land mid-capture. Pinned by __tests__/regression.resetUniverse.test.js.
  *  @param {Document} doc
  *  @param {object|null} [session] - the capture's sessionCache; none reads the current scan */
 export function scanOf(doc, session) {
   if (!session) return scanFor(doc)
   if (!session.scan) {
     session.scan = scanFor(doc)
+    // getSnapshot stores it: a snapshot read under a pin the page moved past is stale next time.
     session.scanEnv = env
   }
   return session.scan

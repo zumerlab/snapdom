@@ -8,9 +8,7 @@
  *   { name: 'agent-map', needs: 'clone' }          // annotates the clone, no pixels
  *   { name: 'ascii-export' }                       // default: 'render', the full pipeline
  *
- * The clone is the floor. A stage before it ('dom') was removed: a capture without a clone
- * captures nothing, and the one thing such a plugin needed from core, the exclusion policy,
- * is on the context as `shouldExclude` at any stage.
+ * The clone is the floor: the exclusion policy is on the context (`shouldExclude`) at any stage.
  *
  *  1. The capture runs to the MAXIMUM the attached plugins declare, 'render' by default, so
  *     a plugin lowers it only when every other plugin agrees.
@@ -70,9 +68,8 @@ export function stageReaches(stage, wanted) {
 }
 
 /**
- * For plugin authors: validate the stage a caller asked this plugin to run at, so every
- * plugin rejects a bad value the same way and with the same words. Re-exported from
- * `@zumer/snapdom/plugins`.
+ * For plugin authors: validate the stage a caller asked for, so every plugin rejects a bad
+ * value with the same words. Re-exported from `@zumer/snapdom/plugins`.
  *
  *   export function myPlugin({ needs } = {}) {
  *     return { name: 'my-plugin', needs: assertNeeds('my-plugin', needs, ['clone', 'render']) }

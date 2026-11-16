@@ -1,12 +1,10 @@
 /**
- * deepClone: a live subtree to a detached clone, one node at a time, with each element's
- * computed style inlined as it goes.
- *
- * Owns what cloneNode cannot copy: exclusion and clip culling, the per-tag strategies for
- * iframe, canvas, video, audio and object/embed, form-control state (properties, not
- * attributes), shadow roots and slots. The contract: every element clone is registered in
- * `sessionCache.nodeMap`, keyed clone to source. A replacement outside the map is invisible to
- * the pseudo, background and image passes; a culled subtree stays out of it on purpose.
+ * deepClone: a live subtree to a detached clone, each element's computed style inlined.
+ * Owns what cloneNode cannot copy: exclusion and clip culling, iframe, canvas, video, audio
+ * and object/embed, form-control state, shadow roots and slots.
+ * Contract: every element clone goes into `sessionCache.nodeMap`, clone to source. A
+ * replacement outside it is invisible to the pseudo, background and image passes; a culled
+ * subtree stays out on purpose.
  * @module clone
  */
 
@@ -36,11 +34,8 @@ import { cloneTextWithSelection, inlineTextFieldSelection } from '../modules/sel
 import { isInternalNode } from '../utils/ownership.js'
 import { sessionWarn } from '../utils/debug.js'
 
-// #535: what an author rule can set on an SVG shape besides paint. Shapes get no style snapshot
-// (NO_DEFAULTS_TAGS keeps LeaderLine's attributes from being overwritten by defaults), so a
-// rule's `r`, `d`, `transform` or `vector-effect` reached the clone only through the copy in
-// deepClone. Per tag, the CSS properties that apply to it; the transform group to every
-// element that takes a transform.
+// #535: what an author rule can set on an SVG shape besides paint, per tag. Shapes get no
+// style snapshot (NO_DEFAULTS_TAGS keeps LeaderLine's attributes), so deepClone copies these.
 const SVG_TRANSFORM_PROPS = ['transform', 'translate', 'rotate', 'scale', 'transform-origin', 'transform-box']
 const SVG_GEOMETRY_BY_TAG = {
   circle: ['cx', 'cy', 'r', 'vector-effect'],
@@ -119,12 +114,9 @@ function sameSvgTransform(node, value) {
 }
 
 /**
- * Copy the computed geometry/transform props in `list` that a rule set: the value differs from
- * the element's own attribute (which the clone already carries), or, with no attribute, from
- * the initial value. Nothing is written for a shape whose attributes drive it, so the clone of
- * an attribute-only SVG is unchanged. transform-origin and transform-box only matter, and are
- * only read, on an element that has a transform (from a rule or its attribute).
- * Pinned by __tests__/core.clone.svgCssGeometry.test.js.
+ * Copy the geometry/transform props in `list` that a rule set, meaning the computed value
+ * differs from the attribute, or from the initial value when there is none. An
+ * attribute-only SVG clones unchanged. Pinned by __tests__/core.clone.svgCssGeometry.test.js.
  */
 function copySvgGeometry(node, clone, cs, list) {
   let moved = false
@@ -172,11 +164,9 @@ function makeHideSpacer(node) {
     const size = parseFloat(value)
     if (!Number.isFinite(size) || size < 0) return null
     if (style.boxSizing === 'border-box') return size
-    // Blink and WebKit resolve a content-box scroller's `width`/`height` WITHOUT its classic
-    // scrollbar (WebKit: 185px for `width:200px;overflow:scroll`), Gecko keeps the scrollbar
-    // inside the resolved value, and the spacer has no scrollbar to lose. Offset minus client
-    // minus the borders is that scrollbar (0 for an overlay or absent one); it goes back only
-    // where the resolved size fell short of the client box, so neither engine counts it twice.
+    // Blink and WebKit resolve a content-box scroller's width WITHOUT its classic scrollbar
+    // (WebKit: 185px for `width:200px;overflow:scroll`), Gecko with it. Add the gutter back
+    // only where the size fell short of the client box, so no engine counts it twice.
     const gutter = offset - client - border
     return size + padding + border + (gutter > 0 && size + padding < client + gutter / 2 ? gutter : 0)
   }
@@ -253,10 +243,8 @@ function generatesPseudo(el, gate, pseudo) {
 }
 
 /**
- * How far the element's own painting can reach outside its border box. A box with a
- * generated ::before/::after keeps the full CLIP_CULL_MARGIN: its pseudos are not in its
- * rect. One em covers glyph overhang and focus rings; list items get room for an outside
- * marker.
+ * How far the element's painting can reach outside its border box. A generated
+ * ::before/::after gets the full CLIP_CULL_MARGIN, since it is not in the rect.
  * @param {Element} el
  * @param {CSSStyleDeclaration} cs
  * @param {{root: Element}} clip
@@ -297,12 +285,9 @@ function reachesClip(el, cs, b, clip) {
 }
 
 /**
- * Clip mode: true when the node paints entirely outside the clip window and its whole
- * subtree can be pruned. Conservative: keeps zero-sized boxes (display:contents, anchors),
- * non-replaced inline boxes (no fixed-size husk can hold their flow slot), extends the box
- * by scroll overflow in the writing direction, and scans descendants' painted boxes so
- * out-of-flow escapees (fixed widgets, portal-less modals, negative offsets, transforms)
- * keep their ancestor chain alive.
+ * Clip mode: true when the node and its whole subtree paint outside the window. Keeps
+ * zero-sized boxes and non-replaced inlines (no fixed-size husk holds their slot), and any
+ * box with a descendant that escapes into the window (fixed widgets, negative offsets).
  * @param {Element} node
  * @param {{rect: {left:number,top:number,right:number,bottom:number}, root: Element}} clip
  * @returns {boolean}
@@ -401,11 +386,9 @@ function nextInFlow(a, b) {
   return false
 }
 
-/** The live distance to the previous (dir -1) or next (dir 1) in-flow sibling, the margin
- *  block flow collapsed between them. null when there is none, the margins overlap, a line
- *  box sits between, or the sibling's rect is not its layout box: a display:contents wrapper
- *  or a stuck sticky panel gave a culled toolbar a 463px margin on a page scrolled 549px, and
- *  a gap read across a line moved the line down by its height. */
+/** The live collapsed margin to the previous (dir -1) or next (dir 1) in-flow sibling. null
+ *  across a line box or when the sibling's rect is not its layout box: a stuck sticky panel
+ *  gave a culled toolbar a 463px margin on a page scrolled 549px. */
 function siblingGap(el, r, dir) {
   let sib = dir < 0 ? el.previousSibling : el.nextSibling
   for (; sib; sib = dir < 0 ? sib.previousSibling : sib.nextSibling) {
@@ -424,15 +407,13 @@ function siblingGap(el, r, dir) {
 }
 
 /**
- * Fold the runs of culled block siblings under one clone parent. A run's first husk becomes a
- * spacer as tall as the live run, a plain block whatever author rule matches it: an author
- * `overflow:hidden` made it a BFC that dodged a float and dropped the window one float lower.
- * The rest are dropped, or kept as display:none shells when author styles travel with the
- * clone, so sibling selectors match the same elements. Whitespace and comments between go too.
+ * Fold each run of culled block siblings into one spacer as tall as the live run. The spacer
+ * is a plain block whatever rule matches it: an author `overflow:hidden` made it dodge a float
+ * and dropped the window one float lower. Shells keep sibling selectors matching.
  * @param {Element} parent - a clone parent of husks
- * @param {Map<Element, Element>} husks - husk -> culled source; folded husks are removed
+ * @param {Map<Element, Element>} husks - husk to culled source; folded husks are removed
  * @param {boolean} shells - keep the folded husks as display:none shells
- * @param {Map<Element, Element>} standIns - gets first and last member -> spacer
+ * @param {Map<Element, Element>} standIns - gets first and last member to spacer
  */
 function foldClipRuns(parent, husks, shells, standIns) {
   const kids = [...parent.childNodes]
@@ -482,16 +463,14 @@ function foldClipRuns(parent, husks, shells, standIns) {
 }
 
 /**
- * Give every husk deepClone left its layout slot, once the whole tree is cloned. A run of
- * culled block siblings folds into one spacer measured live (foldClipRuns), one box per run
- * instead of per card (#549): the 800-card scene in __tests__/clip.benchmark.js went from
- * 19.6 to 7.8 ms. The live span also keeps the fractions offset sizes round away, where 200
- * culled 30.4px blocks moved the window 80px. Other husks go through dressClipHusk.
+ * Give every husk its layout slot once the tree is cloned. Runs fold into one live-measured
+ * spacer (#549: 800 cards in __tests__/clip.benchmark.js, 19.6 to 7.8 ms), which also keeps
+ * the fractions offset sizes drop (200 culled 30.4px blocks moved the window 80px).
  * Pinned by __tests__/core.clip.test.js.
  * @param {Element|null} clone - the root clone
  * @param {Object} sessionCache
  * @param {Object} options
- * @returns {Map<Element, Element>|null} culled source -> the husk or spacer standing in for it
+ * @returns {Map<Element, Element>|null} culled source to the husk or spacer standing in for it
  */
 export function finishClipHusks(clone, sessionCache, options) {
   const husks = sessionCache.clip?.husks
@@ -513,12 +492,9 @@ export function finishClipHusks(clone, sessionCache, options) {
 const PLAIN_HUSK_DISPLAY = /^(block|flow-root|list-item|flex|grid|inline-block|inline-flex|inline-grid|inline)$/
 
 /**
- * Layout-preserving husk: a frozen box, hidden. A plain in-flow box (PLAIN_HUSK_DISPLAY, no
- * float or clearance, counters, anchor name, zoom or vertical writing mode) gets only what
- * places it: display, margins, what makes it a BFC (overflow, contain, columns), baseline
- * alignment and its grid/flex slot. A Zumly board window (47 culled grid tiles) went from
- * 5.9 ms to 3.5 ms and 79 to 33 KB, pixel-identical on all three engines. Every other husk
- * gets the original's computed style. Pinned by __tests__/core.clip.test.js.
+ * A frozen, hidden box. A plain in-flow box gets only what places it, not its full computed
+ * style: a Zumly board window (47 culled tiles) went from 5.9 ms to 3.5 ms, pixel-identical
+ * on all three engines. Pinned by __tests__/core.clip.test.js.
  * @param {Element} husk
  * @param {Element} node
  * @param {Object} sessionCache
@@ -557,12 +533,10 @@ function dressClipHusk(husk, node, sessionCache, options) {
     husk.style.maxHeight = `${height}px`
   }
   husk.style.visibility = 'hidden'
-  // Do NOT add overflow:hidden: a BFC un-collapses margins with neighbours, and 68 husks moved
-  // deep-scroll Wikipedia +812px. The husk is empty anyway.
-  // An empty husk loses the child margins that collapsed THROUGH its edges (16px per husked
-  // Wikipedia <section>), so both edges take the LIVE gap: adjoining margins collapse to their
-  // max, which the live gap already is. In-flow blocks in block flow only; flex/grid/table
-  // parents, floats and inline-level boxes do not collapse, and their inlined margins hold.
+  // Do NOT add overflow:hidden: a BFC un-collapses margins, and 68 husks moved deep-scroll
+  // Wikipedia +812px.
+  // An empty husk loses the child margins that collapsed through it (16px per Wikipedia
+  // <section>), so block-flow husks take the LIVE gap on both edges.
   const parentDisplay = node.parentElement ? getStyle(node.parentElement).display : ''
   if (!/flex|grid|table/.test(parentDisplay) && !cs.display.startsWith('inline') && cs.float === 'none' &&
       (cs.position === 'static' || cs.position === 'relative')) {
@@ -577,11 +551,9 @@ function dressClipHusk(husk, node, sessionCache, options) {
 }
 
 /**
- * Clone one node and its subtree for capture, inlining each element's computed style.
- * Returns null for what the capture drops (the sandbox, NO_CAPTURE_TAGS, 'remove' exclusions,
- * a nested foreignObject, a <picture>'s <source>), a spacer or husk for a node that keeps its
- * box but not its content, a DocumentFragment for a <slot>, otherwise the clone. Children
- * clone concurrently; a child whose clone throws is dropped.
+ * Clone one node and its subtree, inlining each element's computed style. Returns null for a
+ * dropped node, a spacer or husk for one that keeps only its box, a DocumentFragment for a
+ * <slot>. A child whose clone throws is dropped.
  * @param {Node} node
  * @param {object} sessionCache - the per-capture maps, built by prepareClone
  * @param {object} options - the capture context
@@ -685,12 +657,10 @@ export async function deepClone(node, sessionCache, options) {
       debugWarn(options, 'Your filter function threw; the element was kept.', err)
     }
   }
-  // #507: nothing under display:none paints, and clip mode never prunes it (0x0 box). A menu of
-  // 800 hidden items under 40 visible cards: 40.4 ms to 5.8 ms, 0 px diff. The emptied shell
-  // keeps the tag for :nth-child and sibling rules, and keeps its <style> clones, which travel
-  // into the SVG (prepare.js). Exempt: <style>, display:none in every UA sheet; <option>,
-  // whose hidden selected placeholder is its <select>'s label; and SVG, where a shell keeping
-  // an id stops svgDefs copying the def a <use> points at. Like the clip husk, not in nodeMap.
+  // #507: nothing under display:none paints (800 hidden menu items: 40.4 ms to 5.8 ms). The
+  // shell keeps :nth-child matching and its <style> clones. Exempt: <style> (display:none in
+  // every UA sheet), <option> (a hidden selected one is its <select>'s label) and SVG (an
+  // emptied def breaks svgDefs).
   // Pinned by `__tests__/core.clone.hiddenSubtree.test.js`.
   if (node !== options.element && !HIDDEN_CLONED_TAGS.has(node.localName) && !isSVGEl(node) &&
       getStyle(node).display === 'none') {
@@ -1019,11 +989,9 @@ export async function deepClone(node, sessionCache, options) {
     }
     const scopes = sessionCache.shadowScopes ||= new WeakMap()
     // #558: roots with the same sheet share one rewritten copy, a group token in `data-sd`
-    // (sixteen components on one 5,000-rule sheet: svg 9.9 MB to 0.6 MB, capture 116 ms to 9).
-    // Each host keeps its own custom-property seed, keyed on its whole `data-sd`. Only hosts
-    // at the same depth (shadow hosts above) share: prepare.js writes shallow first, so a
-    // host's own rules follow those from above, and two hosts of a group never nest, so a
-    // slotted mark means one thing. Pinned by __tests__/core.clone.issue558.test.js.
+    // (sixteen components on a 5,000-rule sheet: 116 ms to 9). Only hosts at the same depth
+    // share, so prepare.js's shallow-first order holds and group members never nest.
+    // Pinned by __tests__/core.clone.issue558.test.js.
     let depth = 0
     for (let p = node; (p = p.assignedSlot || p.parentNode || (p.nodeType === 11 ? p.host : null));) {
       if (p.shadowRoot && scopes.has(p.shadowRoot)) depth++
@@ -1082,12 +1050,9 @@ export async function deepClone(node, sessionCache, options) {
     return fragment
   }
 
-  // A shadow host renders its light DOM only through slots: skip a child cloned at its slot
-  // and one no slot accepted, which paints nothing (cloned, it showed content the page never
-  // shows, twice for a component that copies its light DOM into its shadow tree).
-  // Text and comment children clone in place, saving deepClone's slicer check and promise;
-  // selected text still goes through it. The array snapshot stays: a resolveNode hook in the
-  // loop may mutate the source.
+  // A shadow host's light DOM paints only through slots: a child no slot accepted would show
+  // content the page never shows. The array snapshot stays: a resolveNode hook may mutate the
+  // source.
   const list = []
   let pending = false
   for (const child of Array.from(node.childNodes)) {
@@ -1199,12 +1164,8 @@ export function isBlankCanvas(node) {
   }
 }
 
-/** <canvas> to <img>. The order of the reads inside is the whole point: the canvas is read
- *  before it is asked for a context, so a canvas the page has not initialized keeps its mode,
- *  and a WebGL frame is read inside the frame that drew it (#480). */
-/** JPEG quality for an opaque video frame. Measured 2026-09-03 on a 1280x720 VP9 frame against
- *  the PNG of the same frame: mean error 1.6 levels, max 25, 0.9% of pixels off by more than 8,
- *  where the video codec itself had already moved the frame 21 levels from its source. */
+/** JPEG quality for an opaque video frame: on a 1280x720 VP9 frame, mean error 1.6 levels
+ *  against PNG, where the codec had already moved it 21. */
 const FRAME_QUALITY = 0.95
 
 /**
@@ -1240,6 +1201,8 @@ function clearsEachFrame(node) {
   }
 }
 
+/** <canvas> to <img>. The read order is the point: pixels before any context, so an
+ *  uninitialized canvas keeps its mode, and a WebGL frame inside the frame that drew it (#480). */
 async function cloneCanvas(node, sessionCache, options) {
   // Safari-safe snapshot: poke + rAF + retry + scratch fallback
   let url = ''
@@ -1341,12 +1304,10 @@ async function cloneVideo(node, sessionCache, options) {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.drawImage(node, 0, 0, canvas.width, canvas.height)
-        // The video was lossy already, so an opaque frame goes out as JPEG (1280x720 VP9
-        // frame: 153 KB against 709 KB). A frame with alpha keeps PNG.
+        // An opaque frame goes out as JPEG (1280x720 VP9 frame: 153 KB against 709 KB).
         // Pinned by __tests__/core.clone.videoFrame.test.js.
-        // Encoded synchronously, not in the compress pool: on a page with its own render loop
-        // each pool reply waits a frame (liquidGL's home: 48 ms idle per capture). toBlob is
-        // idle-scheduled in every engine and starves the same way.
+        // Synchronous, not in the compress pool or toBlob: on a page with its own render loop
+        // each reply waits a frame (liquidGL's home: 48 ms idle per capture).
         url = canvas.toDataURL(frameIsOpaque(ctx, canvas.width, canvas.height) ? 'image/jpeg' : 'image/png', FRAME_QUALITY)
         if (!url || url === 'data:,') url = '' // 'data:,' is a 0x0 canvas
       }
@@ -1425,9 +1386,9 @@ async function cloneObjectEmbed(node, sessionCache, options) {
     if (height > 0) img.style.height = `${height}px`
     sessionCache.nodeMap.set(img, node)
     inlineAllStyles(node, img, sessionCache, options)
-    return img // fallback children deliberately dropped — both would paint otherwise
+    return img // fallback children dropped on purpose, or both would paint
   }
-  // Same-origin embedded document (e.g. text/html object) → rasterize like an iframe.
+  // A same-origin embedded document (a text/html object) rasterizes like an iframe.
   let doc = null
   try { doc = node.contentDocument } catch { /* cross-origin */ }
   if (doc) {

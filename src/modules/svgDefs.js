@@ -11,16 +11,13 @@
 import { isSVGEl } from '../utils/helpers.js'
 
 /**
- * Copy every external def or symbol the clone references into a hidden <svg> at its top.
- *
- * References: `<use href="#id">` (any namespace or prefix), and `url(#id)` in presentation
- * attributes and inline styles (fill, stroke, filter, clip-path, mask, marker-*), the root <svg>
- * included. HTML elements reach defs through CSS, visible only in the live source's computed
- * style (see collectHtmlReferences). Copied defs are walked for their own references, each id
- * once. No layout reads: DOM queries and cloneNode only. Pinned by
- * __tests__/module.svg.test.js and, in pixels, __tests__/module.svgDefs.htmlRefs.test.js.
+ * Copy every external def or symbol the clone references into a hidden <svg> at its top:
+ * `<use href>` in any namespace or prefix, and `url(#id)` in attributes and inline styles, the
+ * root <svg> included. Copied defs are walked for their own references. No layout reads.
+ * Pinned by __tests__/module.svg.test.js and, in pixels,
+ * __tests__/module.svgDefs.htmlRefs.test.js.
  * @param {Element} element - the clone: an <svg>, or a container holding one or more
- * @param {Document|ParentNode} [lookupRoot] - where the external defs are searched (element.ownerDocument by default)
+ * @param {Document|ParentNode} [lookupRoot] - where external defs are found (ownerDocument)
  * @param {Element} [htmlSource] - the LIVE capture root, for references made through CSS
  */
 export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
@@ -147,11 +144,10 @@ export function inlineExternalDefsAndSymbols(element, lookupRoot, htmlSource) {
   }
 
   /**
-   * HTML elements reach the same defs through CSS: a class-based `filter: url(#f)` lives only
-   * in the source's computed style, never on the clone, hence the live root parameter.
-   * Gated on the document holding a def CSS can reference, so nearly every page pays one
-   * querySelector. `symbol` stays out of that list on purpose: sprites are all <symbol>,
-   * reached through <use href>, and would put every sprite page through the walk for nothing.
+   * HTML elements reach defs through CSS: a class-based `filter: url(#f)` exists only in the
+   * live source's computed style. Gated on the document holding a def CSS can reference. Keep
+   * `symbol` out of that list: sprites are reached through <use href>, and every sprite page
+   * would pay the walk for nothing.
    */
   const collectHtmlReferences = (root) => {
     if (!root || root.nodeType !== 1 || !root.querySelectorAll) return

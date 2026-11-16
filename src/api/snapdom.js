@@ -81,20 +81,10 @@ const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
 /**
  * Capture an element and return the result object with its exporters.
  * Local-first plugins: `options.plugins` override globals for this capture.
- *
  * @param {HTMLElement} element - The DOM element to capture.
  * @param {object} [userOptions] - Options for rendering/exporting.
- * @returns {Promise<object>} Object with exporter methods:
- *   - url: The raw data URL
- *   - toRaw(): Gets raw data URL
- *   - toImg(): Converts to Image element
- *   - toSvg(): Converts to SVG Image element
- *   - toCanvas(): Converts to HTMLCanvasElement
- *   - toBlob(): Converts to Blob
- *   - toPng(): Converts to PNG format
- *   - toJpg(): Converts to JPEG format
- *   - toWebp(): Converts to WebP format
- *   - download(): Triggers file download
+ * @returns {Promise<object>} `url`, `toRaw`, `toImg`, `toSvg`, `toCanvas`, `toBlob`, `toPng`,
+ *   `toJpg`, `toWebp`, `download`, plus plugin exports
  */
 async function main(element, userOptions) {
   if (!element) throw new Error('[SnapDOM] The element cannot be null or undefined.')
@@ -118,11 +108,9 @@ async function main(element, userOptions) {
   context.__needsLoweredBy = loweredBy
   const rendersPixels = stageReaches(stage, 'render')
 
-  // Unset burst auto-enables from the first capture. Render plugins suspend it (a memo serve
-  // skips their hooks) unless burst:true or they are `pure: true`. Selection and frame-driven
-  // trees stay fresh even under true. Capture callbacks (filter, exclude, style, fallback)
-  // may read outside state, so they always rerun the pipeline. Decide before Safari's awaited
-  // pre-step: a capture begun in a press/click handler belongs to that event task.
+  // Render plugins suspend auto burst (a memo serve skips their hooks) unless burst:true or
+  // `pure: true`. Capture callbacks may read outside state, so they always rerun. Decide before
+  // Safari's awaited pre-step: a capture begun in a press handler belongs to that event task.
   const pluginAllowsMemo = context.burst === true || !hasImpureRenderPlugins(context)
   const hasCaptureCallbacks = typeof context.filter === 'function' || !!context.excludePredicates ||
     typeof context.excludeStyleProps === 'function' || typeof context.fallbackURL === 'function'
@@ -154,8 +142,7 @@ async function main(element, userOptions) {
 }
 
 /**
- * Internal capture method that returns helper methods for transformation/export.
- * Integrates export hooks: beforeExport → work() → afterExport → afterSnap(once per URL)
+ * Internal capture: the Safari pre-step, captureDOM, then buildResult.
  * @private
  * @param {HTMLElement} el - The DOM element to capture.
  * @param {object} context - Normalized context options.
@@ -166,11 +153,9 @@ async function main(element, userOptions) {
 snapdom.capture = async (el, context, _token, session = createCaptureSession(context)) => {
   if (_token !== INTERNAL_TOKEN) throw new Error('[SnapDOM] snapdom.capture() is internal; use snapdom(el).')
 
-  // Safari pre-step: wait for the fonts the element uses and poke GPU-backed <canvas> stores
-  // so cloneCanvas's toDataURL is not blank. WebKit #219770's blank first draw is handled by
-  // toCanvas's verified-draw ladder, not here. Only on a real capture that reaches the
-  // render: a memo hit already passed invalidation in burst.
-  // Pinned by __tests__/api.safari.memoPreparation.test.js.
+  // Safari pre-step: wait for used fonts and poke GPU-backed <canvas> stores so cloneCanvas's
+  // toDataURL is not blank (WebKit #219770's blank first draw is toCanvas's job). Not on a memo
+  // hit. Pinned by __tests__/api.safari.memoPreparation.test.js.
   if (stageReaches(context.needs || DEFAULT_STAGE, 'render') && isSafari()) {
     if (context.embedFonts) {
       try {
@@ -202,9 +187,8 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
     for (const c of canvases) {
       try {
         // Only poke a canvas that already HAS a context: getContext('2d') on a fresh one fixes
-        // its mode, and the app's later getContext('webgl') returns null. A canvas with
-        // content has a context; isBlankCanvas reads through a scratch canvas and binds
-        // nothing. cloneCanvas keeps its own rAF + retry ladder.
+        // its mode and the app's later getContext('webgl') returns null. isBlankCanvas binds
+        // nothing (it reads through a scratch canvas).
         if (isBlankCanvas(c)) continue
         const ctx = c.getContext('2d', { willReadFrequently: true })
         if (ctx) ctx.getImageData(0, 0, 1, 1)
@@ -219,12 +203,9 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
 }
 
 /**
- * Builds the exporter-result object for a capture URL (core exports, plugin exports,
- * to<Format> helpers, hooks). Shared by snapdom.capture and burst's differential
- * recapture, which produces a fresh URL without re-running captureDOM.
+ * Build the result object for a capture URL. Burst's differential recapture calls it too.
  * @private
- * @param {string|HTMLCanvasElement|null} url - the capture: an svg data URL, the
- *   html-in-canvas bitmap, or null when the stage stopped before the render
+ * @param {string|HTMLCanvasElement|null} url - svg data URL, engine bitmap, or null before render
  * @param {object} context - normalized capture context
  * @param {import('../core/session.js').CaptureSession} session - the run that made `url`
  * @returns {Promise<object>}
@@ -237,9 +218,8 @@ async function buildResult(url, context, session) {
   const rendered = stageReaches(stage, 'render')
   const absent = (what) => absentArtifactError(stage, context.__needsLoweredBy || [], what)
 
-  // engine:'html-in-canvas' hands back the bitmap. Pixel exports draw it directly (an eager
-  // PNG cost 62 vs 4 ms on a card, 2026-09-03); url and toRaw mint the PNG once, on first
-  // read. Image and download exporters encode on their own, so their size and codec win.
+  // An html-in-canvas bitmap: pixel exports draw it directly (an eager PNG cost 62 vs 4 ms on a
+  // card, 2026-09-03), and url/toRaw mint the PNG once, on first read.
   const engineCanvas = (typeof HTMLCanvasElement !== 'undefined' && url instanceof HTMLCanvasElement) ? url : null
   let mintedUrl = engineCanvas ? null : url
   const urlOf = () => (mintedUrl ??= engineCanvas.toDataURL())
@@ -314,8 +294,7 @@ async function buildResult(url, context, session) {
     rendered ? { get: urlOf, enumerable: true } : { get() { throw absent('export.url') }, enumerable: false, configurable: true }
   )
 
-  // ——— 1) Default core exports (each type is imported lazily) ———
-  // NOTE: the exporters are deliberately not imported statically here.
+  // 1) Core exports, each exporter imported lazily on purpose
   const coreExports = {
     img: async (ctx, opts) => {
       if (engineCanvas) return rasterEngineImage(ctx, opts)
@@ -381,9 +360,8 @@ async function buildResult(url, context, session) {
   }
   _pluginExports.jpg = _pluginExports.jpeg
 
-  // Export-stage contexts are spreads, which drop the non-enumerable `options` self-reference
-  // the published types declare required, so `ctx.options.…` threw in defineExports and the
-  // export hooks. Re-pin it on each view.
+  // A spread drops the non-enumerable `options` self-reference the types declare required, so
+  // re-pin it on each export-stage view.
   const viewOf = (extra) =>
     Object.defineProperty({ ...context, ...extra }, 'options', { value: context, configurable: true })
 
@@ -397,12 +375,12 @@ async function buildResult(url, context, session) {
   // Plugin exports override core (plugin > core by name).
   const exportsMap = { ...coreExports, ...provided }
 
-  // —— Alias: jpg -> jpeg (for toJpg and to('jpg')) ——
+  // Alias jpg to jpeg (for toJpg and to('jpg'))
   if (exportsMap.jpeg && !exportsMap.jpg) {
     exportsMap.jpg = (ctx, opts) => exportsMap.jpeg(ctx, opts)
   }
 
-  // —— Per-type option normalizer (e.g. JPEG/WebP: white background) ——
+  // Per-type option normalizer (JPEG/WebP get a white background)
   function normalizeExportOptions(type, opts) {
     const raw = opts || {}
     const next = { ...context, ...raw }
@@ -436,7 +414,7 @@ async function buildResult(url, context, session) {
     return next
   }
 
-  // —— Unified runner with beforeExport/afterExport and a per-session queue ——
+  // One runner: beforeExport/afterExport hooks and a per-result queue
   let afterSnapFired = false
   let _exportQueue = Promise.resolve()
   async function runExport(type, opts) {
@@ -448,10 +426,8 @@ async function buildResult(url, context, session) {
       if (!work) throw new Error(`[SnapDOM] Unknown export type: ${type}`)
       const nextOpts = normalizeExportOptions(type, requestedOptions)
       const ctx = viewOf({ artifacts, export: exportFacade({ type, options: nextOpts, requestedOptions }) })
-      // Plugin spec payloads: beforeExport(ctx, {format, options}), afterExport(ctx, {format,
-      // options, result}); `format` is the export name. Both hooks OBSERVE: no return value is
-      // read. A plugin steers by MUTATING payload.options (what work() receives) or replaces
-      // an export in defineExports. runAll, not runHook, which chains returns into the payload.
+      // Both hooks OBSERVE: no return value is read. A plugin steers by mutating payload.options
+      // (what work() receives). runAll, not runHook, which would chain returns into the payload.
       const formatBeforeHook = nextOpts.format
       const typeBeforeHook = nextOpts.type
       await runAll('beforeExport', ctx, { format: type, options: nextOpts })
@@ -482,16 +458,15 @@ async function buildResult(url, context, session) {
     return run
   }
 
-  // —— Helpers the tests expect, plus API sugar ——
+  // The result object
   const result = {
     // Present as a plain string on the normal path; a throwing getter (installed below)
     // when this capture stopped before the render stage.
     url,
     /** How far this capture ran: 'clone' | 'render'. Same word plugins declare. */
     needs: stage,
-    // Degradation log, {code, message, detail?}: image placeholders, raster/canvas clamps,
-    // Safari PNG fallback, reconcile risk. Export entries append when the export resolves;
-    // a burst memo serve keeps the originating capture's log.
+    // Degradation log, {code, message, detail?}. Export entries append when the export
+    // resolves; a burst memo serve keeps the originating capture's log.
     warnings: env.warnings || [],
     toRaw: () => { if (!rendered) throw absent('toRaw()'); return urlOf() },
     to: (type, opts) => runExport(type, opts),
@@ -516,9 +491,8 @@ async function buildResult(url, context, session) {
     Object.defineProperty(result, 'url', { get: urlOf, enumerable: true, configurable: true })
   }
 
-  // Read-only render geometry, THE SAME frozen record every exporter reads, so url and meta
-  // never diverge; non-configurable because this object is ours. No render stage, no viewBox:
-  // the same throwing getter as `url` instead of a made-up shape.
+  // THE SAME frozen record every exporter reads, so url and meta never diverge. Before the
+  // render stage there is no viewBox: a throwing getter like `url`.
   Object.defineProperty(result, 'meta', rendered
     ? { value: context.meta, enumerable: true }
     : { get() { throw absent('meta') }, enumerable: false, configurable: true })
