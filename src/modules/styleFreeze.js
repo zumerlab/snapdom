@@ -313,10 +313,10 @@ function hasFlowFast(el) {
  * padding, border or overflow the children's margins collapse through, so the auto height runs
  * from its top edge to the lowest in-flow bottom.
  * @param {Element} el
+ * @param {number} top - the element's top edge, from getBoundingClientRect
  * @returns {number}
  */
-function autoContentHeight(el) {
-  const top = el.getBoundingClientRect().top
+function autoContentHeight(el, top) {
   let bottom = -Infinity
   let range = null
   for (let n = el.firstChild; n; n = n.nextSibling) {
@@ -334,7 +334,12 @@ function autoContentHeight(el) {
     const pos = s.position
     if (pos === 'absolute' || pos === 'fixed') continue
     if (s.float && s.float !== 'none') continue
-    bottom = Math.max(bottom, n.getBoundingClientRect().bottom)
+    // A `display: contents` child has no box of its own: measure what it holds.
+    if (s.display === 'contents') {
+      range = range || document.createRange()
+      range.selectNodeContents(n)
+      bottom = Math.max(bottom, range.getBoundingClientRect().bottom)
+    } else bottom = Math.max(bottom, n.getBoundingClientRect().bottom)
   }
   return bottom === -Infinity ? NaN : bottom - top
 }
@@ -392,8 +397,13 @@ export function stripHeightForWrappers(el, cs, snap) {
   // set it, wherever from. Not `el.scrollHeight`: it returns the padding-box height when the
   // content is shorter, so a `height: 400px` around one line read as auto and the rest of the
   // canvas came out blank. Last: it measures, and hasBox has made the measurement valid.
+  // Rects are in visual px and the computed height in the element's own: under an ancestor's
+  // `zoom` or scale every wrapper kept its height. The width ratio brings the measure back,
+  // and under a rotation it is far from 1 either way, so the height stays.
   const usedH = parseFloat(cs.height)
-  const autoH = autoContentHeight(el)
+  const box = el.getBoundingClientRect()
+  const k = el.offsetWidth ? box.width / el.offsetWidth : 1
+  const autoH = autoContentHeight(el, box.top) / (Math.abs(k - 1) < 0.01 ? 1 : k)
   const TOL = 2
   if (Number.isFinite(usedH) && Number.isFinite(autoH) && Math.abs(usedH - autoH) > TOL) return
 
