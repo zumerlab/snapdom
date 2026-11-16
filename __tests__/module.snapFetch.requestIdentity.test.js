@@ -4,6 +4,14 @@ import { snapFetch } from '../src/modules/snapFetch.js'
 afterEach(() => vi.restoreAllMocks())
 
 describe('asset fetch request identity and proxy routing', () => {
+  it('resolves with a failure when the proxied URL cannot be encoded', async () => {
+    // A lone surrogate makes encodeURIComponent throw; snapFetch never does.
+    const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response('x'))
+    const res = await snapFetch('https://cdn.example.com/a\uD800.woff2', { as: 'dataURL', useProxy: 'https://proxy.example.com/?url=' })
+    expect(res.ok).toBe(false)
+    expect(fetch).not.toHaveBeenCalled()
+  })
+
   it('keeps simultaneous requests with different authorization headers separate', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) =>
       new Response(new Headers(init.headers).get('authorization')))

@@ -308,9 +308,11 @@ export async function snapFetch(url, options = {}) {
 
   // ---- Normal http(s) path ----
 
-  let key
+  // The proxied URL is built here too: encodeURIComponent throws on a lone surrogate.
+  let key, finalURL
   try {
     key = makeKey(url, { as, timeout, useProxy, errorTTL, credentials: options.credentials, headers })
+    finalURL = shouldProxy(url, useProxy) ? applyProxy(url, useProxy) : url
   } catch {
     const result = { ok: false, data: null, status: 0, url, fromCache: false, reason: 'network' }
     notifyError(options, result)
@@ -328,9 +330,6 @@ export async function snapFetch(url, options = {}) {
   // Inflight dedupe
   const inflight = _inflight.get(key)
   if (inflight) return inflight
-
-  // Final URL and credentials
-  const finalURL = shouldProxy(url, useProxy) ? applyProxy(url, useProxy) : url
 
   let cred = options.credentials
   if (!cred) {
