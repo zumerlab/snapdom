@@ -566,7 +566,7 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   const doc = await getAccessibleIframeDocument(iframe, 3)
   if (!doc) throw new Error('The iframe document isn\'t ready.')
 
-  const { contentWidth, contentHeight, rect } = measureContentBox(iframe)
+  const { contentWidth, contentHeight } = measureContentBox(iframe)
 
   // main() threads the capture entrypoints on the context (context.snap) — no global
   // window.snapdom dependency anymore. Direct captureDOM/deepClone callers must pass it.
@@ -605,8 +605,13 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   inlineAllStyles(iframe, wrapper, sessionCache, options)
   wrapper.style.overflow = 'hidden'
   wrapper.style.display = 'block'
-  if (!wrapper.style.width) wrapper.style.width = `${Math.round(rect.width)}px`
-  if (!wrapper.style.height) wrapper.style.height = `${Math.round(rect.height)}px`
+  // The computed size, in the box-sizing the wrapper's class holds. The border-box rectangle
+  // written here made a bordered iframe wider and taller by its borders: as the capture root it
+  // lost its right and bottom border, inside a page it pushed what follows.
+  // Pinned by __tests__/utils.clone.iframe.box.test.js.
+  const cs = getStyle(iframe)
+  if (!wrapper.style.width) wrapper.style.width = cs.width
+  if (!wrapper.style.height) wrapper.style.height = cs.height
 
   wrapper.appendChild(imgEl)
   return wrapper
