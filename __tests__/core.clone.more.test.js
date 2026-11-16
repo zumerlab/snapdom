@@ -579,7 +579,7 @@ describe('deepClone – extra targets to lift coverage', () => {
     expect(occurrences).toBe(1)
   })
 
-  it('IFRAME rasterization path: pin/unpin viewport, border-aware content sizing, wrapper keeps rect size', async () => {
+  it('IFRAME rasterization path: pin/unpin viewport, border-aware content sizing', async () => {
     const iframe = document.createElement('iframe')
 
     // Simular same-origin: contentDocument y documentElement disponibles
@@ -625,10 +625,10 @@ describe('deepClone – extra targets to lift coverage', () => {
     const stillPinned = !!fakeDoc.head.querySelector('style[data-sd-iframe-pin]')
     expect(stillPinned).toBe(false)
 
-    // 2) Wrapper sized from the BCR (rounded)
+    // 2) The wrapper stands in for the iframe. Its size is the iframe's computed one, which a
+    // detached, stubbed iframe does not have: __tests__/utils.clone.iframe.box.test.js pins it
+    // on a laid-out iframe (the border-box rectangle asserted here was the bug).
     expect(out.tagName).toBe('DIV')
-    expect(out.style.width).toBe('200px')
-    expect(out.style.height).toBe('150px')
 
     // 3) El <img> interno adopta el content-box (resta bordes):
     const img = out.querySelector('img')
