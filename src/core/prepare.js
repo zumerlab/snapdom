@@ -335,9 +335,10 @@ export async function prepareClone(element, options = {}, session = createCaptur
   }
 
   for (const [cloneNode, originalNode] of sessionCache.nodeMap.entries()) {
-    // Clip rects already encode viewport scroll: compensating the document's scrolling
-    // element twice blanks output. Ordinary element roots still need their wrapper.
-    if (sessionCache.clip && originalNode === element && element === element.ownerDocument.scrollingElement) continue
+    // The document's scrolling element as the root is the whole page: its scroll is the
+    // viewport's, which a clip rect already encodes and a full capture does not show (the top
+    // of the page went missing and the bottom came out blank). Other roots need their wrapper.
+    if (originalNode === element && element === element.ownerDocument.scrollingElement) continue
     wrapScrolledClone(cloneNode, originalNode, sessionCache.nodeMap, sessionCache.styleCache)
   }
   // #505: html/body overflow can apply to the viewport, not their own (possibly
