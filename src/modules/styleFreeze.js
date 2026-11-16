@@ -242,8 +242,8 @@ function textOnOneLine(el, snap, session) {
 
 /** axesOf results: rotated or skewed somewhere up the chain, untouched, scaled or zoomed. */
 export const SKEWED = 0
-const PLAIN = 1
-const SCALED = 2
+export const PLAIN = 1
+export const SCALED = 2
 
 /**
  * How `el` and its ancestors transform it, memoized per capture since siblings share every

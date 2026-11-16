@@ -14,7 +14,7 @@ import { cache } from '../core/cache.js'
 import { runHook } from '../core/plugins.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
 import { isInternalNode, markInternalNode } from '../utils/ownership.js'
-import { freezeLineBreaks } from '../modules/lineBreaks.js'
+import { freezeLineBreaks, lineRisk } from '../modules/lineBreaks.js'
 import {
   assembleCaptureCSS,
   estimateKeptHeight,
@@ -625,12 +625,13 @@ export async function composeAndSerialize(state, ex) {
   fo.appendChild(container)
 
   const serializer = new XMLSerializer()
-  // Under the layout zoom a line can come out wider than on the page and break a word early:
-  // serialize a copy that keeps the page's line breaks, and leave the clone as it is.
+  // Under the layout zoom a line can come out wider or narrower than on the page and break a
+  // word early or pull one up: serialize a copy that keeps the page's line breaks where they
+  // are at risk, and leave the clone as it is.
   let tree = fo
   if (layoutZoom !== 1) {
     try {
-      tree = freezeLineBreaks(fo, state.clone, state.nodeMap, elDoc) || fo
+      tree = freezeLineBreaks(fo, state.clone, state.nodeMap, elDoc, lineRisk(layoutZoom)) || fo
     } catch (e) {
       sessionWarn(state.options.__session, 'line-breaks-failed', 'line break pass failed', e)
     }

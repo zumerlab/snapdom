@@ -2,13 +2,14 @@
 // layout zoom (src/modules/lineBreaks.js). Firefox lays zoomed text out up to a third of a
 // pixel wider than the page, and a nearly full line broke a word early. The runner has no such
 // drift, so the capture tests widen the clone's text through a plugin, the #516 technique, and
-// stub a hi-DPI screen so the clone is zoomed at all (helpers/hidpi.js).
+// stub a hi-DPI screen so the clone is zoomed at all (helpers/hidpi.js). The pass only pins a
+// paragraph with a line at risk (lineRisk), so they narrow theirs until a line is full.
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { prepareClone } from '../src/core/prepare.js'
 import { createContext } from '../src/core/context.js'
 import { __diffStats } from '../src/core/diff.js'
-import { freezeLineBreaks } from '../src/modules/lineBreaks.js'
+import { freezeLineBreaks, lineRisk } from '../src/modules/lineBreaks.js'
 import { ONE_LINE_PROP } from '../src/modules/styleFreeze.js'
 import { isSafari } from '../src/utils/browser.js'
 import { stubHiDPI } from './helpers/hidpi.js'
@@ -78,15 +79,44 @@ function liveLines(text) {
   return lines
 }
 
+/** Width in px, rounded up to the 1/64px the page lays boxes out in, plus a hair for its rounding. */
+const up = (w) => Math.ceil((w + 0.01) * 64) / 64
+
+/** Narrows a paragraph of one text node to its widest line, so that line is full. */
+function snug(p) {
+  const range = document.createRange()
+  range.selectNodeContents(p)
+  p.style.width = `${up(Math.max(...[...range.getClientRects()].map((r) => r.width)))}px`
+}
+
+const WORDS = Array(12).fill('word').join(' ')
+
+/**
+ * Twelve "word"s, three to a line, in a paragraph `room` px wider than three of them. With a
+ * negative room, it is that much narrower than four: the fourth misses the line by that much.
+ */
+function words(room) {
+  const p = mount(`<p style="width:max-content;margin:0;${FONT}">${WORDS}</p>`)
+  const range = document.createRange()
+  const first = (n) => {
+    range.setStart(p.firstChild, 0)
+    range.setEnd(p.firstChild, n * 5 - 1)
+    return range.getBoundingClientRect().width
+  }
+  p.style.width = `${room < 0 ? first(4) + room : up(first(3)) + room}px`
+  expect(liveLines(p.firstChild)).toEqual(Array(4).fill('word word word'))
+  return p
+}
+
 /**
  * The pass on the clone the clone stage built, with the clone as the tree to copy: the copy it
- * returns, after checking that the clone itself did not change.
+ * returns, after checking that the clone itself did not change. With no policy, it pins every line.
  */
-async function frozen(el) {
+async function frozen(el, risk) {
   const { clone, nodeMap } = await prepareClone(el, createContext({}))
   expect(clone.textContent).toBe(el.textContent)
   const before = clone.outerHTML
-  const copy = freezeLineBreaks(clone, clone, nodeMap, document)
+  const copy = freezeLineBreaks(clone, clone, nodeMap, document, risk)
   expect(clone.outerHTML).toBe(before)
   return copy
 }
@@ -196,6 +226,46 @@ describe.skipIf(!PINS)('freezeLineBreaks', () => {
   })
 })
 
+// The policies model Blink's and Gecko's line breakers. WebKit never runs the pass, and fits a
+// word its own way: a fourth "word" 0.1px too wide still went on the line.
+describe.skipIf(!ZOOMS)('freezeLineBreaks with a risk policy', () => {
+  // 8px of room on every line, and the next word misses it by far more: no drift breaks a word
+  // early or pulls one up.
+  const ROOMY = 8
+
+  it('pins every line of a paragraph with a full line', async () => {
+    const p = words(0)
+    const lines = liveLines(p.firstChild)
+    for (const engine of ['blink', 'gecko']) expect(pinsOf(await frozen(p, lineRisk(2, engine)))).toEqual(lines)
+  })
+
+  it('skips a paragraph whose lines all have room', async () => {
+    const full = words(0)
+    const roomy = words(ROOMY)
+    const box = mount('<div></div>')
+    box.append(full, roomy)
+    for (const engine of ['blink', 'gecko']) {
+      const copy = await frozen(box, lineRisk(2, engine))
+      expect(pinsOf(copy.firstChild)).toEqual(liveLines(full.firstChild))
+      expect(pinsOf(copy.lastChild)).toEqual([])
+      expect(loose(copy.lastChild)).toEqual([WORDS])
+    }
+  })
+
+  it('pins a line the next word missed by a hair under the Firefox policy', async () => {
+    // Firefox can lay the fourth word out a tenth of a pixel narrower and pull it up. Chrome
+    // lays the clone's text out as wide as the page's, so it has nothing to pull up.
+    const p = words(-0.1)
+    expect(pinsOf(await frozen(p, lineRisk(1.25, 'gecko')))).toEqual(liveLines(p.firstChild))
+    expect(await frozen(p, lineRisk(1.25, 'blink'))).toBeNull()
+  })
+
+  it('returns null when no line is at risk', async () => {
+    const p = words(ROOMY)
+    for (const engine of ['blink', 'gecko']) expect(await frozen(p, lineRisk(2, engine))).toBeNull()
+  })
+})
+
 /** Widens every glyph of the clone by `drift` px (!important: the base reset restates letter-spacing per tag). */
 const drifted = (drift) => ({
   name: 'drift',
@@ -232,7 +302,9 @@ const PARA = `width:300px;margin:0;padding:4px 8px;background:#fff;color:#000;${
 describe.skipIf(!ZOOMS)('the svg engine under the layout zoom', () => {
   it('keeps a paragraph on the page\'s lines when the clone lays its text out wider', async () => {
     // Room below the paragraph, so a line the clone adds is in the shot.
+    // A full line: the pass pins the lines of a paragraph that has one.
     const box = mount(`<div style="padding-bottom:60px;background:#fff"><p style="${PARA}">${LONG}</p></div>`)
+    snug(box.firstChild)
     const lines = liveLines(box.firstChild.firstChild).length
     // At 1x there is no zoom and no pass: the wider text really takes more lines.
     expect(await inkLines(box, { plugins: [drifted(1)] })).toBeGreaterThan(lines)
@@ -252,6 +324,7 @@ describe.skipIf(!ZOOMS)('the svg engine under the layout zoom', () => {
 
   it('serializes the pins but leaves them out of the clone the stages keep', async () => {
     const p = mount(`<p style="${PARA}">${LONG}</p>`)
+    snug(p)
     stubHiDPI(2)
     let seen = null
     const probe = { name: 'line-pins', afterRender: (ctx) => { seen = { pins: pinsOf(ctx.clone).length, svg: ctx.svgString } } }
@@ -274,7 +347,9 @@ describe.skipIf(!ZOOMS)('the svg engine under the layout zoom', () => {
       [TEXT, LONG, TEXT].map((t) => `<p style="margin:0 0 8px">${t}</p>`).join('') + '</div></div>')
     stubHiDPI(2)
     for (let i = 0; i < 4; i++) await snapdom(box)
-    box.firstChild.children[1].textContent = `${TEXT} ${TEXT}`
+    const p = box.firstChild.children[1]
+    p.textContent = `${TEXT} ${TEXT}`
+    snug(p)
     await new Promise((r) => setTimeout(r, 0))
     const served = __diffStats.served
     const res = await snapdom(box)
