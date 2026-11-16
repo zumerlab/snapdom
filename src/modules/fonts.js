@@ -39,22 +39,6 @@ const GENERIC_FAMILIES = new Set([
 const FONT_LIBRARIES = ['katex', 'mathjax', 'mathml']
 
 /**
- * Normalize a CSS font-family list to the first non-generic family.
- * E.g. `"Roboto", Arial, sans-serif` -> `Roboto`
- * @param {string} familyList
- * @returns {string}
- */
-function pickPrimaryFamily(familyList) {
-  if (!familyList) return ''
-  for (let raw of familyList.split(',')) {
-    let f = raw.trim().replace(/^['"]+|['"]+$/g, '')
-    if (!f) continue
-    if (!GENERIC_FAMILIES.has(f.toLowerCase())) return f
-  }
-  return ''
-}
-
-/**
  * #357: Return ALL non-generic families from a font-family list (for fallback chain embedding).
  * E.g. `"Roboto", "Noto Sans SC", sans-serif` -> ["Roboto", "Noto Sans SC"]
  * @param {string} familyList
@@ -264,6 +248,11 @@ function familiesFromRequired(required) {
 // Import inliner + relative URL rewriter per stylesheet level (with cycle guard)
 // ----------------------------------------------------------------------------
 
+/** `u` resolved against `base` (the page when absent), or `u` itself when it does not parse. */
+function normalizeUrl(u, base) {
+  try { return new URL(u, base || location.href).href } catch { return u }
+}
+
 /** Rewrites all relative url(...) using the given baseHref. */
 function rewriteRelativeUrls(cssText, baseHref) {
   if (!cssText) return cssText
@@ -272,9 +261,7 @@ function rewriteRelativeUrls(cssText, baseHref) {
     (m, q, u) => {
       const src = (u || '').trim()
       if (!src || /^data:|^blob:|^https?:|^file:|^about:/i.test(src)) return m
-      let abs = src
-      try { abs = new URL(src, baseHref || location.href).href } catch {}
-      return `url("${abs}")`
+      return `url("${normalizeUrl(src, baseHref)}")`
     }
   )
 }
@@ -298,10 +285,6 @@ async function inlineImportsAndRewrite(cssText, ownerHref, useProxy, debug) {
   if (!cssText) return cssText
 
   const visited = new Set()
-
-  function normalizeUrl(u, base) {
-    try { return new URL(u, base || location.href).href } catch { return u }
-  }
 
   async function resolveOnce(text, baseHref, depth = 0) {
     if (depth > MAX_IMPORT_DEPTH) {
@@ -420,9 +403,7 @@ function extractSrcUrls(srcValue, baseHref) {
   for (const m of srcValue.matchAll(URL_RE)) {
     let u = (m[2] || '').trim()
     if (!u || u.startsWith('data:')) continue
-    if (!/^https?:/i.test(u)) {
-      try { u = new URL(u, baseHref || location.href).href } catch {}
-    }
+    if (!/^https?:/i.test(u)) u = normalizeUrl(u, baseHref)
     urls.push(u)
   }
   return urls
@@ -447,10 +428,7 @@ async function inlineUrlsInCssBlock(cssBlock, baseHref, useProxy = '', debug = f
   for (const m of cssBlock.matchAll(URL_RE)) {
     const raw = extractURL(m[0])
     if (!raw) continue
-    let abs = raw
-    if (!abs.startsWith('http') && !abs.startsWith('data:')) {
-      try { abs = new URL(abs, baseHref || location.href).href } catch {}
-    }
+    const abs = raw.startsWith('http') || raw.startsWith('data:') ? raw : normalizeUrl(raw, baseHref)
 
     // `cache.resource` is the ONLY proof the payload exists, here and at every other font
     // src below. It is FIFO-capped, so a font fetched earlier can be gone; having merely
@@ -528,7 +506,7 @@ function dedupeFontFaces(cssText) {
 
   for (const block of cssText.match(FACE_RE_G) || []) {
     const familyRaw = getFontFaceDeclaration(block, 'font-family')
-    const family = pickPrimaryFamily(familyRaw)
+    const family = pickAllFamilies(familyRaw)[0]
     const weightSpec = getFontFaceDeclaration(block, 'font-weight', '400')
     const styleSpec = getFontFaceDeclaration(block, 'font-style', 'normal')
     const stretchSpec = getFontFaceDeclaration(block, 'font-stretch', '100%')
@@ -660,10 +638,6 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
     return
   }
 
-  const normalizeUrl = (u, base) => {
-    try { return new URL(u, base || location.href).href } catch { return u }
-  }
-
   for (const rule of rules) {
     if (rule.type === CSSRule.IMPORT_RULE && rule.styleSheet) {
       const childHref = rule.href ? normalizeUrl(rule.href, baseHref) : baseHref
@@ -692,7 +666,7 @@ async function collectFacesFromSheet(sheet, baseHref, emitFace, ctx) {
 
     if (rule.type === CSSRule.FONT_FACE_RULE) {
       const famRaw = (rule.style.getPropertyValue('font-family') || '').trim()
-      const family = pickPrimaryFamily(famRaw)
+      const family = pickAllFamilies(famRaw)[0]
       if (!family || isIconFont(family, ctx.iconMatchers)) continue
 
       // An ABSENT descriptor is not the same as an explicit default on a variable font: with
@@ -916,11 +890,10 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
   const requiredFamilies = familiesFromRequired(required)
 
   const importUrls = []
-  const IMPORT_ANY_RE_LOCAL = IMPORT_ANY_RE
 
   for (const styleTag of doc.querySelectorAll('style')) {
     const cssText = styleTag.textContent || ''
-    for (const m of cssText.matchAll(IMPORT_ANY_RE_LOCAL)) {
+    for (const m of cssText.matchAll(IMPORT_ANY_RE)) {
       const u = (m[2] || m[4] || '').trim()
       if (!u || isIconFontStylesheet(u, iconMatchers)) continue
       const hasLink = !!doc.querySelector(`link[rel="stylesheet"][href="${u}"]`)
@@ -1022,7 +995,7 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
       let facesOut = ''
       for (const face of cssText.match(FACE_RE) || []) {
         const famRaw = getFontFaceDeclaration(face, 'font-family')
-        const family = pickPrimaryFamily(famRaw)
+        const family = pickAllFamilies(famRaw)[0]
         if (!family || isIconFont(family, iconMatchers)) continue
 
         const weightSpec = getFontFaceDeclaration(face, 'font-weight', '400')
@@ -1270,12 +1243,7 @@ export function collectFontUsage(root, keep) {
       if (/^["']/.test(c)) {
         pushText(c.slice(1, -1))
       } else {
-        const matches = c.match(/\\[0-9A-Fa-f]{1,6}/g)
-        if (matches) {
-          for (const m of matches) {
-            try { usedCodepoints.add(parseInt(m.slice(1), 16)) } catch {}
-          }
-        }
+        for (const m of c.match(/\\[0-9A-Fa-f]{1,6}/g) || []) usedCodepoints.add(parseInt(m.slice(1), 16))
       }
     }
   }
@@ -1301,27 +1269,6 @@ export function collectFontUsage(root, keep) {
     }
   }
   return { required, usedCodepoints }
-}
-
-/**
- * The variant half of collectFontUsage. The pipeline calls the fused walk; this stays for
- * callers that need one half.
- * @param {Element} root
- * @param {((el: Element) => boolean)|null} [keep]
- * @returns {Set<string>} keys "family__weight__style__stretchPct"
- */
-export function collectUsedFontVariants(root, keep) {
-  return collectFontUsage(root, keep).required
-}
-
-/**
- * The codepoint half of collectFontUsage, ::before/::after content included.
- * @param {Element} root
- * @param {((el: Element) => boolean)|null} [keep]
- * @returns {Set<number>}
- */
-export function collectUsedCodepoints(root, keep) {
-  return collectFontUsage(root, keep).usedCodepoints
 }
 
 /**

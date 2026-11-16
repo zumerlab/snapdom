@@ -39,7 +39,7 @@ vi.mock('../src/modules/snapFetch.js', () => ({
 }))
 
 // ====== SUT + deps ======
-import { embedCustomFonts, collectUsedFontVariants, fontKeyFamily, FONT_KEY_SEP } from '../src/modules/fonts.js'
+import { embedCustomFonts, collectFontUsage, fontKeyFamily, FONT_KEY_SEP } from '../src/modules/fonts.js'
 import { cache } from '../src/core/cache.js'
 import { snapFetch } from '../src/modules/snapFetch.js'
 
@@ -256,7 +256,7 @@ describe('collectUsedFontVariants – full fallback chain (#357)', () => {
     el.style.fontFamily = '"PrimaryFont", "FallbackFont", sans-serif'
     document.body.appendChild(el)
 
-    const variants = collectUsedFontVariants(el)
+    const variants = collectFontUsage(el).required
     const families = new Set([...variants].map(k => fontKeyFamily(k)))
 
     expect(families.has('PrimaryFont')).toBe(true)
@@ -270,7 +270,7 @@ describe('collectUsedFontVariants – full fallback chain (#357)', () => {
     el.style.fontFamily = '"OnlyFont", serif'
     document.body.appendChild(el)
 
-    const variants = collectUsedFontVariants(el)
+    const variants = collectFontUsage(el).required
     const families = new Set([...variants].map(k => fontKeyFamily(k)))
 
     expect(families.has('OnlyFont')).toBe(true)
@@ -285,7 +285,7 @@ describe('collectUsedFontVariants – full fallback chain (#357)', () => {
     parent.appendChild(child)
     document.body.appendChild(parent)
 
-    const variants = collectUsedFontVariants(parent)
+    const variants = collectFontUsage(parent).required
     const families = new Set([...variants].map(k => fontKeyFamily(k)))
 
     expect(families.has('ParentFont')).toBe(true)
