@@ -90,10 +90,20 @@ export async function restoreCompressedAssets(url, snapshot) {
   for (const node of svg.querySelectorAll(`[${ASSET_ATTRIBUTE}]`)) {
     for (const property of snapshot.get(node.getAttribute(ASSET_ATTRIBUTE)) || []) {
       if (assetValue(node, property) !== property.compressed) continue
-      // A string, or the read drawDecodedImages started: null when it failed, and the asset
-      // then keeps the resolution it has.
-      const original = await property.original
+      // A string, or the Blob drawDecodedImages asked for: null when that read failed, and the
+      // asset then keeps the resolution it has.
+      let original = await property.original
       if (original == null) continue
+      if (typeof original !== 'string') {
+        const blob = original
+        original = await new Promise((resolve) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = () => resolve(null)
+          reader.readAsDataURL(blob)
+        })
+        if (original == null) continue
+      }
       if (property.kind === 'style') node.style.setProperty(property.name, original, node.style.getPropertyPriority(property.name))
       else if (property.name === 'xlink:href') node.setAttributeNS(XLINK_NS, property.name, original)
       else node.setAttribute(property.name, original)
@@ -530,7 +540,7 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
  * Anything else, a GIF included, is left to the passes as before.
  *
  * The original is still owed to a later export at a higher density (exportSource, snapdom.js):
- * its read starts here, unawaited, and the promise stands where the string would.
+ * its Blob is asked for here, unawaited, and the promise stands where the string would.
  * Pinned by __tests__/compress.decodedImages.test.js.
  * @param {Element} clone
  * @param {object} options - normalized capture context
@@ -578,8 +588,11 @@ export function drawDecodedImages(clone, options, nodeMap, geometry) {
       continue
     }
     img.setAttribute('src', out)
+    // As a Blob, not base64: holding it costs nothing, it outlives a revoked blob: URL, and the
+    // megabytes of text are built only if an export asks. Read as a data URL here, nine photos
+    // landed 24.5 MB of string on the next capture (the gallery read 152 or 212 ms by the run).
     const original = /^data:/i.test(src) ? src
-      : snapFetch(src, { as: 'dataURL', useProxy: options.useProxy }).then((r) => r.ok && typeof r.data === 'string' ? r.data : null)
+      : snapFetch(src, { as: 'blob', useProxy: options.useProxy }).then((r) => r.ok && r.data ? r.data : null)
     rememberOriginal(img, 'attribute', 'src', original, out, geometry.session)
   }
 }
