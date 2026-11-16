@@ -255,10 +255,11 @@ export function deepTreeScenario() {
 /** A photo gallery: one 3000x1400 hero and eight 1500x1000 thumbnails, shown at 960x360 and
  *  ~232x130 — the shape of a product page or a media card, and the scene that prices image
  *  inlining and downsampling (16 Mpx of sources for 0.6 Mpx of output). The photos are
- *  generated once (gradients and translucent circles: PNG-hostile like a real photo, no
+ *  drawn once (gradients and translucent circles: PNG-hostile like a real photo, no
  *  binary fixtures to ship) and served to the capture as same-origin blob: URLs, so every
  *  library fetches them the way it fetches an HTTP image. */
 let _galleryBlobs = null
+let _gallerySeq = 0
 function galleryPhoto(w, h, seed) {
   const c = document.createElement('canvas')
   c.width = w
@@ -281,7 +282,12 @@ export async function galleryScenario() {
   if (!_galleryBlobs) {
     _galleryBlobs = await Promise.all([galleryPhoto(3000, 1400, 1), ...Array.from({ length: 8 }, (_, i) => galleryPhoto(1500, 1000, i + 2))])
   }
-  const urls = _galleryBlobs.map((b) => URL.createObjectURL(b))
+  // Each mount gets files of its own: eight bytes after the end of the PNG, which decoders
+  // skip, make every photo a different file. With the same bytes on every mount, a cache keyed
+  // on them (snapdom's compress cache) served every other capture and the scene read 93 or
+  // 225 ms depending on the run.
+  const salt = new Float64Array([++_gallerySeq + Math.random()])
+  const urls = _galleryBlobs.map((b) => URL.createObjectURL(new Blob([b, salt], { type: 'image/png' })))
   const root = document.createElement('div')
   root.style.cssText = 'width:960px;background:#fff;font-family:Arial,sans-serif'
   root.innerHTML =
