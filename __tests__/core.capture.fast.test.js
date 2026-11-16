@@ -253,6 +253,5 @@ describe('fast option', () => {
   })
 
   it.todo('auto does not yield without a mid-capture change detector')
-  it.todo('auto does not expose stabilizeLayout root geometry changes during a pause')
   it.todo('fast: false refreshes a non-memoizable clone when its source changes during a pause')
 })

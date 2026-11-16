@@ -2,7 +2,7 @@
  * The clone step: prepare the live element, deepClone it, then run every pass that needs the
  * clone and the source side by side.
  *
- * Before the clone: layout stabilized, content-visibility forced, lazy shadow icons revealed
+ * Before the clone: content-visibility forced, lazy shadow icons revealed
  * (#488). All of it is undone in a finally, so the page is as it was when this returns.
  * After the clone, in this order: svg defs, pseudo-elements, blob URLs, @media freezing,
  * shadow CSS extraction, class generation, top-layer lift, fixed/sticky re-anchoring, scroll
@@ -21,7 +21,7 @@ import { universeFor } from '../modules/authorStyles.js'
 import { flushStyleInvalidations, invalidateHoverChanges } from './changes.js'
 import { inlineExternalDefsAndSymbols } from '../modules/svgDefs.js'
 import { resolveBlobUrlsInTree, resolveMediaQueries, freezeInflatedFontSizes } from '../utils/clone.helpers.js'
-import { stabilizeLayout, forceContentVisibility, FORCED_VISIBILITY } from '../utils/prepare.helpers.js'
+import { forceContentVisibility, FORCED_VISIBILITY } from '../utils/prepare.helpers.js'
 import { prepareSelectionContext } from '../modules/selection.js'
 import { resolveClipRect, freezeViewportPositioned, freezeRootPercentSizes } from '../utils/capture.helpers.js'
 import { nextFrame } from '../utils/browser.js'
@@ -207,8 +207,6 @@ export async function prepareClone(element, options = {}, session = createCaptur
     } catch { /* non-blocking */ }
   }
 
-  const undoStabilizeLayout = stabilizeLayout(element)
-
   // #281: Force content-visibility:visible so Safari/Chromium don't skip offscreen elements.
   // Clip mode prunes the walk to the window instead of skipping it: a clip rect far from the
   // real viewport lands on UNRENDERED cv:auto placeholders (blank bands in the capture),
@@ -247,7 +245,6 @@ export async function prepareClone(element, options = {}, session = createCaptur
     debugWarn(sessionCache, 'Capture failed while copying the element.', e)
     throw e
   } finally {
-    undoStabilizeLayout()
     // The root's box while its content-visibility:auto boxes are still visible, for the
     // engine: once restored, a box the engine is not rendering (off screen, or not laid out
     // again until the next frame) is empty, and the root measured 40px for a 140px clone.

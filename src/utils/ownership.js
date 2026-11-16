@@ -40,7 +40,7 @@ const selfWrites = new WeakMap()
  * Record an edit snapdom makes to a page node and undoes before it returns: the text of a
  * clamped box (lineClamp.js), the inline style of a `content-visibility: auto` box
  * (prepare.helpers.js). Only edits whose forced state every capture of the node reproduces
- * belong here; the outline shim does not (a child captured alone is read without it).
+ * belong here.
  * @param {Node} node
  * @param {string} before - its text, or its `style.cssText`
  * @param {string} during - what snapdom wrote

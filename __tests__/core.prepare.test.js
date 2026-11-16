@@ -83,22 +83,6 @@ describe('prepareClone deep coverage (Browser Mode)', () => {
     await expect(prepareClone(null)).rejects.toThrow()
   })
 
-  it('applies stabilizeLayout when outline is visible and no border present, then restores it', async () => {
-  const el = document.createElement('div')
-  el.style.outline = '2px solid red'
-  vi.spyOn(window, 'getComputedStyle').mockImplementation(() => ({
-    outlineStyle: 'solid',
-    outlineWidth: '2px',   // 👈 con unidad
-    borderStyle: 'none',   // 👈 sin borde
-    borderWidth: '0px',    // 👈 con unidad
-    getPropertyValue: () => '', // requerido por inlineAllStyles
-  }))
-  await prepareClone(el)
-  // #stabilizeLayout is a transient measurement aid, not a permanent mutation of the caller's DOM
-  expect(el.style.border).toBe('')
-  window.getComputedStyle.mockRestore()
-})
-
   it('handles error in inlineExternalDefsAndSymbols (logs and continues)', async () => {
     const el = document.createElement('div')
     vi.mocked(svgDefs.inlineExternalDefsAndSymbols).mockImplementationOnce(() => {
@@ -440,26 +424,6 @@ it('pulls <style data-sd> out of clone and prepends into classCSS', async () => 
   expect(classCSS).toContain('.inside') // concatenado en classCSS
 
   host.remove()
-})
-
-// 6) stabilizeLayout: NO parchea si ya hay borde (rama negativa)
-it('does not set transparent border when element already has border', async () => {
-  const el = document.createElement('div')
-  el.style.border = '1px solid black'
-  el.style.outline = '2px solid red'
-
-  const csMock = vi.spyOn(window, 'getComputedStyle').mockReturnValue({
-    outlineStyle: 'solid',
-    outlineWidth: '2px',
-    borderStyle: 'solid',
-    borderWidth: '1px',
-    getPropertyValue: () => '',
-  })
-
-  await prepareClone(el)
-  expect(el.style.border).toBe('1px solid black') // no se pisa
-
-  csMock.mockRestore()
 })
 
 // 7) stripTranslate returns ''/none, so transform ends up empty
