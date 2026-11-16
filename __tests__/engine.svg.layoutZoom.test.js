@@ -11,7 +11,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { liveLayoutZoom } from '../src/engines/svg.js'
-import { isSafari } from '../src/utils/browser.js'
+import { isFirefox, isSafari } from '../src/utils/browser.js'
 import { stubHiDPI } from './helpers/hidpi.js'
 
 const ZOOMS = !isSafari()
@@ -208,7 +208,20 @@ describe('svg engine layout zoom follows the live layout grid', () => {
     const el = mount('<div style="width:50px;height:30px;background:#f00"></div>')
     stubHiDPI(2)
     const svg = decode((await snapdom(el, { dpr: 1, cache: 'disabled', burst: false })).url)
-    expect(zoomOf(svg)).toBe(ZOOMS ? '2' : null)
+    // Firefox keeps an integer grid at 1x: see the system font test below.
+    expect(zoomOf(svg)).toBe(ZOOMS && !isFirefox() ? '2' : null)
+  })
+
+  // Firefox shapes the system font for the zoomed size, which has tighter tracking: under the
+  // layout zoom a line of system-ui came out 8% narrower and a heading wrapped. Chromium and a
+  // family without size-specific tracking pass with or without the zoom.
+  it('keeps the width of system font text on an integer grid', async () => {
+    const el = mount('<div style="display:inline-block;padding:0 0 4px;background:#fff"><span style="font:bold 12px system-ui;white-space:nowrap;color:#f00">HHHHH and a quick brown fox 01234 HHHHH</span></div>')
+    // The ink of the text, first H to last H, not its box: the box keeps its frozen width.
+    const ink = async () => { const { box } = await redBox(el); return box[2] - box[0] }
+    const at1x = await ink()
+    stubHiDPI(2)
+    expect(Math.abs(await ink() - at1x)).toBeLessThan(4)
   })
 
   it('leaves no probe behind in the document', () => {

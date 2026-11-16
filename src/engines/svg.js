@@ -9,6 +9,7 @@
  */
 
 import { isSafari, getStyle } from '../utils/index.js'
+import { isFirefox } from '../utils/browser.js'
 import { cache } from '../core/cache.js'
 import { runHook } from '../core/plugins.js'
 import { sessionWarn, debugWarn } from '../utils/debug.js'
@@ -546,7 +547,17 @@ export async function composeAndSerialize(state, ex) {
   // Pinned by __tests__/engine.svg.layoutZoom.test.js.
   const view = elDoc.defaultView || window
   // The support check is for Firefox before 126, where the scale alone would shrink the capture.
-  const layoutZoom = !isSafari() && CSS.supports('zoom', '2') ? liveLayoutZoom(view) : 1
+  // The page also lays the element out under its own and its ancestors' `zoom`: a `1px`
+  // border under zoom 1.3125 is 0.762px live and 1px in a 1x image, and a table cell cannot
+  // absorb the difference the way a block does (freezeBorderBox), so every row grew.
+  // Firefox shapes the system font for the zoomed size, with tighter tracking: 12px system-ui
+  // came out 8% narrower and a heading wrapped (d22). An integer grid snaps a 1px border the
+  // same at 1x, so Firefox skips the device zoom there (90 demos on a real 2x grid: mean
+  // mismatch against the page 0.99% to 0.44%, 17 line-count mismatches to 0).
+  const zooms = !isSafari() && CSS.supports('zoom', '2')
+  const grid = zooms ? liveLayoutZoom(view) : 1
+  const layoutZoom = zooms
+    ? (isFirefox() && Number.isInteger(grid) ? 1 : grid) * (state.element.currentCSSZoom || 1) : 1
   // toCanvas rasterizes Firefox exports smaller than this grid at it first (#516).
   session.layoutZoom = layoutZoom
   // fo x/y and padding snap to a layout pixel, so a clip's fraction (#526, playwright-lite

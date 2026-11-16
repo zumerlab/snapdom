@@ -11,6 +11,7 @@
 
 import { describe, it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
+import { isSafari } from '../src/utils/browser.js'
 
 const ROWS = 40
 const mounted = []
@@ -135,4 +136,32 @@ describe('#508 cells of a collapsed table', () => {
     const { data } = canvas.getContext('2d').getImageData(0, canvas.height - 4, canvas.width, 1)
     expect(red(data[4 * 60], data[4 * 60 + 1], data[4 * 60 + 2])).toBe(true)
   })
+})
+
+describe('#508 table cells holding text', () => {
+  const blue = (r, g, b) => r < 60 && g < 60 && b > 200
+  function textTable(collapse) {
+    const zoom = document.createElement('div')
+    zoom.style.zoom = '1.3125'
+    const root = document.createElement('div')
+    root.style.cssText = 'width:200px;background:#fff;display:flow-root;font:14px/20px Arial,sans-serif'
+    const rows = Array.from({ length: 20 }, (_, i) => `<tr><td style="border:1px solid #888;padding:3px 7px">a${i}</td></tr>`)
+    root.innerHTML = `<table style="border-collapse:${collapse};border-spacing:0;margin:0">${rows.join('')}</table>` +
+      '<div style="height:4px;background:#00f"></div>'
+    zoom.appendChild(root)
+    document.body.appendChild(zoom)
+    mounted.push(zoom)
+    return root
+  }
+
+  // A cell cannot shrink under its text, so the border-box freeze that holds a block does not
+  // hold a row: the capture has to lay out under the ancestor's zoom (engines/svg.js). WebKit
+  // has no layout zoom and its tables still grow there, also in real Safari 27.0.1.
+  for (const collapse of ['separate', 'collapse']) {
+    it.skipIf(isSafari())(`keeps what follows a ${collapse} table at the bottom of the image`, async () => {
+      const { canvas } = await count(textTable(collapse), blue)
+      const { data } = canvas.getContext('2d').getImageData(0, canvas.height - 2, canvas.width, 1)
+      expect(blue(data[4 * 100], data[4 * 100 + 1], data[4 * 100 + 2])).toBe(true)
+    })
+  }
 })
