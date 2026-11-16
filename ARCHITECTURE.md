@@ -17,7 +17,7 @@ snapshots, deduplicating declarations and rebuilding changed subtrees reduce tha
 
 ## Stages: how far a capture runs (`needs`)
 
-The pipeline is `element → clone → render → exports`. A plugin declares `needs: 'clone'`
+The pipeline is `element, clone, render, exports`, in that order. A plugin declares `needs: 'clone'`
 or `needs: 'render'`; `result.needs` reports which stage ran. The default is `'render'`.
 Core uses the deepest stage requested by attached plugins, so all must request `'clone'`
 to skip rendering. See [the plugin contract](./PLUGIN_SPEC.md#how-far-the-pipeline-runs-needs)
@@ -87,32 +87,53 @@ without `CompressionStream` (PNG only) retain their existing paths and clamp dia
 ## The invalidation matrix (burst/diff correctness)
 
 Reusing a capture depends on tracking changes to the rendered frame. The mechanisms and
-exceptions below are implemented in `src/core/burst.js` and the related modules:
+exceptions below are implemented in `src/core/burst.js`, `src/core/changes.js` (every observer
+and stamp) and the related modules. The list at the top of `burst.js` is the source of truth:
 
 | Change class | Mechanism | Where |
 |---|---|---|
 | DOM mutations (light DOM + open shadow roots) | scoped `MutationObserver`s + synchronous `takeRecords()` flush pre-serve | burst.js `createState` / `trackShadowRoots` |
-| Opaque/frame-driven content | iframe, canvas, video/audio, SMIL and known animated-image trees bypass memoization, even with internal `burst: true` | snapdom.js `main` → burst.js `isAutoBurstSafe` |
+| Opaque/frame-driven content | iframe, canvas, video/audio, SMIL and known animated-image trees bypass memoization, even with internal `burst: true` | snapdom.js `main`, burst.js `isAutoBurstSafe` |
 | `<img>` loads mid-capture | `load`/`error` listeners on pending images (dirty even in-flight) | burst.js `trackPendingImages` |
-| Font loads | shared style-environment epoch (`document.fonts` loadingdone/ready) | styles.js `getStyleEnvEpoch` |
+| Font loads | shared style-environment epoch (`document.fonts` loadingdone/ready) | changes.js `getStyleEnvEpoch` |
 | Scroll (no mutation records) | capture-phase listeners across light/open-shadow trees plus synchronous offsets of known scrollers | burst.js `collectScrollNodes` / `renderStateOf` |
 | Programmatic form state | input/change events plus synchronous signatures of tracked controls (`value`, selected option, checked/indeterminate) | burst.js `renderStateOf` |
-| Hover/focus/active/top-layer/hash state | scoped hover sampling, interaction listeners, root style stamps and synchronous state signature | styles.js + burst.js `renderStateOf` |
-| Viewport and media preference changes | shared resize epoch plus synchronous viewport/DPR/orientation and fixed media-query signature | styles.js + burst.js `renderStateOf` |
-| Stylesheet DOM changes | document observers bump the style/environment epoch; stylesheet nodes are document-wide regardless of where they are inserted | styles.js `onDomRecords` |
+| Hover/focus/active/top-layer/hash state | scoped hover sampling, interaction listeners, root style stamps and synchronous state signature | changes.js + burst.js `renderStateOf` |
+| Viewport and media preference changes | shared resize epoch plus synchronous viewport/DPR/orientation and fixed media-query signature | changes.js + burst.js `renderStateOf` |
+| Stylesheet DOM changes | document observers bump the style/environment epoch; stylesheet nodes are document-wide regardless of where they are inserted | changes.js `onDomRecords` |
 | Adopted stylesheets | sheet identity is sampled for the document and each tracked open shadow root | burst.js `renderStateOf` |
-| Same-tick observable changes | document and scoped observer queues are synchronously drained before a memo decision | styles.js `flushStyleInvalidations` + burst.js |
+| Same-tick observable changes | document and scoped observer queues are synchronously drained before a memo decision | changes.js `flushStyleInvalidations` + burst.js |
 | CSS transitions/animations and WAAPI | `getAnimations()` across light/open-shadow scopes; running targetable light-DOM effects rebuild per frame through diff, ambiguous effects force full capture | burst.js + styles.js `invalidateSnapshotsUnder` |
+| Layout beside a change | a cached style snapshot is served only while the used values it froze still read the same (its box, offsets, margins, grid tracks); the differential reconcile compares the same values | styles.js `usedValuesHold` + diff.js |
+| Edits and events while a capture runs | mutation records are judged when the capture ends; scroll, input and focus events mark the frame torn. A torn frame is not memoized | burst.js `hasTornMutation` |
 | Selection capture | bypasses memoization because selection/range state is not a DOM mutation | snapdom.js `main` |
-| Canvas pixel draws | bypass memoization because pixels are invisible to DOM observers | snapdom.js `main` → burst.js `isAutoBurstSafe` |
-| Changes while a `fast: false` capture pauses | the torn-frame judgement runs again when the clone stage ends, and a torn clone is redone in one task; captures without burst watchers (frame-driven trees, function-valued policies, selection, impure plugins) keep what they read | capture.js `captureDOM` + burst.js `__tornSinceStart` |
-| CSSOM rule edits (`sheet.insertRule`, `rule.style.x = …`) | not automatically observed; use `invalidate: true` to clear style caches as well as the result memo. This also refreshes the set of captured properties when a rule introduces one that was not previously used | snapdom.js `main` → styles.js `invalidateStyleCaches` |
+| Canvas pixel draws | bypass memoization because pixels are invisible to DOM observers | snapdom.js `main`, burst.js `isAutoBurstSafe` |
+| Changes while a `fast: false` capture pauses | the torn-frame judgement runs again when the clone stage ends, and a torn clone is redone in one task; captures without burst watchers (frame-driven trees, function-valued policies, selection, impure plugins) keep what they read | capture.js `captureDOM` + session `tornSinceStart` |
+| CSSOM rule edits (`sheet.insertRule`, `rule.style.x = …`) | not automatically observed; use `invalidate: true` to clear style caches as well as the result memo. This also refreshes the set of captured properties when a rule introduces one that was not previously used | snapdom.js `main`, changes.js `invalidateStyleCaches` |
 | Plugins with render hooks | impure hooks suspend automatic memoization; pure hooks may memoize, while diff bails whenever it would skip a required lifecycle hook | plugins.js `hasImpureRenderPlugins` + diff.js |
 | Function-valued capture policies | `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` bypass memoization even when their function identity is unchanged; applicable style/fallback decisions are reevaluated on each new capture | snapdom.js `main` + styles.js |
 
 Differential-capture tests require byte equality with a full capture of the same DOM
 state. `tryDiffCapture` returns `null` when it cannot safely reuse the retained clone,
 so core runs a full capture.
+
+## The layout zoom (matching the page's pixel grid)
+
+A browser lays a page out on device pixels: a `1px` border is 0.8px at a devicePixelRatio of
+1.25, and line boxes round on that grid. An SVG image is laid out at 1x, so borders and lines
+drift apart. On Chromium and Firefox the SVG engine therefore lays the clone out under `zoom`
+and scales the result back (`src/engines/svg.js`, `liveLayoutZoom`). The zoom is the product of:
+
+- the device grid, when the page is really laid out on it. Device emulation reports a
+  devicePixelRatio and lays out at 1x, so a probe measures the grid instead of trusting the
+  number. A browser zoomed out (devicePixelRatio under 1) is a real grid too, on Chromium.
+- the element's own effective CSS `zoom`, its ancestors' included.
+
+Firefox skips the device part on an integer grid (2x, 3x): it shapes the system font for the
+zoomed size, with tighter tracking, and text came out narrower and wrapped. WebKit does not
+round by devicePixelRatio and has no layout zoom; there `freezeBorderBox`
+(`src/modules/styleFreeze.js`) holds the outer edges of boxes with fractional borders, which a
+table cell holding text cannot do.
 
 <a id="measured-dead-ends--do-not-retry"></a>
 
@@ -152,7 +173,7 @@ fresh capture is `invalidate: true`; a changed callback closure does not require
 
 Playwright WebKit does not reproduce every Safari SVG-as-image issue, including the
 #219770 family of blank first draws. Validate changes to those workarounds in real Safari.
-Enable **Develop → Allow Remote Automation**, start `safaridriver -p <port>`, and use
+Enable **Develop, Allow Remote Automation**, start `safaridriver -p <port>`, and use
 WebDriver to run repeated captures and inspect the resulting images. Compare pixels as
 well as successful completion; a blank image can still be a valid export.
 
