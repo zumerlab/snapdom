@@ -90,7 +90,7 @@ const LIMITS = {
   'd11-toblob-test': 'a fixed element outside #target paints over its box in the reference',
   'd42-nested-line-clamp': "a native button; Chromium's svg images ignore per-language default fonts",
   'd-rtl-body': "Chromium's reference screenshot of a right-to-left body starts 228px in; the capture holds the whole body",
-  'd8-nested-elements': "Playwright's WebKit draws box-shadow in an svg image off its box (safariShadows.js); real Safari is checked by hand",
+  'd8-nested-elements': 'WebKit clips a hard box-shadow of several layers to its unflipped box in an svg image: the part below is lost, in real Safari too (measured 2026-11-16, Safari 27.0.1)',
   'd-compress': "Playwright's WebKit draws box-shadow in an svg image off its box (safariShadows.js); real Safari is checked by hand",
 }
 
