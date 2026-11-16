@@ -717,8 +717,8 @@ function hasTFBBox(el) {
  * The zoom the live document is actually laid out at, for the #508 layout zoom.
  *
  * Device emulation (`deviceScaleFactor`, DevTools device mode) reports dpr 2 but lays out at
- * 1x, where a zoomed clone re-wrapped text. A 0.5px border computes to 1px on a 1x grid, so
- * 1px means 1x; an engine that does not snap keeps zoom = dpr. Not cached: dpr and browser
+ * 1x, where a zoomed clone re-wrapped text. A 0.5px border computes to one device pixel, so
+ * 1px means 1x unless a device pixel is that wide; an engine that does not snap keeps zoom = dpr. Not cached: dpr and browser
  * zoom change between captures.
  * @param {Window} view - the captured element's window
  * @returns {number} devicePixelRatio, or 1 when the live layout grid is CSS pixels
@@ -737,7 +737,11 @@ export function liveLayoutZoom(view) {
     ;(doc.body || doc.documentElement).appendChild(probe)
     const bt = parseFloat(view.getComputedStyle(probe).borderTopWidth)
     probe.remove()
-    if (bt >= 1) zoom = 1
+    // Zoomed out (dpr under 1) the probe reads one device pixel, 1.25px at 0.8: a real grid,
+    // where a table's dividers and a paragraph's line boxes moved in a 1x image (Chromium, a
+    // real 0.8 grid: 5.4% to 0.0% on a page of paragraphs). Firefox stays at 1x there, its
+    // system font narrows under the zoom.
+    if (bt >= 1 && (isFirefox() || Math.abs(bt - 1 / dpr) > 0.01)) zoom = 1
   } catch { /* keep dpr */ }
   return zoom
 }

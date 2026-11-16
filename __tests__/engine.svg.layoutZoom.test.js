@@ -224,6 +224,24 @@ describe('svg engine layout zoom follows the live layout grid', () => {
     expect(Math.abs(await ink() - at1x)).toBeLessThan(4)
   })
 
+  // Zoomed out, a device pixel is wider than a CSS pixel: the 0.5px probe reads one device
+  // pixel, 1.25px at 0.8. That is a real grid, unlike emulation, where it reads 1px.
+  it('takes a devicePixelRatio under 1 as a real grid when the probe reads one device pixel', () => {
+    stubDPR(0.8)
+    const gcs = window.getComputedStyle
+    window.getComputedStyle = function (el, pseudo) {
+      const cs = gcs.call(this, el, pseudo)
+      if (pseudo || el?.style?.borderTopWidth !== '0.5px') return cs
+      return new Proxy(cs, { get: (t, k) => k === 'borderTopWidth' ? '1.25px' : Reflect.get(t, k) })
+    }
+    expect(liveLayoutZoom(window)).toBe(isFirefox() ? 1 : 0.8)
+  })
+
+  it('keeps 1x when a devicePixelRatio under 1 is emulated', () => {
+    stubDPR(0.8)
+    expect(liveLayoutZoom(window)).toBe(1)
+  })
+
   it('leaves no probe behind in the document', () => {
     stubDPR(2)
     const before = document.body.childElementCount
