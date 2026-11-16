@@ -46,7 +46,7 @@
     "cross:report": "node scripts/cross-report.mjs",
     "test:benchmark": "node scripts/benchmark-stable.mjs",
     "test:benchmark:legacy": "npx vitest bench --browser.headless --watch=false",
-    "bench:realpage": "node scripts/realpage-bench.mjs",
+    "bench:realpage": "npm run compile && node scripts/realpage-bench.mjs",
     "site": "npm run compile && node scripts/serve-site.mjs",
     "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",

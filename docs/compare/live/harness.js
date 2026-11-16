@@ -48,7 +48,9 @@ function loadScript(src) {
  *  versions are pinned so their results do not change with a new CDN release. */
 export const COMPETITORS = {
   'html2canvas 1.4.1': async () => {
-    if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')
+    // Not a truthiness test: on a page with an element whose id is `html2canvas` (the site's
+    // /compare/), `window.html2canvas` is that element until the script defines the function.
+    if (typeof window.html2canvas !== 'function') await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js')
     return async (el) => toDataUrl(await window.html2canvas(el, { logging: false, scale: 1 }))
   },
 

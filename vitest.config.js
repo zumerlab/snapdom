@@ -105,6 +105,9 @@ export default defineConfig({
     // An agent worktree checked out under .claude/worktrees/ carries its own __tests__/, and
     // the default glob ran both copies — a filter by file name matched twice.
     exclude: [...configDefaults.exclude, '**/.claude/**'],
+    // `vitest bench` has its own globs: without these it also ran the benchmark files of every
+    // worktree under .claude/.
+    benchmark: { include: ['__tests__/**/*.benchmark.js'], exclude: [...configDefaults.exclude, '**/.claude/**'] },
     provide: {
       network: { mode: network.mode, reading: network.reading, kbps: network.kbps, serialTimeoutMs: networkGate.serialTimeoutMs },
       // Suites size their own timeouts from this: the same demo has three times the machine

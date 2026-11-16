@@ -9,12 +9,23 @@
 // scene is mounted fresh for every capture, with unique content so no stage is served from an
 // image cache — the number a one-shot user actually experiences.
 //
-//   terminal 1:  npm run site
-//   terminal 2:  node scripts/realpage-bench.mjs [iterations=5]
+//   npm run bench:realpage            (compiles, and serves the site itself when it is not up)
+//   node scripts/realpage-bench.mjs [iterations=5]
 //
 // Prints a markdown table (median per cell). Chromium via Playwright, headless, DPR 1.
 import { readFile } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
+
+// The docs site, as `npm run site` serves it: started here unless one is already running.
+const siteUp = () => fetch('http://127.0.0.1:4180/').then(() => true, () => false)
+let site = null
+if (!await siteUp()) {
+  site = spawn(process.execPath, [fileURLToPath(new URL('./serve-site.mjs', import.meta.url))], { stdio: 'ignore' })
+  for (let i = 0; i < 100 && !await siteUp(); i++) await new Promise((resolve) => setTimeout(resolve, 100))
+}
+process.on('exit', () => site?.kill())
 
 const N = Number(process.argv[2] || 5)
 const domlensHelper = await readFile(new URL('../__tests__/helpers/domlens.js', import.meta.url), 'utf8')
@@ -86,10 +97,16 @@ const rows = await page.evaluate(async ({ N }) => {
 }, { N })
 
 const libs = Object.keys(rows[0]).filter((k) => k !== 'scene' && k !== 'size')
-console.log(`| Scene (per-element cold, docs page) | ${libs.join(' | ')} |`)
-console.log(`| --- | ${libs.map(() => '---').join(' | ')} |`)
+const wide = Math.max(...libs.map((l) => l.length))
+console.log(`\nPer-element cold capture on the docs site's /compare/ page, median of ${N}, in ms.\n`)
 for (const r of rows) {
-  const best = Math.min(...libs.map((l) => (typeof r[l] === 'number' ? r[l] : Infinity)))
-  console.log(`| ${r.scene} (${r.size}) | ${libs.map((l) => (r[l] === best ? `**${r[l]}**` : r[l])).join(' | ')} |`)
+  const timed = libs.filter((l) => typeof r[l] === 'number').sort((a, b) => r[a] - r[b])
+  console.log(`${r.scene} (${r.size})`)
+  for (const l of timed) {
+    const times = r[l] / r[timed[0]]
+    console.log(`  ${l.padEnd(wide)}  ${String(r[l]).padStart(8)}  ${l === timed[0] ? 'fastest' : times.toFixed(1) + 'x'}`)
+  }
+  for (const l of libs) if (typeof r[l] !== 'number') console.log(`  ${l.padEnd(wide)}  ${String(r[l]).padStart(8)}`)
+  console.log('')
 }
 await browser.close()
