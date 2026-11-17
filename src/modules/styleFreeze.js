@@ -186,8 +186,10 @@ export function freezeOneLine(source, clone, snap, flexItem, session) {
   clone.style.setProperty(ONE_LINE_PROP, 'nowrap')
 }
 
-/** Letters, digits and plain punctuation: text with no soft wrap opportunity in it. */
-export const UNBREAKABLE_TEXT = /^[\wÀ-ɏ.,:;!?'"()%]*$/
+/** Letters, digits and plain punctuation: text with no soft wrap opportunity in it. Escapes,
+ *  not the characters: a classic script in a page that is not UTF-8 reads them as another range,
+ *  a SyntaxError that left `snapdom` undefined. Pinned by scripts/verify-legacy-bundle.mjs. */
+export const UNBREAKABLE_TEXT = /^[\w\u00C0-\u024F.,:;!?'"()%]*$/
 
 /**
  * Whether every text run under `el` sits on one line box. False on whatever it cannot vouch

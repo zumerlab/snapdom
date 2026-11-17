@@ -16,6 +16,10 @@ for (const file of ['snapdom.js', 'snapdom.mjs']) {
   const text = readFileSync(new URL(`../dist/${file}`, import.meta.url), 'utf8')
   assert.doesNotMatch(text, /\(\?<[=!]/, `dist/${file} contains a regex lookbehind`)
 }
+// A classic script takes the page's encoding unless the server names one. Read as
+// windows-1252, a regex literal holding raw non-ASCII characters can stop parsing: a range from
+// U+00C0 to U+024F became an out of order one and `snapdom` was never defined.
+new vm.Script(new TextDecoder('windows-1252').decode(Buffer.from(bundle, 'utf8')), { filename: 'dist/snapdom.js read as windows-1252' })
 vm.runInNewContext(bundle, sandbox)
 
 assert.equal(sandbox.$, jquery, 'dist/snapdom.js overwrote window.$')

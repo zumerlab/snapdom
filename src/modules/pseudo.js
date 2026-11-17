@@ -688,7 +688,7 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
         // indented markup (`<p>\n  Hello`) loses the pseudo.
         const lead = /^\s*/.exec(text)[0]
         const body = text.slice(lead.length)
-        const match = body.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['’])?)/u)
+        const match = body.match(/^([^\p{L}\p{N}\s]*[\p{L}\p{N}](?:['\u2019])?)/u)
         const first = match?.[0]
         const rest = body.slice(first?.length || 0)
         if (!first || /[\uD800-\uDFFF]/.test(first)) continue
