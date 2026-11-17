@@ -135,6 +135,15 @@ round by devicePixelRatio and has no layout zoom; there `freezeBorderBox`
 (`src/modules/styleFreeze.js`) holds the outer edges of boxes with fractional borders, which a
 table cell holding text cannot do.
 
+Under the zoom a line can still come out a fraction of a pixel wider or narrower than on the
+page (Firefox rounds each glyph at the zoomed size, Chromium lands box edges on the zoomed 1/64px
+grid), and a nearly full line then breaks a word early or pulls one up. So when the zoom is not
+1, `freezeLineBreaks` (`src/modules/lineBreaks.js`) reads where the page broke each line and
+serializes a copy of the tree with the lines at risk held in `nowrap` spans. The clone itself
+stays untouched, because the differential path splices into it. The pass costs time only on a
+zoomed capture: measured on a real 2x Chromium grid, 0.8 ms on a 40-paragraph article and 9.6 ms
+on a 250-row table.
+
 ## Images: what the page has decoded is not read again
 
 Every raster in a capture is embedded as a `data:` URL, downsampled to the resolution its output
