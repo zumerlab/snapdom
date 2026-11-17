@@ -101,7 +101,14 @@ function styleFingerprint(doc) {
 }
 
 /**
- * Scans a stylesheet's rules for any needle strings within a limited budget.
+ * Scans a stylesheet's rules for any needle strings within a limited budget. What it cannot
+ * read (a sheet of another origin, the rules past the budget) answers true: answered false,
+ * the whole pass was skipped and a ::before declared there was not painted. The scan's gates
+ * rule those out next (canSkipPseudoWalk), from a copy of the sheet and with no budget. The
+ * price falls on a page whose only pseudo could be in such a sheet: 600 nodes under a font
+ * sheet of another origin took 78 to 87 ms on the one capture before the copy lands and 4.6
+ * to 4.7 after, and 6 to 12 ms on every capture when the copy cannot be read (no CORS).
+ * Pinned by __tests__/module.pseudo.preflightBlind.test.js.
  * @param {CSSStyleSheet} sheet
  * @param {string[]} needles
  * @param {{budget:number}} state
@@ -109,10 +116,10 @@ function styleFingerprint(doc) {
  */
 function sheetHasNeedles(sheet, needles, state) {
   const rules = safeRules(sheet)
-  if (!rules) return false
+  if (!rules) return true
 
   for (let i = 0; i < rules.length; i++) {
-    if (state.budget <= 0) return false
+    if (state.budget <= 0) return true
     const rule = rules[i]
     // Only read cssText when needed and decrement budget
     const css = rule && rule.cssText ? rule.cssText : ''
@@ -136,7 +143,7 @@ function sheetHasNeedles(sheet, needles, state) {
         }
       }
     }
-    if (state.budget <= 0) return false
+    if (state.budget <= 0) return true
   }
   return false
 }
@@ -197,7 +204,7 @@ export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc))
   {
     const nodes = doc.querySelectorAll('style,link[rel~="stylesheet"]')
     const state = { budget: CSS_RULE_SCAN_BUDGET }
-    for (let i = 0; i < nodes.length && state.budget > 0; i++) {
+    for (let i = 0; i < nodes.length; i++) {
       const n = nodes[i]
       /** @type {CSSStyleSheet | null} */
       let sheet = null

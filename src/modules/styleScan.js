@@ -402,7 +402,9 @@ function composePseudoGates(probe, pseudoSels) {
   for (const kind in pseudoSels) {
     const parts = pseudoSels[kind]
     if (kind === 'before' || kind === 'after') parts.push('q')
-    gates[kind] = joinGate(probe, parts)
+    // `:scope .icon::before` inside @scope: matches() reads :scope as the node asked, never
+    // true, and the pseudo was dropped. No gate, every node is probed.
+    gates[kind] = parts.some((p) => p.includes(':scope')) ? null : joinGate(probe, parts)
   }
   return gates
 }
