@@ -703,6 +703,20 @@ export function parseContent(content) {
 
 const BORDER_SIDES = ['top', 'right', 'bottom', 'left']
 
+let fullList = null
+/** Return the props a full read takes from a computed style, by name, which are its list
+ *  without custom properties and what shouldIgnoreProp drops. Every element and pseudo-element
+ *  of every document lists the same props in one order, so the first style that lists any
+ *  serves all. A style that lists nothing, outside a browsing context, gives an empty list.
+ *  Pinned by `__tests__/module.styles.fullRead.test.js`.
+ *  @param {CSSStyleDeclaration} style
+ *  @returns {string[]} */
+export function fullReadableProps(style) {
+  if (fullList) return fullList
+  const list = Array.from(style).filter((prop) => !shouldIgnoreProp(prop))
+  return list.length ? (fullList = list) : list
+}
+
 /**
  * Read a computed style into a plain map, only the `universe` props when given (the rest sit
  * at the UA default getStyleKey drops). Deep tree, a `::before` on each of 1,936 leaves:
