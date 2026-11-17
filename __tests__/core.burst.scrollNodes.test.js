@@ -48,4 +48,37 @@ describe('scroll nodes of the burst memo', () => {
     const after = await snapdom(el)
     expect(after).not.toBe(before)
   })
+
+  // The light tree is walked through styleScan's scroll gate, not element by element: a
+  // scroller made one by a stylesheet rule, or by the UA sheet alone, must still be listed.
+  it('a box a stylesheet rule makes scrollable still invalidates the memo', async () => {
+    const style = document.createElement('style')
+    style.textContent = '.zz-sheet-scroller { width: 60px; height: 30px; overflow-y: auto }'
+    document.head.appendChild(style)
+    try {
+      const el = document.createElement('div')
+      el.style.cssText = 'width:80px;padding:4px'
+      el.innerHTML = '<div class="zz-sheet-scroller"><div style="height:200px;background:linear-gradient(red,blue)"></div></div>'
+      document.body.appendChild(el)
+      for (let i = 0; i < 3; i++) await snapdom(el)
+      const before = await snapdom(el)
+      el.querySelector('.zz-sheet-scroller').scrollTop = 100
+      const after = await snapdom(el)
+      expect(after).not.toBe(before)
+    } finally {
+      style.remove()
+    }
+  })
+
+  it('a textarea scrolled by the page still invalidates the memo', async () => {
+    const el = document.createElement('div')
+    el.style.cssText = 'width:120px;padding:4px'
+    el.innerHTML = `<textarea rows="2" cols="8">${'line\n'.repeat(30)}</textarea>`
+    document.body.appendChild(el)
+    for (let i = 0; i < 3; i++) await snapdom(el)
+    const before = await snapdom(el)
+    el.querySelector('textarea').scrollTop = 40
+    const after = await snapdom(el)
+    expect(after).not.toBe(before)
+  })
 })

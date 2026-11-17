@@ -122,6 +122,16 @@ export function svgGeometryReaches(el) {
   try { return el.matches(sel) } catch { return true }
 }
 
+/** Return the selector for the elements under `el` that can hold a scroll offset, or null
+ *  (walk them all) for shadow content and an unreliable scan.
+ *  @param {Element} el
+ *  @returns {string|null} */
+export function scrollGateFor(el) {
+  const doc = el.ownerDocument || document
+  if (el.getRootNode && el.getRootNode() !== doc) return null
+  return scanFor(doc).scrollGate
+}
+
 /** Per-kind selector gates for the pseudo probe (see scanAuthorStyles). Same memo and
  *  same shadow-root escape as universeFor: null gates mean probe every node. */
 const NULL_GATES = { before: null, after: null, firstLetter: null, marker: null, firstLine: null }

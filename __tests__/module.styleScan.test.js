@@ -132,6 +132,58 @@ describe('pseudo selector gates', () => {
   })
 })
 
+describe('scroll gate', () => {
+  afterEach(() => {
+    document.head.querySelectorAll('style[data-scan-test]').forEach((s) => s.remove())
+    document.body.innerHTML = ''
+  })
+
+  const gateWith = (css) => {
+    const style = document.createElement('style')
+    style.setAttribute('data-scan-test', '')
+    style.textContent = css
+    document.head.appendChild(style)
+    return scanAuthorStyles(document).scrollGate
+  }
+  const el = (html) => {
+    const host = document.createElement('div')
+    host.innerHTML = html
+    document.body.appendChild(host)
+    return host.firstElementChild
+  }
+
+  it('keeps the UA scrollers and the elements an overflow rule reaches, and nothing else', () => {
+    const gate = gateWith('.zz-pane { overflow: auto } .zz-y { overflow-y: scroll } .zz-reset { all: inherit } .zz-color { color: red }')
+    for (const html of ['<input>', '<textarea></textarea>', '<select></select>', '<dialog></dialog>', '<div popover></div>',
+      '<div style="overflow-x: hidden"></div>', '<div style="all: inherit"></div>', '<div class="zz-pane"></div>',
+      '<div class="zz-y"></div>', '<div class="zz-reset"></div>']) {
+      expect(el(html).matches(gate), html).toBe(true)
+    }
+    for (const html of ['<div class="zz-color"></div>', '<p></p>', '<span style="color: red"></span>']) {
+      expect(el(html).matches(gate), html).toBe(false)
+    }
+    const svg = el('<svg><foreignObject></foreignObject></svg>')
+    expect(svg.matches(gate)).toBe(false) // an inline <svg> scrolls in no engine
+    expect(svg.firstElementChild.matches(gate)).toBe(true) // foreignObject does in Chromium
+  })
+
+  it('resolves nesting, inside @media too, and keeps a pseudo rule\'s originating element', () => {
+    const gate = gateWith('.zz-p { & .zz-c { overflow: hidden } } @media (min-width: 1px) { .zz-m { overflow: clip } } .zz-x::before { overflow: auto }')
+    expect(el('<div class="zz-p"><div class="zz-c"></div></div>').firstElementChild.matches(gate)).toBe(true)
+    expect(el('<div class="zz-m"></div>').matches(gate)).toBe(true)
+    expect(el('<div class="zz-x"></div>').matches(gate)).toBe(true)
+  })
+
+  it('gives the gate up when an overflow declaration has no selector to match', () => {
+    for (const css of ['@keyframes zz-k { to { overflow: hidden } }', '.zz-n { @media (min-width: 1px) { overflow: auto } }', '@scope (.zz-s) { .zz-in { overflow: auto } }']) {
+      document.head.querySelectorAll('style[data-scan-test]').forEach((s) => s.remove())
+      expect(gateWith(css), css).toBe(null)
+      // Only the gate: the rest of the scan stays usable.
+      expect(scanAuthorStyles(document).universe, css).not.toBe(null)
+    }
+  })
+})
+
 describe('pruned snapshots keep fidelity', () => {
   afterEach(() => {
     document.head.querySelectorAll('style[data-scan-test]').forEach((s) => s.remove())

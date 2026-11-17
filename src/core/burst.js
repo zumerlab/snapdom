@@ -54,6 +54,7 @@ import {
   invalidateStyleCaches,
 } from './changes.js'
 import { invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
+import { scrollGateFor } from '../modules/authorStyles.js'
 import { tryDiffCapture } from './diff.js'
 import { createCaptureSession } from './session.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
@@ -466,7 +467,9 @@ const NO_SCROLLPORT = /^(?:visible|clip)$/
 const SCROLLPORT_KEY = /(?:^|;)overflow(?:-[xy])?:(?!visible|clip)/
 
 /** List the boxes whose scroll offsets can repaint with no MutationRecord; memo hits sample
- *  the list. Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
+ *  the list. With a reliable scan and no open shadow root only the scroll gate is walked,
+ *  and it cannot see a closed root's `:host` rules.
+ *  Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
 function collectScrollNodes(element, state) {
   const out = []
   // A retained key with no overflow declaration is `visible`: those boxes skip the layout
@@ -494,8 +497,10 @@ function collectScrollNodes(element, state) {
   // No dedupe needed: querySelectorAll excludes the scope itself (the element is already in
   // from the ancestors loop) and shadow scopes are disjoint from the light tree.
   for (let el = element; el; el = el.parentElement) add(el, true)
-  for (const scope of scopesOf(element, state)) {
-    try { for (const el of scope.querySelectorAll('*')) add(el) } catch { }
+  const scopes = scopesOf(element, state)
+  const gate = scopes.length === 1 ? scrollGateFor(element) : null
+  for (const scope of scopes) {
+    try { for (const el of scope.querySelectorAll(gate || '*')) add(el) } catch { }
   }
   state.scrollNodes = out
 }
