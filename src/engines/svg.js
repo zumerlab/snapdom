@@ -625,11 +625,12 @@ export async function composeAndSerialize(state, ex) {
   fo.appendChild(container)
 
   const serializer = new XMLSerializer()
-  // Under the layout zoom a line can come out wider or narrower than on the page and break a
-  // word early or pull one up: serialize a copy that keeps the page's line breaks where they
-  // are at risk, and leave the clone as it is.
+  // Under a fractional layout zoom a line can come out wider or narrower than on the page and
+  // break a word early or pull one up: serialize a copy that keeps the page's line breaks where
+  // they are at risk, and leave the clone as it is. A whole zoom keeps the page's grid (432
+  // boxes sized by their own text, Chromium at 2x: no line moved with or without the pass).
   let tree = fo
-  if (layoutZoom !== 1) {
+  if (!Number.isInteger(layoutZoom)) {
     try {
       tree = freezeLineBreaks(fo, state.clone, state.nodeMap, elDoc, lineRisk(layoutZoom)) || fo
     } catch (e) {

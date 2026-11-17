@@ -11,14 +11,14 @@ import { createContext } from '../src/core/context.js'
 import { __diffStats } from '../src/core/diff.js'
 import { freezeLineBreaks, lineRisk } from '../src/modules/lineBreaks.js'
 import { ONE_LINE_PROP } from '../src/modules/styleFreeze.js'
-import { isSafari, isFirefox } from '../src/utils/browser.js'
+import { isSafari } from '../src/utils/browser.js'
 import { stubHiDPI } from './helpers/hidpi.js'
 
 const PINS = ONE_LINE_PROP === 'text-wrap-mode'
 // WebKit lays the clone out without the zoom, so nothing there needs the page's breaks.
 const ZOOMS = PINS && !isSafari()
-// Firefox lays the clone out without the zoom on an integer grid (2x, 3x), so it gets 1.5.
-const HIDPI = isFirefox() ? 1.5 : 2
+// The pass runs on a fractional grid only: a whole zoom keeps the page's lines.
+const HIDPI = 1.5
 const JOINER = '\u2060'
 const FONT = 'font:14px/20px Arial,sans-serif'
 const TEXT = 'The quick brown fox jumps over the lazy dog, and the dog does not mind it at all today.'
@@ -274,6 +274,13 @@ describe.skipIf(!ZOOMS)('freezeLineBreaks with a risk policy', () => {
     expect(await frozen(p, lineRisk(1.25, 'blink'))).toBeNull()
   })
 
+  it('leaves a table cell alone when its text is on one line, and pins one that wraps', async () => {
+    const table = mount(`<table style="${FONT}"><tr><td>two words</td><td></td></tr><tr><td></td><td style="width:60px">${TEXT}</td></tr></table>`)
+    const copy = await frozen(table, lineRisk(1.5, 'blink'))
+    expect(pinsOf(copy).join(' ')).not.toContain('two words')
+    expect(pinsOf(copy)).toEqual(liveLines(table.querySelectorAll('td')[3].firstChild))
+  })
+
   it('returns null when no line is at risk', async () => {
     const p = words(ROOMY)
     for (const engine of ['blink', 'gecko']) expect(await frozen(p, lineRisk(2, engine))).toBeNull()
@@ -347,10 +354,15 @@ describe.skipIf(!ZOOMS)('the svg engine under the layout zoom', () => {
     expect(seen.svg).toMatch(PIN_CSS)
   })
 
-  it('pins nothing at a devicePixelRatio of 1', async () => {
+  it('pins nothing at a devicePixelRatio of 1, nor on a whole grid', async () => {
     const p = mount(`<p style="${PARA}">${LONG}</p>`)
-    const svg = decode((await snapdom(p, { cache: 'disabled', burst: false })).url)
-    expect(svg).not.toMatch(PIN_CSS)
+    snug(p)
+    const shot = async () => decode((await snapdom(p, { cache: 'disabled', burst: false })).url)
+    expect(await shot()).not.toMatch(PIN_CSS)
+    stubHiDPI(2)
+    expect(await shot()).not.toMatch(PIN_CSS)
+    stubHiDPI(HIDPI)
+    expect(await shot()).toMatch(PIN_CSS)
   })
 
   it('pins a differential recapture from the page as it is then, like a full capture', async () => {

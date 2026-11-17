@@ -2,7 +2,8 @@
  * The page's own line breaks, kept in the tree the svg engine lays out under its layout zoom.
  *
  * At a devicePixelRatio other than 1, engines/svg.js lays the clone out under `zoom: <dpr>`
- * (#508). Firefox measures text in app units (1/60px) and rounds each glyph's advance at the
+ * (#508). The pass runs when that zoom is not a whole number: a whole one keeps the page's grid,
+ * and no line moved at 2x in Chromium with or without it. Firefox measures text in app units (1/60px) and rounds each glyph's advance at the
  * font size it lays out, so under zoom 1.25 a 12px line is shaped at 15px, and divided back a
  * line comes out up to 0.33px wider than on the page (Firefox 160), or narrower. Chrome 157's
  * zoomed text comes out within 0.0001px of the page's, but a box width or edge lands on the
@@ -1144,6 +1145,11 @@ export function freezeLineBreaks(fo, clone, nodeMap, liveDoc, risk = null) {
       if (!FLOWS_INLINE.has(display)) {
         // An inline-block and the like is an atom on its parent's line and lays out lines of its own.
         if (inlineLevel) atom(at(root), live, cs, node)
+        // A box as wide as its own text, with that text on one line, cannot wrap in the clone:
+        // its width follows the same text there. Every cell of a data table ends here
+        // (250 rows of 6 on a 1.25x Chromium grid: the pass cost 8.1 ms, now 0.9).
+        if (!live.childElementCount && softensWidth(live.localName, display) &&
+          live.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom) < 1.5 * (px(cs.lineHeight) || 1.2 * px(cs.fontSize))) continue
         inner = live
       } else if (display === 'inline') {
         // Padding, borders and margins at an inline box's ends take room on its first and last lines.
