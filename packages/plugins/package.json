@@ -54,16 +54,16 @@
   },
   "peerDependencies": {
     "@zumer/snapdom": "^3.4.0",
-    "rapier-jxl": "^8.3.2"
+    "jpegxl": "^8.4.0"
   },
   "peerDependenciesMeta": {
-    "rapier-jxl": {
+    "jpegxl": {
       "optional": true
     }
   },
   "devDependencies": {
     "@zumer/snapdom": "file:../..",
-    "rapier-jxl": "^8.3.2"
+    "jpegxl": "^8.4.0"
   },
   "sideEffects": false
 }

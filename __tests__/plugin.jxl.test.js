@@ -2,15 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { snapdom } from '../src/api/snapdom.js'
 import { registerPlugins, clearPlugins } from '../src/core/plugins.js'
 import { jxl as plugin } from '../packages/plugins/jxl.js'
-import { createCodec } from 'rapier-jxl/codec'
-import { createCodec as createDecoder } from 'rapier-jxl/codec/decode'
+import * as captureComplete from 'jpegxl/capture-complete'
+import * as capture from 'jpegxl/capture'
+import * as upload from 'jpegxl/upload'
 
-// A real rapier-jxl encoder that records what the plugin asked of it, and where the red text is on
+// In a page each module's name is its worker queue (jpegxl 8.4.0): an encoder with prepare and capture.
+const queues = { 'jpegxl/capture-complete': captureComplete, 'jpegxl/capture': capture, 'jpegxl/upload': upload }
+
+// A real jpegxl encoder that records what the plugin asked of it, and where the red text is on
 // the canvas it was given.
-function recording(module = 'rapier-jxl/capture-complete') {
-  const real = createCodec({ module })
-  // Each encoder holds a worker: closed after its test, or a long run runs out of them.
-  made.push(() => { real.close() })
+function recording(module = 'jpegxl/capture-complete') {
+  const real = queues[module]
   const calls = []
   return {
     calls,
@@ -56,10 +58,8 @@ function check(call, slack = 18, photos = true) {
 const made = []
 afterEach(async () => { while (made.length) await made.pop()(); clearPlugins() })
 
-// Every plugin a test makes closes the encoder it created afterwards.
-const jxl = (options) => { const p = plugin(options); made.push(() => p.close()); return p }
-// toJxl() shows JPEG XL through a decoder where the browser cannot.
-const decoding = () => { const d = createDecoder({ module: 'rapier-jxl/decode' }); made.push(() => d.close()); return d }
+// The plugin holds no encoder of its own to close: equal options share one, kept for the page (jxl.js, jxl()).
+const jxl = plugin
 
 function card(style = '', text = 'Exact text', parent = document.body) {
   const el = document.createElement('div')
@@ -136,19 +136,20 @@ describe('jxl plugin', () => {
     expect(p.name).toBe('jxl')
     expect(p.pure).toBe(true)
     expect(typeof p.afterClone).toBe('function')
-    expect(jxl({ module: 'rapier-jxl/capture', codec: recording('rapier-jxl/capture') }).afterClone).toBeUndefined()
+    expect(jxl({ module: 'jpegxl/capture', codec: recording('jpegxl/capture') }).afterClone).toBeUndefined()
     const exports = p.defineExports({ exports: {} })
     expect(Object.keys(exports).sort()).toEqual(['blob', 'download', 'jxl'])
   })
 
-  it('the upload module encodes with your codec; an unknown module is refused', async () => {
-    expect(() => jxl({ module: 'rapier-jxl' })).toThrow(/module/)
-    // One codec door: the exact and upload encoders come as your own codec.
-    expect(() => jxl({ module: 'rapier-jxl/upload' })).toThrow(/rapier-jxl\/codec\/upload/)
-    const codec = createCodec({ module: 'rapier-jxl/upload' })
-    made.push(() => codec.close())
-    const result = await snapdom(el, { plugins: [jxl({ module: 'rapier-jxl/upload', codec })] })
-    expect((await result.toBlob({ format: 'jxl', dpr: 1, quality: 0.8 })).type).toBe('image/jxl')
+  it('the upload module needs its explicit codec; an unknown module is refused', async () => {
+    expect(() => jxl({ module: 'jpegxl' })).toThrow(/module/)
+    expect(jxl({ module: 'jpegxl/capture-complete' })).toBe(jxl())
+    // The default module loads its own door; an alternate module is the codec the caller imports (jxl.js, create()).
+    expect(() => jxl({ module: 'jpegxl/upload' })).toThrow(/needs its codec/)
+    for (const options of [{ module: 'jpegxl/upload', codec: upload }, { module: 'jpegxl/upload', codec: recording('jpegxl/upload') }]) {
+      const result = await snapdom(el, { plugins: [jxl(options)] })
+      expect((await result.toBlob({ format: 'jxl', dpr: 1, quality: 0.8 })).type).toBe('image/jxl')
+    }
   })
 
   it('toBlob({ format: "jxl" }) gives a JPEG XL file; other formats stay SnapDOM\'s', async () => {
@@ -205,8 +206,17 @@ describe('jxl plugin', () => {
     expect(record.exact).toBe(true)
   })
 
+  it('a quality outside 0 to 1 is ignored and the default 0.92 is used, as toWebp\'s canvas.toBlob ignores it', async () => {
+    for (const quality of [2, -1, Number.NaN]) {
+      const codec = recording()
+      const result = await snapdom(el, { plugins: [jxl({ codec })] })
+      await result.toBlob({ format: 'jxl', dpr: 1, quality })
+      expect(codec.calls[0].fidelity, String(quality)).toEqual({ quality: 92 })
+    }
+  })
+
   it('toJxl() returns an image at the capture\'s size', async () => {
-    const result = await snapdom(el, { plugins: [jxl({ decoder: decoding() })] })
+    const result = await snapdom(el, { plugins: [jxl()] })
     const img = await result.toJxl({ dpr: 1 })
     expect(img).toBeInstanceOf(HTMLImageElement)
     expect(img.naturalWidth).toBe(Math.floor(result.meta.vbW))
@@ -238,17 +248,9 @@ describe('jxl plugin', () => {
       expect(file.measurements.map((m) => m.domain)).not.toContain('decoded-output')
       return new Uint8Array(await blob.arrayBuffer())
     }
-    // Text and photo rectangles measure photos on the encoder's own reconstruction: the default worker
-    // (no decoder on a browser without JPEG XL) and a module given a decoder write the same file.
-    const own = createCodec({ module: 'rapier-jxl/capture-complete' })
-    made.push(() => own.close())
-    const worker = await encode(own)
-    const direct = await import('rapier-jxl/capture-complete')
-    const { decode } = await import('rapier-jxl/decode')
-    direct.configureDecoder(decode)
-    try {
-      expect(await encode(direct)).toEqual(worker)
-    } finally { direct.configureDecoder(null) }
+    // Text and photo rectangles measure photos on the encoder's own reconstruction, never a decode of its
+    // output: in a page the module's queue decodes with the browser, and configureDecoder is refused there.
+    expect((await encode(captureComplete)).length).toBeGreaterThan(0)
   })
 
   it('an aborted export rejects with the signal\'s reason', async () => {
@@ -382,15 +384,42 @@ describe('jxl plugin: text rectangles stay on the text', () => {
     expect(covers(call.exactRects, textBox(el, span, { contentX: 0, contentY: 0, clip: null })), 'where WebKit draws it').toBe(true)
   })
 
-  it('an export crop off the origin keeps the text on its rectangles', async () => {
+  it('an export crop off the origin is a window, never a downscale: one encode, the text on its rectangles', async () => {
     // The text sits over the photo's band; the crop is a window of the viewBox lower and to the right.
     const el = card('', 'Cropped text')
-    el.querySelector('span').style.cssText = 'position:absolute;left:120px;top:70px'
-    const { call } = await run(el, {}, { crop: { x: 100, y: 50, width: 150, height: 60 } })
-    expect(call.width).toBe(150)
-    // WebKit draws the window from the capture's corner instead (SnapDOM 3.7.2), so there the file stays exact.
-    if (/AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Edg/.test(navigator.userAgent)) return expect(call.fidelity).toBe('exact')
-    check(call, 18)
+    const span = el.querySelector('span')
+    span.style.cssText = 'position:absolute;left:120px;top:70px'
+    const crop = { x: 100, y: 50, width: 150, height: 60 }
+    const calls = []
+    const codec = { prepare: async () => {}, capture: async (canvas, options) => {
+      calls.push({ width: canvas.width, height: canvas.height, ink: inkOf(canvas), ...options })
+      return { meetsTarget: true, bytes: new Uint8Array([0xff, 0x0a]), kept: 'lossy' }
+    } }
+    const result = await snapdom(el, { plugins: [jxl({ codec })] })
+    await result.toBlob({ format: 'jxl', dpr: 1, quality: 0.8, crop })
+    expect(calls, 'one encode: the window is drawn 1:1').toHaveLength(1)
+    const [call] = calls
+    expect([call.width, call.height]).toEqual([150, 60])
+    expect(call.fidelity).toEqual({ quality: 80 })
+    // The rectangles are the capture's, moved into the window and cut to it.
+    const box = textBox(el, span, result.meta)
+    const x = Math.max(0, box.x - crop.x), y = Math.max(0, box.y - crop.y)
+    const inWindow = { x, y, width: Math.min(crop.width, box.x - crop.x + box.width) - x, height: Math.min(crop.height, box.y - crop.y + box.height) - y }
+    expect(covers(call.exactRects, inWindow), 'the text\'s rectangle in the window').toBe(true)
+    for (const r of [...call.exactRects, ...call.photoRects]) {
+      expect(r.x >= 0 && r.y >= 0 && r.x + r.width <= 150 && r.y + r.height <= 60, 'inside the window').toBe(true)
+    }
+    // SnapDOM 3.7.4 draws a crop's window all white in WebKit, plug-in or not: the ink is checked where it draws it.
+    if (!(/AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Edg/.test(navigator.userAgent))) check(call, 18)
+  })
+
+  it('an export crop at the origin exports', async () => {
+    // The window holds only the card's white corner: no rectangle, nothing for the capture to refuse.
+    const { call, result } = await run(card(), {}, { crop: { x: 0, y: 0, width: 40, height: 40 } })
+    expect([call.width, call.height]).toEqual([40, 40])
+    expect(call.exactRects.filter((r) => !r.edge)).toEqual([])
+    expect(call.photoRects).toEqual([])
+    expect((await result.toBlob({ format: 'jxl', dpr: 1, crop: { x: 0, y: 0, width: 40, height: 40 } })).type).toBe('image/jxl')
   })
 
   it('an explicit small width (below 1:1)', async () => {
@@ -404,9 +433,10 @@ const exportOf = (result, options = {}) => result.toBlob({ format: 'jxl', dpr: 1
 
 describe('jxl plugin: SnapDOM features', () => {
   // SnapDOM 3.7.2 draws <html> without the top margins that collapse through its first children, <body>'s own
-  // included, so its text is not where the page has it: such a capture stays exact. Without them it is measured.
-  for (const [name, bodyCss, firstMargin, exact] of [['no collapsing margin', 'margin:0', 0, false],
-    ['a collapsing first margin', 'margin:0', 14, true], ['body margin 8px', 'margin:8px', 0, true]]) {
+  // included: the plugin measures what lies in <body>'s flow that much higher (jxl.js, measured() and liftOf()),
+  // so each of these captures takes the quality with its text on exact rectangles.
+  for (const [name, bodyCss, firstMargin] of [['no collapsing margin', 'margin:0', 0],
+    ['a collapsing first margin', 'margin:0', 14], ['body margin 8px', 'margin:8px', 0]]) {
     it(`captures document.documentElement with ${name}`, async () => {
       const saved = document.body.style.cssText
       document.body.style.cssText = bodyCss
@@ -419,8 +449,8 @@ describe('jxl plugin: SnapDOM features', () => {
       const codec = recording()
       const result = await snapdom(document.documentElement, { plugins: [jxl({ codec })] })
       await exportOf(result)
-      if (exact) expect(codec.calls[0].fidelity).toBe('exact')
-      else check(codec.calls[0], 18)
+      expect(codec.calls[0].fidelity).toEqual({ quality: 80 })
+      check(codec.calls[0], 18)
     })
   }
 
@@ -539,18 +569,25 @@ describe('jxl plugin: SnapDOM features', () => {
   })
 
   it('two instances with different modules', async () => {
-    const exact = recording('rapier-jxl/capture'), mixed = recording()
-    const a = await snapdom(card(), { plugins: [jxl({ module: 'rapier-jxl/capture', codec: exact })] })
+    const exact = recording('jpegxl/capture'), mixed = recording()
+    const a = await snapdom(card(), { plugins: [jxl({ module: 'jpegxl/capture', codec: exact })] })
     const b = await snapdom(card(), { plugins: [jxl({ codec: mixed })] })
     await exportOf(a); await exportOf(b)
     expect(exact.calls[0].fidelity).toBe('exact')
     check(mixed.calls[0])
   })
 
-  it('helpers', async () => {
-    for (const helpers of [true, false, { count: 2, memoryBytes: 256 << 20 }]) {
-      const result = await snapdom(card(), { plugins: [jxl({ helpers })] })
-      expect((await exportOf(result, { effort: 5 })).type).toBe('image/jxl')
+  it("uses the encoder module's configured helpers", async () => {
+    for (const helpers of [{ count: 0 }, { count: 1, memoryBytes: 128 << 20 }]) {
+      await captureComplete.close()
+      captureComplete.configure({ helpers })
+      try {
+        const result = await snapdom(card(), { plugins: [jxl({ codec: captureComplete })] })
+        expect((await exportOf(result, { effort: 5 })).type).toBe('image/jxl')
+      } finally {
+        await captureComplete.close()
+        captureComplete.configure({})
+      }
     }
   })
 
@@ -575,7 +612,7 @@ describe('jxl plugin: SnapDOM features', () => {
     }
   })
 
-  it('download names the file', async () => {
+  it('download names the file; a name with its own extension is kept, as SnapDOM\'s WebP download keeps card.png', async () => {
     const names = []
     const click = HTMLAnchorElement.prototype.click
     const hrefs = []
@@ -587,10 +624,11 @@ describe('jxl plugin: SnapDOM features', () => {
     await result.download({ format: 'jxl', filename: 'card.png' })
     await result.download({ format: 'png', filename: 'card' })
     await result.download({ format: 'jpg', filename: 'card' })
-    expect(names).toEqual(['card.jxl', 'card.jxl', 'card.jxl', 'card.png', 'card.jpeg'])
+    await result.download({ format: 'webp', filename: 'card.png' })
+    expect(names).toEqual(['card.jxl', 'card.jxl', 'card.png', 'card.png', 'card.jpeg', 'card.png'])
     // PNG and JPEG are SnapDOM's own download (its anchor takes the canvas's data URL).
     // PNG and JPEG are saved as SnapDOM saves them: its encoder's Blob, its file name.
-    expect(hrefs.slice(3).every((h) => h.startsWith('blob:'))).toBe(true)
+    expect(hrefs.slice(3, 5).every((h) => h.startsWith('blob:'))).toBe(true)
   })
 
   it('other toBlob formats stay SnapDOM\'s', async () => {
@@ -604,7 +642,7 @@ describe('jxl plugin: SnapDOM features', () => {
   it('a page past the canvas limit is drawn smaller and keeps its text exact', async () => {
     // What the plugin asks for is the question here; the real 34,000 px encode is a stress run.
     const calls = []
-    const codec = { prepare: async () => {}, capture: async (canvas, o) => { calls.push({ height: canvas.height, ...o }); return { fits: true, bytes: new Uint8Array([0xff, 0x0a]) } } }
+    const codec = { prepare: async () => {}, capture: async (canvas, o) => { calls.push({ height: canvas.height, ...o }); return { meetsTarget: true, bytes: new Uint8Array([0xff, 0x0a]) } } }
     const result = await snapdom(card('height:34000px'), { plugins: [jxl({ codec })] })
     await exportOf(result)
     expect(calls[0].height).toBeLessThan(34000)
@@ -631,8 +669,7 @@ describe('jxl plugin: cancellation and saving', () => {
   }
 
   it('an encoder that finishes after the abort loses to it, and nothing is saved', async () => {
-    const real = createCodec({ module: 'rapier-jxl/capture-complete' })
-    made.push(() => real.close())
+    const real = captureComplete
     let late = null
     const codec = {
       prepare: (k) => real.prepare(k),
@@ -871,7 +908,7 @@ describe('jxl plugin: repeat captures', () => {
     const el = card()
     el.querySelector('canvas').remove()
     expect(jxl()).toBe(jxl({}))
-    expect(jxl({ effort: 4, helpers: { memoryBytes: 1 << 26, count: 1 } })).toBe(jxl({ helpers: { count: 1, memoryBytes: 1 << 26 }, effort: 4 }))
+    expect(jxl({ effort: 4, webgpu: false })).toBe(jxl({ webgpu: false, effort: 4 }))
     expect(jxl({ effort: 4 })).not.toBe(jxl({ effort: 5 }))
     const codec = recording()
     expect(jxl({ codec })).toBe(jxl({ codec }))
@@ -912,7 +949,7 @@ describe('jxl plugin: export options', () => {
   })
 
   it('toJxl() keeps the drawn canvas\'s CSS size at a fractional dpr', async () => {
-    const result = await snapdom(card(), { plugins: [jxl({ decoder: decoding() })] })
+    const result = await snapdom(card(), { plugins: [jxl()] })
     const canvas = await result.toCanvas({ width: 101, dpr: 1.5 })
     const img = await result.toJxl({ width: 101, dpr: 1.5 })
     expect(img.style.width).toBe(canvas.style.width)
@@ -920,7 +957,7 @@ describe('jxl plugin: export options', () => {
   })
 
   it('a canvas the app passes is drawn on and kept', async () => {
-    const result = await snapdom(card(), { plugins: [jxl({ decoder: decoding() })] })
+    const result = await snapdom(card(), { plugins: [jxl()] })
     for (const toJxl of [false, true]) {
       const canvas = document.createElement('canvas')
       if (toJxl) await result.toJxl({ dpr: 1, canvas }); else await result.toBlob({ format: 'jxl', dpr: 1, canvas })
@@ -930,7 +967,7 @@ describe('jxl plugin: export options', () => {
 
   it('a canvas the app passes is kept when the encoder fails', async () => {
     const failing = { prepare: async () => {}, capture: async () => { throw new Error('encoder down') } }
-    const result = await snapdom(card(), { plugins: [jxl({ codec: failing, decoder: decoding() })] })
+    const result = await snapdom(card(), { plugins: [jxl({ codec: failing })] })
     for (const toJxl of [false, true]) {
       const canvas = document.createElement('canvas')
       await expect(toJxl ? result.toJxl({ dpr: 1, canvas }) : result.toBlob({ format: 'jxl', dpr: 1, canvas })).rejects.toThrow('encoder down')
@@ -938,26 +975,21 @@ describe('jxl plugin: export options', () => {
     }
   })
 
-  it('where JPEG XL does not show, toJxl() says so, or shows the decoder\'s pixels and frees its canvases', async () => {
+  it('where JPEG XL does not show, toJxl() shows the decoded pixels, or the exact canvas, and frees its canvases', async () => {
     const codec = recording()
     const plain = await snapdom(card(), { plugins: [jxl({ codec })] })
     const file = URL.createObjectURL(await plain.toBlob({ format: 'jxl', dpr: 1 }))
     const shows = await new Promise((resolve) => Object.assign(new Image(), { onload: () => resolve(true), onerror: () => resolve(false), src: file }))
     URL.revokeObjectURL(file)
     if (shows) return
-    await expect(plain.toJxl({ dpr: 1 })).rejects.toMatchObject({ code: 'JXL_NOT_SHOWN' })
-    // Known now: nothing more is encoded for it.
     const tried = codec.calls.length
-    expect(tried).toBeLessThanOrEqual(2)
-    await expect(plain.toJxl({ dpr: 1 })).rejects.toMatchObject({ code: 'JXL_NOT_SHOWN' })
-    expect(codec.calls).toHaveLength(tried)
     const create = document.createElement, canvases = []
     // The plugin's canvases: the one it encodes, and the decoder's (SnapDOM draws with its own before).
     document.createElement = function (tag, ...rest) { const n = create.call(this, tag, ...rest); if (/canvas/i.test(tag) && codec.calls.length > tried) canvases.push(n); return n }
     made.push(() => { document.createElement = create })
-    const result = await snapdom(card(), { plugins: [jxl({ codec, decoder: decoding() })] })
+    // A lossy file is shown through jpegxl/decode, loaded then; an exact one as its drawn canvas (jxl.js, image()).
     for (const quality of [0.8, 1]) {
-      const img = await result.toJxl({ dpr: 1, quality })
+      const img = await plain.toJxl({ dpr: 1, quality })
       expect(img.naturalWidth).toBe(260)
     }
     expect(canvases.length, 'the decoder\'s canvases').toBeGreaterThan(0)

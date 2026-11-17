@@ -398,12 +398,12 @@ The document retains source markup, including event-handler attributes; it is no
 
 ### `jxl`
 
-Adds `toJxl()`, `toBlob({ format: 'jxl' })` and `download({ format: 'jxl' })`. Text and interface stay
-exact while photos take the quality, in one JPEG XL file. The encoder is [rapier-jxl](https://www.npmjs.com/package/rapier-jxl)
-(MIT), an optional peer: the text measurement loads at the first capture, the encoder at the first export.
+Adds `toJxl()`, `toBlob({ format: 'jxl' })` and `download({ format: 'jxl' })`. Text stays exact
+while photos take the quality, in one JPEG XL file. The encoder is rapier-jxl, published on npm
+as [jpegxl](https://www.npmjs.com/package/jpegxl) (MIT), an optional peer.
 
 ```bash
-npm install rapier-jxl
+npm install jpegxl@^8.4.0
 ```
 
 ```js
@@ -417,18 +417,25 @@ await result.download({ format: 'jxl', filename: 'card' });
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `module` | `string` | `'rapier-jxl/capture-complete'` | With your `codec`: `'rapier-jxl/capture'` (every pixel exact) or `'rapier-jxl/upload'` (photographic) |
-| `codec` | `object` | none | Your own encoder with `prepare` and `capture` |
-| `decoder` | `object` | none | `createCodec()` from `rapier-jxl/codec/decode`, for `toJxl()` where JPEG XL does not show |
-| `effort` | `number` | `3` | Default effort, 1-9 |
-| `webgpu` | `false \| 'required'` | none | Disable WebGPU, or require a device |
-| `helpers` | `boolean \| object` | none | Helper workers for the encoder the plugin creates |
+| `module` | `string` | `'jpegxl/capture-complete'` | With your `codec`: `'jpegxl/capture'` (exact, efforts 1-5) or `'jpegxl/upload'` (photographic, efforts 1-3) |
+| `codec` | `object` | imported capture-complete module | An encoder with `prepare` and `capture` |
+| `effort` | `number` | `3` | Default effort, 1-9 with capture-complete |
+| `webgpu` | `false \| 'required'` | none | Capture-complete only: disable WebGPU, or require a device |
 
-Exports take `toWebp()`'s options, plus `effort`, `signal`, `onProgress` (0 to 1) and `onEncoded` (once).
-`quality: 1` is exact. The plugin's own encoder takes up to 40 megapixels; `plugin.close()` ends its workers.
+For the smaller exact-only module:
 
-Encoding works in every browser: `toBlob()` and `download()` give `image/jxl`. Where the browser cannot show
-JPEG XL (Edge, for one), `toJxl()` shows the `decoder`'s pixels, or rejects with `JXL_NOT_SHOWN` without one.
+```js
+import * as codec from 'jpegxl/capture';
+const result = await snapdom(el, { plugins: [jxl({ module: 'jpegxl/capture', codec })] });
+```
+
+Exports take `toWebp()`'s options, plus `effort`, `signal`, `onProgress` (0 to 1) and `onEncoded`
+(once, with `{ exact, textMarks? }`). Quality defaults to `0.92`; `1` is exact. The background stays
+transparent unless `backgroundColor` is set. Callback promises settle before the export resolves.
+Configure helper workers on the encoder module with `configure({ helpers })`.
+
+`toBlob()` and `download()` give `image/jxl`. Where the browser cannot show JPEG XL, `toJxl()` uses
+the drawn canvas for an exact file or loads `jpegxl/decode` for a lossy one.
 
 ---
 
