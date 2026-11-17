@@ -98,7 +98,10 @@ const PSEUDO_BOX_PROPS = ['display', 'width', 'height', 'min-width', 'min-height
 // `.md\:after\:h-0\.5::after` would read `\:after` as a pseudo, and the stripped selector was
 // invalid and poisoned the joined gate (59k errors, +3.9 s on a 3,094-node diagram,
 // math280h/diagrams#146). Pinned by __tests__/module.styleScan.test.js.
-const PSEUDO_ELEMENT_SEL_RE = /(?<!\\)::?(?:before|after|first-letter|first-line|marker)/
+// No lookbehind anywhere in src: JavaScriptCore before Safari 16.4 rejects it while PARSING
+// the literal, so the import alone blanked the page on iOS 16.0 to 16.3 (#567, 3.7.1 to
+// 3.7.5). Pinned by scripts/verify-legacy-bundle.mjs.
+const PSEUDO_ELEMENT_SEL_RE = /(?:^|[^\\])::?(?:before|after|first-letter|first-line|marker)/
 
 /** Rule budget for one scan. Past it the scan answers unreliable, and every reader falls
  *  back to full reads. */
@@ -113,12 +116,15 @@ const UNSTABLE_LAYOUT_VALUE_RE = /%|\bauto\b|calc\(|var\(/i
 /** The pseudo-elements pseudo.js resolves. The universe walk collects, per kind, the selectors
  *  that can generate it, so one `el.matches()` gates three getComputedStyle reads per node. */
 const PSEUDO_KINDS = {
-  before: /(?<!\\)::?before\b/, after: /(?<!\\)::?after\b/, firstLetter: /(?<!\\)::?first-letter\b/,
+  before: /(?:^|[^\\])::?before\b/, after: /(?:^|[^\\])::?after\b/,
+  firstLetter: /(?:^|[^\\])::?first-letter\b/,
   // marker/firstLine are not probed per node: matching elements get a scoped CSS rule
   // (markers re-render natively in the foreignObject; first-line re-fragments there).
-  marker: /(?<!\\)::marker\b/, firstLine: /(?<!\\)::?first-line\b/,
+  marker: /(?:^|[^\\])::marker\b/, firstLine: /(?:^|[^\\])::?first-line\b/,
 }
-const PSEUDO_STRIP = /(?<!\\)::?(?:before|after|first-letter|first-line|marker)\b/g
+// The first alternative consumes an escape pair and `$1` writes it back, so an escaped colon
+// is never the start of a match and the character before a pseudo is never eaten.
+const PSEUDO_STRIP = /(\\.)|::?(?:before|after|first-letter|first-line|marker)\b/g
 /** A selector that can restyle a retained sibling: a sibling combinator (An+B's `+` included,
  *  conservatively), `:has()`, or a filtered nth-child. */
 const LEAK_SEL_RE = /[+~]|:has\(|:nth-(?:last-)?child\([^)]*\bof\b/i
@@ -127,7 +133,7 @@ const LEAK_SEL_RE = /[+~]|:has\(|:nth-(?:last-)?child\([^)]*\bof\b/i
  *  A part that was ONLY the pseudo (`::before {}`) becomes `*` (pseudo-elements are not
  *  allowed inside :is()/:where(), so top-level empty parts are the only ones possible). */
 function stripPseudo(selectorText) {
-  const s = selectorText.replace(PSEUDO_STRIP, '').trim()
+  const s = selectorText.replace(PSEUDO_STRIP, '$1').trim()
   if (!s) return '*'
   return s.replace(/(^|,)(\s*)(?=,|$)/g, '$1$2*')
 }

@@ -27,8 +27,9 @@ function addNotSlottedRightmost(sel, scopeId) {
 
 // A trailing pseudo-element (double-colon, or the four legacy single-colon ones). A colon
 // escaped with a backslash is part of a class name (Tailwind's `.md\:after`), not a pseudo.
+// The caller checks the backslash, since a lookbehind does not parse before Safari 16.4 (#567).
 // Pinned by __tests__/module.styleScan.test.js.
-const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|(?<!\\):(?:before|after|first-letter|first-line)$/
+const TRAILING_PSEUDO_RE = /::[a-zA-Z-]+(?:\([^)]*\))?$|:(?:before|after|first-letter|first-line)$/
 // The pseudo pass inlines these as spans from the live element's computed style; a native
 // copy in the scoped CSS would paint them twice.
 const SPAN_PSEUDO_RE = /^::?(?:before|after|first-letter)$/
@@ -50,7 +51,8 @@ function wrapWithScope(selectorList, scopeSelector, excludeSlotted = true, scope
       // An author's own :where() DOES need scoping; without this it leaked into the light DOM.
       if (s.startsWith(':where(') && s.includes('data-sd')) return s
 
-      const m = s.match(TRAILING_PSEUDO_RE)
+      let m = s.match(TRAILING_PSEUDO_RE)
+      if (m && m[0][1] !== ':' && s[m.index - 1] === '\\') m = null
       if (m && SPAN_PSEUDO_RE.test(m[0])) return ':not(*)'
       const base = m ? s.slice(0, m.index).trim() : s
       const body = excludeSlotted ? addNotSlottedRightmost(base, scopeId) : base
