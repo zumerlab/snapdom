@@ -158,6 +158,16 @@ function isLikelyFontStylesheet(href, requiredFamilies, allowedDomains = []) {
       'use.typekit.net', 'p.typekit.net', 'kit.fontawesome.com', 'use.fontawesome.com',
       'cdn.jsdelivr.net', 'unpkg.com', 'cdnjs.cloudflare.com', 'esm.sh'
     ]
+    // A Google Fonts request names its families, and it holds no face of any other. Fetched
+    // anyway, the Mansalva sheet of a page that drew Roboto cost its first capture one network
+    // round trip (snapdom.dev/showcase, real Chrome: 114 ms, about 100 of them the fetch).
+    // Pinned by __tests__/module.fonts.unusedGoogleFamily.test.js.
+    // The same reading of `family` as isIconFontStylesheet (iconFonts.js).
+    const asked = host === 'fonts.googleapis.com' ? u.searchParams.getAll('family').flatMap(v => v.split('|')) : []
+    if (asked.length) {
+      const needed = new Set(requiredFamilies)
+      return asked.some(v => needed.has(v.split(':')[0].trim().toLowerCase()))
+    }
     if (FONT_HOSTS.some(h => host.endsWith(h))) return true
     if (allowedDomains.some(d => host === d.toLowerCase() || host.endsWith('.' + d.toLowerCase()))) return true
 
