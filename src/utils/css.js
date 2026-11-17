@@ -242,7 +242,7 @@ export function isRedundantLogicalProp(prop, styles) {
 // (≤0.0005px below 1000px, where Blink's 6 significant digits are 3 decimals). Deliberately
 // tiny: it is paid once per box and the shrink-to-fit parent holding a row of them is only paid
 // once in total (#491).
-const SIZE_EPSILON = 0.001
+export const SIZE_EPSILON = 0.001
 
 /**
  * Whether getStyleKey softens the width for this tag/display (inline-sized text tags, the table

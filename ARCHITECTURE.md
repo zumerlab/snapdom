@@ -157,7 +157,7 @@ sources. On the real-page photo gallery (9 photos, 16 Mpx shown in 0.6) a cold c
 from 368.6 to 151.9 ms; what is left is the browser decoding the photos for the canvas.
 
 It is taken only when a canvas may read the pixels and there is something to gain: a loaded
-`<img>`, larger than it is shown, from the same origin, a `blob:` or `data:` URL, or another
+`<img>`, larger than it is shown, a JPEG, PNG or WebP by its URL or, behind a `blob:` URL, its response headers, from the same origin, a `blob:` or `data:` URL, or another
 origin with a `crossorigin` attribute. An SVG stays vector. A canvas that turns out unreadable
 (a redirect to another origin) is caught and the image goes through the passes as before, as do
 CSS backgrounds, which have no decoded element to draw.

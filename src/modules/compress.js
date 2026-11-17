@@ -529,6 +529,38 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
 }
 
 /**
+ * The box an <img> clone shows its picture in, in CSS px: snapdom's own data-snapdom-width/height
+ * when the clone pass wrote them, else the inline style, else the width/height attributes. Null
+ * when there is none, and under `object-fit: none`, which paints the file at its own size and
+ * crops it: downsampled to the box, a 3000px photo in a 300px box showed whole.
+ * @param {HTMLImageElement} img - the clone
+ * @param {Element|undefined} source - its live element
+ * @returns {{w: number, h: number}|null}
+ */
+function imageBox(img, source) {
+  const w = parseFloat(img.dataset.snapdomWidth) || parseFloat(img.style.width) || img.width || 0
+  const h = parseFloat(img.dataset.snapdomHeight) || parseFloat(img.style.height) || img.height || 0
+  if (!w || !h) return null
+  if (source?.isConnected && getStyle(source).objectFit === 'none') return null
+  return { w, h }
+}
+
+/**
+ * The type drawDecodedImages keeps, read from the URL: a `data:` MIME or a file extension. Null
+ * says the URL does not tell: a `blob:` URL is asked its response headers, any other is left to the passes,
+ * which read the real type from the response. Guessed, an SVG behind a `blob:` URL was
+ * rasterized and a JPEG behind one came out as a PNG four times its size.
+ * @param {string} src
+ * @returns {string|null}
+ */
+function decodedType(src) {
+  const m = /^data:image\/(jpe?g|png|webp)[;,]|\.(jpe?g|png|webp)(?:$|[?#])/i.exec(src)
+  if (!m) return null
+  const type = (m[1] || m[2]).toLowerCase()
+  return `image/${type === 'jpg' ? 'jpeg' : type}`
+}
+
+/**
  * Draw every oversized <img> the page has already decoded to its visible size, from the live
  * element, and write that to the clone. Run before the passes that read sources, which then
  * find a small data: URL and leave it: the photo gallery of the real-page bench (9 photos,
@@ -536,8 +568,10 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
  * again on every capture.
  *
  * Taken only for a loaded <img> that compress would shrink, whose pixels a canvas may read:
- * same origin, blob:, data:, or cross-origin with a `crossorigin` attribute. SVG stays vector.
- * Anything else, a GIF included, is left to the passes as before.
+ * same origin, blob:, data:, or cross-origin with a `crossorigin` attribute, and that is a JPEG,
+ * PNG or WebP by its URL (decodedType) or, behind a `blob:` URL, by its response headers. Anything else is
+ * left to the passes as before: an SVG, a GIF, a URL with no extension, and every image of a
+ * yielding capture.
  *
  * The original is still owed to a later export at a higher density (exportSource, snapdom.js):
  * its Blob is asked for here, unawaited, and the promise stands where the string would.
@@ -547,21 +581,26 @@ export async function downsampleDataURL(dataURL, targetW, targetH, blob) {
  * @param {Map<Node, Node>} nodeMap - clone to source
  * @param {CompressGeometry} geometry
  */
-export function drawDecodedImages(clone, options, nodeMap, geometry) {
+export async function drawDecodedImages(clone, options, nodeMap, geometry) {
   if (!options.compress || !nodeMap) return
+  // The draws below are one task, 140 ms for nine 6 Mpx photos in Chromium: a yielding capture
+  // (fast: false | 'auto') leaves the images to the passes, whose pixel work runs in workers.
+  if (geometry.session?.slicer) return
   // Sizing under a dropped root transform needs the matrix captureDOM resolves after the clone.
   if (options.outerTransforms === false && (Number.isFinite(options.width) || Number.isFinite(options.height))) return
   const imgs = Array.from(clone.querySelectorAll('img'))
   if (clone.tagName === 'IMG') imgs.unshift(clone)
-  let canvas = null
+  const todo = []
   for (const img of imgs) {
     const source = nodeMap.get(img)
     if (!source || source.localName !== 'img' || !source.complete || !(source.naturalWidth > 0)) continue
     const src = source.currentSrc || source.src || ''
-    if (!src || /^data:image\/(?:svg|gif)|\.(?:svg|gif)(?:$|[?#])/i.test(src)) continue
-    const cssW = parseFloat(img.dataset.snapdomWidth) || parseFloat(img.style.width) || img.width || 0
-    const cssH = parseFloat(img.dataset.snapdomHeight) || parseFloat(img.style.height) || img.height || 0
-    if (!cssW || !cssH) continue
+    const type = decodedType(src)
+    const local = /^blob:/i.test(src)
+    if (!type && !local) continue
+    const box = imageBox(img, source)
+    if (!box) continue
+    const { w: cssW, h: cssH } = box
     const resolved = geometry.value ||= compressionGeometry(clone, options, geometry)
     const eff = resolved.density * resolved.stretch(source)
     const raw = gainFactor(source.naturalWidth, source.naturalHeight, Math.ceil(cssW * eff), Math.ceil(cssH * eff))
@@ -570,29 +609,39 @@ export function drawDecodedImages(clone, options, nodeMap, geometry) {
     if (!/^(?:data|blob):/i.test(src) && source.crossOrigin == null) {
       try { if (new URL(src, source.baseURI).origin !== source.ownerDocument.defaultView.location.origin) continue } catch { continue }
     }
-    canvas ||= document.createElement('canvas')
+    // A `blob:` URL says nothing of its type, the response headers do. Guessed as PNG, nine
+    // 4 Mpx JPEG photos behind `blob:` URLs made 1,413 KB of svg, now 108, and the capture went
+    // from 116 to 92 ms in Chromium, 211 to 163 in Firefox, 97 to 64 in WebKit. The request ends
+    // at the headers: left to run, its body raced the read below.
+    const stop = type ? null : new AbortController()
+    const head = stop && fetch(src, { signal: stop.signal }).then((r) => { stop.abort(); return r.headers.get('content-type') }, () => null)
+    const original = /^data:/i.test(src) ? src
+      : snapFetch(src, { as: 'blob', useProxy: options.useProxy }).then((r) => r.ok && r.data ? r.data : null)
+    // Drawn now, encoded once the type is in: the headers arrive under the draws. Awaited
+    // before each draw, the real-page gallery (nine PNG photos behind `blob:` URLs) went from
+    // 149 to 161 ms; this way it stays at 151.
+    const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(source.naturalWidth * raw * RES_FACTOR))
     canvas.height = Math.max(1, Math.round(source.naturalHeight * raw * RES_FACTOR))
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
-    let out
-    try {
-      ctx.drawImage(source, 0, 0, canvas.width, canvas.height)
-      out = canvas.toDataURL(/^data:image\/jpe?g|\.jpe?g(?:$|[?#])/i.test(src) ? 'image/jpeg'
-        : /^data:image\/webp|\.webp(?:$|[?#])/i.test(src) ? 'image/webp' : 'image/png', LOSSY_QUALITY)
-    } catch {
-      // A redirect to another origin tainted the canvas, and it stays tainted: a new one next.
-      canvas = null
-      continue
+    ctx.drawImage(source, 0, 0, canvas.width, canvas.height)
+    todo.push({ img, canvas, type, head, original })
+  }
+  for (let { img, canvas, type, head, original } of todo) {
+    if (head) {
+      type = decodedType(`data:${await head},`)
+      if (!type) continue
     }
+    let out
+    // A redirect to another origin tainted the canvas.
+    try { out = canvas.toDataURL(type, LOSSY_QUALITY) } catch { continue }
     img.setAttribute('src', out)
-    // As a Blob, not base64: holding it costs nothing, it outlives a revoked blob: URL, and the
-    // megabytes of text are built only if an export asks. Read as a data URL here, nine photos
+    // As a Blob, not base64: the megabytes of text are built only if an export asks. The result
+    // holds the file's bytes until then. Read as a data URL here, nine photos
     // landed 24.5 MB of string on the next capture (the gallery read 152 or 212 ms by the run).
-    const original = /^data:/i.test(src) ? src
-      : snapFetch(src, { as: 'blob', useProxy: options.useProxy }).then((r) => r.ok && r.data ? r.data : null)
     rememberOriginal(img, 'attribute', 'src', original, out, geometry.session)
   }
 }
@@ -619,9 +668,9 @@ export async function compressClonedImages(clone, options, nodeMap = new Map(), 
   const process = async (img) => {
     const src = img.getAttribute('src') || ''
     if (!src.startsWith('data:image') || src.startsWith('data:image/svg')) return
-    const cssW = parseFloat(img.dataset.snapdomWidth) || parseFloat(img.style.width) || img.width || 0
-    const cssH = parseFloat(img.dataset.snapdomHeight) || parseFloat(img.style.height) || img.height || 0
-    if (!cssW || !cssH) return
+    const box = imageBox(img, nodeMap.get(img))
+    if (!box) return
+    const { w: cssW, h: cssH } = box
     const resolved = geometry.value ||= compressionGeometry(clone, options, geometry)
     const eff = resolved.density * resolved.stretch(nodeMap.get(img) || img)
     const out = await downsampleDataURL(src, cssW * eff, cssH * eff, img.__snapdomBlob)

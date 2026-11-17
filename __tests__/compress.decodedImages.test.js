@@ -12,7 +12,7 @@ afterEach(() => { host?.remove(); for (const u of urls.splice(0)) URL.revokeObje
 
 /** A 1600x800 PNG: two colour marks on top, one-pixel black and white columns in a band,
  *  noise everywhere else so the file weighs megabytes, like a photo. */
-async function photo() {
+async function photo(type = 'image/png') {
   const c = document.createElement('canvas')
   c.width = 1600; c.height = 800
   const x = c.getContext('2d')
@@ -23,7 +23,7 @@ async function photo() {
   for (let i = 0; i < 1600; i++) { x.fillStyle = i % 2 ? '#fff' : '#000'; x.fillRect(i, 300, 1, 200) }
   x.fillStyle = '#f00'; x.fillRect(0, 0, 800, 100)
   x.fillStyle = '#00f'; x.fillRect(800, 0, 800, 100)
-  const blob = await new Promise((resolve) => c.toBlob(resolve, 'image/png'))
+  const blob = await new Promise((resolve) => c.toBlob(resolve, type, 0.9))
   const url = URL.createObjectURL(blob)
   urls.push(url)
   return url
@@ -115,6 +115,46 @@ describe('an image the decoded path must leave to the passes', () => {
     const { at } = await srcWrites('<img src="data:image/gif;base64,R0lGODdhQABAAIEAAP8AAAAA/wAAAAAAACwAAAAAQABAAEAI2AABCBxIsKDBgwQDKFzIsKHDhwwRSpxYEKLFiw0papSIsaPFjSArehwZMaRJkigDmDyZcuTKkC1dvtwY0+NMmjUx3tSYU+fOiT0v/gQaFOJQjkUfHkWYVOlSg00dPoUateTUgVWtXgWQdeFWrF1VfuUadizZrmbDiv2qNm3ZsW3hvmU7d2tcumjl5sWb1e1eu3Wv3gX8V3DgqYMNF0Z8+GlixosdN176WHJkypOPVsZ8WXPmoZs9dwb9+Wdo0qNNl955WnVq1qtvtob9WnbsmbNt18Z9+6XagAA7" style="display:block;width:16px;height:16px">')
     expect(at(3, 8)[0]).toBeGreaterThan(200)
     expect(at(12, 8)[2]).toBeGreaterThan(200)
+  })
+
+  it('an SVG behind a blob: URL stays vector', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="800"><rect width="800" height="800" fill="#f00"/><rect x="800" width="800" height="800" fill="#00f"/></svg>'
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }))
+    urls.push(url)
+    const { writes, at } = await srcWrites(`<img src="${url}" style="display:block;width:400px;height:200px">`)
+    expect(drawn(writes)).toEqual([])
+    expect(writes.some((v) => v.startsWith('data:image/svg+xml'))).toBe(true)
+    expect(at(100, 100)[0]).toBeGreaterThan(200)
+    expect(at(300, 100)[2]).toBeGreaterThan(200)
+  })
+
+  it('a JPEG behind a blob: URL is drawn as a JPEG', async () => {
+    const { writes, at } = await srcWrites(`<img src="${await photo('image/jpeg')}" style="display:block;width:400px;height:200px">`)
+    expect(drawn(writes).length).toBe(1)
+    expect(drawn(writes)[0].startsWith('data:image/jpeg')).toBe(true)
+    expect(at(100, 10)[0]).toBeGreaterThan(200)
+    expect(at(300, 10)[2]).toBeGreaterThan(200)
+  })
+
+  it('object-fit: none keeps the file at its own size', async () => {
+    const { writes } = await srcWrites(`<img src="${await photo()}" style="display:block;width:400px;height:200px;object-fit:none">`)
+    // The box crops the 1600x800 file: a 400x200 copy would show it whole.
+    expect(writes.filter((v) => v.startsWith('data:image') && v.length < 700000)).toEqual([])
+  })
+
+  it('a yielding capture draws no live image in its own task', async () => {
+    const own = CanvasRenderingContext2D.prototype.drawImage
+    const html = async () => `<img src="${await photo()}" style="display:block;width:400px;height:200px">`
+    let live = 0
+    CanvasRenderingContext2D.prototype.drawImage = function (image, ...rest) { if (image?.localName === 'img' && image.isConnected && image.closest('div') === host) live++; return own.call(this, image, ...rest) }
+    try {
+      await srcWrites(await html())
+      expect(live).toBe(1)
+      host.remove()
+      live = 0
+      await srcWrites(await html(), { ...OPTS, fast: false })
+      expect(live).toBe(0)
+    } finally { CanvasRenderingContext2D.prototype.drawImage = own }
   })
 
   it('an image shown at its own size is not redrawn', async () => {

@@ -634,7 +634,7 @@ export async function composeAndSerialize(state, ex) {
     try {
       tree = freezeLineBreaks(fo, state.clone, state.nodeMap, elDoc, lineRisk(layoutZoom)) || fo
     } catch (e) {
-      sessionWarn(state.options.__session, 'line-breaks-failed', 'line break pass failed', e)
+      sessionWarn(session, 'line-breaks-failed', 'line break pass failed', e)
     }
   }
   const foString = serializer.serializeToString(tree)

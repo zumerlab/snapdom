@@ -261,7 +261,7 @@ export async function prepareClone(element, options = {}, session = createCaptur
   // clone child with no live counterpart.
   if (sessionCache.bgClipText) paintClippedText(sessionCache.bgClipText)
   // Before any pass that reads an image source: what this draws they find done.
-  drawDecodedImages(clone, options, sessionCache.nodeMap, { session, clip: clipWindow })
+  await drawDecodedImages(clone, options, sessionCache.nodeMap, { session, clip: clipWindow })
   await resolveBlobUrlsInTree(clone, sessionCache)
 
   // Kept light-DOM <style> clones travel into the SVG. The differential path never splices

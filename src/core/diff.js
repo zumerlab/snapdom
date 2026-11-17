@@ -25,6 +25,7 @@ import { inlineAllStyles, flexRowOverflows, marginsHold, sizeHolds } from '../mo
 import { universeFor, stylesLeakAcrossSubtrees } from '../modules/authorStyles.js'
 import { ONE_LINE_PROP } from '../modules/styleFreeze.js'
 import { generateCSSClasses } from '../utils/index.js'
+import { SIZE_EPSILON } from '../utils/css.js'
 import { resolveBlobUrlsInTree } from '../utils/clone.helpers.js'
 import { sanitizeCloneForXHTML, neutralizeRootMarginCollapse } from '../utils/capture.helpers.js'
 import { hasImpureRenderPlugins } from './plugins.js'
@@ -85,11 +86,12 @@ function subtreeUsesBackdropFilter(root, universe) {
   return false
 }
 
-/** A frozen length is not the raw computed one: getStyleKey rounds widths UP to the next
- *  1/16px so a shrink-to-fit box cannot re-wrap. Compared as written, every fractional box
- *  drifts (a plain 3-column flex grid: 279 of 282 nodes) and the reconcile re-reads the whole
- *  tree on every frame. Real drift is orders of magnitude bigger, so the step is the tolerance. */
-const FROZEN_LENGTH_EPS = 1 / 16
+/** A frozen length is not the raw computed one: getStyleKey adds SIZE_EPSILON to a fractional
+ *  size so its text cannot re-wrap. Compared as written, every fractional box drifts (a plain
+ *  3-column flex grid: 279 of 282 nodes) and the reconcile re-reads the whole tree on every
+ *  frame. Twice the epsilon covers it and the rounding of its three decimals; anything past
+ *  that is a box that moved, which a full capture would freeze at its new size. */
+const FROZEN_LENGTH_EPS = 2 * SIZE_EPSILON
 function sameFrozenLength(live, frozen) {
   if (live === frozen) return true
   // A track list holds several lengths: compared as written.
@@ -308,7 +310,7 @@ async function diffCapture(element, state, context, animated) {
     if (sessionCache.pseudoCSS) return null
     // The first placeholder input needs PLACEHOLDER_RULE, absent from the retained prefix.
     if (sessionCache.usesPlaceholder && !R.classPrefixCSS?.includes('[data-sd-ph]')) return null
-    drawDecodedImages(sub, context, delta, { session: frame, rootTransform: R.rootTransform2D })
+    await drawDecodedImages(sub, context, delta, { session: frame, rootTransform: R.rootTransform2D })
     await resolveBlobUrlsInTree(sub, sessionCache)
     // The #426 zeroes of the rebuilt nodes, written where the full pipeline writes them:
     // after the clone passes, before the assets.
