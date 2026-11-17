@@ -55,10 +55,11 @@ import {
 } from './changes.js'
 import { invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
 import { scrollGateFor } from '../modules/authorStyles.js'
+import { UA_SCROLLER_NAMES } from '../modules/styleScan.js'
 import { tryDiffCapture } from './diff.js'
 import { createCaptureSession } from './session.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
-import { yieldWhenTaskSpent } from '../utils/browser.js'
+import { yieldWhenTaskSpent, isFirefox, isSafari } from '../utils/browser.js'
 import { isInternalNode } from '../utils/ownership.js'
 
 /** Per-element state lookup; the bounded LRU below retains and disposes live memos. */
@@ -475,6 +476,10 @@ function collectScrollNodes(element, state) {
   // A retained key with no overflow declaration is `visible`: those boxes skip the layout
   // reads below (12% of each differential frame of the 1,506-node table).
   const R = state.retained
+  const scopes = scopesOf(element, state)
+  const gate = scopes.length === 1 ? scrollGateFor(element) : null
+  // Chromium reads computed overflow faster than the layout, Firefox slower.
+  const precheck = !R && !gate && !isFirefox() && !isSafari()
   const add = (el, force = false) => {
     try {
       if (force) { out.push(el); return }
@@ -482,6 +487,11 @@ function collectScrollNodes(element, state) {
       if (R && !control) {
         const key = R.styleMap.get(R.srcToClone.get(el))
         if (key !== undefined && !SCROLLPORT_KEY.test(key)) return
+      }
+      // A text input computes `clip` and a quirks-mode body `visible`, yet both scroll.
+      if (precheck && !UA_SCROLLER_NAMES.has(el.localName)) {
+        const cs = getComputedStyle(el)
+        if (NO_SCROLLPORT.test(cs.overflowX) && NO_SCROLLPORT.test(cs.overflowY)) return
       }
       if (el.scrollLeft || el.scrollTop) { out.push(el); return }
       // An inline box has no scrollport, yet Firefox reports its text as `scrollWidth` over a
@@ -497,8 +507,6 @@ function collectScrollNodes(element, state) {
   // No dedupe needed: querySelectorAll excludes the scope itself (the element is already in
   // from the ancestors loop) and shadow scopes are disjoint from the light tree.
   for (let el = element; el; el = el.parentElement) add(el, true)
-  const scopes = scopesOf(element, state)
-  const gate = scopes.length === 1 ? scrollGateFor(element) : null
   for (const scope of scopes) {
     try { for (const el of scope.querySelectorAll(gate || '*')) add(el) } catch { }
   }

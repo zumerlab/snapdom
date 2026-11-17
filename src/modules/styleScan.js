@@ -108,7 +108,8 @@ const SCROLL_PROPS = new Set(['overflow', 'overflow-x', 'overflow-y', 'overflow-
 
 /** Elements that scroll with no author overflow rule in Chromium 157 and Firefox 160, among
  *  them a textarea Firefox computes `visible`, a quirks-mode body and a marquee. */
-const UA_SCROLLERS = ['input', 'textarea', 'select', 'dialog', '[popover]', 'foreignObject', 'body', 'marquee', '[overflow]', '[style*="overflow" i]', '[style*="all" i]']
+export const UA_SCROLLER_NAMES = new Set(['input', 'textarea', 'select', 'dialog', 'foreignObject', 'body', 'marquee'])
+const UA_SCROLLERS = [...UA_SCROLLER_NAMES, '[popover]', '[overflow]', '[style*="overflow" i]', '[style*="all" i]']
 
 /** Rule budget for one scan. Past it the scan answers unreliable, and every reader falls
  *  back to full reads. */
