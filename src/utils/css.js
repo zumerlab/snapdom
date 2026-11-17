@@ -35,11 +35,13 @@ import { isInternalNode, markInternalNode } from './ownership.js'
  *
  * Read from an `all: initial` element, so the map holds INITIAL values, not the UA sheet's:
  * the base reset re-states them, or the UA sheet adds margins inside the foreignObject.
- * NO_DEFAULTS_TAGS get `{}`: no reset, no class.
+ * NO_DEFAULTS_TAGS get `{}`: no reset, no class. With `need`, the map holds those props and
+ * BASE_NEED, and reads more from the same probe on a miss.
  * @param {string} tagName
+ * @param {Set<string>|null} [need] the props the caller will compare; null reads them all
  * @returns {Record<string, string>}
  */
-export function getDefaultStyleForTag(tagName) {
+export function getDefaultStyleForTag(tagName, need = null) {
   tagName = String(tagName).toLowerCase()
 
   if (NO_DEFAULTS_TAGS.has(tagName)) {
@@ -48,10 +50,56 @@ export function getDefaultStyleForTag(tagName) {
     return empty
   }
 
-  if (cache.defaultStyle.has(tagName)) {
-    return cache.defaultStyle.get(tagName)
+  let defaults = cache.defaultStyle.get(tagName)
+  if (defaults) {
+    const rec = partialDefaults.get(defaults)
+    if (rec) {
+      if (!need) {
+        readDefaults(defaults, rec.probe, null)
+        partialDefaults.delete(defaults)
+      } else if (rec.done.get(need) !== need.size) {
+        // A universe Set only grows, so a size seen before is a Set already read.
+        for (const prop of need) {
+          if (!(prop in defaults) && knownProps.has(prop)) {
+            readDefaults(defaults, rec.probe, need)
+            break
+          }
+        }
+        rec.done.set(need, need.size)
+      }
+    }
+    return defaults
   }
 
+  // Custom elements can override .style and run page code in their constructors (#505).
+  // An unstyled span has the same initial CSS, including unicode-bidi (a div does not).
+  const probe = document.createElement(tagName.includes('-') ? 'span' : tagName)
+  probe.style.all = 'initial'
+  defaults = {}
+  readDefaults(defaults, probe, need)
+  if (need) partialDefaults.set(defaults, { probe, done: new WeakMap([[need, need.size]]) })
+  cache.defaultStyle.set(tagName, defaults)
+  return defaults
+}
+
+/** Partial default map to its probe and the need Sets read into it, with their size then. */
+const partialDefaults = new WeakMap()
+
+/** What a complete map holds. Every probe enumerates the same names, so the first serves all. */
+let knownProps = null
+
+/** Read with every need: the physical twins isRedundantLogicalProp compares, and what a
+ *  snapshot reads by name outside its universe. */
+const BASE_NEED = [
+  ...ALWAYS_PROPS,
+  'text-decoration-line', 'text-decoration-color', 'text-decoration-style',
+  'text-decoration-thickness', 'text-underline-offset', 'text-decoration-skip-ink',
+  '-webkit-text-stroke', '-webkit-text-stroke-width', '-webkit-text-stroke-color', 'paint-order',
+  'font-feature-settings', 'font-variation-settings', 'font-kerning', 'font-variant',
+  'font-variant-ligatures', 'font-optical-sizing', '-webkit-text-fill-color', 'text-wrap-mode',
+]
+
+function sandboxHost() {
   // Duplicate ids are invalid but possible, and this public legacy id belongs to author DOM
   // unless private provenance says otherwise. Search every match so an author node appearing
   // first never gets reused as our measurement host.
@@ -70,31 +118,36 @@ export function getDefaultStyleForTag(tagName) {
     sandbox.style.overflow = 'hidden'
     document.body.appendChild(sandbox)
   }
+  return sandbox
+}
 
-  // Custom elements can override .style and run page code in their constructors (#505).
-  // An unstyled span has the same initial CSS, including unicode-bidi (a div does not).
-  const el = document.createElement(tagName.includes('-') ? 'span' : tagName)
-  el.style.all = 'initial'
-  sandbox.appendChild(el)
-
-  const styles = getComputedStyle(el)
-  const defaults = {}
-  for (let prop of styles) {
-    // Filter out noise that never paints, plus layout-dependent props
-    if (shouldIgnoreProp(prop)) continue
-    const value = styles.getPropertyValue(prop)
-    defaults[prop] = value
+/** Read what `defaults` lacks: every known prop without `need`, else BASE_NEED and what `need`
+ *  names (a Set, or a snapshot's keys). The probe leaves the document after, or every style
+ *  invalidation during the capture would recalc it. */
+function readDefaults(defaults, probe, need) {
+  const sandbox = sandboxHost()
+  sandbox.appendChild(probe)
+  const styles = getComputedStyle(probe)
+  if (!knownProps) {
+    knownProps = new Set()
+    for (const prop of styles) if (!shouldIgnoreProp(prop)) knownProps.add(prop)
+    // Chromium's enumeration skips counter-set/-reset/-increment, content-visibility and
+    // white-space, which the snapshot reads by name (ALWAYS_PROPS). Without a default here every
+    // class carried `counter-set:none;white-space:normal;…` as non-default.
+    for (const prop of ALWAYS_PROPS) if (!shouldIgnoreProp(prop)) knownProps.add(prop)
   }
-  // Chromium's enumeration skips counter-set/-reset/-increment, content-visibility and
-  // white-space, which the snapshot reads by name (ALWAYS_PROPS). Without a default here every
-  // class carried `counter-set:none;white-space:normal;…` as non-default.
-  for (const prop of ALWAYS_PROPS) {
-    if (!(prop in defaults) && !shouldIgnoreProp(prop)) defaults[prop] = styles.getPropertyValue(prop)
+  const read = (prop) => {
+    if (!(prop in defaults) && knownProps.has(prop)) defaults[prop] = styles.getPropertyValue(prop)
   }
-
-  sandbox.removeChild(el)
-  cache.defaultStyle.set(tagName, defaults)
-  return defaults
+  if (!need) knownProps.forEach(read)
+  else {
+    BASE_NEED.forEach(read)
+    LOGICAL_TO_PHYSICAL.forEach(read)
+    // A twin's snapshot inherits its props from the shared one, which Object.keys misses.
+    if (need instanceof Set) need.forEach(read)
+    else for (const prop in need) read(prop)
+  }
+  sandbox.removeChild(probe)
 }
 
 /** Tokens "animation"/"transition" anywhere in the name (dash-bounded). */
@@ -324,9 +377,11 @@ function slot(kind, entry) {
  * @param {string} [floor=''] the min-width the key carries in place of the snapshot's (the
  *   flex floor of inlineAllStyles); an argument, since copying the snapshot to hold it cost the
  *   first capture of 240 grid items 3%
+ * @param {Set<string>|null} [universe] the props the snapshot was pruned to, which the tag's
+ *   defaults are read for; null reads them all
  * @returns {string}
  */
-export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem = false, floor = '') {
+export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem = false, floor = '', universe = null) {
   tagName = String(tagName || '').toLowerCase()
   if (NO_DEFAULTS_TAGS.has(tagName)) {
     return '' // no key => no class
@@ -334,7 +389,16 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
 
   // A name first seen in this call moves the places of the others: the call starts over.
   const known = keyOrder.length
-  const defaults = getDefaultStyleForTag(tagName)
+  const defaults = getDefaultStyleForTag(tagName, universe)
+  // A snapshot can hold props outside its universe (its inline style's). On the first miss,
+  // read every prop of the snapshot from the tag's probe in one recalc.
+  const partial = partialDefaults.get(defaults)
+  const defaultOf = (prop) => {
+    const value = defaults[prop]
+    if (value !== undefined || !partial || !knownProps.has(prop)) return value
+    readDefaults(defaults, partial.probe, snapshot)
+    return defaults[prop]
+  }
   const display = (snapshot.display || '').toLowerCase()
   const isInline = display === 'inline'
   const softenTag = softensWidth(tagName, display)
@@ -357,7 +421,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
     if (kind === undefined) propKinds.set(prop, kind = propKind(prop))
     if ((kind & KIND) === 0) {
       const value = snapshot[prop]
-      if (value && value !== defaults[prop]) slots[kind >> 6] = `${prop}:${value}`
+      if (value && value !== defaultOf(prop)) slots[kind >> 6] = `${prop}:${value}`
       continue
     }
     if (kind & IGNORED) continue
@@ -365,7 +429,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
     const value = floor && prop === 'min-width' ? floor : snapshot[prop]
     if (kind & HARD_WIDTH && dropsHardWidth) continue // never freeze a content/algorithm width
     if (soften && kind & MIN_WIDTH) {          // keep an authored min-width verbatim
-      if (value && value !== defaults[prop]) {
+      if (value && value !== defaultOf(prop)) {
         slot(kind, `${prop}:${value}`)
         // Only a real length is an author floor that should suppress the synthesized one;
         // `auto` is just the (logical) default and must not block the floor on table cells.
@@ -373,7 +437,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
       }
       continue
     }
-    if (value && value !== defaults[prop]) {
+    if (value && value !== defaultOf(prop)) {
       // Blink serializes lengths to 6 significant digits, sometimes DOWN, so a frozen size gets
       // SIZE_EPSILON (1/1000px) or its text re-wraps. Keep it that small: each box in a row
       // carries one and the parent only one, so a 1/16px ceil wrapped two buttons (#491).
@@ -409,7 +473,7 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   if (keyOrder.length !== known) {
     keyOrder.sort((x, y) => x + ':' < y + ':' ? -1 : 1)
     for (let i = 0; i < keyOrder.length; i++) propKinds.set(keyOrder[i], propKinds.get(keyOrder[i]) & KIND | i << 6)
-    return getStyleKey(snapshot, tagName, sizedByContent, isFlexItem, floor)
+    return getStyleKey(snapshot, tagName, sizedByContent, isFlexItem, floor, universe)
   }
   return entries.join(';')
 }
@@ -451,7 +515,7 @@ export function generateDedupedBaseCSS(usedTagNames, universe = null) {
     // Not a raw read of cache.defaultStyle: it is an EvictingMap (MAX_DEFAULT_STYLE), and on a
     // page with more tags than the cap the earliest ones are gone by now. They got no reset,
     // so the UA margins and paddings applied and the capture reflowed taller.
-    const styles = getDefaultStyleForTag(tagName)
+    const styles = getDefaultStyleForTag(tagName, universe)
     if (!styles) continue
 
     // Pruned snapshots diff only the universe props, so the reset stays inside it too: a

@@ -534,8 +534,9 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
         const span = document.createElement('span')
         span.textContent = first
         span.setAttribute('data-snapdom-pseudo', '::first-letter')
-        const snapshot = snapshotComputedStyle(style, pseudoUniverseFor(source, sessionCache))
-        const key = getStyleKey(snapshot, 'span')
+        const universe = pseudoUniverseFor(source, sessionCache)
+        const snapshot = snapshotComputedStyle(style, universe)
+        const key = getStyleKey(snapshot, 'span', true, false, '', universe)
         sessionCache.styleMap.set(span, key)
 
         const restNode = document.createTextNode(rest)
@@ -647,7 +648,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         sizedByContent = false
         pseudoEl.style.whiteSpace = style.whiteSpace
       }
-      const key = getStyleKey(snapshot, 'span', sizedByContent, pseudoIsFlexItem)
+      const key = getStyleKey(snapshot, 'span', sizedByContent, pseudoIsFlexItem, '', pseudoUniverseFor(source, sessionCache))
       sessionCache.styleMap.set(pseudoEl, key)
 
       // ---- Content handling (icon-font glyphs / url() / text) ----

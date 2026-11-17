@@ -1043,7 +1043,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const kept = memo ? null : snapshotKey.get(snap)
   let key = memo ? memo.get(mk) : kept && kept.flags === flags ? kept.key : undefined
   if (key === undefined) {
-    key = getStyleKey(snap, tag, sizedByContent, flexItem, floor)
+    key = getStyleKey(snap, tag, sizedByContent, flexItem, floor, universeFor(source, session))
     if (memo) memo.set(mk, key)
     else snapshotKey.set(snap, { flags, key })
   }
