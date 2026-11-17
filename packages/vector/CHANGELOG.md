@@ -1,5 +1,17 @@
 # Vector changes
 
+## 1.0.1
+
+> 17 November 2026
+
+**Fixes**
+
+- **vector:** match lone surrogates without a regex lookbehind [`#567`](https://github.com/zumerlab/snapdom/pull/567)
+
+**Chores**
+
+- release each package from its workspace instead of sixteen root aliases [`37f6b34`](https://github.com/zumerlab/snapdom/commit/37f6b341e842f6480786b663a3bc1123de393659)
+
 ## 1.0.0
 
 > 9 November 2026
