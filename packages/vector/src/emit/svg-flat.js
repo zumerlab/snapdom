@@ -158,8 +158,9 @@ const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'"
 /** Everything XML 1.0 forbids in text: the C0 controls bar tab/LF/CR, and the two noncharacters. */
 const ILLEGAL_XML = new RegExp('[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\uFFFE\\uFFFF]', 'g')
 
-/** A surrogate with no partner is not a character at all; no encoding can carry it. */
-const LONE_SURROGATE = new RegExp('[\\uD800-\\uDBFF](?![\\uDC00-\\uDFFF])|(?<![\\uD800-\\uDBFF])[\\uDC00-\\uDFFF]', 'g')
+/** A surrogate with no partner is not a character at all; no encoding can carry it. A pair is
+ *  consumed and written back by `$1`: a lookbehind throws before Safari 16.4 (snapdom#567). */
+const LONE_SURROGATE = new RegExp('([\\uD800-\\uDBFF][\\uDC00-\\uDFFF])|[\\uD800-\\uDFFF]', 'g')
 
 /** U+2028 joins visual lines in `characters`; inside one line it must not survive. */
 const LINE_SEPARATOR = new RegExp('\\u2028', 'g')
@@ -2428,7 +2429,7 @@ function layerFilter(effects, region, defs, ctx, nodeId) {
 
 function stripIllegal(value, ctx, nodeId) {
   const s = String(value)
-  const clean = s.replace(ILLEGAL_XML, '').replace(LONE_SURROGATE, '')
+  const clean = s.replace(ILLEGAL_XML, '').replace(LONE_SURROGATE, '$1')
   if (clean !== s) {
     ctx.note(nodeId, 'text contained characters XML cannot encode (control codes or lone surrogates); they are removed.',
       'emit.svg.text-illegal-chars', 'O')
