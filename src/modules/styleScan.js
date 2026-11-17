@@ -133,6 +133,9 @@ const PSEUDO_KINDS = {
 // The first alternative consumes an escape pair and `$1` writes it back, so an escaped colon
 // is never the start of a match and the character before a pseudo is never eaten.
 const PSEUDO_STRIP = /(\\.)|::?(?:before|after|first-letter|first-line|marker)\b/g
+/** What a ::before/::after rule must set to gate the probe, since a pseudo without content has
+ *  no box. */
+const PSEUDO_CONTENT_PROP_RE = /^(?:content|all|(?:animation|transition)(?:-.*)?)$/
 /** A selector that can restyle a retained sibling: a sibling combinator (An+B's `+` included,
  *  conservatively), `:has()`, or a filtered nth-child. */
 const LEAK_SEL_RE = /[+~]|:has\(|:nth-(?:last-)?child\([^)]*\bof\b/i
@@ -156,7 +159,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     const style = rule.style
     // Read once: Gecko and WebKit serialize the selector on every read.
     const sel0 = rule.selectorText
-    let svgGeo = false, svgAnim = false, container = false, scrollRule = false
+    let svgGeo = false, svgAnim = false, container = false, scrollRule = false, pseudoContent = false
     // Serialized once where sibling-index() can appear (scanSheet), and then it also says
     // whether any declaration is worth asking for its priority: 588 rules, 6,924 declarations,
     // first scan 10.6 -> 9.6 ms.
@@ -164,6 +167,8 @@ function scanRules(rules, universe, pseudoSels, state) {
     const important = text === null || text.includes('!important')
     if (style) {
       const pseudoRule = !!sel0 && PSEUDO_ELEMENT_SEL_RE.test(sel0)
+      // Declarations nested in it have no selector of their own, so it gates whatever it sets.
+      if (pseudoRule && rule.cssRules?.length) pseudoContent = true
       for (let j = 0; j < style.length; j++) {
         const prop = style[j]
         universe.add(prop)
@@ -172,7 +177,10 @@ function scanRules(rules, universe, pseudoSels, state) {
           if (addSvgGeometry(state.svgGeometry, prop)) svgGeo = true
           else if (SVG_ANIM_RE.test(prop)) svgAnim = true
         }
-        if (pseudoRule) state.pseudoProps.add(prop)
+        if (pseudoRule) {
+          state.pseudoProps.add(prop)
+          pseudoContent ||= PSEUDO_CONTENT_PROP_RE.test(prop)
+        }
         if (prop === 'container-type' && style.getPropertyValue(prop) !== 'normal') container = true
         if (important && style.getPropertyPriority(prop)) state.importantProps.add(prop)
         // Counters restyle retained siblings. The counter longhands have no shorthand, so a
@@ -234,6 +242,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     }
     if (sel && sel.includes(':')) {
       for (const kind in PSEUDO_KINDS) {
+        if ((kind === 'before' || kind === 'after') && !pseudoContent) continue
         if (PSEUDO_KINDS[kind].test(sel)) pseudoSels[kind].push(stripPseudo(sel))
       }
     }
@@ -464,6 +473,7 @@ export const SHADOW_SPLIT_RE = new RegExp(SHARE_UNSAFE_RE.source.replace('hover|
  * - `universe`: the properties any rule can touch, plus ALWAYS_PROPS; null if unreliable.
  * - `pseudoUniverse`: what a pseudo's snapshot reads.
  * - `pseudoGates`: one `el.matches()` selector per kind; '' skips every node, null probes all.
+ *   before/after take only the rules PSEUDO_CONTENT_PROP_RE admits, plus the UA's `q`.
  * - `usesHas`: a `:has()` rule turns per-node stamp narrowing off.
  * - `leaksAcrossSubtrees`: a rule can restyle retained nodes, so diff takes the full pipeline.
  * - `shareGate`: selectors that can split identity twins, with subject keys; null = share off.

@@ -98,7 +98,7 @@ describe('pseudo selector gates', () => {
     const gates = gatesWith(`
       .zz-x::before { content: 'a'; }
       :is(h1, h2)::after { content: 'b'; }
-      ::before { box-sizing: border-box; }
+      ::before { content: ''; }
     `)
     const x = document.createElement('div')
     x.className = 'zz-x'
@@ -113,6 +113,53 @@ describe('pseudo selector gates', () => {
     const gates = gatesWith('.zz-none { color: red; }')
     expect(document.createElement('q').matches(gates.before)).toBe(true)
     expect(document.createElement('q').matches(gates.after)).toBe(true)
+  })
+
+  // Most CSS frameworks reset every ::before and ::after, Tailwind's preflight with
+  // `border: 0 solid` too. Such a rule gives no pseudo content, yet it put every element of
+  // the page through two probes.
+  it.each([
+    ['box-sizing', '*, ::before, ::after { box-sizing: border-box; }'],
+    ["Tailwind 4's preflight", '*, ::after, ::before, ::backdrop, ::file-selector-button { box-sizing: border-box; margin: 0; padding: 0; border: 0 solid; }'],
+    ["Tailwind 3's preflight", "*, ::before, ::after { box-sizing: border-box; border-width: 0; border-style: solid; border-color: #e5e7eb; } ::before, ::after { --tw-content: ''; }"],
+  ])('leaves out a %s reset, which gives no pseudo content', (_, css) => {
+    const gates = gatesWith(css)
+    const div = document.createElement('div')
+    expect(div.matches(gates.before)).toBe(false)
+    expect(div.matches(gates.after)).toBe(false)
+    expect(document.createElement('q').matches(gates.before)).toBe(true)
+  })
+
+  // Declarations inside a nested group rule, or after a nested rule, have no selector of
+  // their own, so the pseudo rule around them gates.
+  it.each([
+    ['content', "content: ''"],
+    ['all', 'all: unset'],
+    ['an animation', 'animation: zz-spin 1s'],
+    ['a transition', 'transition: opacity 1s'],
+    ['content in a nested @media', "@media (min-width: 1px) { content: '' }"],
+    ['content after a nested rule', "@media print { color: red } content: ''"],
+  ])('keeps a ::before rule that sets %s, after the reset too', (_, decl) => {
+    const gates = gatesWith(`*, ::before, ::after { box-sizing: border-box; border: 0 solid; } .zz-g::before { ${decl} }`)
+    const el = document.createElement('div')
+    el.className = 'zz-g'
+    expect(el.matches(gates.before)).toBe(true)
+    expect(document.createElement('div').matches(gates.before)).toBe(false)
+  })
+
+  it('captures ::before/::after content set in nested CSS', async () => {
+    const style = document.createElement('style')
+    style.setAttribute('data-scan-test', '')
+    style.textContent = `
+      .zz-na::before { color: rgb(1, 2, 3); @media (min-width: 1px) { content: "AAA" } }
+      .zz-nb::after { @media (min-width: 1px) { content: "BBB" } }
+      .zz-nc::before { @media print { color: black } content: "CCC" }
+      .zz-nd::before { font-weight: 700; @supports (display: block) { content: "DDD" } }`
+    document.head.appendChild(style)
+    document.body.innerHTML = '<div id="zz-root"><div class="zz-na">a</div><div class="zz-nb">b</div><div class="zz-nc">c</div><div class="zz-nd">d</div></div>'
+    const res = await snapdom(document.getElementById('zz-root'), { cache: 'disabled' })
+    const svg = decodeURIComponent(res.url.split(',')[1])
+    for (const text of ['AAA', 'BBB', 'CCC', 'DDD']) expect(svg).toContain(text)
   })
 
   it('a pseudo rule added in the same tick as the capture is not dropped', async () => {
@@ -237,9 +284,9 @@ describe('escaped pseudo tokens in class names', () => {
 
   it('keeps the svg geometry gate and the pseudo gates usable', () => {
     const { svgGeometrySel, pseudoGates } = scanWith(String.raw`
-      .md\:after\:h-0\.5::after { height: 2px; }
+      .md\:after\:h-0\.5::after { content: var(--tw-content); height: 2px; }
       .hover\:before\:x::before { content: ''; }
-      .group-data-horizontal\/tabs\:after\:h-0\.5:after { height: 1px; }
+      .group-data-horizontal\/tabs\:after\:h-0\.5:after { content: var(--tw-content); height: 1px; }
       .dark\:first-letter\:big::first-letter { font-size: 2em; }
       circle { r: 5px; }
     `)
