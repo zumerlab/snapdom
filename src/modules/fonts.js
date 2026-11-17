@@ -33,6 +33,8 @@ const GENERIC_FAMILIES = new Set([
 /** Path tokens of libraries that ship their own @font-face, so their cross-origin CSS is
  *  fetched even when the URL names no font (KaTeX from a CDN, #344). */
 const FONT_LIBRARIES = ['katex', 'mathjax', 'mathml']
+/** @font-face descriptors that size the glyphs, copied when the rule is rebuilt from CSSOM. */
+const METRIC_DESCRIPTORS = ['size-adjust', 'ascent-override', 'descent-override', 'line-gap-override']
 
 /**
  * #357: every non-generic family in a font-family list, for fallback chain embedding:
@@ -855,7 +857,9 @@ function faceMatchesRequired(fam, styleSpec, weightSpec, stretchSpec) {
           (weightRaw ? `font-weight:${weightRaw};` : '') +
           (stretchRaw ? `font-stretch:${stretchRaw};` : '') +
           (variationRaw ? `font-variation-settings:${variationRaw};` : '') +
-          (urange ? `unicode-range:${urange};` : '')
+          (urange ? `unicode-range:${urange};` : '') +
+          // The metric descriptors: without `size-adjust: 200%` the text came out at half its width.
+          METRIC_DESCRIPTORS.map((d) => { const v = rule.style.getPropertyValue(d); return v ? `${d}:${v};` : '' }).join('')
 
         const match = faceMatchesRequired(family, styleSpec, weightSpec, stretchSpec)
         if (!match && !requiredIndex.has(family.toLowerCase())) continue

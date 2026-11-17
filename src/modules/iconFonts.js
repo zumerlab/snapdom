@@ -52,7 +52,9 @@ export function compileIconFontMatchers(fonts, options) {
   const list = Array.isArray(fonts) ? fonts : (fonts ? [fonts] : [])
   const out = []
   for (const f of list) {
-    if (f instanceof RegExp) out.push(f)
+    // Without g and y: with either, test() moves lastIndex and the same family answered true,
+    // then false.
+    if (f instanceof RegExp) out.push(f.global || f.sticky ? new RegExp(f.source, f.flags.replace(/[gy]/g, '')) : f)
     else if (typeof f === 'string') out.push(new RegExp(escapeRegExp(f), 'i'))
     else debugWarn(options, 'Ignored an iconFonts entry: use a string or a RegExp.', f)
   }

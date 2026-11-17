@@ -25,6 +25,15 @@ describe('compileIconFontMatchers (per-capture matchers)', () => {
     expect(isIconFont('no-match-here', m)).toBe(false)
   })
 
+  // test() on a g or y RegExp moves lastIndex: the same family answered true, then false.
+  it('a RegExp with the g or y flag answers the same twice', () => {
+    const { compileIconFontMatchers, isIconFont } = mod
+    for (const re of [/brandx/g, /brandx/y]) {
+      const m = compileIconFontMatchers(re)
+      expect([isIconFont('brandx', m), isIconFont('brandx', m)]).toEqual([true, true])
+    }
+  })
+
   it('acepta arrays mezclando strings y RegExp', () => {
     const { compileIconFontMatchers, isIconFont } = mod
     const m = compileIconFontMatchers(['foo-lib', /bar-pkg/i])
