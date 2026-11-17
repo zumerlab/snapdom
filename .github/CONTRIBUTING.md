@@ -34,6 +34,30 @@ Let’s keep the tone friendly and constructive!
 
 ---
 
+### 🎯 **What we look at**
+
+Every change is judged on three things:
+
+* **Speed.** SnapDOM is fast and has to stay fast. If you touch the capture path, run `npm run test:benchmark` and share the numbers before and after.
+* **Fidelity.** The capture should match what the browser renders. A fix for one case can't break another.
+* **Architecture.** Changes follow the existing structure, described in [ARCHITECTURE.md](https://github.com/zumerlab/snapdom/blob/main/ARCHITECTURE.md). If it's a feature outside the core, it's probably a plugin (see [CONTRIBUTING_PLUGINS.md](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md)).
+
+---
+
+### 🤖 **Using AI**
+
+AI-assisted contributions are welcome. Before you start, have your agent read [ARCHITECTURE.md](https://github.com/zumerlab/snapdom/blob/main/ARCHITECTURE.md) and [llms.txt](https://snapdom.dev/llms.txt), so it works with the current design and the real API.
+
+They meet the same three principles, plus:
+
+* Tests that cover the change.
+* A demo that shows it working: a small HTML page, a before/after capture or a short video.
+* You understand what you're sending and can answer questions about it.
+
+Tell us in the PR that you used AI.
+
+---
+
 ### 🚀 **Pull Requests (PRs)**
 
 * Before starting, it’s a good idea to **discuss large changes** in an issue or discussion.
