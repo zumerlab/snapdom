@@ -605,6 +605,10 @@ export async function drawDecodedImages(clone, options, nodeMap, geometry) {
     const eff = resolved.density * resolved.stretch(source)
     const raw = gainFactor(source.naturalWidth, source.naturalHeight, Math.ceil(cssW * eff), Math.ceil(cssH * eff))
     if (!raw) continue
+    // `content: url()` on the <img> paints another file than its src, and the clone already
+    // holds that one (freezeImgSrcset): drawn from the live element, a red src under a blue
+    // replacement came out red.
+    if (getStyle(source).content.includes('url(')) continue
     // Last of the gates: a page of images at their own size never parses a URL here.
     if (!/^(?:data|blob):/i.test(src) && source.crossOrigin == null) {
       try { if (new URL(src, source.baseURI).origin !== source.ownerDocument.defaultView.location.origin) continue } catch { continue }
@@ -614,7 +618,7 @@ export async function drawDecodedImages(clone, options, nodeMap, geometry) {
     // from 116 to 92 ms in Chromium, 211 to 163 in Firefox, 97 to 64 in WebKit. The request ends
     // at the headers: left to run, its body raced the read below.
     const stop = type ? null : new AbortController()
-    const head = stop && fetch(src, { signal: stop.signal }).then((r) => { stop.abort(); return r.headers.get('content-type') }, () => null)
+    const head = stop && fetch(src, { signal: stop.signal }).then((r) => { stop.abort(); return r.headers }, () => null)
     const original = /^data:/i.test(src) ? src
       : snapFetch(src, { as: 'blob', useProxy: options.useProxy }).then((r) => r.ok && r.data ? r.data : null)
     // Drawn now, encoded once the type is in: the headers arrive under the draws. Awaited
@@ -628,16 +632,26 @@ export async function drawDecodedImages(clone, options, nodeMap, geometry) {
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(source, 0, 0, canvas.width, canvas.height)
-    todo.push({ img, canvas, type, head, original })
+    todo.push({ img, canvas, type, head, original, src })
   }
-  for (let { img, canvas, type, head, original } of todo) {
+  for (let { img, canvas, type, head, original, src } of todo) {
+    // The size of the file, where the browser gives it for nothing: the length of a data: URL,
+    // the headers of a `blob:` one, the page's own load of a same-origin one.
+    let size = typeof original === 'string' ? original.length * 0.75 : performance.getEntriesByName(src).pop()?.decodedBodySize
     if (head) {
-      type = decodedType(`data:${await head},`)
+      const headers = await head
+      type = decodedType(`data:${headers?.get('content-type')},`)
       if (!type) continue
+      size = +headers.get('content-length')
     }
     let out
     // A redirect to another origin tainted the canvas.
     try { out = canvas.toDataURL(type, LOSSY_QUALITY) } catch { continue }
+    // Adopted only when smaller, as in the passes: an 800px JPEG saved at a low quality and
+    // shown at 600 came back ten times its size. A size that would have to be read (another
+    // origin with no Timing-Allow-Origin) is not asked: waiting for the bytes took nine JPEG
+    // photos over HTTP from 27 to 65 ms in Firefox, and behind `blob:` from 63 to 76 in WebKit.
+    if (size && out.length * 0.75 >= size) continue
     img.setAttribute('src', out)
     // As a Blob, not base64: the megabytes of text are built only if an export asks. The result
     // holds the file's bytes until then. Read as a data URL here, nine photos

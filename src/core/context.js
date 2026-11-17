@@ -214,7 +214,8 @@ export function createContext(options = {}) {
     // Region capture: 'viewport' or {x,y,width,height} in page coordinates
     clip: options.clip ?? null,
 
-    // Image downsampling is always on (codecs kept, output adopted only when smaller).
+    // Image downsampling is always on (codecs kept, output adopted only when smaller; the
+    // decoded path adopts a copy whose file size it cannot learn for free, compress.js).
     // `compress: false` is INTERNAL-ONLY, for benchmarks of the uncompressed pipeline.
     compress: options.compress !== false,
 

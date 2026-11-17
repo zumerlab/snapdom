@@ -142,6 +142,44 @@ describe('an image the decoded path must leave to the passes', () => {
     expect(writes.filter((v) => v.startsWith('data:image') && v.length < 700000)).toEqual([])
   })
 
+  // The clone holds the replacement (freezeImgSrcset): the live element still draws its src.
+  it('a src replaced by `content: url()` shows the replacement', async () => {
+    const c = document.createElement('canvas')
+    c.width = 400; c.height = 400
+    const x = c.getContext('2d')
+    x.fillStyle = '#f00'; x.fillRect(0, 0, 400, 400)
+    const red = c.toDataURL()
+    x.fillStyle = '#00f'; x.fillRect(0, 0, 400, 400)
+    const blue = URL.createObjectURL(await new Promise((resolve) => c.toBlob(resolve)))
+    urls.push(blue)
+    const loaded = new Image()
+    loaded.src = blue
+    await loaded.decode()
+    // From a sheet: an inline `content` reaches the clone with its style and hid the bug.
+    const { at } = await srcWrites(`<style>.sd-swap{content:url('${blue}')}</style><img class="sd-swap" src="${red}" style="display:block;width:100px;height:100px">`)
+    expect(at(50, 50)).toEqual([0, 0, 255])
+  })
+
+  // 800px of noise saved at quality 0.01 and shown at 600: drawn and encoded again it weighed
+  // ten times the file in Chromium.
+  it('a file smaller than its redrawn copy is kept', async () => {
+    const c = document.createElement('canvas')
+    c.width = 800; c.height = 800
+    const x = c.getContext('2d')
+    const noise = x.createImageData(800, 800)
+    let seed = 123
+    for (let i = 0; i < noise.data.length; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; noise.data[i] = i % 4 === 3 ? 255 : seed >> 16 & 255 }
+    x.putImageData(noise, 0, 0)
+    const data = c.toDataURL('image/jpeg', 0.01)
+    const blob = URL.createObjectURL(await new Promise((resolve) => c.toBlob(resolve, 'image/jpeg', 0.01)))
+    urls.push(blob)
+    for (const src of [data, blob]) {
+      const { writes } = await srcWrites(`<img src="${src}" style="display:block;width:600px;height:600px">`)
+      host.remove()
+      expect(Math.max(0, ...writes.filter((v) => v.startsWith('data:')).map((v) => v.length))).toBeLessThanOrEqual(data.length)
+    }
+  })
+
   it('a yielding capture draws no live image in its own task', async () => {
     const own = CanvasRenderingContext2D.prototype.drawImage
     const html = async () => `<img src="${await photo()}" style="display:block;width:400px;height:200px">`
