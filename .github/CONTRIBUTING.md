@@ -40,7 +40,7 @@ Every change is judged on three things:
 
 * **Speed.** SnapDOM is fast and has to stay fast. If you touch the capture path, run `npm run test:benchmark` and share the numbers before and after.
 * **Fidelity.** The capture should match what the browser renders. A fix for one case can't break another.
-* **Architecture.** Changes follow the existing structure, described in [ARCHITECTURE.md](https://github.com/zumerlab/snapdom/blob/main/ARCHITECTURE.md). If it's a feature outside the core, it's probably a plugin (see [CONTRIBUTING_PLUGINS.md](https://github.com/zumerlab/snapdom/blob/main/CONTRIBUTING_PLUGINS.md)).
+* **Architecture.** Changes follow the existing structure, described in [ARCHITECTURE.md](https://github.com/zumerlab/snapdom/blob/main/ARCHITECTURE.md). If it's a feature outside the core, it's probably a plugin (see [CONTRIBUTING_PLUGINS.md](https://github.com/zumerlab/snapdom/blob/main/.github/CONTRIBUTING_PLUGINS.md)).
 
 ---
 

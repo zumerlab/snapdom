@@ -120,7 +120,7 @@ Tools built on SnapDOM:
 - [SnapEye](https://snapdom.dev/tools/snapeye/): capture, compare and record a local app for coding agents through a CLI and a page API ([zumerlab/snapeye](https://github.com/zumerlab/snapeye)).
 - [SnapSurf](https://snapdom.dev/tools/snapsurf/) (experimental): web navigation and verification for agents as an MCP server and CLI ([zumerlab/snapsurf](https://github.com/zumerlab/snapsurf)).
 
-Community plugins are listed on the [plugins page](https://snapdom.dev/plugins/#community-plugins); [CONTRIBUTING_PLUGINS.md](CONTRIBUTING_PLUGINS.md) explains how to add yours.
+Community plugins are listed on the [plugins page](https://snapdom.dev/plugins/#community-plugins); [CONTRIBUTING_PLUGINS.md](.github/CONTRIBUTING_PLUGINS.md) explains how to add yours.
 
 ## Installation
 
@@ -410,7 +410,7 @@ For a useful comparison, use the same scene, output format, scale and DPR. Compa
 - [v2 source](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/) and [options](https://snapdom.dev/docs/options/)
 - [Framework guides](https://snapdom.dev/how-to/#frameworks) and [how-to examples](https://snapdom.dev/how-to/)
-- [Official plugins](packages/plugins/README.md), [plugin specification](PLUGIN_SPEC.md) and [contributing plugins](CONTRIBUTING_PLUGINS.md)
+- [Official plugins](packages/plugins/README.md), [plugin specification](PLUGIN_SPEC.md) and [contributing plugins](.github/CONTRIBUTING_PLUGINS.md)
 - [Architecture](ARCHITECTURE.md) and [technical features](FEATURES.md)
 
 ## AI agents

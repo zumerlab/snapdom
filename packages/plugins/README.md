@@ -537,7 +537,7 @@ npx degit zumerlab/snapdom/packages/plugin-template my-plugin
 cd my-plugin && npm install --save-dev @zumer/snapdom@latest
 ```
 
-See [PLUGIN_SPEC.md](../../PLUGIN_SPEC.md) for the full hook specification and [CONTRIBUTING_PLUGINS.md](../../CONTRIBUTING_PLUGINS.md) to get your plugin listed on the community page.
+See [PLUGIN_SPEC.md](../../PLUGIN_SPEC.md) for the full hook specification and [CONTRIBUTING_PLUGINS.md](../../.github/CONTRIBUTING_PLUGINS.md) to get your plugin listed on the community page.
 
 ---
 

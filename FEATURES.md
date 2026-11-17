@@ -122,7 +122,7 @@ A per-capture plugin can declare `needs: 'clone'` to skip rendering. Core image 
 
 Capture-affecting hooks disable automatic memoization unless the plugin declares `pure: true`. Export-only plugins retain it. Export calls are serialized per result; `afterSnap` fires once after the first successful export.
 
-See the [official plugin reference](packages/plugins/README.md), [hook contract](PLUGIN_SPEC.md) and [contribution guide](CONTRIBUTING_PLUGINS.md).
+See the [official plugin reference](packages/plugins/README.md), [hook contract](PLUGIN_SPEC.md) and [contribution guide](.github/CONTRIBUTING_PLUGINS.md).
 
 ## Caching & memoization
 

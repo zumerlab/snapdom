@@ -2,7 +2,7 @@
 
 These plugins are maintained by the community. Check each project's supported SnapDOM
 versions before using it with v3. To add yours, open a PR with a row in this table;
-see [Contributing Plugins](../CONTRIBUTING_PLUGINS.md).
+see [Contributing Plugins](../.github/CONTRIBUTING_PLUGINS.md).
 
 | name | description | category | npm | github | author |
 |------|-------------|----------|-----|--------|--------|

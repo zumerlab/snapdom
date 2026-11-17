@@ -389,7 +389,7 @@ const after = await snapdom(card, options); // 使用当前策略
 - [v2 源码](https://github.com/zumerlab/snapdom/tree/v2)
 - [API](https://snapdom.dev/docs/api/)与[选项](https://snapdom.dev/docs/options/)
 - [框架指南](https://snapdom.dev/how-to/#frameworks)与[使用示例](https://snapdom.dev/how-to/)
-- [官方插件](packages/plugins/README.md)、[插件规范](PLUGIN_SPEC.md)与[插件贡献指南](CONTRIBUTING_PLUGINS.md)
+- [官方插件](packages/plugins/README.md)、[插件规范](PLUGIN_SPEC.md)与[插件贡献指南](.github/CONTRIBUTING_PLUGINS.md)
 - [架构](ARCHITECTURE.md)与[技术功能](FEATURES_CN.md)
 
 ## AI 智能体

@@ -1,7 +1,7 @@
 # Contributing Plugins to SnapDOM
 
 Plugins can transform captured state, add exports or connect captures to another service.
-This guide targets SnapDOM v3. See [Installation](./README.md#installation) for the published
+This guide targets SnapDOM v3. See [Installation](../README.md#installation) for the published
 versions.
 
 ## Quick Start
@@ -20,7 +20,7 @@ cd snapdom-plugin-yourname
 npm install --save-dev @zumer/snapdom@latest
 ```
 
-The [template installation guide](./packages/plugin-template/README.md#install)
+The [template installation guide](../packages/plugin-template/README.md#install)
 covers the same steps and the peer range to keep.
 
 ```js
@@ -84,7 +84,7 @@ beforeSnap → beforeClone → resolveNode → afterClone → beforeRender → a
 `resolveNode` runs per source node. The bracketed segment runs per export; `afterSnap`
 runs once after the first successful export.
 
-Full reference in [PLUGIN_SPEC.md](./PLUGIN_SPEC.md).
+Full reference in [PLUGIN_SPEC.md](../PLUGIN_SPEC.md).
 
 **Categories:**
 
@@ -94,7 +94,7 @@ Tag yours with one of: `capture`, `transform`, `export`, `integration`, `utility
 
 ### Option A: Open a PR (recommended)
 
-Add one line to [`docs/community-plugins.md`](./docs/community-plugins.md). The table format is:
+Add one line to [`docs/community-plugins.md`](../docs/community-plugins.md). The table format is:
 
 ```
 | name | description | category | npm | github | author |
@@ -130,11 +130,11 @@ list on the SnapDOM site.
 
 Test in the browsers you support, including repeated captures and delayed exports from an
 older result. Mark capture hooks `pure: true` only when they are deterministic and idempotent;
-see [fast paths](./PLUGIN_SPEC.md#plugins--the-engines-fast-paths-v3).
+see [fast paths](../PLUGIN_SPEC.md#plugins--the-engines-fast-paths-v3).
 
 ## Plugin Ideas
 
-Check [existing plugins](./packages/plugins/README.md) before starting. Plugins can add
+Check [existing plugins](../packages/plugins/README.md) before starting. Plugins can add
 workflows such as:
 
 - **Redact** blur or black-bar sensitive content by selector
@@ -151,5 +151,5 @@ workflows such as:
 ## Getting Help
 
 - [Discussions](https://github.com/zumerlab/snapdom/discussions) for questions and ideas
-- [Plugin Spec](./PLUGIN_SPEC.md) for the full reference
+- [Plugin Spec](../PLUGIN_SPEC.md) for the full reference
 - [Issues](https://github.com/zumerlab/snapdom/issues) for bugs and feature requests

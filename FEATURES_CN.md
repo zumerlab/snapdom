@@ -122,7 +122,7 @@ PNG 需要 `CompressionStream`；不支持它的浏览器仍会按原有方式�
 
 会影响捕获的钩子默认禁用自动记忆化，除非插件声明 `pure: true`；仅处理导出的插件保留记忆化。每个结果的导出调用按顺序执行，`afterSnap` 在第一次成功导出后触发一次。
 
-参见[官方插件参考](packages/plugins/README.md)、[钩子契约](PLUGIN_SPEC.md)和[贡献指南](CONTRIBUTING_PLUGINS.md)。
+参见[官方插件参考](packages/plugins/README.md)、[钩子契约](PLUGIN_SPEC.md)和[贡献指南](.github/CONTRIBUTING_PLUGINS.md)。
 
 ## 缓存与记忆化
 
