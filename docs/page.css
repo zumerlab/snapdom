@@ -332,7 +332,7 @@ main.page-wide { max-width: 1100px; margin: 0 auto; padding: 0 24px 110px; }
    copy the root's computed margins into their clone and shift the capture out of
    frame, which would rig the bench against them over an incidental style. */
 .bench-target-row { display: flex; justify-content: center; margin-bottom: 18px; }
-.bench-target { background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; max-width: 280px; margin: 0; text-align: center; font-size: 14px; }
+.bench-target { font-family: Arial, sans-serif; background: var(--surface); border: 1px solid var(--border); border-radius: 0; padding: 16px; max-width: 280px; margin: 0; text-align: center; font-size: 14px; }
 .bench-target::before { content: '◆'; color: var(--accent); margin-right: 6px; }
 .bench-target::after { content: '◆'; color: var(--accent); margin-left: 6px; }
 .bench-actions { text-align: center; margin: 0 0 18px; }
