@@ -110,6 +110,7 @@ and stamp) and the related modules. The list at the top of `burst.js` is the sou
 | Canvas pixel draws | bypass memoization because pixels are invisible to DOM observers | snapdom.js `main`, burst.js `isAutoBurstSafe` |
 | Changes while a `fast: false` capture pauses | the torn-frame judgement runs again when the clone stage ends, and a torn clone is redone in one task; captures without burst watchers (frame-driven trees, function-valued policies, selection, impure plugins) keep what they read | capture.js `captureDOM` + session `tornSinceStart` |
 | CSSOM rule edits (`sheet.insertRule`, `rule.style.x = …`) | not automatically observed; use `invalidate: true` to clear style caches as well as the result memo. This also refreshes the set of captured properties when a rule introduces one that was not previously used | snapdom.js `main`, changes.js `invalidateStyleCaches` |
+| State written by script where nothing watches | not observed; use `invalidate: true`. A form control outside the captured root that a sibling rule reads (`input:checked + .box`), a control inside a shadow root on a capture outside burst, and an animation on an ancestor moved through `currentTime` | snapdom.js `main` |
 | Plugins with render hooks | impure hooks suspend automatic memoization; pure hooks may memoize, while diff bails whenever it would skip a required lifecycle hook | plugins.js `hasImpureRenderPlugins` + diff.js |
 | Function-valued capture policies | `filter`, `exclude`, `excludeStyleProps` and `fallbackURL` bypass memoization even when their function identity is unchanged; applicable style/fallback decisions are reevaluated on each new capture | snapdom.js `main` + styles.js |
 
@@ -160,7 +161,10 @@ It is taken only when a canvas may read the pixels and there is something to gai
 `<img>`, larger than it is shown, a JPEG, PNG or WebP by its URL or, behind a `blob:` URL, its response headers, from the same origin, a `blob:` or `data:` URL, or another
 origin with a `crossorigin` attribute. An SVG stays vector. A canvas that turns out unreadable
 (a redirect to another origin) is caught and the image goes through the passes as before, as do
-CSS backgrounds, which have no decoded element to draw.
+CSS backgrounds, which have no decoded element to draw, an `<img>` whose `content: url()`
+replaces its file, and a copy that comes out no smaller than the file. The file's size is taken
+only where the browser gives it for nothing (a `data:` URL's length, a `blob:` URL's headers,
+the page's own load of a same-origin file): waiting for the bytes cost more than it saved.
 
 A result can be exported later at a higher scale than it was captured at
 (`const r = await snapdom(el); r.toPng({ scale: 2 })`), so compress keeps the original of every

@@ -76,8 +76,8 @@ const OUTER_INK_SIGNATURE = /(?:^|;)(?:box-shadow|text-shadow|outline-style|filt
  * Intern repeated inline style attributes as attribute-selector rules (500-row table, 12
  * distinct values in 3005 attributes: draw 52.6ms to 37.4ms). String-level, so the retained
  * clone is untouched. Styles that compete with author ID rules or inline !important, and
- * editable assets, stay inline. Not on Safari:
- * fixSafariShadows reads style attributes, not the sheet.
+ * editable assets, stay inline. Not on Safari: never measured or verified there, where
+ * fixSafariShadows rewrites the shadows of both the sheet and the attributes.
  * Pinned by __tests__/engine.svg.intern.test.js.
  * @param {string} foString serialized <foreignObject> markup (first <style> holds the CSS)
  * @param {Element} fo finished foreignObject, used only if styles compete or assets are editable
@@ -408,7 +408,7 @@ export async function composeAndSerialize(state, ex) {
     // bbox offset and the clone re-applies the residual linear part, so shift the window by
     // that residual bbox or it lands twice.
     let offX = 0, offY = 0
-    if (hasTFBBox(state.element)) {
+    if (hasBBoxAffectingTransform(state.element)) {
       let M0 = null
       if (!outerTransforms && rootTransform2D && Number.isFinite(rootTransform2D.a)) {
         M0 = { a: rootTransform2D.a, b: rootTransform2D.b || 0, c: rootTransform2D.c || 0, d: rootTransform2D.d || 1, e: 0, f: 0 }
@@ -447,7 +447,7 @@ export async function composeAndSerialize(state, ex) {
     maxX = limitDecimals(bb2.maxX)
     maxY = limitDecimals(bb2.maxY)
   } else {
-    const useTFBBox = outerTransforms && hasTFBBox(state.element)
+    const useTFBBox = outerTransforms && hasBBoxAffectingTransform(state.element)
     if (useTFBBox) {
       const baseTransform2 = csEl.transform && csEl.transform !== 'none' ? csEl.transform : ''
       const ind2 = readIndividualTransforms(state.element)
@@ -526,7 +526,7 @@ export async function composeAndSerialize(state, ex) {
   const svgNS = 'http://www.w3.org/2000/svg'
   // A transformed root's fractional bbox sits flush on the raster edge, and Safari always,
   // Chrome at zoom other than 100%, shave the last 1-2px. Pad the viewBox on every engine.
-  const basePad = hasTFBBox(state.element) ? 2 : 0
+  const basePad = hasBBoxAffectingTransform(state.element) ? 2 : 0
   const extraPad = !outerTransforms ? 1 : 0
   const pad = limitDecimals(basePad + extraPad)
 
@@ -721,12 +721,6 @@ export async function composeAndSerialize(state, ex) {
   const sandbox = [...document.querySelectorAll('#snapdom-sandbox')].find(isInternalNode)
   if (sandbox && sandbox.style.position === 'absolute') sandbox.remove()
   return state.dataURL
-}
-
-/** Whether the root carries a transform that moves its bbox. A local name for
- *  hasBBoxAffectingTransform, nothing more. */
-function hasTFBBox(el) {
-  return hasBBoxAffectingTransform(el)
 }
 
 /**

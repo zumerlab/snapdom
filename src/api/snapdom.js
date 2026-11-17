@@ -74,8 +74,6 @@ bindCapture(main)
 
 // Token to prevent public use of snapdom.capture
 const INTERNAL_TOKEN = Symbol('snapdom.internal')
-// Internal token for "silent" export calls made from plugins (no hooks)
-const INTERNAL_EXPORT_TOKEN = Symbol('snapdom.internal.silent')
 const IMAGE_FORMATS = new Set(['png', 'jpeg', 'jpg', 'webp', 'svg'])
 
 /**
@@ -359,7 +357,7 @@ async function buildResult(url, context, session) {
     // Normalized like the public path, or `ctx.exports.blob({ format: 'png' })` came back an
     // SVG blob and `ctx.exports.jpeg()` encoded transparency black.
     _pluginExports[k] = async (opts) =>
-      coreExports[k](context, { ...normalizeExportOptions(k, opts || {}), [INTERNAL_EXPORT_TOKEN]: true })
+      coreExports[k](context, normalizeExportOptions(k, opts || {}))
   }
   _pluginExports.jpg = _pluginExports.jpeg
 

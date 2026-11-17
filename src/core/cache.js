@@ -3,7 +3,9 @@
  * clone-in-document measurement, the compress output. Anything scoped to one capture belongs
  * on the session (session.js). Each Map is capped and evicts FIFO, so a long-lived SPA cannot
  * grow them without bound; compress.js trims its own when a pass that added to it ends.
- * `cache: 'disabled'` replaces every one of them before a capture.
+ * `cache: 'disabled'` replaces every one of them before a capture. The style snapshots
+ * (styles.js) are not among them: they stand on the change stamps, and `invalidate: true`
+ * drops them.
  * Pinned by __tests__/core.cache.test.js.
  * @module cache
  */

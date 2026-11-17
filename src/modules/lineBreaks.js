@@ -1105,8 +1105,6 @@ export function freezeLineBreaks(fo, clone, nodeMap, liveDoc, risk = null) {
         }
         continue
       }
-      let b = s.length
-      while (b > a && isSpace(s.charCodeAt(b - 1))) b--
       const run = { node, live, cs: pair.cs, wraps: pair.wraps, plain: pair.plain, simple: pair.plain && SIMPLE_TEXT.test(s),
         loose: undefined, breaks: NO_BREAKS, start: undefined, end: null }
       link(ifc, run)
