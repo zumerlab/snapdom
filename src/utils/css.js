@@ -302,8 +302,6 @@ function propKind(prop) {
     (HARD_WIDTH_PROPS.has(prop) ? HARD_WIDTH : 0) | (MIN_WIDTH_PROPS.has(prop) ? MIN_WIDTH : 0) |
     (prop === 'height' || prop === 'block-size' ? HEIGHT : 0) | (prop === 'width' || prop === 'inline-size' ? WIDTH : 0))
   keyOrder.push(prop)
-  keyOrder.sort((x, y) => x + ':' < y + ':' ? -1 : 1)
-  for (let i = 0; i < keyOrder.length; i++) propKinds.set(keyOrder[i], propKinds.get(keyOrder[i]) & KIND | i << 6)
   return propKinds.get(prop)
 }
 /** Write an entry at its property's place; a second one for the same property sorts beside it. */
@@ -408,7 +406,11 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   for (let i = 0; i < slots.length; i++) {
     if (slots[i] !== undefined) { entries.push(slots[i]); slots[i] = undefined }
   }
-  if (keyOrder.length !== known) return getStyleKey(snapshot, tagName, sizedByContent, isFlexItem, floor)
+  if (keyOrder.length !== known) {
+    keyOrder.sort((x, y) => x + ':' < y + ':' ? -1 : 1)
+    for (let i = 0; i < keyOrder.length; i++) propKinds.set(keyOrder[i], propKinds.get(keyOrder[i]) & KIND | i << 6)
+    return getStyleKey(snapshot, tagName, sizedByContent, isFlexItem, floor)
+  }
   return entries.join(';')
 }
 
