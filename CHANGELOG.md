@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.7.6](https://github.com/zumerlab/snapdom/compare/v3.7.5...v3.7.6)
+
+> 15 November 2026
+
+**Fixes**
+
+- **toCanvas:** keep literal dollar signs in the Safari shadow rewrites [`#563`](https://github.com/zumerlab/snapdom/pull/563)
+- **clone:** paint `accent-color: auto` stand-ins in the system accent and draw them closer to the native controls [`#561`](https://github.com/zumerlab/snapdom/pull/561)
+- **styles:** re-read the layout a cached snapshot froze [`9e83fa5`](https://github.com/zumerlab/snapdom/commit/9e83fa565945cbf6b86185765ef722f0399f2d7a)
+- **prepare:** put kept &lt;style&gt; sheets below the generated classes [`489ab7e`](https://github.com/zumerlab/snapdom/commit/489ab7ebfc08ba18ab4614542c27643a22ee9c48)
+- **pseudo:** draw icon-font glyphs above U+FFFF [`2e55690`](https://github.com/zumerlab/snapdom/commit/2e55690125a0d15bc430c61642ac5a0f13774c1b)
+- **clone:** take Chromium's dark accent before the system-colour check [`2bb8d0e`](https://github.com/zumerlab/snapdom/commit/2bb8d0e4fbc52c4df678f7ee82458b743a3f9e83)
+
+**Performance**
+
+- **core:** faster recaptures after a mutation and with compressed images [`86b4308`](https://github.com/zumerlab/snapdom/commit/86b430868035fd82449760b48c61b4017fc63e50)
+- **core:** cut per-node work across the capture pipeline [`527df0d`](https://github.com/zumerlab/snapdom/commit/527df0dc76de39982c3307d7bca62d06a6a1a18e)
+- **clone:** write a shadow sheet shared by many hosts once [`e4a8303`](https://github.com/zumerlab/snapdom/commit/e4a8303d3dd6c40e3056240059867dd6c0845dd5)
+
+**Docs**
+
+- SnapStudio, the Chrome extension, on the site and in the READMEs [`f1b3645`](https://github.com/zumerlab/snapdom/commit/f1b3645dac806107c3b385c53cc4f15496c4f639)
+
+
 #### [v3.7.5](https://github.com/zumerlab/snapdom/compare/v3.7.4...v3.7.5)
 
 > 13 November 2026

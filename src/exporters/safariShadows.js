@@ -92,10 +92,11 @@ function rewriteCssBlock(css) {
   return css.replace(/([^{}]+)\{([^}]*)\}/g, (_m, sel, body) => `${sel}{${rewriteDeclList(body)}}`)
 }
 /** The drop-shadow rewrite over an svg's <style> blocks and its style="" attributes. */
-function rewriteSvgBoxShadowToDropShadow(svgText) {
+export function rewriteSvgBoxShadowToDropShadow(svgText) {
   // 1) <style>…</style>
   svgText = svgText.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (m, css) =>
-    m.replace(css, rewriteCssBlock(css))
+    // A function: as a string, `$&` or `$$` in the sheet read as a replacement pattern (#563).
+    m.replace(css, () => rewriteCssBlock(css))
   )
   // 2) style="…"
   svgText = svgText.replace(/style=(['"])([\s\S]*?)\1/gi, (m, q, body) =>
@@ -167,7 +168,7 @@ function negateShadowY(value) {
 }
 
 /** Rewrites box-/text-shadow declarations in the svg, negating their Y offsets. */
-function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
+export function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
   const rewriteList = (list) => splitDecls(list).map((d) => {
     const idx = d.indexOf(':')
     if (idx < 0) return d
@@ -178,7 +179,7 @@ function rewriteSvgShadowOffsets(svgText, includeBoxShadow) {
     return d
   }).join(';')
   svgText = svgText.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (m, css) =>
-    m.replace(css, css.replace(/([^{}]+)\{([^}]*)\}/g, (_m, sel, body) => `${sel}{${rewriteList(body)}}`))
+    m.replace(css, () => css.replace(/([^{}]+)\{([^}]*)\}/g, (_m, sel, body) => `${sel}{${rewriteList(body)}}`))
   )
   svgText = svgText.replace(/style=(['"])([\s\S]*?)\1/gi, (m, q, body) => `style=${q}${rewriteList(body)}${q}`)
   return svgText
