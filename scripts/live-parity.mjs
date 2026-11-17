@@ -56,6 +56,9 @@ const DEMOS = {
   'd10-multi-background-text': { setup: () => until(() => document.querySelector('body > img')) },
   // Appends its own toSvg capture to the body on load: wait until that image has painted.
   'd60-saltosdelinea': { setup: async () => { await until(() => document.querySelector('body > img')); await document.querySelector('body > img')?.decode?.().catch(() => {}) } },
+  // Captures itself into #out 100 ms after load: the reference was taken before or after
+  // that canvas by the run (0.00% or 0.75%).
+  'd50-invite-button-canvas': { setup: () => until(() => document.querySelector('#out canvas')) },
   'd12-backgrounds-test': {
     setup: () => until(() => document.querySelector('#output')?.children.length >= document.querySelectorAll('.test-node').length),
   },
