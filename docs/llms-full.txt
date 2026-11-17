@@ -384,7 +384,7 @@ For global registration, use `snapdom.plugins(plugin, ...)`. Definitions may be 
 | `timestampOverlay()` | Timestamp badge | format datetime, position bottom-right |
 | `redactInputs()` | Masks input/textarea values, excludes blocks and removes named attributes; `<select>` values are not masked, hide them with `blocks` | types, autocomplete, selector, all, mask, blocks, attributes |
 | `asciiExport()` | `toAscii(opts?)` → string; `width`, `charset` and `invert` can be overridden per call | width 80 characters, charset `' .:-=+*#%@'`, invert false |
-| `jxl()` | `toJxl()` → `<img>`; `toBlob({ format: 'jxl' })` and `download({ format: 'jxl' })` → `image/jxl` | effort 3 (1-9), quality 0.92 (1 is exact); import from `@zumer/snapdom-plugins/jxl`, needs `rapier-jxl` |
+| `jxl()` | `toJxl()` → `<img>`; `toBlob({ format: 'jxl' })` and `download({ format: 'jxl' })` → `image/jxl` | effort 3 (1-9), quality 0.92 (1 is exact); import from `@zumer/snapdom-plugins/jxl`, needs `jpegxl@^8.4.0` |
 | `pdf()` | `toPdf()` → Blob; optional download | selectable text, pagination, links and optional form fields |
 | `vector()` | `toVector()` → SVG string; `toFigma()` → clipboard | supported text and shapes reconstructed as vectors |
 | `htmlExport()` | `toHtml()` → string | fullDocument true, filename capture.html |
