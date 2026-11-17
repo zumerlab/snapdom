@@ -197,10 +197,14 @@ function scanRules(rules, universe, pseudoSels, state) {
     // Collected, not flagged: styleShareSafe asks the CAPTURED SUBTREE, and a document flag over
     // one `.btn:hover` cost a 500-row capture 536k reads instead of 77k.
     // Pinned by __tests__/module.styles.shareContainerUnits.test.js and sharePseudoGate.test.js.
-    if (sel && (container || state.inContainer || SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
+    // `opacity: calc(sibling-index() / 3)` computes per sibling under one selector: three
+    // identical boxes were painted with the opacity of the first. The values are read only
+    // where they can hold it (scanSheet).
+    const perSibling = state.siblingFn && !!style && style.cssText.includes('sibling-')
+    if (sel && (perSibling || container || state.inContainer || SHARE_UNSAFE_RE.test(sel) || sel.includes('+') || sel.includes('~'))) {
       for (const part of splitTopLevel(sel, ',')) {
         const one = part.trim()
-        if (one && (container || state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) {
+        if (one && (perSibling || container || state.inContainer || SHARE_UNSAFE_RE.test(one) || one.includes('+') || one.includes('~'))) {
           // `x-card:nth-child(2)::part(title)` splits what two hosts hold: gate it by its host.
           // Pseudos are stripped: querySelector never matches `li:nth-child(odd)::before`.
           const bare = one.replace(/::part\([^)]*\)/g, '') || '*'
@@ -252,11 +256,20 @@ function rulesOf(sheet, crossOriginRules) {
   try { return sheet.cssRules } catch { return crossOriginRules?.(sheet) }
 }
 
-/** One sheet through scanRules. False on a sheet whose rules cannot be read. */
+/** One sheet through scanRules. False on a sheet whose rules cannot be read.
+ *  `siblingFn`: whether its rules are asked for sibling-index()/sibling-count(). Never where
+ *  the engine has no such function, nor in a <style> whose text does not name one: reading
+ *  the text of every rule took 4 ms per 5000 rules in Chromium, so only a linked or adopted
+ *  sheet, whose text cannot be asked at once, pays it. */
 function scanSheet(sheet, universe, pseudoSels, state) {
   const rules = rulesOf(sheet, state.crossOriginRules)
   if (!rules) return false
-  return scanRules(rules, universe, pseudoSels, state)
+  const outer = state.siblingFn
+  const node = sheet.ownerNode
+  state.siblingFn = state.siblingSupport && (node?.localName !== 'style' || node.textContent.includes('sibling-'))
+  const ok = scanRules(rules, universe, pseudoSels, state)
+  state.siblingFn = outer
+  return ok
 }
 
 /**
@@ -446,7 +459,7 @@ export function scanAuthorStyles(doc, crossOriginRules) {
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, inScope: 0, crossOriginRules }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, inScope: 0, crossOriginRules, siblingSupport: CSS.supports('opacity', 'calc(sibling-index() / 2)') }
     const adopted = /** @type {any} */ (doc).adoptedStyleSheets
     const sheets = Array.isArray(adopted) ? [...doc.styleSheets, ...adopted] : Array.from(doc.styleSheets)
     // Every top-level rule spends one unit of the budget, so a document whose top-level rules
