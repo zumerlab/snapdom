@@ -38,9 +38,15 @@ const asDataUrl = (dir, name) => {
 // demo name to { chromium, firefox, webkit, notes }, from scripts/live-parity.mjs.
 const parity = new Map()
 try {
+  // The header names the columns of that run: BROWSER=webkit writes one engine, and read by
+  // position its figure went to Chromium.
+  let columns = []
   for (const line of readFileSync(join(root, '..', 'output/live-parity/report.md'), 'utf8').split('\n')) {
-    const [, demo, c, f, w, notes] = line.split('|').map(x => x.trim())
-    if (demo && /%|error/.test(c + f + w)) parity.set(demo, { chromium: c, firefox: f, webkit: w, notes })
+    const [, demo, ...cells] = line.split('|').map(x => x.trim())
+    if (demo === 'demo') { columns = cells; continue }
+    const row = { chromium: '', firefox: '', webkit: '', notes: '' }
+    columns.forEach((name, i) => { if (name in row) row[name] = cells[i] || '' })
+    if (demo && /%|error/.test(row.chromium + row.firefox + row.webkit)) parity.set(demo, row)
   }
 } catch { /* live parity has not run */ }
 const OFF = 0.5 // percent against the live page past which a capture is worth a look
@@ -108,7 +114,7 @@ for (const name of [...names].sort()) {
   row.layout = Math.max(...all.map(r => r.missing ? 1 : r.layout))
   row.level = row.missing ? 'missing' : row.resized ? 'size' : row.layout >= 0.01 ? 'layout' : row.layout >= 0.001 ? 'minor' : 'same'
   row.live = parity.get(name)
-  row.off = row.live ? ['chromium', 'firefox', 'webkit'].filter(e => !(parseFloat(row.live[e]) < OFF)) : []
+  row.off = row.live ? ['chromium', 'firefox', 'webkit'].filter(e => row.live[e] && !(parseFloat(row.live[e]) < OFF)) : []
   rows.push(row)
 }
 await browser.close()
@@ -133,7 +139,7 @@ const cell = (name, { dir, key }, r, refSize) => {
 }
 
 const live = (r) => !r.live ? '' : `<small class="${r.off.length ? 'off' : ''}">Against its own live page: ` +
-  ['chromium', 'firefox', 'webkit'].map(e => `${e} ${r.live[e].startsWith('error') ? 'no reference' : r.live[e]}`).join(', ') +
+  ['chromium', 'firefox', 'webkit'].filter(e => r.live[e]).map(e => `${e} ${r.live[e].startsWith('error') ? 'no reference' : r.live[e]}`).join(', ') +
   (r.live.notes ? `<br>${r.live.notes.replace(/</g, '&lt;')}` : '') + '</small>'
 
 const body = rows.map(({ name, results, level, refSize, ...r }) => `<tr class="${level}${r.off.length ? ' off' : ''}">

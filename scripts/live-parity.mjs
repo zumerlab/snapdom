@@ -362,7 +362,10 @@ const lines = [
     const any = Object.values(cells)[0] || {}
     const nudged = Object.entries(cells).filter(([, c]) => c.nudged).map(([e, c]) => `${e} ${c.nudged}`)
     const fellBack = Object.entries(cells).filter(([, c]) => c.svgFallback).map(([e]) => e)
-    const notes = [any.limit, any.network && 'network', any.rotated && `transformed root, aligned at ${any.offset}`, nudged.length && `1px nudge: ${nudged.join(', ')}`, fellBack.length && `svg fallback: ${fellBack.join(', ')}`].filter(Boolean).join('; ')
+    // The percentage covers only what both images have: a capture ten rows short of its box
+    // read 0.00%. Past the pixel a nudge can cost, the row says so.
+    const short = Object.entries(cells).filter(([, c]) => c.box && (c.box[0] - c.compared[0] > 1 || c.box[1] - c.compared[1] > 1)).map(([e, c]) => `${e} ${c.compared.join('x')} of ${c.box.join('x')}`)
+    const notes = [any.limit, any.network && 'network', any.rotated && `transformed root, aligned at ${any.offset}`, nudged.length && `1px nudge: ${nudged.join(', ')}`, fellBack.length && `svg fallback: ${fellBack.join(', ')}`, short.length && `compared less than the box: ${short.join(', ')}`].filter(Boolean).join('; ')
     return `| ${demo} | ${engines.map((e) => cell(cells[e])).join(' | ')} | ${notes} |`
   }),
 ]
