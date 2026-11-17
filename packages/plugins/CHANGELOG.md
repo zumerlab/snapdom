@@ -1,5 +1,21 @@
 # Plugin changes
 
+## 6.0.0
+
+> 17 November 2026
+
+**Docs**
+
+- the plugin contribution guide lives in .github [`4bdb2d4`](https://github.com/zumerlab/snapdom/commit/4bdb2d4176284a13345bc7a068cf97ad6d8447d0)
+
+**Chores**
+
+- release each package from its workspace instead of sixteen root aliases [`37f6b34`](https://github.com/zumerlab/snapdom/commit/37f6b341e842f6480786b663a3bc1123de393659)
+
+**Other**
+
+- Update the JPEG XL plugin for jpegxl 8.4 (#566) [`9fd9092`](https://github.com/zumerlab/snapdom/commit/9fd909257cb0e1e8e26e7c6ad8395db7054ca04c)
+
 ## 5.1.0
 
 > 10 November 2026
