@@ -1004,8 +1004,8 @@ export async function deepClone(node, sessionCache, options) {
     if (!group) {
       group = { id: ownId, vars: collectCustomPropsFromCSS(rawCSS), share: !SHADOW_SPLIT_RE.test(rawCSS), unstable: UNSTABLE_INLINE_RE.test(rawCSS) }
       if (rawCSS) groups.set(rawCSS, group)
-      // The pseudo pass's preflight reads only the DOCUMENT's sheets, so a page whose only
-      // ::after lives in a shadow root skipped the pass.
+      // The pseudo gates read only the DOCUMENT's sheets, so a page whose only ::after lives
+      // in a shadow root skipped the pass.
       if (!sessionCache.shadowPseudo && /::?(?:before|after|first-l|marker)|counter/.test(rawCSS)) sessionCache.shadowPseudo = true
       rewritten = rewriteShadowCSS(rawCSS, `[data-sd~="${ownId}"]`, ownId)
     }

@@ -7,8 +7,11 @@
  * a first line nor replace a marker). A cloned `<style>` gets its native pseudos suppressed
  * so they do not paint twice (#359).
  *
- * Cost control, in order: a document preflight, one subtree `querySelector` over the selector
- * gates (canSkipPseudoWalk), one `matches()` per node before any getComputedStyle.
+ * Cost control, in order: one subtree `querySelector` over the selector gates of the sheet
+ * scan (canSkipPseudoWalk), one `matches()` per node before any getComputedStyle. There is no
+ * second scan of the sheets here: the one there was answered "no pseudo" for a sheet of
+ * another origin and for the rules past its budget, and the pass was skipped
+ * (__tests__/module.pseudo.preflightBlind.test.js).
  * Pinned by __tests__/module.pseudo.test.js and the module.pseudo.*.test.js siblings.
  * @module pseudo
  */
@@ -39,195 +42,24 @@ import { pseudoSnapshotFor } from './styleShare.js'
 import { ONE_LINE_PROP } from './styleFreeze.js'
 import { flushStyleInvalidations, invalidateStyleCaches } from '../core/changes.js'
 
-/** Weak memo for per-document preflight results keyed by a cheap style fingerprint */
-const __preflightMemo = new WeakMap()
-
-/** Max number of CSS rules to scan across all sheets. 300 was too low for apps with 500+
- *  utility rules (Tailwind, MUI). */
-const CSS_RULE_SCAN_BUDGET = 1000
+/** Per document, how many sheets it has adopted and how many rules they hold. */
+const adoptedCensus = new WeakMap()
 
 /**
- * Safely returns cssRules for a stylesheet, or null when cross-origin/blocked.
- * @param {CSSStyleSheet} sheet
- * @returns {CSSRuleList | null}
- */
-function safeRules(sheet) {
-  try {
-    return sheet && sheet.cssRules ? sheet.cssRules : null
-  } catch {
-    return null
-  }
-}
-
-/**
- * A cheap fingerprint of the document's sheets. Rule counts are in it so a CSSOM insertRule
- * moves it.
+ * `replaceSync()` on a sheet the document already adopted changes no length and emits no
+ * record: every epoch-scoped memo kept the old CSS and a ::before added that way was not
+ * painted. The rule count moving is the signal, and it bumps the epochs by hand.
+ * Pinned by __tests__/module.pseudo.adoptedReplace.test.js.
  * @param {Document} doc
- * @returns {string}
  */
-function styleFingerprint(doc) {
-  const nodes = doc.querySelectorAll('style,link[rel~="stylesheet"]')
-  let fp = `n:${nodes.length}|`
-  let totalRules = 0
-
-  for (let i = 0; i < nodes.length; i++) {
-    const n = nodes[i]
-    if (n.tagName === 'STYLE') {
-      const len = n.textContent ? n.textContent.length : 0
-      fp += `S${len}|`
-      // If same-origin, cssRules is readable; include count to reflect insertRule
-      const sheet = /** @type {HTMLStyleElement} */(n).sheet
-      const rules = sheet ? safeRules(sheet) : null
-      if (rules) totalRules += rules.length
-    } else {
-      const href = n.getAttribute('href') || ''
-      const media = n.getAttribute('media') || 'all'
-      fp += `L${href}|m:${media}|`
-      const sheet = /** @type {HTMLLinkElement} */(n).sheet
-      const rules = sheet ? safeRules(sheet) : null
-      if (rules) totalRules += rules.length
-    }
-  }
-
-  // Adopted sheets by rule count, not just by number: `replaceSync()` on a sheet already
-  // adopted changes no length and emits no mutation record, and the pass stayed memoized
-  // off. Constructed sheets are same-origin by definition, and a page has a handful.
-  const ass = /** @type {any} */ (doc).adoptedStyleSheets
-  let assRules = 0
-  if (Array.isArray(ass)) for (const s of ass) { const r = safeRules(s); if (r) assRules += r.length }
-  fp += `ass:${Array.isArray(ass) ? ass.length : 0}/${assRules}|tr:${totalRules}`
-
-  return fp
-}
-
-/**
- * Scans a stylesheet's rules for any needle strings within a limited budget. What it cannot
- * read (a sheet of another origin, the rules past the budget) answers true: answered false,
- * the whole pass was skipped and a ::before declared there was not painted. The scan's gates
- * rule those out next (canSkipPseudoWalk), from a copy of the sheet and with no budget. The
- * price falls on a page whose only pseudo could be in such a sheet: 600 nodes under a font
- * sheet of another origin took 78 to 87 ms on the one capture before the copy lands and 4.6
- * to 4.7 after, and 6 to 12 ms on every capture when the copy cannot be read (no CORS).
- * Pinned by __tests__/module.pseudo.preflightBlind.test.js.
- * @param {CSSStyleSheet} sheet
- * @param {string[]} needles
- * @param {{budget:number}} state
- * @returns {boolean}
- */
-function sheetHasNeedles(sheet, needles, state) {
-  const rules = safeRules(sheet)
-  if (!rules) return true
-
-  for (let i = 0; i < rules.length; i++) {
-    if (state.budget <= 0) return true
-    const rule = rules[i]
-    // Only read cssText when needed and decrement budget
-    const css = rule && rule.cssText ? rule.cssText : ''
-    state.budget--
-    for (const k of needles) {
-      if (css.includes(k)) return true
-    }
-    // @import: the rule's own cssText is only the url, so the needles live one sheet down.
-    // Missing them skips the ENTIRE pseudo pass for any site that keeps its component CSS
-    // behind an import.
-    if (rule && rule.styleSheet && sheetHasNeedles(rule.styleSheet, needles, state)) return true
-    // Nested group rules: @media, @supports, etc.
-    // @ts-ignore - CSSGroupingRule may not exist in all envs
-    if (rule && rule.cssRules && rule.cssRules.length) {
-      for (let j = 0; j < rule.cssRules.length && state.budget > 0; j++) {
-        const inner = rule.cssRules[j]
-        const innerCss = inner && inner.cssText ? inner.cssText : ''
-        state.budget--
-        for (const k of needles) {
-          if (innerCss.includes(k)) return true
-        }
-      }
-    }
-    if (state.budget <= 0) return true
-  }
-  return false
-}
-
-/**
- * Whether the document needs pseudo/counter inlining at all: true when any sheet mentions a
- * pseudo (NEEDLES) or a counter. Checked from cheapest to dearest: <style> text, adopted
- * sheets, a budget of same-origin <style>/<link> rules, then inline `style="counter("`.
- * Memoized by document and style fingerprint.
- * @param {Document} doc
- * @returns {boolean}
- */
-export function shouldProcessPseudos(doc = document, fp = styleFingerprint(doc)) {
-  const memo = __preflightMemo.get(doc)
-  if (memo && memo.fingerprint === fp) return memo.result
-  // A `<style>`/`<link>` change bumps the DOM epoch through its mutation record. Only
-  // adoptedStyleSheets changes emit no record, so bump by hand ONLY when the adopted part of
-  // the fingerprint moved: bumping on every change moved epochs mid-capture and broke three
-  // read-count/byte-equality tests.
-  const adopted = (s) => (s.match(/\|ass:[^|]*/) || [''])[0]
-  if (memo && adopted(fp) !== adopted(memo.fingerprint)) invalidateStyleCaches()
-
-  const NEEDLES = [
-    // double-colon. ::marker/::first-line stay listed: this preflight gates their scoped
-    // rules too, and a page whose only pseudo is a marker would skip the pass.
-    '::before', '::after', '::first-letter', '::marker', '::first-line',
-    // single-colon robustness
-    ':before', ':after', ':first-letter', ':first-line',
-    // counters
-    'counter(', 'counters(', 'counter-increment', 'counter-reset'
-  ]
-
-  // 1) Inline <style> text scan (O(total style text))
-  const styleEls = doc.querySelectorAll('style')
-  for (let i = 0; i < styleEls.length; i++) {
-    const t = styleEls[i].textContent || ''
-    for (const k of NEEDLES) if (t.includes(k)) {
-      __preflightMemo.set(doc, { fingerprint: fp, result: true })
-      return true
-    }
-  }
-
-  // 2) adoptedStyleSheets cssRules scan (safe and fast)
-  const ass = /** @type {any} */ (doc).adoptedStyleSheets
-  if (Array.isArray(ass) && ass.length) {
-    const state = { budget: CSS_RULE_SCAN_BUDGET }
-    try {
-      for (const sheet of ass) {
-        if (sheetHasNeedles(sheet, NEEDLES, state)) {
-          __preflightMemo.set(doc, { fingerprint: fp, result: true })
-          return true
-        }
-      }
-    } catch { /* ignore */ }
-  }
-
-  // 3) cssRules scan in <style> / <link rel="stylesheet"> (same-origin only), bounded by budget
-  {
-    const nodes = doc.querySelectorAll('style,link[rel~="stylesheet"]')
-    const state = { budget: CSS_RULE_SCAN_BUDGET }
-    for (let i = 0; i < nodes.length; i++) {
-      const n = nodes[i]
-      /** @type {CSSStyleSheet | null} */
-      let sheet = null
-      if (n.tagName === 'STYLE') {
-        sheet = /** @type {HTMLStyleElement} */(n).sheet || null
-      } else {
-        sheet = /** @type {HTMLLinkElement} */(n).sheet || null
-      }
-      if (sheet && sheetHasNeedles(sheet, NEEDLES, state)) {
-        __preflightMemo.set(doc, { fingerprint: fp, result: true })
-        return true
-      }
-    }
-  }
-
-  // 4) Ultra-cheap inline style hint
-  if (doc.querySelector('[style*="counter("], [style*="counters("]')) {
-    __preflightMemo.set(doc, { fingerprint: fp, result: true })
-    return true
-  }
-
-  __preflightMemo.set(doc, { fingerprint: fp, result: false })
-  return false
+function noteAdoptedSheets(doc) {
+  const sheets = /** @type {any} */ (doc).adoptedStyleSheets
+  if (!Array.isArray(sheets)) return
+  let now = sheets.length + '/'
+  for (const sheet of sheets) now += sheet.cssRules.length + ','
+  const before = adoptedCensus.get(doc)
+  adoptedCensus.set(doc, now)
+  if (before !== undefined && before !== now) invalidateStyleCaches()
 }
 
 /**
@@ -566,7 +398,7 @@ function canSkipPseudoWalk(source, sessionCache) {
  * Inline every pseudo-element under `source` into `clone`, recursing through nodeMap.
  *
  * Deep tree with a 2px stripe on each of 1,936 leaves: 150 to 24 µs per `::before` (435 ms to
- * 172), from the root-only preflight, the pseudo universe (~45 props, not ~130), complete
+ * 172), from the root-only gate check, the pseudo universe (~45 props, not ~130), complete
  * per-tag defaults, and twin pseudos sharing one read (pseudoSnapshotFor). Pinned by
  * __tests__/module.pseudo.test.js, module.pseudo.subtreeGate, module.pseudo.twinShare,
  * module.pseudo.unreliableScan and module.pseudo.adoptedReplace.
@@ -585,17 +417,13 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
   // <span> (as the ::first-letter path does) drops them from the rendered value.
   // Browsers don't render pseudo-elements on textarea anyway.
   if (source.tagName === 'TEXTAREA') return
-  // --- preflight, once per session/doc ---
-  const doc = source.ownerDocument || document
-  // On the ROOT call only: the fingerprint is a document-wide querySelectorAll plus a walk of
-  // every sheet, quadratic per node (deep tree with a ::before per leaf: 64 ms of a 295 ms
-  // capture). `shadowPseudo`: a shadow root in the capture declares a pseudo, which the
-  // document preflight cannot see.
+  // On the ROOT call only: asked per node it is quadratic (a deep tree with a ::before per
+  // leaf: 64 ms of a 295 ms capture).
   if (!isDescendant) {
     // Drain pending observer records first, so the scanned universe and pseudo gates are not
     // read against a stale epoch (a <style> added in the same tick).
     flushStyleInvalidations()
-    if (!shouldProcessPseudos(doc) && !sessionCache.shadowPseudo) return
+    noteAdoptedSheets(source.ownerDocument || document)
     // Asked once, on the root call only: the recursion below is exactly what this skips.
     if (canSkipPseudoWalk(source, sessionCache)) return
   }
@@ -763,16 +591,7 @@ const hasExplicitContent = !isNoExplicitContent && cleanContent !== ''
         // Even with no box rendered, a pseudo that had increments must propagate to siblings
         if (incs && incs.length && source.parentElement) {
           const map = sessionCache.siblingCounters.get(source.parentElement) || new Map()
-          // For each counter the pseudo incremented, store the final resolved value
-          for (const { name } of incs) {
-            if (!name) continue
-            // Rebuild the final value from `derived` by asking for it again, using
-            // withSiblingOverrides + derive so it stays consistent with the read above
-            const baseWithSibs = withSiblingOverrides(source, counterCtx, sessionCache.siblingCounters)
-            const derived = deriveCounterCtxForPseudo(source, getStyle(source, pseudo), baseWithSibs)
-            const finalVal = derived.get(source, name)
-            map.set(name, finalVal)
-          }
+          for (const { name } of incs) if (name) map.set(name, derived.get(source, name))
           sessionCache.siblingCounters.set(source.parentElement, map)
         }
         continue

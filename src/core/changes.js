@@ -1,7 +1,7 @@
 /**
  * Change sources: every way a cached read can go stale without the reader being told, who
  * sees it and what it moves. One observer stack per document, shared by the style snapshot
- * cache (styles.js), the memo (burst.js), the pseudo preflight and the CSSVar memo.
+ * cache (styles.js), the memo (burst.js), the pseudo gates and the CSSVar memo.
  *
  * One sequence, `seq`, and versions cut from it: `epoch` is the last external mutation, `env`
  * the last change that restyles with no mutation on the node (head, fonts, resize), a node's
@@ -463,7 +463,7 @@ export function invalidateHoverChanges(doc, roots = null) {
 /** Synchronously drains pending records. MutationObserver delivers in a microtask, so a
  *  <style> injected in the same tick as a capture would be read against the stale epoch and
  *  the scanned universe and pseudo gates would miss its rules. Called once per capture (from
- *  the pseudo preflight's fingerprint recompute). */
+ *  the root call of the pseudo pass). */
 export function flushStyleInvalidations() {
   setupInvalidationOnce()
   try {

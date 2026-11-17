@@ -1,5 +1,6 @@
-// The pseudo preflight answered "no pseudo here" for what it could not read: a sheet of another
-// origin, and the rules past its budget. The whole pass was skipped and the box was not painted.
+// The pseudo pass had a scan of its own before the gates, which answered "no pseudo here" for
+// what it could not read: a sheet of another origin, and the rules past its budget of 1000. The
+// whole pass was skipped and the box was not painted. That scan is gone: the gates decide.
 import { it, expect, afterEach } from 'vitest'
 import { commands } from 'vitest/browser'
 import { snapdom } from '../src/index.js'

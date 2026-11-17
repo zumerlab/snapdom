@@ -1,4 +1,5 @@
 // __tests__/modules.pseudo.test.js
+import { scanAuthorStyles } from '../src/modules/styleScan.js'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { inlinePseudoElements } from '../src/modules/pseudo.js'
 
@@ -856,8 +857,7 @@ describe('scoped ::marker and ::first-line rules', () => {
   // skip wholesale. A page whose ONLY author pseudo is a marker/first-line has to keep
   // the pass alive — asserted on a private document so an unrelated ::before anywhere
   // in the test page can't mask a regression.
-  it('preflight follows @import (component CSS often lives one sheet down)', async () => {
-    const { shouldProcessPseudos } = await import('../src/modules/pseudo.js')
+  it('the gates follow @import (component CSS often lives one sheet down)', async () => {
     const frame = document.createElement('iframe')
     const blob = new Blob(['.feat::before{content:"✔";color:red}'], { type: 'text/css' })
     const url = URL.createObjectURL(blob)
@@ -870,25 +870,24 @@ describe('scoped ::marker and ::first-line rules', () => {
       })
       const doc = frame.contentDocument
       expect(doc.styleSheets[0].cssRules[0].styleSheet.cssRules.length).toBeGreaterThan(0)
-      expect(shouldProcessPseudos(doc)).toBe(true)
+      expect(scanAuthorStyles(doc).pseudoGates.before).toContain('.feat')
     } finally {
       URL.revokeObjectURL(url)
       frame.remove()
     }
   })
 
-  it('preflight keeps the pseudo pass for marker/first-line-only pages', async () => {
-    const { shouldProcessPseudos } = await import('../src/modules/pseudo.js')
+  it('the gates keep the pseudo pass for marker/first-line-only pages', () => {
     const frame = document.createElement('iframe')
     document.body.appendChild(frame)
     const doc = frame.contentDocument
     try {
       doc.head.innerHTML = '<style>li::marker { color: rgb(200, 10, 10); }</style>'
-      expect(shouldProcessPseudos(doc)).toBe(true)
+      expect(scanAuthorStyles(doc).pseudoGates.marker).toBe('li')
       doc.head.innerHTML = '<style>.lede::first-line { font-weight: 700; }</style>'
-      expect(shouldProcessPseudos(doc)).toBe(true)
+      expect(scanAuthorStyles(doc).pseudoGates.firstLine).toBe('.lede')
       doc.head.innerHTML = '<style>.plain { color: red; }</style>'
-      expect(shouldProcessPseudos(doc)).toBe(false)
+      expect(scanAuthorStyles(doc).pseudoGates).toEqual({ before: 'q', after: 'q', firstLetter: '', marker: '', firstLine: '' })
     } finally {
       frame.remove()
     }
