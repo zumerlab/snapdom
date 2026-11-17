@@ -12,6 +12,7 @@
 
 import { debugWarn, getStyle, collectUsedTagNames, generateDedupedBaseCSS, isHTMLEl, isSVGEl, isShadowRoot } from './index.js'
 import { cache } from '../core/cache.js'
+import { env } from '../core/changes.js'
 import { markInternalNode } from './ownership.js'
 import { splitTopLevel } from '../modules/styleScan.js'
 import {
@@ -979,7 +980,9 @@ function collectScrollbarRulesFromRules(rules, seen = new Set()) {
 }
 
 /** Memo per document: scanning every rule's cssText on each capture is O(stylesheet size).
- *  The fingerprint (href + rule count per sheet) is O(#sheets) and catches inserts/removals. */
+ *  The fingerprint (href + rule count per sheet) is O(#sheets) and catches inserts/removals;
+ *  the style epoch catches a sheet rewritten at the same rule count and `invalidate: true`,
+ *  which kept a red <progress> red after its rule turned blue. */
 const _scrollbarCSSMemo = new WeakMap()
 
 /** href plus rule count per sheet. Moves when a sheet is added, removed or grows; a
@@ -1007,7 +1010,7 @@ export function collectScrollbarCSS(doc) {
   if (!doc || !doc.styleSheets) return ''
   const fp = scrollbarFingerprint(doc)
   const memo = _scrollbarCSSMemo.get(doc)
-  if (memo && memo.fp === fp) return memo.css
+  if (memo && memo.fp === fp && memo.env === env) return memo.css
   const seen = new Set()
   let out = ''
   for (const sheet of Array.from(doc.styleSheets)) {
@@ -1018,7 +1021,7 @@ export function collectScrollbarCSS(doc) {
       // Cross-origin stylesheet; cannot read cssRules
     }
   }
-  _scrollbarCSSMemo.set(doc, { fp, css: out })
+  _scrollbarCSSMemo.set(doc, { fp, env, css: out })
   return out
 }
 

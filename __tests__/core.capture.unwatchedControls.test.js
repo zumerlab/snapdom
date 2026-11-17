@@ -7,8 +7,8 @@ import { snapdom } from '../src/index.js'
 let host
 afterEach(() => host?.remove())
 
-async function ink() {
-  const canvas = await (await snapdom(host, { scale: 1, dpr: 1, embedFonts: false })).toCanvas()
+async function ink(opts) {
+  const canvas = await (await snapdom(host, { scale: 1, dpr: 1, embedFonts: false, ...opts })).toCanvas()
   const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
   let red = 0, green = 0
   for (let i = 0; i < data.length; i += 4) {
@@ -42,6 +42,18 @@ describe('form state written by script, outside burst', () => {
     expect((await ink()).red).toBeGreaterThan(500)
     host.querySelector('input').checked = false
     const after = await ink()
+    expect(after.red).toBe(0)
+    expect(after.green).toBeGreaterThan(500)
+  })
+
+  // No capture outside burst came before to compare with: the snapshots a watched capture
+  // left are dropped all the same.
+  it('the first capture outside burst after one inside it reads the state again', async () => {
+    mount('<input type="checkbox" checked>')
+    host.querySelector('canvas').remove()
+    expect((await ink()).red).toBeGreaterThan(500)
+    host.querySelector('input').checked = false
+    const after = await ink({ filter: () => true })
     expect(after.red).toBe(0)
     expect(after.green).toBeGreaterThan(500)
   })

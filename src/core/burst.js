@@ -35,6 +35,10 @@
  *                            rescanned per capture (trackShadowRoots); closed roots: `invalidate`
  *  - canvas pixel draws .... bypass burst (invisible to every observer)
  *  - CSSOM rule edits ...... EXCLUDED (insertRule/rule.style.*): `invalidate: true`
+ *  - state written by script where nothing watches: EXCLUDED, `invalidate: true`. A control
+ *                            outside the root that a sibling rule reads, a control in a shadow
+ *                            root on a capture outside burst, an animation on an ancestor
+ *                            moved through `currentTime`
  *  - impure render plugins . suspend auto memo/diff (plugins.js hasImpureRenderPlugins)
  * @module burst
  */
@@ -558,7 +562,8 @@ const unwatchedControls = new WeakMap()
  * capture outside burst (a frame-driven tree, a capture callback, `burst: false`). Such a
  * capture has no render state to compare, and a control written by script (`input.value = 'x'`,
  * `box.checked = false`) leaves no record and no event: what `:placeholder-shown` or `:checked`
- * styles kept its cached snapshot and painted the old state. Light DOM only.
+ * styles kept its cached snapshot and painted the old state. Light DOM only. With no capture
+ * outside burst before this one there is nothing to compare, and the snapshots are dropped.
  * Pinned by __tests__/core.capture.unwatchedControls.test.js.
  * @param {Element} element - the capture root
  */
@@ -568,7 +573,7 @@ export function refreshUnwatchedControls(element) {
   for (const el of element.querySelectorAll?.('input,textarea,select,option') || []) pushControlState(el, now)
   const before = unwatchedControls.get(element)
   unwatchedControls.set(element, now)
-  if (before && (before.length !== now.length || before.some((v, i) => v !== now[i]))) invalidateSnapshotsUnder(element)
+  if (now.length && (!before || before.length !== now.length || before.some((v, i) => v !== now[i]))) invalidateSnapshotsUnder(element)
 }
 
 function sameRenderState(a, b, key) {
