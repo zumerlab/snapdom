@@ -116,6 +116,32 @@ describe('svg engine: inline-style interning', () => {
     if (!isSafari()) expect(doc.querySelectorAll('[data-sdi]').length).toBeGreaterThan(70)
   })
 
+  // Retained rules are matched once per style value against the joined selector list. These
+  // pin that a later element can protect its value, and that a :scope rule keeps one
+  // querySelectorAll per rule.
+  it('protects a style value when only a later element carrying it matches', async () => {
+    const el = repetitiveFixture()
+    el.id = 'intern-late'
+    const css = document.createElement('style')
+    // Only one red row in the middle matches (rows alternate blue, red; the edge rows can differ).
+    css.textContent = '#intern-late > div:nth-child(41){outline:1px solid lime}'
+    el.prepend(css)
+    const doc = new DOMParser().parseFromString(svgTextOf((await snapdom(el, { burst: false })).url), 'image/svg+xml')
+    const rows = [...doc.querySelectorAll('#intern-late > div')]
+    const inlineRed = rows.filter((row) => /224, 0, 0|#e00000/.test(row.getAttribute('style') || ''))
+    expect(inlineRed.length).toBe(ROWS / 2)
+  })
+
+  it('protects what a :scope rule matches from the clone root, as one query per rule did', async () => {
+    const el = repetitiveFixture()
+    const css = document.createElement('style')
+    // To querySelectorAll on the foreignObject, :scope is the foreignObject: the rows match.
+    css.textContent = ':scope div > div{outline:1px solid lime}'
+    el.prepend(css)
+    const doc = new DOMParser().parseFromString(svgTextOf((await snapdom(el, { burst: false })).url), 'image/svg+xml')
+    expect(doc.querySelectorAll('[data-sdi]').length).toBe(0)
+  })
+
   it('keeps compressed asset styles individually editable for later exports', async () => {
     const el = repetitiveFixture()
     el.children[10].setAttribute('data-snapdom-asset', 'asset-0')

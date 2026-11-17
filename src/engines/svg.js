@@ -155,6 +155,7 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
   if (hasEditableAssets) fo.querySelectorAll('[data-snapdom-asset][style]').forEach(protect)
   if (hasAuthorStyles) {
     try {
+      const selectors = []
       const walk = (rules) => {
         for (const rule of rules) {
           if (rule.type === CSSRule.IMPORT_RULE || rule.type === CSSRule.NAMESPACE_RULE) throw new Error('External or namespaced CSS')
@@ -162,7 +163,7 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
             // Attribute-dependent matching can CHANGE after interning, including inside
             // :not()/:has(). Protecting only the elements that match today is insufficient.
             if (/\[\s*style\b|data-sdi|\[[^\]]*\\|&/i.test(rule.selectorText)) throw new Error('Attribute-dependent or nested CSS')
-            fo.querySelectorAll(rule.selectorText).forEach(protect)
+            selectors.push(rule.selectorText)
           }
           if (rule.cssRules) walk(rule.cssRules)
         }
@@ -174,6 +175,19 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
         const sheet = new CSSStyleSheet()
         sheet.replaceSync(css)
         walk(sheet.cssRules)
+      }
+      const plain = []
+      for (const sel of selectors) {
+        // matches() reads `:scope` as the element itself, not as the clone root.
+        if (/:scope\b/i.test(sel)) fo.querySelectorAll(sel).forEach(protect)
+        else plain.push(sel)
+      }
+      const list = plain.join(',')
+      if (list) {
+        for (const el of fo.querySelectorAll('[style]')) {
+          const value = el.getAttribute('style')
+          if (value && !values.has(value) && el.matches(list)) values.add(value)
+        }
       }
     } catch { return null }
   }
