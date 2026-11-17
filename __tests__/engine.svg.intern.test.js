@@ -142,6 +142,33 @@ describe('svg engine: inline-style interning', () => {
     expect(doc.querySelectorAll('[data-sdi]').length).toBe(0)
   })
 
+  // A retained <style>'s selectors are kept from one capture to the next, by its text.
+  it('reads a retained <style> again when its text changed since the last capture', async () => {
+    const el = repetitiveFixture()
+    el.id = 'intern-changed'
+    const css = document.createElement('style')
+    css.textContent = '#intern-changed{outline:1px solid lime}'
+    el.prepend(css)
+    const capture = async () => new DOMParser().parseFromString(svgTextOf((await snapdom(el, { burst: false })).url), 'image/svg+xml')
+    const first = await capture()
+    if (!isSafari()) expect(first.querySelectorAll('[data-sdi]').length).toBeGreaterThan(70)
+    // Now a rule matches every row, so every row's value has to stay inline.
+    css.textContent += '#intern-changed > div{outline:1px solid lime}'
+    const second = await capture()
+    expect(second.querySelectorAll('[data-sdi]').length).toBe(0)
+  })
+
+  it('still refuses a retained <style> it could not prove safe on a later capture', async () => {
+    const el = repetitiveFixture()
+    const css = document.createElement('style')
+    css.textContent = 'div[style*="e00000"]{outline:1px solid lime}'
+    el.prepend(css)
+    for (let i = 0; i < 2; i++) {
+      const doc = new DOMParser().parseFromString(svgTextOf((await snapdom(el, { burst: false })).url), 'image/svg+xml')
+      expect(doc.querySelectorAll('[data-sdi]').length).toBe(0)
+    }
+  })
+
   it('keeps compressed asset styles individually editable for later exports', async () => {
     const el = repetitiveFixture()
     el.children[10].setAttribute('data-snapdom-asset', 'asset-0')
