@@ -409,6 +409,14 @@ describe('auto burst — frame-driven sources', () => {
     expect(second).toBe(first)
     expect(reads).not.toHaveBeenCalled()
   })
+
+  it("keeps memoizing after toCanvas, whose decode frame is snapdom's own", async () => {
+    mount('<div style="width:20px;height:20px;background:red"></div>')
+    const first = await snapdom(document.body, OPTS)
+    await first.toCanvas()
+    expect(document.querySelector('iframe[data-snapdom-internal]')).not.toBeNull()
+    expect(await snapdom(document.body, OPTS)).toBe(first)
+  })
 })
 
 describe('auto burst — transactional edges', () => {
