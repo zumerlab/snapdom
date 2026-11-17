@@ -461,8 +461,9 @@ async function image(blob, drawn, own, dpr, signal, exact) {
 
 // A canvas holds its pixels until it is emptied, even once nothing reads it. Only the export's own
 // canvases are emptied, never one the app passed as `canvas`.
-// The capture's refusal of a canvas read back blank where its rectangles hold content (its words, which cross a worker).
-const blankCanvas = error => error?.code === 'JXL_PLATFORM' && /read back blank/.test(error?.message ?? '');
+// The capture's refusal of a canvas that reads back blank where its rectangles hold content (JXL_PLATFORM; its words, which cross
+// a worker, say "blank" in every jpegxl version).
+const blankCanvas = error => error?.code === 'JXL_PLATFORM' && /\bblank\b/.test(error?.message ?? '');
 
 function free(canvas) {
   if (typeof HTMLCanvasElement !== 'undefined' && canvas instanceof HTMLCanvasElement) canvas.width = canvas.height = 0;
