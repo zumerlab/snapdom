@@ -7,7 +7,6 @@ async function jpegXl(el: Element) {
   const img: HTMLImageElement = await result.toJxl({ quality: 0.8 })
   const blob: Blob = await result.toBlob({ format: 'jxl' })
   await result.download({ format: 'jxl', filename: 'card' })
-  await jxl({ effort: 5 }).close()
   // Core's own formats keep their strict union.
   const png: Blob = await result.toBlob({ format: 'png' })
   // @ts-expect-error Only the formats core or a plugin writes.

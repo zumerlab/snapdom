@@ -213,9 +213,13 @@ describe('svg engine layout zoom follows the live layout grid', () => {
   })
 
   // Firefox shapes the system font for the zoomed size, which has tighter tracking: under the
-  // layout zoom a line of system-ui came out 8% narrower and a heading wrapped. Chromium and a
-  // family without size-specific tracking pass with or without the zoom.
-  it('keeps the width of system font text on an integer grid', async () => {
+  // layout zoom a line of system-ui came out 8% narrower and a heading wrapped. A family
+  // without size-specific tracking passes with or without the zoom.
+  // Firefox only: Chromium zooms, and on a real 2x screen its capture has the ink of the page
+  // (270.5px both, headless, headed and Chrome). On this 1x runner the stubbed grid lays the
+  // clone out as 24px text at 1x, which Chromium tracks tighter (250px for 270) whenever its
+  // system font has that tracking on: it failed one full run in three and never alone.
+  it.runIf(isFirefox())('keeps the width of system font text on an integer grid', async () => {
     const el = mount('<div style="display:inline-block;padding:0 0 4px;background:#fff"><span style="font:bold 12px system-ui;white-space:nowrap;color:#f00">HHHHH and a quick brown fox 01234 HHHHH</span></div>')
     // The ink of the text, first H to last H, not its box: the box keeps its frozen width.
     const ink = async () => { const { box } = await redBox(el); return box[2] - box[0] }
