@@ -58,6 +58,7 @@ import { tryDiffCapture } from './diff.js'
 import { createCaptureSession } from './session.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
 import { yieldWhenTaskSpent } from '../utils/browser.js'
+import { isInternalNode } from '../utils/ownership.js'
 
 /** Per-element state lookup; the bounded LRU below retains and disposes live memos. */
 const burstStates = new WeakMap()
@@ -169,6 +170,7 @@ export function isAutoBurstSafe(element) {
     if (scope?.nodeType === 1) nodes.push(scope)
     try { nodes.push(...scope.querySelectorAll('*')) } catch { return false }
     for (const el of nodes) {
+      if (isInternalNode(el)) continue
       if (el.shadowRoot) scopes.push(el.shadowRoot)
       const tag = String(el.localName || el.tagName || '').toLowerCase()
       if (/^(?:iframe|canvas|video|audio|object|embed|marquee|blink)$/.test(tag)) return false
