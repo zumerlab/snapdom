@@ -521,14 +521,7 @@ function renderStateOf(element, state) {
   for (const el of state.scrollNodes) scroll.push(el.scrollLeft || 0, el.scrollTop || 0)
   const controls = []
   for (const el of state.controls) {
-    const tag = String(el.localName || '').toLowerCase()
-    // A password input contributes its value LENGTH: the clone renders a same-length bullet
-    // mask, so the frame is the same, and the plaintext never sits in the memo.
-    // Pinned by `__tests__/core.burst.signature.test.js`.
-    if (tag === 'input') controls.push(el.type, isPasswordInput(el) ? el.value.length : el.value, el.checked ? 1 : 0, el.indeterminate ? 1 : 0)
-    else if (tag === 'textarea') controls.push(el.value)
-    else if (tag === 'select') controls.push(el.selectedIndex, el.value)
-    else controls.push(el.selected ? 1 : 0)
+    pushControlState(el, controls)
   }
   const images = []
   for (const img of state.images) {
@@ -543,6 +536,39 @@ function renderStateOf(element, state) {
     images,
     frameDriven: state.retainedFrameDriven,
   }
+}
+
+/** What a form control paints from that no attribute holds, appended to `out`. */
+function pushControlState(el, out) {
+  const tag = String(el.localName || '').toLowerCase()
+  // A password input contributes its value LENGTH: the clone renders a same-length bullet
+  // mask, so the frame is the same, and the plaintext never sits in the memo.
+  // Pinned by `__tests__/core.burst.signature.test.js`.
+  if (tag === 'input') out.push(el.type, isPasswordInput(el) ? el.value.length : el.value, el.checked ? 1 : 0, el.indeterminate ? 1 : 0)
+  else if (tag === 'textarea') out.push(el.value)
+  else if (tag === 'select') out.push(el.selectedIndex, el.value)
+  else out.push(el.selected ? 1 : 0)
+}
+
+/** Per root element, its controls' state at the last capture burst did not watch. */
+const unwatchedControls = new WeakMap()
+
+/**
+ * Drop the style snapshots under `element` when a form control changed state since its last
+ * capture outside burst (a frame-driven tree, a capture callback, `burst: false`). Such a
+ * capture has no render state to compare, and a control written by script (`input.value = 'x'`,
+ * `box.checked = false`) leaves no record and no event: what `:placeholder-shown` or `:checked`
+ * styles kept its cached snapshot and painted the old state. Light DOM only.
+ * Pinned by __tests__/core.capture.unwatchedControls.test.js.
+ * @param {Element} element - the capture root
+ */
+export function refreshUnwatchedControls(element) {
+  const now = []
+  if (element.matches?.('input,textarea,select,option')) pushControlState(element, now)
+  for (const el of element.querySelectorAll?.('input,textarea,select,option') || []) pushControlState(el, now)
+  const before = unwatchedControls.get(element)
+  unwatchedControls.set(element, now)
+  if (before && (before.length !== now.length || before.some((v, i) => v !== now[i]))) invalidateSnapshotsUnder(element)
 }
 
 function sameRenderState(a, b, key) {

@@ -17,7 +17,7 @@ import { registerPlugins, runHook, runAll, attachSessionPlugins, hasImpureRender
 import { resolveStage, stageReaches, absentArtifactError, DEFAULT_STAGE } from '../core/stages.js'
 import { collectFontUsage, ensureFontsReady, fontKeyFamily, documentFontFamilies } from '../modules/fonts.js'
 import { invalidateStyleCaches } from '../core/changes.js'
-import { captureWithBurst, isAutoBurstSafe } from '../core/burst.js'
+import { captureWithBurst, isAutoBurstSafe, refreshUnwatchedControls } from '../core/burst.js'
 import { bindCapture, noteCapture, preCapture } from './preCapture.js'
 import { markInternalNode } from '../utils/ownership.js'
 import { fileSvgText } from '../utils/helpers.js'
@@ -138,6 +138,8 @@ async function main(element, userOptions) {
   }
   // The burst queue asks the same before each capture it runs.
   await yieldWhenTaskSpent()
+  // Burst compares form-control state before it serves; without it, here.
+  refreshUnwatchedControls(element)
   return snapdom.capture(element, context, INTERNAL_TOKEN)
 }
 
