@@ -218,9 +218,12 @@ function liveBreaks(text, range) {
       const c = s.charCodeAt(i)
       range.setStart(text, i)
       range.setEnd(text, Math.min(s.length, i + (c >= 0xd800 && c <= 0xdbff ? 2 : 1)))
-      r = range.getBoundingClientRect()
-      // A zero-width joiner or a collapsed mark has no box to compare.
-      if (!r.height) r = null
+      // The character's own rect is the last one with ink. Chromium 157 puts the hyphen of
+      // `hyphens: auto` in the rects of the letter after it, so their union spans two lines
+      // and reads as the same line as both. A zero-width joiner or a collapsed mark has none.
+      const rects = range.getClientRects()
+      r = null
+      for (let n = rects.length - 1; n >= 0 && !r; n--) if (rects[n].width && rects[n].height) r = rects[n]
       boxes.set(k, r)
     }
     return r

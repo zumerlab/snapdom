@@ -11,12 +11,14 @@ import { createContext } from '../src/core/context.js'
 import { __diffStats } from '../src/core/diff.js'
 import { freezeLineBreaks, lineRisk } from '../src/modules/lineBreaks.js'
 import { ONE_LINE_PROP } from '../src/modules/styleFreeze.js'
-import { isSafari } from '../src/utils/browser.js'
+import { isSafari, isFirefox } from '../src/utils/browser.js'
 import { stubHiDPI } from './helpers/hidpi.js'
 
 const PINS = ONE_LINE_PROP === 'text-wrap-mode'
 // WebKit lays the clone out without the zoom, so nothing there needs the page's breaks.
 const ZOOMS = PINS && !isSafari()
+// Firefox lays the clone out without the zoom on an integer grid (2x, 3x), so it gets 1.5.
+const HIDPI = isFirefox() ? 1.5 : 2
 const JOINER = '\u2060'
 const FONT = 'font:14px/20px Arial,sans-serif'
 const TEXT = 'The quick brown fox jumps over the lazy dog, and the dog does not mind it at all today.'
@@ -65,8 +67,9 @@ function liveLines(text) {
   for (let i = 0; i < text.data.length; i++) {
     range.setStart(text, i)
     range.setEnd(text, i + 1)
-    const r = range.getBoundingClientRect()
-    if (r.height) {
+    // The character's own rect: WebKit adds an empty one at the end of the line before.
+    const r = [...range.getClientRects()].filter((q) => q.width && q.height).pop()
+    if (r) {
       if (top !== null && Math.abs(r.top - top) > r.height / 2) {
         lines.push(line.trim())
         line = ''
@@ -175,6 +178,17 @@ describe.skipIf(!PINS)('freezeLineBreaks', () => {
     const copy = await frozen(p)
     expect(pinsOf(copy)).toEqual(lines)
     expect(copy.querySelectorAll('wbr').length).toBe(lines.length - 1)
+  })
+
+  it('finds the breaks automatic hyphenation made inside words', async () => {
+    const p = mount('<p lang="en" style="width:150px;margin:0;hyphens:auto;font:16px Arial,sans-serif">Internationalization and incomprehensibilities characteristically demonstrate automatic hyphenation.</p>')
+    const range = document.createRange()
+    range.selectNodeContents(p)
+    const lines = new Set([...range.getClientRects()].filter((r) => r.width).map((r) => Math.round(r.top))).size
+    expect(lines).toBeGreaterThan(2)
+    const copy = await frozen(p)
+    // Chromium gives the letter after the hyphen a box that spans both lines.
+    expect(pinsOf(copy).length).toBe(lines)
   })
 
   it('leaves text it cannot pair with the page alone', async () => {
@@ -308,7 +322,7 @@ describe.skipIf(!ZOOMS)('the svg engine under the layout zoom', () => {
     const lines = liveLines(box.firstChild.firstChild).length
     // At 1x there is no zoom and no pass: the wider text really takes more lines.
     expect(await inkLines(box, { plugins: [drifted(1)] })).toBeGreaterThan(lines)
-    stubHiDPI(2)
+    stubHiDPI(HIDPI)
     expect(await inkLines(box, { plugins: [drifted(1)] })).toBe(lines)
   })
 
@@ -318,14 +332,14 @@ describe.skipIf(!ZOOMS)('the svg engine under the layout zoom', () => {
     const box = mount(`<div style="padding-bottom:60px;background:#fff"><p style="${PARA};word-break:break-all">${LONG}</p></div>`)
     const lines = liveLines(box.firstChild.firstChild).length
     expect(await inkLines(box, { plugins: [drifted(2)] })).toBeGreaterThan(lines)
-    stubHiDPI(2)
+    stubHiDPI(HIDPI)
     expect(await inkLines(box, { plugins: [drifted(2)] })).toBe(lines)
   })
 
   it('serializes the pins but leaves them out of the clone the stages keep', async () => {
     const p = mount(`<p style="${PARA}">${LONG}</p>`)
     snug(p)
-    stubHiDPI(2)
+    stubHiDPI(HIDPI)
     let seen = null
     const probe = { name: 'line-pins', afterRender: (ctx) => { seen = { pins: pinsOf(ctx.clone).length, svg: ctx.svgString } } }
     await snapdom(p, { cache: 'disabled', burst: false, plugins: [probe] })
@@ -345,7 +359,7 @@ describe.skipIf(!ZOOMS)('the svg engine under the layout zoom', () => {
     // whose height changed, with or without the pins.
     const box = mount(`<div style="width:320px;padding:8px;background:#fff;color:#000;${FONT}"><div style="height:400px">` +
       [TEXT, LONG, TEXT].map((t) => `<p style="margin:0 0 8px">${t}</p>`).join('') + '</div></div>')
-    stubHiDPI(2)
+    stubHiDPI(HIDPI)
     for (let i = 0; i < 4; i++) await snapdom(box)
     const p = box.firstChild.children[1]
     p.textContent = `${TEXT} ${TEXT}`
