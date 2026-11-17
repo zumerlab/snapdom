@@ -171,29 +171,64 @@ export async function use(el: HTMLElement) {
 
   // Both resolvers, because they disagree about exactly the constructs that were broken:
   // "bundler" reads the exports map loosely, "node16" enforces it.
-  for (const moduleMode of ['node16', 'bundler']) {
-    writeFileSync(join(consumer, 'package.json'), JSON.stringify({ name: 'consumer', version: '1.0.0', type: 'module', private: true }))
-    writeFileSync(join(consumer, 'tsconfig.json'), JSON.stringify({
-      compilerOptions: {
-        target: 'ES2020',
-        module: moduleMode === 'node16' ? 'node16' : 'esnext',
-        moduleResolution: moduleMode,
-        lib: ['ES2020', 'DOM'],
-        strict: true,
-        noEmit: true,
-        // The whole point: the repo's own tsconfig hid TS2665 behind this being true.
-        skipLibCheck: false,
-        types: [],
-      },
-      include: ['index.ts'],
-    }))
-    try {
-      run(TSC, ['-p', join(consumer, 'tsconfig.json')], { cwd: consumer })
-      pass(`tsc moduleResolution=${moduleMode}, skipLibCheck=false`)
-    } catch (e) {
-      fail(`tsc moduleResolution=${moduleMode}:\n${e.stdout || e.message}`)
+  const typecheck = (label) => {
+    for (const moduleMode of ['node16', 'bundler']) {
+      writeFileSync(join(consumer, 'package.json'), JSON.stringify({ ...JSON.parse(readFileSync(join(consumer, 'package.json'), 'utf8')), type: 'module' }))
+      writeFileSync(join(consumer, 'tsconfig.json'), JSON.stringify({
+        compilerOptions: {
+          target: 'ES2020',
+          module: moduleMode === 'node16' ? 'node16' : 'esnext',
+          moduleResolution: moduleMode,
+          lib: ['ES2020', 'DOM'],
+          strict: true,
+          noEmit: true,
+          // The whole point: the repo's own tsconfig hid TS2665 behind this being true.
+          skipLibCheck: false,
+          types: [],
+        },
+        include: ['index.ts'],
+      }))
+      try {
+        run(TSC, ['-p', join(consumer, 'tsconfig.json')], { cwd: consumer })
+        pass(`${label}: tsc moduleResolution=${moduleMode}, skipLibCheck=false`)
+      } catch (e) {
+        fail(`${label}: tsc moduleResolution=${moduleMode}:\n${e.stdout || e.message}`)
+      }
     }
   }
+  typecheck('without optional jpegxl peer')
+
+  run(process.execPath, ['--input-type=module', '-e', `
+    const plugins = await import('@zumer/snapdom-plugins')
+    if ('jxl' in plugins) throw new Error('jxl must stay out of the package root')
+  `], { cwd: consumer })
+  pass('plugin root imports without the optional jpegxl peer')
+
+  const jpegxlPack = run('npm', ['pack', '--pack-destination', work, '--silent'], { cwd: join(ROOT, 'node_modules', 'jpegxl') })
+  const jpegxlTarball = join(work, jpegxlPack.trim().split('\n').pop().trim())
+  run('npm', ['install', '--offline', '--ignore-scripts', '--no-audit', '--no-fund', '--package-lock=false', jpegxlTarball], { cwd: consumer })
+  writeFileSync(join(consumer, 'index.ts'), readFileSync(join(consumer, 'index.ts'), 'utf8') + `
+import { jxl } from '@zumer/snapdom-plugins/jxl'
+import * as complete from 'jpegxl/capture-complete'
+import * as exact from 'jpegxl/capture'
+import * as upload from 'jpegxl/upload'
+jxl()
+jxl({ codec: complete, effort: 9, webgpu: false })
+jxl({ module: 'jpegxl/capture', codec: exact, effort: 5 })
+jxl({ module: 'jpegxl/upload', codec: upload, effort: 3 })
+export async function callbacks(el: HTMLElement) {
+  const result = await snapdom(el, { plugins: [jxl()] })
+  const progress: number[] = []
+  return result.toBlob({ format: 'jxl', onProgress: n => progress.push(n), onEncoded: async record => { if (record.exact) await Promise.resolve() } })
+}
+// @ts-expect-error alternate modules require their codec
+jxl({ module: 'jpegxl/capture' })
+// @ts-expect-error the upload module carries efforts 1-3
+jxl({ module: 'jpegxl/upload', codec: upload, effort: 4 })
+// @ts-expect-error helper workers are configured on the encoder module
+jxl({ helpers: true })
+`)
+  typecheck('with jpegxl capture modules')
 
   log('\n3. resolve the entrypoints at runtime')
   const pkgDir = join(consumer, 'node_modules', '@zumer', 'snapdom')
@@ -204,7 +239,7 @@ export async function use(el: HTMLElement) {
     // must register. The helpers (a stream, its WebGL texture and recorder, the overlay
     // templates, the ASCII converter) are not factories: they take an element or a canvas and
     // need a DOM, so they are only checked for identity. pdf and vector also export default.
-    // jxl is the one subpath the barrel must NOT re-export: it imports rapier-jxl, an optional
+    // jxl is the one subpath the barrel must NOT re-export: it imports jpegxl, an optional
     // peer, and a bundler resolves a barrel's imports whether or not the app uses them.
     ['official plugins', `(async () => {
       const HELPERS = new Set(${JSON.stringify(HELPERS)})
@@ -276,7 +311,7 @@ if ('preCache' in win.snapdom || 'prepare' in win.snapdom) throw new Error('remo
     fail((e.stderr || e.message).split('\n').filter((l) => l.includes('Error')).join(' '))
   }
 
-  log(`\ntarball: ${readdirSync(work).find((f) => f.endsWith('.tgz'))} (${listed.length} entries)`)
+  log(`\ntarball: ${tgz.split('/').pop()} (${listed.length} entries)`)
   // Keep the very bytes consumed above, rather than packing a second candidate afterward.
   if (!failures && keepArtifacts) {
     mkdirSync(keepArtifacts)

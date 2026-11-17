@@ -18,7 +18,7 @@ OWN_LINKS = {'stream': [('showcase/#stream-demo', 'Showcase demo'), ('labs/video
 
 # Groups by the job a plugin does. Each plugin: slug, name, h1, one line for the index, the
 # demo settings panes.js reads, its demo's id on the showcase, and a concise meta description.
-# jxl has neither demo: its encoder is rapier-jxl, a peer the site does not load.
+# jxl has neither demo: its encoder is jpegxl, a peer the site does not load.
 TOOLBOX = [
  ('Prepare', 'prepare', 'Change what the capture shows. The live page is never touched.', [
   ('redact-inputs', 'Redact inputs', 'Redact fields before sharing.', 'Mask field values, hide blocks, drop attributes',

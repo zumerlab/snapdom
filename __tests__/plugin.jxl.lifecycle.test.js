@@ -3,18 +3,14 @@ import { snapdom } from '../src/api/snapdom.js'
 import { clearPlugins } from '../src/core/plugins.js'
 import { jxl } from '../packages/plugins/jxl.js'
 
-// Each rapier-jxl module the plugin imports is recorded when it loads; page-rects can add a property
-// to its result or fail to measure, and every codec the plugin creates counts its close().
-const seen = vi.hoisted(() => ({ loads: [], extra: null, measureFails: null, created: 0, closed: 0, rects: 0 }))
+// Each jpegxl module the plugin imports is recorded when it loads; page-rects can add a property
+// to its result or fail to measure, and every capture through the shared module is counted.
+const seen = vi.hoisted(() => ({ loads: [], extra: null, measureFails: null, captures: 0, rects: 0 }))
 const counted = (real) => ({
   ...real,
-  createCodec: (options) => {
-    const codec = real.createCodec(options)
-    seen.created++
-    return { prepare: (k) => codec.prepare(k), capture: (c, o) => codec.capture(c, o), decode: (b, o) => codec.decode(b, o), close: () => { seen.closed++; return codec.close() } }
-  },
+  capture: (...args) => { seen.captures++; return real.capture(...args) },
 })
-vi.mock('rapier-jxl/page-rects', async (importOriginal) => {
+vi.mock('jpegxl/page-rects', async (importOriginal) => {
   seen.loads.push('page-rects')
   const real = await importOriginal()
   return {
@@ -30,8 +26,10 @@ vi.mock('rapier-jxl/page-rects', async (importOriginal) => {
     },
   }
 })
-vi.mock('rapier-jxl/codec/capture-complete', async (importOriginal) => { seen.loads.push('capture-complete'); return counted(await importOriginal()) })
-vi.mock('rapier-jxl/codec/decode', async (importOriginal) => { seen.loads.push('decode'); return counted(await importOriginal()) })
+vi.mock('jpegxl/capture-complete', async (importOriginal) => { seen.loads.push('capture-complete'); return counted(await importOriginal()) })
+vi.mock('jpegxl/capture', async (importOriginal) => { seen.loads.push('capture'); return counted(await importOriginal()) })
+vi.mock('jpegxl/upload', async (importOriginal) => { seen.loads.push('upload'); return counted(await importOriginal()) })
+vi.mock('jpegxl/decode', async (importOriginal) => { seen.loads.push('decode'); return await importOriginal() })
 
 const made = []
 afterEach(async () => { while (made.length) await made.pop()(); clearPlugins(); seen.extra = seen.measureFails = null })
@@ -57,9 +55,9 @@ function spy({ fail, prepare } = {}) {
     calls,
     prepare: async () => { if (prepare) throw prepare },
     capture: async (canvas, options) => {
-      calls.push({ canvas, options })
+      calls.push({ canvas, options, size: [canvas.width, canvas.height] })
       if (fail) throw fail
-      return { fits: true, bytes: new Uint8Array([0xff, 0x0a]) }
+      return { meetsTarget: true, bytes: new Uint8Array([0xff, 0x0a]) }
     },
   }
 }
@@ -73,36 +71,42 @@ function watchCanvases() {
 }
 
 describe('jxl plugin: loading', () => {
-  // Runs first: this file's module registry starts empty.
-  it('nothing loads until a capture or export needs it', async () => {
-    const plugin = jxl()
-    made.push(() => plugin.close())
-    expect(seen.loads, 'calling jxl()').toEqual([])
-    const other = { name: 'unrelated', afterClone() {} }
-    await (await snapdom(card(), { plugins: [other] })).toPng()
-    expect(seen.loads, 'a capture with another plugin').toEqual([])
-    const result = await snapdom(card(), { plugins: [plugin] })
-    expect(seen.loads, 'a capture measures').toEqual(['page-rects'])
+  // Runs first: this file's module registry starts with the plugin and page-rects, which it imports.
+  it('a plugin with your codec loads no door; jxl() starts loading its own door, and nothing else loads', async () => {
+    expect(seen.loads, 'the plugin imports page-rects').toEqual(['page-rects'])
+    jxl({ codec: spy() })
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(seen.loads, 'your codec').toEqual(['page-rects'])
+    // jxl() starts loading the door, so the first export does not wait on the network (jxl.js, create()).
+    const result = await snapdom(card(), { plugins: [jxl()] })
+    await vi.waitFor(() => expect(seen.loads, 'calling jxl()').toEqual(['page-rects', 'capture-complete']), { timeout: 15000 })
     await result.toPng()
-    expect(seen.loads, 'a PNG export').toEqual(['page-rects'])
     expect((await result.toBlob({ format: 'jxl', dpr: 1 })).type).toBe('image/jxl')
-    expect(seen.loads, 'the first JPEG XL export loads its own door only').toEqual(['page-rects', 'capture-complete'])
+    expect(seen.loads, 'a PNG and a JPEG XL export').toEqual(['page-rects', 'capture-complete'])
+    expect(seen.captures, 'one capture through the shared module').toBe(1)
   })
 
-  it('only the default encoder has a door: the others are your codec', async () => {
-    for (const module of ['rapier-jxl/upload', 'rapier-jxl/capture']) expect(() => jxl({ module })).toThrow(/needs your codec/)
+  it('an alternate module needs its explicit codec and loads no other door', async () => {
+    for (const module of ['jpegxl/upload', 'jpegxl/capture']) {
+      expect(() => jxl({ module })).toThrow(/needs its codec/)
+      const codec = spy()
+      const result = await snapdom(card(), { plugins: [jxl({ module, codec })] })
+      expect((await result.toBlob({ format: 'jxl', dpr: 1 })).type).toBe('image/jxl')
+      expect(codec.calls).toHaveLength(1)
+    }
     expect(seen.loads).toEqual(['page-rects', 'capture-complete'])
   })
 })
 
 describe('jxl plugin: what reaches the encoder', () => {
-  it('pageRects\' whole result reaches the encoder', async () => {
-    seen.extra = { sentinel: { text: 'complete' }, textComplete: true }
+  it('pageRects\' rectangles and its complete-text marker reach the encoder', async () => {
+    // The encoder takes exactRects, photoRects and textComplete from pageRects (jxl.js, rects).
+    seen.extra = { textComplete: true }
     const codec = spy()
     const result = await snapdom(card(), { plugins: [jxl({ codec })] })
     await result.toBlob({ format: 'jxl', dpr: 1, quality: 0.8 })
-    expect(codec.calls[0].options.sentinel).toEqual({ text: 'complete' })
     expect(codec.calls[0].options.textComplete).toBe(true)
+    expect(codec.calls[0].options.photoRects.length).toBeGreaterThan(0)
     expect(codec.calls[0].options.exactRects.length).toBeGreaterThan(0)
     expect(codec.calls[0].options.fidelity).toEqual({ quality: 80 })
   })
@@ -143,64 +147,35 @@ describe('jxl plugin: what reaches the encoder', () => {
     expect(codec.calls, 'no exact-only file instead').toHaveLength(0)
   })
 
-  it('an encoder that fails to start rejects the export', async () => {
-    const reason = new Error('no worker')
-    const codec = spy({ prepare: reason })
+  it('prepare only warms the encoder: a prepare that fails leaves the export to capture', async () => {
+    // jxl.js: encoder.prepare().catch(() => {}); capture's own answer decides the export.
+    const codec = spy({ prepare: new Error('no warm start') })
     const result = await snapdom(card(), { plugins: [jxl({ codec })] })
-    await expect(result.toBlob({ format: 'jxl', dpr: 1 })).rejects.toBe(reason)
-    expect(codec.calls).toHaveLength(0)
+    expect((await result.toBlob({ format: 'jxl', dpr: 1 })).type).toBe('image/jxl')
+    expect(codec.calls).toHaveLength(1)
+    const failing = spy({ prepare: new Error('no warm start'), fail: new Error('no worker') })
+    await expect((await snapdom(card(), { plugins: [jxl({ codec: failing })] })).toBlob({ format: 'jxl', dpr: 1 })).rejects.toThrow('no worker')
   })
 })
 
 describe('jxl plugin: resources', () => {
-  it('close() ends the codecs the plugin created, once; a later export creates them again', async () => {
-    const plugin = jxl({ effort: 2 })
-    const { created, closed } = seen
-    const result = await snapdom(card(), { plugins: [plugin] })
-    await result.toBlob({ format: 'jxl', dpr: 1 })
-    await plugin.close()
-    await plugin.close()
-    expect(seen.closed - closed).toBe(seen.created - created)
-    expect(seen.created - created).toBe(1)
-    // A delayed export from the same result.
-    expect((await result.toBlob({ format: 'jxl', dpr: 1 })).type).toBe('image/jxl')
-    expect(seen.created - created).toBe(2)
-    await plugin.close()
-    expect(seen.closed - closed).toBe(2)
-  })
-
-  it('each plugin owns its encoder: closing one leaves another\'s export running', async () => {
+  it('plugins with different efforts share the module for the page', async () => {
+    // The module import is kept for the page (jxl.js, door); the plugin has no close().
+    const captures = seen.captures, loads = [...seen.loads]
     const a = jxl({ effort: 2 }), b = jxl({ effort: 4 })
     expect(a).not.toBe(b)
-    const ra = await snapdom(card(), { plugins: [a] }), rb = await snapdom(card(), { plugins: [b] })
-    await ra.toBlob({ format: 'jxl', dpr: 1 })
-    const closed = seen.closed
-    const running = rb.toBlob({ format: 'jxl', dpr: 1 })
-    const closing = a.close()
-    expect(closing).toBeInstanceOf(Promise)
-    await closing
-    expect((await running).type).toBe('image/jxl')
-    expect(seen.closed - closed, 'only a\'s encoder').toBe(1)
-    expect(jxl({ effort: 3 }).close()).toBeInstanceOf(Promise)
-    await b.close()
+    const [ra, rb] = await Promise.all([snapdom(card(), { plugins: [a] }), snapdom(card(), { plugins: [b] })])
+    const [fa, fb] = await Promise.all([ra.toBlob({ format: 'jxl', dpr: 1 }), rb.toBlob({ format: 'jxl', dpr: 1 })])
+    expect([fa.type, fb.type]).toEqual(['image/jxl', 'image/jxl'])
+    expect(seen.captures - captures).toBe(2)
+    expect(seen.loads).toEqual(loads)
   })
 
-  it('quality and effort outside their range are refused before anything is drawn', async () => {
-    expect(() => jxl({ effort: 10 })).toThrow(RangeError)
+  it('an effort outside 1 to 9 is refused by the encoder, and the plugin\'s canvas is emptied', async () => {
     const result = await snapdom(card(), { plugins: [jxl()] })
     const canvases = watchCanvases()
-    await expect(result.toBlob({ format: 'jxl', quality: 2 })).rejects.toThrow(RangeError)
-    await expect(result.toBlob({ format: 'jxl', effort: 0 })).rejects.toThrow(RangeError)
-    expect(canvases.list).toHaveLength(0)
-  })
-
-  it('close() leaves your own codec open', async () => {
-    let closed = 0
-    const codec = { ...spy(), close: () => { closed++ } }
-    const plugin = jxl({ codec })
-    await (await snapdom(card(), { plugins: [plugin] })).toBlob({ format: 'jxl', dpr: 1 })
-    await plugin.close()
-    expect(closed).toBe(0)
+    for (const effort of [0, 10]) await expect(result.toBlob({ format: 'jxl', dpr: 1, effort })).rejects.toMatchObject({ code: 'JXL_OPTIONS' })
+    expect(canvases.outputs().filter((c) => c.width || c.height)).toEqual([])
   })
 
   it('a failed encode empties the plugin\'s canvas and keeps the app\'s', async () => {
@@ -242,19 +217,15 @@ describe('jxl plugin: resources', () => {
     expect(codec.calls).toHaveLength(0)
   })
 
-  it('the plugin\'s own encoder refuses a canvas over 40 megapixels before it is drawn', async () => {
-    const result = await snapdom(card(), { plugins: [jxl()] })
-    const canvases = watchCanvases()
-    await expect(result.toBlob({ format: 'jxl', width: 9000, height: 9000, dpr: 1 })).rejects.toMatchObject({ code: 'JXL_LIMIT' })
-    expect(canvases.list).toHaveLength(0)
-  })
-
-  it('the 40 megapixel check counts an export crop\'s window, not the whole capture', async () => {
+  it('an export crop of a large capture encodes the crop\'s window', async () => {
+    // The plugin's own limit is SnapDOM's raster limit (jxl.js, MAX_PIXELS); the encoder gets only the window.
     const big = card()
     big.style.width = big.style.height = '8200px'
-    const result = await snapdom(big, { plugins: [jxl()] })
-    await expect(result.toBlob({ format: 'jxl', dpr: 1 })).rejects.toMatchObject({ code: 'JXL_LIMIT' })
+    const codec = spy()
+    const result = await snapdom(big, { plugins: [jxl({ codec })] })
     expect((await result.toBlob({ format: 'jxl', dpr: 1, crop: { x: 0, y: 0, width: 300, height: 200 } })).type).toBe('image/jxl')
+    expect([codec.calls[0].canvas.width, codec.calls[0].canvas.height]).toEqual([0, 0])
+    expect(codec.calls[0].size).toEqual([300, 200])
   })
 
   it('toJxl() revokes every object URL it makes', async () => {
@@ -262,10 +233,7 @@ describe('jxl plugin: resources', () => {
     URL.createObjectURL = (b) => { const u = createObjectURL(b); live.add(u); return u }
     URL.revokeObjectURL = (u) => { live.delete(u); revokeObjectURL(u) }
     made.push(() => { URL.createObjectURL = createObjectURL; URL.revokeObjectURL = revokeObjectURL })
-    const { createCodec } = await import('rapier-jxl/codec/decode')
-    const decoder = createCodec({ module: 'rapier-jxl/decode' })
-    made.push(() => decoder.close())
-    const result = await snapdom(card(), { plugins: [jxl({ decoder })] })
+    const result = await snapdom(card(), { plugins: [jxl()] })
     for (const quality of [0.8, 1]) {
       const img = await result.toJxl({ dpr: 1, quality })
       expect(img.naturalWidth).toBeGreaterThan(0)

@@ -128,7 +128,7 @@ Twelve plugins. Import each from its subpath, or all but `jxl` from the package 
 | `contextExport({ format, maxTextLength, maxNodes, geometry })` | `/context-export` | `toContext()`: a text outline, or with `format: 'json'` a tree `{ root, truncated, nodes }`, of structure, roles, text and state |
 | `agentMap({ image, fields, semantic, maxImageWidth, ... })` | `/agent-map` | `toAgentMap()`: `{ image, map, dimensions }`, an image with numbered badges and a JSON map of interactive elements with name, role and bounds |
 | `asciiExport({ width, charset, invert, format, contrast })` | `/ascii-export` | `toAscii()`: the capture as ASCII art text |
-| `jxl({ effort, decoder, ... })` | `/jxl` only | `toJxl()`, and `'jxl'` as a format for `toBlob()` and `download()`. Needs `npm install rapier-jxl` |
+| `jxl({ effort, codec, ... })` | `/jxl` only | `toJxl()`, and `'jxl'` as a format for `toBlob()` and `download()`. Needs `npm install jpegxl` |
 | `redactInputs({ types, autocomplete, selector, all, mask, blocks, attributes })` | `/redact-inputs` | Masks input and textarea values in the capture; `blocks` hides whole subtrees. By default email, tel and sensitive autocomplete fields; `all: true` for every field |
 | `replaceText({ replacements })` | `/replace-text` | `[{ find: string \| RegExp, replace: string }]` applied to text in the clone |
 | `timestampOverlay({ format, position, background, color, fontSize })` | `/timestamp-overlay` | A timestamp label on the capture |
