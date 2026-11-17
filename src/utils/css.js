@@ -287,6 +287,31 @@ export function softenNeedsAutoWidth(tagName, snapshot, isFlexItem) {
   return !SHRINK_TO_FIT_DISPLAYS.has(display)
 }
 
+/** What getStyleKey asks of a property name: six bits of kind, and above them the name's place
+ *  in keyOrder. One lookup per property in place of two Map reads, two Set reads and four
+ *  comparisons, and no sort: each entry is written at its place. On the 1,400-node deep tree
+ *  the key went from 9.5 to 6.5 ms a capture (3.7.6, behind a signature cache: 6.7). */
+const IGNORED = 1, LOGICAL = 2, HARD_WIDTH = 4, MIN_WIDTH = 8, HEIGHT = 16, WIDTH = 32, KIND = 63
+const propKinds = new Map()
+/** Every property name seen, in the order `name:value` strings sort in. */
+const keyOrder = []
+/** getStyleKey's scratch: the entry of each property at its place in keyOrder, emptied as read. */
+const slots = []
+function propKind(prop) {
+  propKinds.set(prop, (shouldIgnoreProp(prop) ? IGNORED : 0) | (LOGICAL_TO_PHYSICAL.has(prop) ? LOGICAL : 0) |
+    (HARD_WIDTH_PROPS.has(prop) ? HARD_WIDTH : 0) | (MIN_WIDTH_PROPS.has(prop) ? MIN_WIDTH : 0) |
+    (prop === 'height' || prop === 'block-size' ? HEIGHT : 0) | (prop === 'width' || prop === 'inline-size' ? WIDTH : 0))
+  keyOrder.push(prop)
+  keyOrder.sort((x, y) => x + ':' < y + ':' ? -1 : 1)
+  for (let i = 0; i < keyOrder.length; i++) propKinds.set(keyOrder[i], propKinds.get(keyOrder[i]) & KIND | i << 6)
+  return propKinds.get(prop)
+}
+/** Write an entry at its property's place; a second one for the same property sorts beside it. */
+function slot(kind, entry) {
+  const had = slots[kind >> 6]
+  slots[kind >> 6] = had === undefined ? entry : had < entry ? had + ';' + entry : entry + ';' + had
+}
+
 /**
  * Build an element's style key: the sorted `prop:value` pairs that differ from the tag's
  * defaults, joined by `;`. Equal keys share one generated class. "" for NO_DEFAULTS_TAGS.
@@ -309,7 +334,8 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
     return '' // no key => no class
   }
 
-  const entries = []
+  // A name first seen in this call moves the places of the others: the call starts over.
+  const known = keyOrder.length
   const defaults = getDefaultStyleForTag(tagName)
   const display = (snapshot.display || '').toLowerCase()
   const isInline = display === 'inline'
@@ -326,22 +352,28 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
   const soften = softenTag && sizedByContent && !frozenNoWrap
 
   let keptMinWidth = false
+  // A token element never keeps a hard width, a softened box neither.
+  const dropsHardWidth = soften || MATHML_TOKEN_TAGS.has(tagName)
   for (const prop in snapshot) {
-    if (shouldIgnoreProp(prop)) continue
-    if (isRedundantLogicalProp(prop, snapshot)) continue
+    let kind = propKinds.get(prop)
+    if (kind === undefined) propKinds.set(prop, kind = propKind(prop))
+    if ((kind & KIND) === 0) {
+      const value = snapshot[prop]
+      if (value && value !== defaults[prop]) slots[kind >> 6] = `${prop}:${value}`
+      continue
+    }
+    if (kind & IGNORED) continue
+    if (kind & LOGICAL && isRedundantLogicalProp(prop, snapshot)) continue
     const value = floor && prop === 'min-width' ? floor : snapshot[prop]
-    if (HARD_WIDTH_PROPS.has(prop) && MATHML_TOKEN_TAGS.has(tagName)) continue
-    if (soften) {
-      if (HARD_WIDTH_PROPS.has(prop)) continue // never freeze a content/algorithm width
-      if (MIN_WIDTH_PROPS.has(prop)) {         // keep an authored min-width verbatim
-        if (value && value !== defaults[prop]) {
-          entries.push(`${prop}:${value}`)
-          // Only a real length is an author floor that should suppress the synthesized one;
-          // `auto` is just the (logical) default and must not block the floor on table cells.
-          if (value !== 'auto') keptMinWidth = true
-        }
-        continue
+    if (kind & HARD_WIDTH && dropsHardWidth) continue // never freeze a content/algorithm width
+    if (soften && kind & MIN_WIDTH) {          // keep an authored min-width verbatim
+      if (value && value !== defaults[prop]) {
+        slot(kind, `${prop}:${value}`)
+        // Only a real length is an author floor that should suppress the synthesized one;
+        // `auto` is just the (logical) default and must not block the floor on table cells.
+        if (value !== 'auto') keptMinWidth = true
       }
+      continue
     }
     if (value && value !== defaults[prop]) {
       // Blink serializes lengths to 6 significant digits, sometimes DOWN, so a frozen size gets
@@ -350,30 +382,33 @@ export function getStyleKey(snapshot, tagName, sizedByContent = true, isFlexItem
       // Widths whose text cannot break skip it (#474). Heights need it: "38.3906px" put the
       // lower lines of a 4136px page 1px high, and snapping to 1/64 breaks d508's zoomed
       // ancestor. Pinned by __tests__/snapdom.frozenHeightPrecision.test.js.
-      const sized = prop === 'height' || prop === 'block-size' ||
-        (!noWrapBox && (prop === 'width' || prop === 'inline-size'))
-      if (sized && value.endsWith('px') && value.includes('.')) {
+      if ((kind & HEIGHT || (kind & WIDTH && !noWrapBox)) && value.endsWith('px') && value.includes('.')) {
         const n = parseFloat(value)
         if (Number.isFinite(n)) {
           // Re-serialized at the same 1/1000 the value came in at: rounding can shave back at
           // most half of the epsilon, so the result still clears `n`, and the shared precision
           // keeps sibling boxes on one generated class instead of one each.
-          entries.push(`${prop}:${(n + SIZE_EPSILON).toFixed(3)}px`)
+          slot(kind, `${prop}:${(n + SIZE_EPSILON).toFixed(3)}px`)
           continue
         }
       }
-      entries.push(`${prop}:${value}`)
+      slot(kind, `${prop}:${value}`)
     }
   }
   // Re-add the captured width as a min-width floor so the softened box keeps its size but can
   // still grow to fit a wider raster font (no wrap #429, no collapse #434). Skipped for flex/grid
   // items (they must stay shrinkable, #406), for an authored min-width, and for real inline.
+  const minWidth = propKinds.get('min-width') ?? propKind('min-width')
   if (soften && !isInline && !isFlexItem && !keptMinWidth) {
     const w = snapshot.width
-    if (w && w !== 'auto' && w !== defaults.width) entries.push(`min-width:${w}`)
+    if (w && w !== 'auto' && w !== defaults.width) slot(minWidth, `min-width:${w}`)
   }
-  if (floor && !('min-width' in snapshot) && floor !== defaults['min-width']) entries.push(`min-width:${floor}`)
-  entries.sort()
+  if (floor && !('min-width' in snapshot) && floor !== defaults['min-width']) slot(minWidth, `min-width:${floor}`)
+  const entries = []
+  for (let i = 0; i < slots.length; i++) {
+    if (slots[i] !== undefined) { entries.push(slots[i]); slots[i] = undefined }
+  }
+  if (keyOrder.length !== known) return getStyleKey(snapshot, tagName, sizedByContent, isFlexItem, floor)
   return entries.join(';')
 }
 
