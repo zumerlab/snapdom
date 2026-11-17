@@ -720,7 +720,8 @@ export function fullReadableProps(style) {
 /**
  * Read a computed style into a plain map, only the `universe` props when given (the rest sit
  * at the UA default getStyleKey drops). Deep tree, a `::before` on each of 1,936 leaves:
- * 435 ms reading all ~400 properties against 125. Null (unreliable scan, shadow) reads all.
+ * 435 ms reading all ~400 properties against 125. Null (unreliable scan, shadow) reads all
+ * that fullReadableProps lists, by name.
  * @export
  * @param {CSSStyleDeclaration} style
  * @param {Set<string>|null} [universe]
@@ -728,7 +729,7 @@ export function fullReadableProps(style) {
  */
 export function snapshotComputedStyle(style, universe = null) {
   const snap = {}
-  for (const prop of universe || style) {
+  for (const prop of universe || fullReadableProps(style)) {
     const v = style.getPropertyValue(prop)
     if (v) snap[prop] = v
   }

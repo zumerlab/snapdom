@@ -59,11 +59,13 @@ describe('full style read without a universe', () => {
     const el = mount(document.createElement('div'))
     el.style.cssText = 'width:200px;padding:6px;background:#fff'
     // Rules spread over the property list, so a list cut short or out of step loses some.
+    // The ::before's opacity is neither inherited nor restated by a logical twin or by
+    // -webkit-text-fill-color, as its color and margin are, so its read alone must carry it.
     el.innerHTML = `<style>
       .zz-full-a { accent-color: rgb(0, 160, 0); background-color: rgb(250, 230, 120); border-top: 4px solid rgb(0, 0, 200) }
       .zz-full-b { box-shadow: 3px 3px 0 rgb(200, 0, 0); color: rgb(0, 90, 90); letter-spacing: 2px; outline: 2px dashed rgb(120, 0, 160) }
       .zz-full-c { text-decoration: underline wavy rgb(220, 0, 120); text-shadow: 1px 1px 0 rgb(0, 200, 0); transform: rotate(4deg); z-index: 1; position: relative }
-      .zz-full-c::before { content: '>'; color: rgb(0, 0, 255); margin-right: 4px }
+      .zz-full-c::before { content: '>'; color: rgb(0, 0, 255); margin-right: 4px; opacity: 0.5 }
     </style>
     <div class="zz-full-a"><input type="checkbox" checked> one</div>
     <div class="zz-full-b">two words</div>
