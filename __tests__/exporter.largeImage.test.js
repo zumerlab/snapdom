@@ -369,6 +369,16 @@ describe('oversized JPEG file exports', () => {
     expect(coarse.size).toBeLessThan((await captured.toBlob({ format: 'jpeg', scale: 2, quality: 1 })).size)
   })
 
+  it('flattens a transparent background over black, as a JPEG of ordinary size', async () => {
+    const root = mount('width:8px;height:33000px;background:rgba(255,0,0,0.5)')
+    const captured = await snapdom(root, { dpr: 1, embedFonts: false })
+    const opts = { format: 'jpeg', quality: 1, backgroundColor: 'rgba(0,0,0,0)' }
+    const large = await inspectJpeg(await captured.toBlob(opts), [[4, 4]])
+    const ordinary = await inspectJpeg(await captured.toBlob({ ...opts, crop: { x: 0, y: 0, width: 8, height: 8 } }), [[4, 4]])
+    expect(large.size).toEqual([8, 33000])
+    expect(near(large.pixels[0], ordinary.pixels[0]), `${large.pixels[0]} against ${ordinary.pixels[0]}`).toBe(true)
+  })
+
   it('downloads a full-resolution JPEG with the existing DPR-one contract', async () => {
     let file
     let clicked

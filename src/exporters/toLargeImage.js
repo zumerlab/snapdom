@@ -78,6 +78,18 @@ export function toLargeImage(url, options, format, env = {}) {
     // none of its canvases has the full (oversized) width. Encoded bytes remain in the Blob.
     const rowsPerBand = Math.max(1, Math.min(8192, Math.floor(4 * 1024 * 1024 / width), naturalShadows ? Math.floor(2046 / uy) : 8192))
     const tileWidth = Math.max(1, Math.min(8192, width, naturalShadows ? Math.floor(2046 / ux) : 8192))
+    // A JPEG has no alpha and the browser's encoder flattens over black: a half transparent
+    // red on a transparent background is [128, 0, 0] in a JPEG of ordinary size and was
+    // [254, 0, 0] here. Black goes under each band, and only when the background lets it show:
+    // under every band it took 80 Mpx from 1.61 to 1.64 s in Chromium, and multiplied per
+    // pixel in the encoder to 1.70.
+    let flatten = format !== 'png'
+    if (flatten && options.backgroundColor) {
+      const ctx = document.createElement('canvas').getContext('2d')
+      ctx.fillStyle = options.backgroundColor
+      ctx.fillRect(0, 0, 1, 1)
+      flatten = ctx.getImageData(0, 0, 1, 1).data[3] < 255
+    }
     async function* rows() {
       for (let y = 0; y < height; y += rowsPerBand) {
         const h = Math.min(rowsPerBand, height - y)
@@ -112,7 +124,13 @@ export function toLargeImage(url, options, format, env = {}) {
               }
               ctx.drawImage(canvas, x * ux - left, y * uy - top, w * ux, h * uy, 0, 0, w, h)
             }
-            const data = sampled.getContext('2d').getImageData(0, 0, w, h).data
+            const ctx = sampled.getContext('2d')
+            if (flatten) {
+              ctx.globalCompositeOperation = 'destination-over'
+              ctx.fillStyle = '#000'
+              ctx.fillRect(0, 0, w, h)
+            }
+            const data = ctx.getImageData(0, 0, w, h).data
             for (let row = 0; row < h; row++) {
               pixels.set(data.subarray(row * w * 4, (row + 1) * w * 4), (row * width + x) * 4)
             }
