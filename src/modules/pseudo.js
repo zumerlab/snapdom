@@ -467,6 +467,9 @@ export async function inlinePseudoElements(source, clone, sessionCache, options,
       const style = getStyle(source, pseudo)
       if (!style) continue
       const content = style.content, display = style.display
+      // Gecko reports this for the ::before of every <img>, its own alt-text box. Probed
+      // without a gate (an unscanned or unreadable document) it became a text node.
+      if (content === '-moz-alt-content') continue
       // Skip default, visually empty pseudo styles before adding suppression markers.
       const isEmptyPseudo =
         content === 'none' &&
