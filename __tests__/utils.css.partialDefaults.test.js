@@ -81,7 +81,9 @@ describe('partial tag defaults', () => {
     cache.defaultStyle.clear()
     for (const tag of ['div', 'span', 'td', 'img']) expect([tag, keys[tag]]).toEqual([tag, getStyleKey(snapshot, tag)])
     expect(keys.div).toContain('shape-margin:4px')
-    expect(keys.div).not.toContain('scroll-margin-top')
+    // Not `scroll-margin-top`: Chromium 140 lists only the logical scroll margins, so no read
+    // holds a default for it and both keys carry `scroll-margin-top:0px`.
+    expect(keys.div).not.toContain('column-count')
   })
 
   it('reads the props a twin snapshot inherits from the shared one', () => {
