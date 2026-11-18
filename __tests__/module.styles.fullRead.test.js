@@ -71,7 +71,9 @@ describe('full style read without a universe', () => {
     <div class="zz-full-b">two words</div>
     <div class="zz-full-c" style="--zz-full-own: 3px">three</div>`
     // Firefox reports fonts as loading while the previous test's fixture settles, and the
-    // loadingdone that follows would retire the snapshot read below.
+    // loadingdone that follows would retire the snapshot read below. Firefox 141 dispatches it
+    // a task after `ready` resolves, so the event itself is awaited.
+    if (document.fonts.status === 'loading') await new Promise((done) => document.fonts.addEventListener('loadingdone', done, { once: true }))
     await document.fonts.ready
     const opts = { burst: false, dpr: 1, embedFonts: false }
     const pixels = async () => {

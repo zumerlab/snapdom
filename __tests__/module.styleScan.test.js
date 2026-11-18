@@ -222,7 +222,10 @@ describe('scroll gate', () => {
   })
 
   it('gives the gate up when an overflow declaration has no selector to match', () => {
-    for (const css of ['@keyframes zz-k { to { overflow: hidden } }', '.zz-n { @media (min-width: 1px) { overflow: auto } }', '@scope (.zz-s) { .zz-in { overflow: auto } }']) {
+    const sheets = ['@keyframes zz-k { to { overflow: hidden } }', '.zz-n { @media (min-width: 1px) { overflow: auto } }']
+    // Firefox 141 has no @scope and drops the rule, which leaves nothing to give the gate up for.
+    if (typeof CSSScopeRule !== 'undefined') sheets.push('@scope (.zz-s) { .zz-in { overflow: auto } }')
+    for (const css of sheets) {
       document.head.querySelectorAll('style[data-scan-test]').forEach((s) => s.remove())
       expect(gateWith(css), css).toBe(null)
       // Only the gate: the rest of the scan stays usable.
