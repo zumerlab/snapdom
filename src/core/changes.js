@@ -535,6 +535,10 @@ function crossOriginRules(sheet) {
  * 600 rules 31.2 -> 17.4 / 47.8 -> 47.0, 3,000 rules 57.6 -> 19.5 / 68.9 -> 69.7,
  * 10,000 rules 115.9 -> 25.3 / 127.1 -> 114.9. Every ratio from 8 to 24 picks the faster
  * side in the twelve cells measured.
+ * The cost falls on recaptures of a page that changes: the differential path needs the scan
+ * (diff.js), so until it runs each one is a full capture. 21 elements beside 3,000 rules,
+ * one edit per capture: 8.5 ms each against 2, the scan on the ninth, 24 captures 166.6 ms
+ * against 123.7. An unchanged page is a memo hit, counts nothing and is never scanned.
  * Pinned by __tests__/module.styles.scanBudget.test.js.
  */
 const SCAN_RULES_PER_ELEMENT = 12
