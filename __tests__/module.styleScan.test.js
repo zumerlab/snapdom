@@ -248,3 +248,20 @@ describe('escaped pseudo tokens in class names', () => {
     expect(kept).toContain(String.raw`:where([data-sd="s9"] .md\:after:not([data-sd-slotted~="s9"])){`)
   })
 })
+
+// A linked sheet is serialized once per rule where sibling-index() can appear, and the same
+// text decides whether its declarations are asked for a priority.
+describe('priorities of a linked sheet', () => {
+  it('finds !important declarations and leaves the others out', async () => {
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = URL.createObjectURL(new Blob(['.sd-imp{outline-width:3px !important;outline-style:solid}.sd-plain{outline-offset:2px}'], { type: 'text/css' }))
+    await new Promise(resolve => { link.onload = resolve; document.head.appendChild(link) })
+    const { importantProps } = scanAuthorStyles(document)
+    URL.revokeObjectURL(link.href)
+    link.remove()
+    expect(importantProps.has('outline-width')).toBe(true)
+    expect(importantProps.has('outline-style')).toBe(false)
+    expect(importantProps.has('outline-offset')).toBe(false)
+  })
+})
