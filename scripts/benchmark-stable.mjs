@@ -19,11 +19,11 @@ const change = ratio => ratio === null ? styleText('yellow', 'unresolved')
   : styleText(ratio > 1.05 ? 'red' : ratio < 0.95 ? 'green' : 'dim', ((ratio - 1) * 100).toFixed(1) + '%')
 
 const root = fileURLToPath(new URL('..', import.meta.url))
-const options = { rounds: 16, samples: 3, browser: 'chromium', scenes: 'card,table,css,shadow,images,fonts,deep,dashboard', modes: 'first,fresh,recapture,poll-static,poll-mutating' }
+const options = { rounds: 16, samples: 3, browser: 'chromium', scenes: 'card,table,css,shadow,images,fonts,deep,dashboard,site', modes: 'first,fresh,recapture,poll-static,poll-mutating' }
 for (let i = 2; i < process.argv.length; i += 2) {
   const key = process.argv[i].replace(/^--/, '')
   if (!['rounds', 'samples', 'browser', 'scenes', 'modes', 'cases', 'output', 'control'].includes(key) || !process.argv[i + 1]) {
-    throw new Error('Options: --rounds N --samples N --browser chromium|firefox|webkit|all --scenes card,table,css,shadow,images,fonts,deep,dashboard --modes first,fresh,recapture,poll-static,poll-mutating --cases card:fresh,table:recapture --output DIRECTORY --control aa|slow')
+    throw new Error('Options: --rounds N --samples N --browser chromium|firefox|webkit|all --scenes card,table,css,shadow,images,fonts,deep,dashboard,site --modes first,fresh,recapture,poll-static,poll-mutating --cases card:fresh,table:recapture --output DIRECTORY --control aa|slow')
   }
   options[key] = process.argv[i + 1]
 }
@@ -37,7 +37,7 @@ const engines = options.browser === 'all' ? ['chromium', 'firefox', 'webkit'] : 
 if (engines.some(engine => !['chromium', 'firefox', 'webkit'].includes(engine))) throw new Error('Unknown browser')
 const scenes = options.scenes.split(',')
 const modes = options.modes.split(',')
-if (scenes.some(scene => !['card', 'table', 'css', 'shadow', 'images', 'fonts', 'deep', 'dashboard'].includes(scene)) ||
+if (scenes.some(scene => !['card', 'table', 'css', 'shadow', 'images', 'fonts', 'deep', 'dashboard', 'site'].includes(scene)) ||
     modes.some(mode => !['first', 'fresh', 'recapture', 'poll-static', 'poll-mutating'].includes(mode))) throw new Error('Unknown scene or mode')
 let cases = scenes.flatMap(scene => modes.filter(mode => mode.startsWith('poll-') ? scene === 'dashboard' : scene !== 'dashboard').map(mode => ({ scene, mode })))
 if (options.cases) {

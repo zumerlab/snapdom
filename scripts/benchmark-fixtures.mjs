@@ -1,6 +1,6 @@
 import { complexCardHTML, bigTableHTML, cssHeavyScenario, shadowTreeScenario, deepTreeScenario, dashboardScenario } from '/harness.js'
 
-export const scenes = ['card', 'table', 'css', 'shadow', 'images', 'fonts', 'deep', 'dashboard', 'bigsheet', 'layout']
+export const scenes = ['card', 'table', 'css', 'shadow', 'images', 'fonts', 'deep', 'dashboard', 'bigsheet', 'layout', 'site']
 let active
 let fontsReady
 const templates = new Map()
@@ -42,6 +42,19 @@ export async function mount(name, stamp) {
       }
       root.style.width = '520px'
       root.innerHTML = complexCardHTML() + complexCardHTML()
+    } else if (name === 'site') {
+      // One line of text on a page with a site's CSS in a linked sheet (600 rules, 7,200
+      // declarations): what the first capture pays for the document, not for the element.
+      // snapdom.dev's own benchmark box is this case, and no other scene has it.
+      if (!templates.has(name)) {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = URL.createObjectURL(new Blob([Array.from({ length: 600 }, (_, i) => `.st-${i} .st-x{margin:0 auto;padding:4px 8px;color:#${(i % 4096).toString(16).padStart(3, '0')};font-size:14px;line-height:1.4}`).join('')], { type: 'text/css' }))
+        await new Promise(resolve => { link.onload = resolve; document.head.appendChild(link) })
+        templates.set(name, link)
+      }
+      root.style.width = '280px'
+      root.textContent = 'Test element to be captured by both libraries.'
     } else if (name === 'layout') {
       // Grids and positioned boxes, styled by class: every card holds used values (tracks,
       // offsets) the snapshot cache has to probe before it serves.
