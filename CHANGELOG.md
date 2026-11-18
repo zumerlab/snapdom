@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.8.1](https://github.com/zumerlab/snapdom/compare/v3.8.0...v3.8.1)
+
+> 18 November 2026
+
+**Fixes**
+
+- **burst:** captures right after toCanvas are memoized again [`#568`](https://github.com/zumerlab/snapdom/pull/568)
+- **pseudo:** an image gets no ::before from Gecko's alt-text content [`43e3c49`](https://github.com/zumerlab/snapdom/commit/43e3c4972fc59ecb66956e949690684c20673e5f)
+
+**Performance**
+
+- **styles:** a document is scanned once its captures can pay for it [`110a0bd`](https://github.com/zumerlab/snapdom/commit/110a0bd15e0a8c4b1e290c36b567bc46e99c0128)
+- **fonts:** skip a Google Fonts sheet whose families the capture does not use [`1e0390e`](https://github.com/zumerlab/snapdom/commit/1e0390e2b4207c88ffe652373590faf3876b126a)
+- **styles:** one serialization per rule answers sibling-index() and priorities [`a03635c`](https://github.com/zumerlab/snapdom/commit/a03635cabf49e2aabfd6efa8215cef67e38549e1)
+- **styles:** rank the style key properties once per new batch [`4752400`](https://github.com/zumerlab/snapdom/commit/4752400845ebbffc5bab2aa3f644b0f32ae288e7)
+
+**Docs**
+
+- **site:** benchmark boxes in Arial [`6bc7f60`](https://github.com/zumerlab/snapdom/commit/6bc7f604feb82c869f1304fbe0488d2169380bcd)
+- **styles:** the scan budget's cost on recaptures of a changing page [`c17fcf1`](https://github.com/zumerlab/snapdom/commit/c17fcf11dc5863df22677c842fab628b10f302a1)
+
+**Tests**
+
+- **benchmark:** a site scene, one line of text beside a linked 600-rule sheet [`3f72c24`](https://github.com/zumerlab/snapdom/commit/3f72c2431cae17f01807dbc8cf388679d063d248)
+
+**Chores**
+
+- update contributors list [`181d106`](https://github.com/zumerlab/snapdom/commit/181d10622a7f539397c02af7f33b3c4b1b847720)
+
 #### [v3.8.0](https://github.com/zumerlab/snapdom/compare/v3.7.6...v3.8.0)
 
 > 17 November 2026
