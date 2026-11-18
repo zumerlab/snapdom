@@ -17,7 +17,10 @@
 // just the scan cost in isolation. These tests pin the cases that must keep working.
 import { describe, it, expect, afterEach } from 'vitest'
 import { universeFor, pseudoGatesFor } from '../src/modules/authorStyles.js'
-import { flushStyleInvalidations, invalidateStyleCaches } from '../src/core/changes.js'
+import { flushStyleInvalidations, invalidateStyleCaches, noteCaptured } from '../src/core/changes.js'
+
+// These tests ask the scan without capturing: pay for it up front (scanFor's budget).
+noteCaptured(document, 1e6)
 
 const trash = []
 afterEach(() => {

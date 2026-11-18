@@ -6,6 +6,10 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { commands } from 'vitest/browser'
 import { universeFor } from '../src/modules/authorStyles.js'
+import { noteCaptured } from '../src/core/changes.js'
+
+// These tests ask the scan without capturing: pay for it up front (scanFor's budget).
+noteCaptured(document, 1e6)
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })

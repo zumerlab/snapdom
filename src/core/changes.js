@@ -527,6 +527,40 @@ function crossOriginRules(sheet) {
   return null
 }
 
+/**
+ * Rules a scan may read per element captured so far in its document. The scan costs by the
+ * rule and saves by the element it prunes, so a document is scanned once its captures can pay
+ * for it; until then every reader gets the conservative answers of an unreadable sheet.
+ * First capture, Chromium, one element / 401 elements beside a linked sheet (ms):
+ * 600 rules 31.2 -> 17.4 / 47.8 -> 47.0, 3,000 rules 57.6 -> 19.5 / 68.9 -> 69.7,
+ * 10,000 rules 115.9 -> 25.3 / 127.1 -> 114.9. Every ratio from 8 to 24 picks the faster
+ * side in the twelve cells measured.
+ * Pinned by __tests__/module.styles.scanBudget.test.js.
+ */
+const SCAN_RULES_PER_ELEMENT = 12
+/** What a capture pays without the scan before its first element, in elements: recapturing
+ *  one element beside 600 rules cost 2.3 ms against 1.4, and counted as one element it took
+ *  fifty captures to reach the scan. */
+const CAPTURE_BASE = 10
+/** Elements captured so far, per document. */
+const captured = new WeakMap()
+
+/**
+ * Count a capture's elements toward the scan of its document, and drop a declined scan they
+ * now afford. No epoch moves: a snapshot read without a universe holds every property a
+ * pruned one would, so the next scan serves it as it is.
+ * @param {Document} doc
+ * @param {number} elements
+ */
+export function noteCaptured(doc, elements) {
+  const total = (captured.get(doc) || 0) + elements + CAPTURE_BASE
+  captured.set(doc, total)
+  if (universeCache.get(doc)?.declined <= total * SCAN_RULES_PER_ELEMENT) {
+    universeCache.delete(doc)
+    hasMemo.delete(doc)
+  }
+}
+
 export function scanFor(doc) {
   let rec = universeCache.get(doc)
   if (!rec || rec.epoch !== epoch) {
@@ -540,7 +574,7 @@ export function scanFor(doc) {
       return rec
     }
     const prev = rec && rec.universe
-    rec = { epoch, env, census, ...scanAuthorStyles(doc, crossOriginRules) }
+    rec = { epoch, env, census, ...scanAuthorStyles(doc, crossOriginRules, (captured.get(doc) || 0) * SCAN_RULES_PER_ELEMENT) }
     // A re-scan that finds the same props keeps the previous Set: its identity keys the base
     // reset memo (assembleCaptureCSS) and any DOM mutation bumps the epoch, so a new Set per
     // scan would rebuild the reset (0.12-0.65 ms) on every capture of a live page.

@@ -455,9 +455,11 @@ export const SHADOW_SPLIT_RE = new RegExp(SHARE_UNSAFE_RE.source.replace('hover|
  * @param {Document} doc
  * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - the rules of a sheet
  *   whose cssRules throw, read from a copy; null keeps the scan unreliable
+ * @param {number} [budget] - top-level rules the caller affords (scanFor, core/changes.js);
+ *   a document with more is answered unreliable, with their count as `declined`
  * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, svgGeometry: Set<string>|null, svgGeometrySel: string|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, leaksAcrossSubtrees: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
  */
-export function scanAuthorStyles(doc, crossOriginRules) {
+export function scanAuthorStyles(doc, crossOriginRules, budget = MAX_SCAN_RULES) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
   const unreliable = { universe: null, pseudoUniverse: null, svgGeometry: null, svgGeometrySel: null, usesHas: true, leaksAcrossSubtrees: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
@@ -476,6 +478,7 @@ export function scanAuthorStyles(doc, crossOriginRules) {
       top += rules.length
     }
     if (top > MAX_SCAN_RULES) return unreliable
+    if (top > budget) return { ...unreliable, declined: top }
     for (const sheet of sheets) {
       if (!scanSheet(sheet, universe, pseudoSels, state)) return unreliable
     }

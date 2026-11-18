@@ -20,7 +20,7 @@ import { lineClampTree } from '../modules/lineClamp.js'
 import { runHook, getGlobalPlugins, normalizePlugin } from './plugins.js'
 import { invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
 import { styleShareSafe } from '../modules/styleShare.js'
-import { addShadowAnimations } from './changes.js'
+import { addShadowAnimations, noteCaptured } from './changes.js'
 import { stageReaches, DEFAULT_STAGE } from './stages.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { applyTextFieldSelectionLayers } from '../modules/selection.js'
@@ -112,6 +112,8 @@ export async function captureDOM(element, options, session = createCaptureSessio
 
   // BEFORECLONE
   await runHook('beforeClone', state)
+  // What this capture is worth to the document scan (scanFor, core/changes.js).
+  noteCaptured(element.ownerDocument, element.getElementsByTagName('*').length + 1)
 
   // Read AFTER the hooks: beforeSnap is the documented place to set capture defaults, and
   // these three decide the geometry, so reading them earlier ignored the plugin that set them.

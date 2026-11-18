@@ -19,7 +19,7 @@ import { it, expect, afterEach } from 'vitest'
 import { snapdom } from '../src/index.js'
 import { isFirefox } from '../src/utils/browser.js'
 import { universeFor } from '../src/modules/authorStyles.js'
-import { notifyStyleEpoch } from '../src/core/changes.js'
+import { notifyStyleEpoch, noteCaptured } from '../src/core/changes.js'
 
 const mounted = []
 afterEach(() => { while (mounted.length) mounted.pop().remove() })
@@ -57,6 +57,7 @@ it.skipIf(isFirefox())('keeps appearance:none from CSS that arrived after an ear
 // re-scans it. Without keeping the Set when the props are the same, every capture of a live page
 // rebuilt the reset (0.12-0.65 ms for 5-20 tags, measured on all three engines).
 it('keeps the universe Set across a re-scan that finds the same props', () => {
+  noteCaptured(document, 1e6) // asked without capturing: pay for the scan up front
   const before = universeFor(document.body)
   expect(before).toBeInstanceOf(Set)
   notifyStyleEpoch()
