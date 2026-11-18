@@ -211,6 +211,25 @@ describe('running animations disable the memo (frames repaint with no mutations)
       expect(svgOf(await snapdom(host))).toContain('LATE-SHADOW')
     })
 
+    it('a shadow root attached during a capture invalidates its memo', async () => {
+      const host = document.createElement('div')
+      const comp = document.createElement('div')
+      host.appendChild(comp)
+      document.body.appendChild(host)
+      // Serializing comes after the clone, so the frame cannot hold the root's content.
+      const serialize = XMLSerializer.prototype.serializeToString
+      const spy = vi.spyOn(XMLSerializer.prototype, 'serializeToString').mockImplementation(function (node) {
+        if (!comp.shadowRoot) comp.attachShadow({ mode: 'open' }).innerHTML = '<p>MID-SHADOW</p>'
+        return serialize.call(this, node)
+      })
+      try {
+        expect(svgOf(await snapdom(host))).not.toContain('MID-SHADOW')
+      } finally {
+        spy.mockRestore()
+      }
+      expect(svgOf(await snapdom(host))).toContain('MID-SHADOW')
+    })
+
     it('a <canvas> behind a shadow boundary still blocks the memo', async () => {
       const host = document.createElement('div')
       const comp = document.createElement('div')

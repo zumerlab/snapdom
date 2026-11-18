@@ -103,6 +103,14 @@ const PSEUDO_BOX_PROPS = ['display', 'width', 'height', 'min-width', 'min-height
 // 3.7.5). Pinned by scripts/verify-legacy-bundle.mjs.
 const PSEUDO_ELEMENT_SEL_RE = /(?:^|[^\\])::?(?:before|after|first-letter|first-line|marker)/
 
+/** `all` counts because Chromium lists it unexpanded, and its `inherit` carries overflow. */
+const SCROLL_PROPS = new Set(['overflow', 'overflow-x', 'overflow-y', 'overflow-block', 'overflow-inline', 'all'])
+
+/** Elements that scroll with no author overflow rule in Chromium 157 and Firefox 160, among
+ *  them a textarea Firefox computes `visible`, a quirks-mode body and a marquee. */
+export const UA_SCROLLER_NAMES = new Set(['input', 'textarea', 'select', 'dialog', 'foreignObject', 'body', 'marquee'])
+const UA_SCROLLERS = [...UA_SCROLLER_NAMES, '[popover]', '[overflow]', '[style*="overflow" i]', '[style*="all" i]']
+
 /** Rule budget for one scan. Past it the scan answers unreliable, and every reader falls
  *  back to full reads. */
 const MAX_SCAN_RULES = 20000
@@ -125,6 +133,9 @@ const PSEUDO_KINDS = {
 // The first alternative consumes an escape pair and `$1` writes it back, so an escaped colon
 // is never the start of a match and the character before a pseudo is never eaten.
 const PSEUDO_STRIP = /(\\.)|::?(?:before|after|first-letter|first-line|marker)\b/g
+/** What a ::before/::after rule must set to gate the probe, since a pseudo without content has
+ *  no box. */
+const PSEUDO_CONTENT_PROP_RE = /^(?:content|all|(?:animation|transition)(?:-.*)?)$/
 /** A selector that can restyle a retained sibling: a sibling combinator (An+B's `+` included,
  *  conservatively), `:has()`, or a filtered nth-child. */
 const LEAK_SEL_RE = /[+~]|:has\(|:nth-(?:last-)?child\([^)]*\bof\b/i
@@ -148,7 +159,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     const style = rule.style
     // Read once: Gecko and WebKit serialize the selector on every read.
     const sel0 = rule.selectorText
-    let svgGeo = false, svgAnim = false, container = false
+    let svgGeo = false, svgAnim = false, container = false, scrollRule = false, pseudoContent = false
     // Serialized once where sibling-index() can appear (scanSheet), and then it also says
     // whether any declaration is worth asking for its priority: 588 rules, 6,924 declarations,
     // first scan 10.6 -> 9.6 ms.
@@ -156,14 +167,20 @@ function scanRules(rules, universe, pseudoSels, state) {
     const important = text === null || text.includes('!important')
     if (style) {
       const pseudoRule = !!sel0 && PSEUDO_ELEMENT_SEL_RE.test(sel0)
+      // Declarations nested in it have no selector of their own, so it gates whatever it sets.
+      if (pseudoRule && rule.cssRules?.length) pseudoContent = true
       for (let j = 0; j < style.length; j++) {
         const prop = style[j]
         universe.add(prop)
+        scrollRule ||= SCROLL_PROPS.has(prop)
         if (state.svgGeometry) {
           if (addSvgGeometry(state.svgGeometry, prop)) svgGeo = true
           else if (SVG_ANIM_RE.test(prop)) svgAnim = true
         }
-        if (pseudoRule) state.pseudoProps.add(prop)
+        if (pseudoRule) {
+          state.pseudoProps.add(prop)
+          pseudoContent ||= PSEUDO_CONTENT_PROP_RE.test(prop)
+        }
         if (prop === 'container-type' && style.getPropertyValue(prop) !== 'normal') container = true
         if (important && style.getPropertyPriority(prop)) state.importantProps.add(prop)
         // Counters restyle retained siblings. The counter longhands have no shorthand, so a
@@ -218,8 +235,14 @@ function scanRules(rules, universe, pseudoSels, state) {
       }
     }
     if (svgGeo || svgAnim) addSvgGeometrySel(rule, sel, svgGeo, state)
+    // A keyframe, a nested declaration block or an @scope rule can reach any element.
+    if (scrollRule && state.scrollSels) {
+      if (!sel || state.inScope) state.scrollAll = true
+      else addSelectorParts(sel, state.scrollSels)
+    }
     if (sel && sel.includes(':')) {
       for (const kind in PSEUDO_KINDS) {
+        if ((kind === 'before' || kind === 'after') && !pseudoContent) continue
         if (PSEUDO_KINDS[kind].test(sel)) pseudoSels[kind].push(stripPseudo(sel))
       }
     }
@@ -249,7 +272,11 @@ function scanRules(rules, universe, pseudoSels, state) {
 function addSvgGeometrySel(rule, sel, geo, state) {
   if (geo && rule.constructor?.name === 'CSSKeyframeRule') { state.svgKeyframes = true; return }
   if (!sel || state.inScope) { if (geo) state.svgGeometryAll = true; return }
-  const into = geo ? state.svgGeometrySels : state.svgAnimSels
+  addSelectorParts(sel, geo ? state.svgGeometrySels : state.svgAnimSels)
+}
+
+/** A pseudo-element part goes in as its originating element. */
+function addSelectorParts(sel, into) {
   for (const part of splitTopLevel(sel, ',')) {
     const one = part.trim()
     if (one) into.add(PSEUDO_ELEMENT_SEL_RE.test(one) ? stripPseudo(one) : one)
@@ -446,27 +473,29 @@ export const SHADOW_SPLIT_RE = new RegExp(SHARE_UNSAFE_RE.source.replace('hover|
  * - `universe`: the properties any rule can touch, plus ALWAYS_PROPS; null if unreliable.
  * - `pseudoUniverse`: what a pseudo's snapshot reads.
  * - `pseudoGates`: one `el.matches()` selector per kind; '' skips every node, null probes all.
+ *   before/after take only the rules PSEUDO_CONTENT_PROP_RE admits, plus the UA's `q`.
  * - `usesHas`: a `:has()` rule turns per-node stamp narrowing off.
  * - `leaksAcrossSubtrees`: a rule can restyle retained nodes, so diff takes the full pipeline.
  * - `shareGate`: selectors that can split identity twins, with subject keys; null = share off.
  * - `marginUnstable` / `paddingUnstable`: a %, auto, calc() or var() value; twins re-read it.
  * - `importantProps`: every property some rule declares `!important`.
+ * - `scrollGate`: one selector for the elements that can hold a scroll offset; null walks all.
  * Pinned by __tests__/module.styleScan.test.js.
  * @param {Document} doc
  * @param {(sheet: CSSStyleSheet) => CSSRuleList|null} [crossOriginRules] - the rules of a sheet
  *   whose cssRules throw, read from a copy; null keeps the scan unreliable
  * @param {number} [budget] - top-level rules the caller affords (scanFor, core/changes.js);
  *   a document with more is answered unreliable, with their count as `declined`
- * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, svgGeometry: Set<string>|null, svgGeometrySel: string|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, leaksAcrossSubtrees: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null}}
+ * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, svgGeometry: Set<string>|null, svgGeometrySel: string|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, leaksAcrossSubtrees: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null, scrollGate: string|null}}
  */
 export function scanAuthorStyles(doc, crossOriginRules, budget = MAX_SCAN_RULES) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, pseudoUniverse: null, svgGeometry: null, svgGeometrySel: null, usesHas: true, leaksAcrossSubtrees: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, pseudoUniverse: null, svgGeometry: null, svgGeometrySel: null, usesHas: true, leaksAcrossSubtrees: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, scrollGate: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, inScope: 0, crossOriginRules, siblingSupport: CSS.supports('opacity', 'calc(sibling-index() / 2)') }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, scrollSels: new Set(), scrollAll: false, inScope: 0, crossOriginRules, siblingSupport: CSS.supports('opacity', 'calc(sibling-index() / 2)') }
     const adopted = /** @type {any} */ (doc).adoptedStyleSheets
     const sheets = Array.isArray(adopted) ? [...doc.styleSheets, ...adopted] : Array.from(doc.styleSheets)
     // Every top-level rule spends one unit of the budget, so a document whose top-level rules
@@ -490,6 +519,7 @@ export function scanAuthorStyles(doc, crossOriginRules, budget = MAX_SCAN_RULES)
         universe.add(p)
         // A WAAPI animation targets elements, not selectors: no selector gate then.
         if (addSvgGeometry(state.svgGeometry, p)) state.svgGeometryAll = true
+        if (SCROLL_PROPS.has(p)) state.scrollAll = true
       }
     }
     if (state.svgKeyframes) for (const one of state.svgAnimSels) state.svgGeometrySels.add(one)
@@ -511,7 +541,8 @@ export function scanAuthorStyles(doc, crossOriginRules, budget = MAX_SCAN_RULES)
     // Without it the pseudo took the base `0px 0px` and scaled toward its corner (#509).
     if (state.pseudoProps.has('transform') || state.pseudoProps.has('rotate') || state.pseudoProps.has('scale')) pseudoUniverse.add('transform-origin')
     if (state.pseudoProps.has('perspective')) pseudoUniverse.add('perspective-origin')
-    return { universe, pseudoUniverse, svgGeometry: state.svgGeometry, svgGeometrySel, pseudoGates: composePseudoGates(probe, pseudoSels), usesHas: state.usesHas, leaksAcrossSubtrees: state.leaksAcrossSubtrees, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps }
+    const scrollGate = state.scrollAll ? null : joinGate(probe, [...UA_SCROLLERS, ...state.scrollSels])
+    return { universe, pseudoUniverse, svgGeometry: state.svgGeometry, svgGeometrySel, pseudoGates: composePseudoGates(probe, pseudoSels), usesHas: state.usesHas, leaksAcrossSubtrees: state.leaksAcrossSubtrees, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps, scrollGate }
   } catch {
     return unreliable
   }

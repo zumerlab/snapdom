@@ -54,16 +54,17 @@ import {
   invalidateStyleCaches,
 } from './changes.js'
 import { invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
+import { scrollGateFor } from '../modules/authorStyles.js'
+import { UA_SCROLLER_NAMES } from '../modules/styleScan.js'
 import { tryDiffCapture } from './diff.js'
 import { createCaptureSession } from './session.js'
 import { isPasswordInput, shadowHost } from '../utils/helpers.js'
-import { yieldWhenTaskSpent } from '../utils/browser.js'
+import { yieldWhenTaskSpent, isFirefox, isSafari } from '../utils/browser.js'
 import { isInternalNode } from '../utils/ownership.js'
 
 /** Per-element state lookup; the bounded LRU below retains and disposes live memos. */
 const burstStates = new WeakMap()
-/** Open roots found by the API's safety scan, consumed by create/run tracking so one call
- *  does not walk the same subtree twice before deciding a memo hit. */
+/** Open roots found by the API's safety scan, kept until a capture's run() consumes them. */
 const safetyScans = new WeakMap()
 /** Roots whose fetched bytes revealed an opaque animation only after inlining. Once known,
  *  keep them on the fresh path instead of rebuilding and immediately disposing state on
@@ -205,7 +206,6 @@ export function isAutoBurstSafe(element) {
 function trackShadowRoots(element, state) {
   if (!element.querySelectorAll) return false
   const scanned = safetyScans.get(element)
-  safetyScans.delete(element)
   const roots = new Set(scanned?.roots || [])
   if (scanned) {
     state.controls = scanned.controls
@@ -466,12 +466,18 @@ const NO_SCROLLPORT = /^(?:visible|clip)$/
 const SCROLLPORT_KEY = /(?:^|;)overflow(?:-[xy])?:(?!visible|clip)/
 
 /** List the boxes whose scroll offsets can repaint with no MutationRecord; memo hits sample
- *  the list. Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
+ *  the list. With a reliable scan and no open shadow root only the scroll gate is walked,
+ *  and it cannot see a closed root's `:host` rules.
+ *  Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
 function collectScrollNodes(element, state) {
   const out = []
   // A retained key with no overflow declaration is `visible`: those boxes skip the layout
   // reads below (12% of each differential frame of the 1,506-node table).
   const R = state.retained
+  const scopes = scopesOf(element, state)
+  const gate = scopes.length === 1 ? scrollGateFor(element) : null
+  // Chromium reads computed overflow faster than the layout, Firefox slower.
+  const precheck = !R && !gate && !isFirefox() && !isSafari()
   const add = (el, force = false) => {
     try {
       if (force) { out.push(el); return }
@@ -479,6 +485,11 @@ function collectScrollNodes(element, state) {
       if (R && !control) {
         const key = R.styleMap.get(R.srcToClone.get(el))
         if (key !== undefined && !SCROLLPORT_KEY.test(key)) return
+      }
+      // A text input computes `clip` and a quirks-mode body `visible`, yet both scroll.
+      if (precheck && !UA_SCROLLER_NAMES.has(el.localName)) {
+        const cs = getComputedStyle(el)
+        if (NO_SCROLLPORT.test(cs.overflowX) && NO_SCROLLPORT.test(cs.overflowY)) return
       }
       if (el.scrollLeft || el.scrollTop) { out.push(el); return }
       // An inline box has no scrollport, yet Firefox reports its text as `scrollWidth` over a
@@ -494,8 +505,8 @@ function collectScrollNodes(element, state) {
   // No dedupe needed: querySelectorAll excludes the scope itself (the element is already in
   // from the ancestors loop) and shadow scopes are disjoint from the light tree.
   for (let el = element; el; el = el.parentElement) add(el, true)
-  for (const scope of scopesOf(element, state)) {
-    try { for (const el of scope.querySelectorAll('*')) add(el) } catch { }
+  for (const scope of scopes) {
+    try { for (const el of scope.querySelectorAll(gate || '*')) add(el) } catch { }
   }
   state.scrollNodes = out
 }
@@ -850,9 +861,10 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
     } else {
       state.pendingSig = null
     }
-    // Before serving: a shadow root attached since the last capture produces no mutation
-    // record anywhere, so it has to be discovered by scanning.
+    // Before serving: a shadow root attached during or since the last capture produces no
+    // mutation record anywhere, so it has to be discovered by scanning.
     trackShadowRoots(element, state)
+    safetyScans.delete(element)
     // Same for an <img> appended since the last capture's finally: it has no load listener
     // yet. Arming here too closes the between-captures window, for one
     // querySelectorAll('img') beside the walk trackShadowRoots already does.
@@ -1074,10 +1086,7 @@ export function captureWithBurst(element, userOptions, context, runCapture, make
       state.pending.length = 0
       state.torn = false
       state.capturing = false
-      if (!state.disposed) {
-        trackShadowRoots(element, state) // open roots attached during capture
-        trackPendingImages(element, state) // and <img>s still loading: their load must invalidate
-      }
+      if (!state.disposed) trackPendingImages(element, state)
     }
   }
 

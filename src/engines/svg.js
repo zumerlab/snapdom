@@ -137,6 +137,36 @@ function internInlineStyles(foString, fo) {
   return foString.slice(0, styleClose) + rules.join('') + out
 }
 
+/** The selectors of one retained <style>'s text, or null when interning cannot be shown safe
+ *  against it. */
+function selectorsOf(css) {
+  // Constructed stylesheets silently discard @import; don't let that look safe.
+  if (/@import\b/i.test(css)) return null
+  const selectors = []
+  const walk = (rules) => {
+    for (const rule of rules) {
+      if (rule.type === CSSRule.IMPORT_RULE || rule.type === CSSRule.NAMESPACE_RULE) throw new Error('External or namespaced CSS')
+      if (rule.selectorText) {
+        // Attribute-dependent matching can CHANGE after interning, including inside
+        // :not()/:has(). Protecting only the elements that match today is insufficient.
+        if (/\[\s*style\b|data-sdi|\[[^\]]*\\|&/i.test(rule.selectorText)) throw new Error('Attribute-dependent or nested CSS')
+        selectors.push(rule.selectorText)
+      }
+      if (rule.cssRules) walk(rule.cssRules)
+    }
+  }
+  try {
+    const sheet = new CSSStyleSheet()
+    sheet.replaceSync(css)
+    walk(sheet.cssRules)
+  } catch { return null }
+  return selectors
+}
+
+/** selectorsOf by text, which is all it reads, for the last capture's retained <style>s.
+ *  Pinned by `__tests__/engine.svg.intern.test.js`. */
+let retainedSelectors = new Map()
+
 /** Inline blocks that must keep inline precedence: every element an author selector matches
  *  in the finished tree, so unrelated rules leave interning on. Run only after the byte
  *  threshold. `null` when safety cannot be shown (nesting, namespaces, @import, selectors on
@@ -155,25 +185,28 @@ function inlineStylesThatMustStay(fo, hasAuthorStyles, hasEditableAssets) {
   if (hasEditableAssets) fo.querySelectorAll('[data-snapdom-asset][style]').forEach(protect)
   if (hasAuthorStyles) {
     try {
-      const walk = (rules) => {
-        for (const rule of rules) {
-          if (rule.type === CSSRule.IMPORT_RULE || rule.type === CSSRule.NAMESPACE_RULE) throw new Error('External or namespaced CSS')
-          if (rule.selectorText) {
-            // Attribute-dependent matching can CHANGE after interning, including inside
-            // :not()/:has(). Protecting only the elements that match today is insufficient.
-            if (/\[\s*style\b|data-sdi|\[[^\]]*\\|&/i.test(rule.selectorText)) throw new Error('Attribute-dependent or nested CSS')
-            fo.querySelectorAll(rule.selectorText).forEach(protect)
-          }
-          if (rule.cssRules) walk(rule.cssRules)
-        }
-      }
+      const selectors = []
+      const seen = new Map()
       for (const style of [...fo.querySelectorAll('style')].slice(1)) {
         const css = style.textContent || ''
-        // Constructed stylesheets silently discard @import; don't let that look safe.
-        if (/@import\b/i.test(css)) return null
-        const sheet = new CSSStyleSheet()
-        sheet.replaceSync(css)
-        walk(sheet.cssRules)
+        if (!seen.has(css)) seen.set(css, retainedSelectors.has(css) ? retainedSelectors.get(css) : selectorsOf(css))
+        const own = seen.get(css)
+        if (!own) { retainedSelectors = seen; return null }
+        for (const sel of own) selectors.push(sel)
+      }
+      retainedSelectors = seen
+      const plain = []
+      for (const sel of selectors) {
+        // matches() reads `:scope` as the element itself, not as the clone root.
+        if (/:scope\b/i.test(sel)) fo.querySelectorAll(sel).forEach(protect)
+        else plain.push(sel)
+      }
+      const list = plain.join(',')
+      if (list) {
+        for (const el of fo.querySelectorAll('[style]')) {
+          const value = el.getAttribute('style')
+          if (value && !values.has(value) && el.matches(list)) values.add(value)
+        }
       }
     } catch { return null }
   }

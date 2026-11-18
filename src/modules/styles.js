@@ -14,7 +14,7 @@
  * @module styles
  */
 
-import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS } from '../utils/index.js'
+import { getStyleKey, softensWidth, softenNeedsAutoWidth, shouldIgnoreProp, getStyle, NO_DEFAULTS_TAGS, fullReadableProps } from '../utils/index.js'
 import { isFirefox, isSafari } from '../utils/browser.js'
 import {
   seq, env, bumpEpoch, bumpSeq, stampNode, stampSubtree, stampOf, shadowHostsOf, setupInvalidationOnce,
@@ -165,7 +165,8 @@ function snapshotComputedStyleFull(style, options = {}, el = null, universe = nu
       for (let i = 0; i < inline.length; i++) addProp(inline[i])
     }
   } else {
-    for (let i = 0; i < style.length; i++) addProp(style[i])
+    const list = fullReadableProps(style)
+    for (let i = 0; i < list.length; i++) readProp(list[i])
   }
     // Ensure text-decoration props: some engines do not list them in the iteration.
   const EXTRA_TEXT_DECORATION_PROPS = [
@@ -1043,7 +1044,7 @@ export function inlineAllStyles(source, clone, sessionOrCtx, opts) {
   const kept = memo ? null : snapshotKey.get(snap)
   let key = memo ? memo.get(mk) : kept && kept.flags === flags ? kept.key : undefined
   if (key === undefined) {
-    key = getStyleKey(snap, tag, sizedByContent, flexItem, floor)
+    key = getStyleKey(snap, tag, sizedByContent, flexItem, floor, universeFor(source, session))
     if (memo) memo.set(mk, key)
     else snapshotKey.set(snap, { flags, key })
   }
