@@ -233,7 +233,9 @@ function ancestorFilterReach(el, clip) {
 }
 
 /** Whether a ::before/::after whose gate the element matches actually generates a box. A
- *  gate also admits rules that give no content, such as an animation or `content: none`. */
+ *  gate also admits rules that give no content, such as an animation or `content: none`, and
+ *  a matched gate alone kept 137 of 161 boxes against 38 with no band at all while it still
+ *  took Tailwind v4's preflight (#525). */
 function generatesPseudo(el, gate, pseudo) {
   try { if (!gate || !el.matches(gate)) return false } catch { return true }
   const c = getStyle(el, pseudo).content

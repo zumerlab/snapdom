@@ -467,7 +467,7 @@ const SCROLLPORT_KEY = /(?:^|;)overflow(?:-[xy])?:(?!visible|clip)/
 
 /** List the boxes whose scroll offsets can repaint with no MutationRecord; memo hits sample
  *  the list. With a reliable scan and no open shadow root only the scroll gate is walked,
- *  and it cannot see a closed root's `:host` rules.
+ *  and it cannot see a closed root's `:host` or `::slotted()` rules.
  *  Pinned by `__tests__/core.burst.scrollNodes.test.js`. */
 function collectScrollNodes(element, state) {
   const out = []
