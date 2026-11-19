@@ -27,7 +27,7 @@ export const NO_DEFAULTS_TAGS = new Set([
 ])
 
 import { cache } from '../core/cache'
-import { ALWAYS_PROPS } from '../modules/styleScan'
+import { ALWAYS_PROPS, CHROME_PROP } from '../modules/styleScan'
 import { isInternalNode, markInternalNode } from './ownership.js'
 
 /**
@@ -119,6 +119,56 @@ function sandboxHost() {
     document.body.appendChild(sandbox)
   }
   return sandbox
+}
+
+/**
+ * A control's paint as the UA sheet alone gives it, per tag, type, disabled state and colour
+ * scheme. Read from a probe with every author rule rolled back, and kept beside the tag
+ * defaults (no tag name holds a space).
+ * @param {Element} el
+ * @param {string} scheme its computed color-scheme
+ * @returns {Record<string, string>}
+ */
+export function uaChromeOf(el, scheme) {
+  const key = `${el.localName} ${el.type} ${el.disabled} ${scheme}`
+  let chrome = cache.defaultStyle.get(key)
+  if (!chrome) {
+    const probe = document.createElement(el.localName)
+    if (el.localName === 'input') probe.type = el.type
+    probe.disabled = el.disabled
+    probe.style.cssText = `all:revert;color-scheme:${scheme}`
+    const sandbox = sandboxHost()
+    sandbox.appendChild(probe)
+    const styles = getComputedStyle(probe)
+    chrome = {}
+    for (const prop of styles) if (CHROME_PROP.test(prop)) chrome[prop] = styles.getPropertyValue(prop)
+    sandbox.removeChild(probe)
+    cache.defaultStyle.set(key, chrome)
+  }
+  return chrome
+}
+
+/**
+ * Whether the UA sheet leaves a tag's border colour at `currentcolor`: a <div>, an <hr>. A
+ * <button> gets ButtonBorder, which happens to resolve to the text colour too. Asked of a
+ * probe whose text colour no sheet uses, and kept beside the tag defaults.
+ * @param {Element} el
+ * @returns {boolean}
+ */
+export function uaBorderFollowsColor(el) {
+  const key = `${el.localName} ${el.type} border`
+  let follows = cache.defaultStyle.get(key)
+  if (follows === undefined) {
+    const probe = document.createElement(el.localName.includes('-') ? 'span' : el.localName)
+    if (el.localName === 'input') probe.type = el.type
+    probe.style.cssText = 'all:revert;color:rgb(1, 2, 3)'
+    const sandbox = sandboxHost()
+    sandbox.appendChild(probe)
+    follows = getComputedStyle(probe).getPropertyValue('border-top-color') === 'rgb(1, 2, 3)'
+    sandbox.removeChild(probe)
+    cache.defaultStyle.set(key, follows)
+  }
+  return follows
 }
 
 /** Read what `defaults` lacks: every known prop without `need`, else BASE_NEED and what `need`

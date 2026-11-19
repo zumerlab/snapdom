@@ -104,6 +104,11 @@ const PSEUDO_BOX_PROPS = ['display', 'width', 'height', 'min-width', 'min-height
 const PSEUDO_ELEMENT_SEL_RE = /(?:^|[^\\])::?(?:before|after|first-letter|first-line|marker)/
 
 /** `all` counts because Chromium lists it unexpanded, and its `inherit` carries overflow. */
+/** A border colour nobody chose: `border: 4px inset` serializes its colour as `initial`. */
+export const UNSET_COLOR = /^(?:currentcolor|initial|unset|revert|revert-layer)?$/i
+/** A box's paint: its background and border, shorthands and longhands. An author rule that
+ *  sets one costs a control its native look (freezeByTag, styleFreeze.js). */
+export const CHROME_PROP = /^(?:background|border)(?:$|-(?!collapse|spacing))/
 const SCROLL_PROPS = new Set(['overflow', 'overflow-x', 'overflow-y', 'overflow-block', 'overflow-inline', 'all'])
 
 /** Elements that scroll with no author overflow rule in Chromium 157 and Firefox 160, among
@@ -160,6 +165,7 @@ function scanRules(rules, universe, pseudoSels, state) {
     // Read once: Gecko and WebKit serialize the selector on every read.
     const sel0 = rule.selectorText
     let svgGeo = false, svgAnim = false, container = false, scrollRule = false, pseudoContent = false
+    let chromeRule = false, borderColorRule = false
     // Serialized once where sibling-index() can appear (scanSheet), and then it also says
     // whether any declaration is worth asking for its priority: 588 rules, 6,924 declarations,
     // first scan 10.6 -> 9.6 ms.
@@ -173,6 +179,11 @@ function scanRules(rules, universe, pseudoSels, state) {
         const prop = style[j]
         universe.add(prop)
         scrollRule ||= SCROLL_PROPS.has(prop)
+        // `b` first: one char compare spares every other declaration the test.
+        if (prop.charCodeAt(0) === 98 ? CHROME_PROP.test(prop) : prop === 'all') {
+          chromeRule = true
+          if (prop.endsWith('-color') && prop.charCodeAt(1) === 111 && !UNSET_COLOR.test(style.getPropertyValue(prop))) borderColorRule = true
+        }
         if (state.svgGeometry) {
           if (addSvgGeometry(state.svgGeometry, prop)) svgGeo = true
           else if (SVG_ANIM_RE.test(prop)) svgAnim = true
@@ -235,6 +246,16 @@ function scanRules(rules, universe, pseudoSels, state) {
       }
     }
     if (svgGeo || svgAnim) addSvgGeometrySel(rule, sel, svgGeo, state)
+    // What an author rule paints, for the two guesses computed style cannot settle
+    // (authorPaints, authorColorsBorder). A keyframe paints only while its animation runs,
+    // and then the computed values are no longer the UA's: left out.
+    if (chromeRule && state.chromeSels && !state.mediaOff && rule.keyText === undefined) {
+      if (!sel || state.inScope) state.chromeAll = true
+      else {
+        addElementParts(sel, state.chromeSels)
+        if (borderColorRule) addElementParts(sel, state.borderColorSels)
+      }
+    }
     // A keyframe, a nested declaration block or an @scope rule can reach any element.
     if (scrollRule && state.scrollSels) {
       if (!sel || state.inScope) state.scrollAll = true
@@ -256,7 +277,12 @@ function scanRules(rules, universe, pseudoSels, state) {
       // A container that changes size restyles its descendants with no record on them.
       if (containerRule) { state.inContainer++; state.leaksAcrossSubtrees = true }
       if (scope) state.inScope = (state.inScope || 0) + 1
+      // A rule under a media query that does not hold paints nothing now: a print reset for
+      // `*` would otherwise count as painting every control.
+      const off = mediaOff(rule, state)
+      if (off) state.mediaOff++
       const ok = scanRules(rule.cssRules, universe, pseudoSels, state)
+      if (off) state.mediaOff--
       if (containerRule) state.inContainer--
       if (scope) state.inScope--
       if (!ok) return false
@@ -283,6 +309,22 @@ function addSelectorParts(sel, into) {
   }
 }
 
+/** Whether a sheet or grouping rule is switched off: disabled, or under a media query that
+ *  does not hold in the window. Only the document scan asks (it carries the view). */
+function mediaOff(owner, state) {
+  if (!state.view) return false
+  const text = owner.media?.mediaText
+  try { return !!owner.disabled || (!!text && !state.view.matchMedia(text).matches) } catch { return false }
+}
+
+/** The parts that select an element itself: a rule for `input::placeholder` paints no input. */
+function addElementParts(sel, into) {
+  for (const part of splitTopLevel(sel, ',')) {
+    const one = part.trim()
+    if (one && !one.includes('::') && !PSEUDO_ELEMENT_SEL_RE.test(one)) into.add(one)
+  }
+}
+
 /** A sheet's rules, or the caller's copy of them when the getter throws (cross-origin). */
 function rulesOf(sheet, crossOriginRules) {
   try { return sheet.cssRules } catch { return crossOriginRules?.(sheet) }
@@ -299,7 +341,10 @@ function scanSheet(sheet, universe, pseudoSels, state) {
   const outer = state.siblingFn
   const node = sheet.ownerNode
   state.siblingFn = state.siblingSupport && (node?.localName !== 'style' || node.textContent.includes('sibling-'))
+  const off = mediaOff(sheet, state)
+  if (off) state.mediaOff++
   const ok = scanRules(rules, universe, pseudoSels, state)
+  if (off) state.mediaOff--
   state.siblingFn = outer
   return ok
 }
@@ -486,16 +531,16 @@ export const SHADOW_SPLIT_RE = new RegExp(SHARE_UNSAFE_RE.source.replace('hover|
  *   whose cssRules throw, read from a copy; null keeps the scan unreliable
  * @param {number} [budget] - top-level rules the caller affords (scanFor, core/changes.js);
  *   a document with more is answered unreliable, with their count as `declined`
- * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, svgGeometry: Set<string>|null, svgGeometrySel: string|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, leaksAcrossSubtrees: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null, scrollGate: string|null}}
+ * @returns {{universe: Set<string>|null, pseudoUniverse: Set<string>|null, svgGeometry: Set<string>|null, svgGeometrySel: string|null, pseudoGates: {before: string|null, after: string|null, firstLetter: string|null, marker: string|null, firstLine: string|null}, usesHas: boolean, leaksAcrossSubtrees: boolean, shareGate: Array<{sel: string, key: string|null}>|null, marginUnstable: boolean, paddingUnstable: boolean, importantProps: Set<string>|null, scrollGate: string|null, chromeGate: string|null, borderColorGate: string|null}}
  */
 export function scanAuthorStyles(doc, crossOriginRules, budget = MAX_SCAN_RULES) {
   // usesHas true on the unreliable path: a scan that could not read every rule cannot promise
   // the document has no `:has()`, and the narrowing must only run on a promise.
-  const unreliable = { universe: null, pseudoUniverse: null, svgGeometry: null, svgGeometrySel: null, usesHas: true, leaksAcrossSubtrees: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, scrollGate: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
+  const unreliable = { universe: null, pseudoUniverse: null, svgGeometry: null, svgGeometrySel: null, usesHas: true, leaksAcrossSubtrees: true, shareGate: null, marginUnstable: true, paddingUnstable: true, importantProps: null, scrollGate: null, chromeGate: null, borderColorGate: null, pseudoGates: { before: null, after: null, firstLetter: null, marker: null, firstLine: null } }
   try {
     const universe = new Set(ALWAYS_PROPS)
     const pseudoSels = { before: [], after: [], firstLetter: [], marker: [], firstLine: [] }
-    const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, scrollSels: new Set(), scrollAll: false, inScope: 0, crossOriginRules, siblingSupport: CSS.supports('opacity', 'calc(sibling-index() / 2)') }
+    const state = { budget: MAX_SCAN_RULES, usesHas: false, leaksAcrossSubtrees: false, shareUnsafeSels: new Set(), inContainer: 0, marginUnstable: false, paddingUnstable: false, importantProps: new Set(), pseudoProps: new Set(), svgGeometry: new Set(), svgGeometrySels: new Set(), svgAnimSels: new Set(), svgKeyframes: false, svgGeometryAll: false, scrollSels: new Set(), scrollAll: false, chromeSels: new Set(), borderColorSels: new Set(), chromeAll: false, mediaOff: 0, view: doc.defaultView, inScope: 0, crossOriginRules, siblingSupport: CSS.supports('opacity', 'calc(sibling-index() / 2)') }
     const adopted = /** @type {any} */ (doc).adoptedStyleSheets
     const sheets = Array.isArray(adopted) ? [...doc.styleSheets, ...adopted] : Array.from(doc.styleSheets)
     // Every top-level rule spends one unit of the budget, so a document whose top-level rules
@@ -542,7 +587,9 @@ export function scanAuthorStyles(doc, crossOriginRules, budget = MAX_SCAN_RULES)
     if (state.pseudoProps.has('transform') || state.pseudoProps.has('rotate') || state.pseudoProps.has('scale')) pseudoUniverse.add('transform-origin')
     if (state.pseudoProps.has('perspective')) pseudoUniverse.add('perspective-origin')
     const scrollGate = state.scrollAll ? null : joinGate(probe, [...UA_SCROLLERS, ...state.scrollSels])
-    return { universe, pseudoUniverse, svgGeometry: state.svgGeometry, svgGeometrySel, pseudoGates: composePseudoGates(probe, pseudoSels), usesHas: state.usesHas, leaksAcrossSubtrees: state.leaksAcrossSubtrees, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps, scrollGate }
+    const chromeGate = state.chromeAll ? null : joinGate(probe, [...state.chromeSels])
+    const borderColorGate = state.chromeAll ? null : joinGate(probe, [...state.borderColorSels])
+    return { universe, pseudoUniverse, svgGeometry: state.svgGeometry, svgGeometrySel, pseudoGates: composePseudoGates(probe, pseudoSels), usesHas: state.usesHas, leaksAcrossSubtrees: state.leaksAcrossSubtrees, shareGate, marginUnstable: state.marginUnstable, paddingUnstable: state.paddingUnstable, importantProps: state.importantProps, scrollGate, chromeGate, borderColorGate }
   } catch {
     return unreliable
   }

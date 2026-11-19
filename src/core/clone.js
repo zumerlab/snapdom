@@ -25,6 +25,7 @@ import {
   buildSeedCustomPropsRule,
   markSlottedSubtree,
   rasterizeIframe,
+  frameDocument,
   getUnscaledDimensions,
   createCheckboxRadioReplacement,
   createRangeReplacement
@@ -873,8 +874,12 @@ export async function deepClone(node, sessionCache, options) {
       // Password only, because the mask is fidelity-NEUTRAL (see isPasswordInput). Plain-text
       // values are captured as-is; redacting them is the `redactInputs` plugin's job.
       const safeValue = isPasswordInput(node) ? maskValue(node.value) : node.value
-      clone.value = safeValue
-      clone.setAttribute('value', safeValue)
+      // With no value and no attribute a submit or reset button shows the UA's label, and
+      // `value=""` blanked it.
+      if (safeValue || node.hasAttribute('value')) {
+        clone.value = safeValue
+        clone.setAttribute('value', safeValue)
+      }
       if (node.checked !== void 0) {
         clone.checked = node.checked
         if (node.checked) clone.setAttribute('checked', '')
@@ -1399,9 +1404,7 @@ async function cloneObjectEmbed(node, sessionCache, options) {
     return img // fallback children dropped on purpose, or both would paint
   }
   // A same-origin embedded document (a text/html object) rasterizes like an iframe.
-  let doc = null
-  try { doc = node.contentDocument } catch { /* cross-origin */ }
-  if (doc) {
+  if (frameDocument(node)) {
     try {
       const out = await rasterizeIframe(node, sessionCache, options)
       if (out) return out

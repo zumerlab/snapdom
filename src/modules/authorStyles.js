@@ -8,7 +8,7 @@
  */
 
 import { isShadowRoot } from '../utils/index.js'
-import { scanSheetProps, addAnimationProps } from './styleScan.js'
+import { scanSheetProps, addAnimationProps, CHROME_PROP, UNSET_COLOR } from './styleScan.js'
 import { epoch, scanFor, scanOf } from '../core/changes.js'
 
 /** Whether author CSS can restyle outside a dirty subtree. Shares the property-universe
@@ -120,6 +120,31 @@ export function svgGeometryReaches(el) {
   if (sel == null) return true
   if (!sel) return false
   try { return el.matches(sel) } catch { return true }
+}
+
+/**
+ * Whether an author rule or the element's own style attribute paints `el`: sets its background
+ * or border (`colour` false), or gives its border a colour of its own (`colour` true). null
+ * when no one can say: shadow content, an unreadable sheet, a rule with no selector. Computed
+ * style holds neither answer: a declared `background: white` reads like the UA's, and a border
+ * in the text colour like `currentcolor`.
+ * @param {Element} el
+ * @param {boolean} colour
+ * @returns {boolean|null}
+ */
+export function authorPaints(el, colour) {
+  const inline = el.style
+  for (let i = 0; inline && i < inline.length; i++) {
+    const prop = inline[i]
+    if (CHROME_PROP.test(prop) && (!colour || (prop.endsWith('-color') && prop.startsWith('border') &&
+        !UNSET_COLOR.test(inline.getPropertyValue(prop))))) return true
+  }
+  const doc = el.ownerDocument || document
+  if (el.getRootNode && el.getRootNode() !== doc) return null
+  const sel = scanFor(doc)[colour ? 'borderColorGate' : 'chromeGate']
+  if (sel == null) return null
+  if (!sel) return false
+  try { return el.matches(sel) } catch { return null }
 }
 
 /** Return the selector for the elements under `el` that can hold a scroll offset, or null

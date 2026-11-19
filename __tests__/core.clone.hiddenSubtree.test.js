@@ -54,8 +54,10 @@ describe('deepClone: display:none subtrees (#507)', () => {
 
   it('still paints a <select> whose selected placeholder option is hidden', async () => {
     const host = mount('<select style="font:20px sans-serif;width:200px;color:#000"><option value="" hidden selected>Choose one</option><option>AAAAAAAAAAAA</option></select>')
-    // Measured 473 dark pixels with the option kept, 22 once it was dropped.
-    expect(await countPx(host, dark)).toBeGreaterThan(200)
+    // Measured 473 dark pixels with the option kept, 22 once it was dropped. An unpainted
+    // select has since kept its native frame (freezeByTag): WebKit's is light, and the text
+    // alone measures 185 there.
+    expect(await countPx(host, dark)).toBeGreaterThan(100)
   })
 
   it('an icon sprite inside a hidden HTML wrapper still reaches its <use>', async () => {

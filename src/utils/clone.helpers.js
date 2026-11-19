@@ -403,6 +403,23 @@ export function pinIframeViewport(doc, w, h) {
 }
 
 /**
+ * The same-origin document a frame holds, or null. An <embed> exposes none, yet its browsing
+ * context is one of the window's frames: a text/html embed captured as an empty box.
+ * @param {Element} frame - an <iframe>, <object> or <embed>
+ * @returns {Document|null}
+ */
+export function frameDocument(frame) {
+  try {
+    if (frame.localName !== 'embed') return frame.contentDocument || frame.contentWindow?.document || null
+  } catch { return null }
+  const win = frame.ownerDocument.defaultView
+  for (let i = 0; win && i < win.length; i++) {
+    try { if (win[i].frameElement === frame) return win[i].document } catch { /* cross-origin */ }
+  }
+  return null
+}
+
+/**
  * Rasterize a same-origin iframe at its content-box size: a toPng of its documentElement at
  * the iframe viewport (not the content height), in a wrapper styled like the <iframe> box.
  * Pinned by __tests__/utils.clone.iframe.test.js.
@@ -412,13 +429,10 @@ export function pinIframeViewport(doc, w, h) {
  * @returns {Promise<HTMLElement>}
  */
 export async function rasterizeIframe(iframe, sessionCache, options) {
-  const probe = () => {
-    try { return iframe.contentDocument || iframe.contentWindow?.document || null } catch { return null }
-  }
-  let doc = probe()
+  let doc = frameDocument(iframe)
   for (let i = 0; i < 3 && !doc?.documentElement; i++) {
     await new Promise(r => setTimeout(r, 0))
-    doc = probe()
+    doc = frameDocument(iframe)
   }
   if (!doc?.documentElement) throw new Error('The iframe document isn\'t ready.')
 
@@ -462,7 +476,9 @@ export async function rasterizeIframe(iframe, sessionCache, options) {
   sessionCache.nodeMap.set(wrapper, iframe)
   inlineAllStyles(iframe, wrapper, sessionCache, options)
   wrapper.style.overflow = 'hidden'
-  wrapper.style.display = 'block'
+  // A frame is inline by default and stays in its line: as a block, the second of two frames
+  // side by side dropped below the first. Any other display is the class's.
+  if (getStyle(iframe).display === 'inline') wrapper.style.display = 'inline-block'
   // The computed size, in the box-sizing the wrapper's class holds. The border-box rectangle
   // written here made a bordered iframe wider and taller by its borders: as the capture root it
   // lost its right and bottom border, inside a page it pushed what follows.

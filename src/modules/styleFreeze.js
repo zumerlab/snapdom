@@ -6,7 +6,9 @@
  * @module styleFreeze
  */
 
-import { getStyle, isHTMLEl, shadowHost } from '../utils/index.js'
+import { getStyle, isHTMLEl, shadowHost, uaChromeOf, uaBorderFollowsColor } from '../utils/index.js'
+import { CHROME_PROP } from './styleScan.js'
+import { authorPaints } from './authorStyles.js'
 
 /**
  * #498: on a content-box scroll container computed width/height leave out classic scrollbars,
@@ -349,6 +351,86 @@ function autoContentHeight(el, top) {
   return bottom === -Infinity ? NaN : bottom - top
 }
 
+/**
+ * A <col> or <colgroup> resolves `width` to the columns it spans, yet the property sizes each
+ * of them: frozen, `<col span="2">` made both columns as wide as the pair and a 253px table
+ * came out 423px, and a <colgroup>'s total reached each <col> without a width of its own. The
+ * computed value is the author's per-column width, or `auto`, where the cells' floors already
+ * hold the columns. A single <col> keeps its resolved width: it is that column's.
+ * @param {Element} el - a <colgroup>, or a <col> spanning several columns
+ * @param {Record<string, any>} snap
+ */
+function restoreColumnWidth(el, snap) {
+  let width
+  try { width = el.computedStyleMap().get('width').toString() } catch { /* no Typed OM: dropped */ }
+  snap.width = snap['inline-size'] = width && width !== 'auto' ? width : undefined
+}
+
+const SHADED_BORDER = new Set(['inset', 'outset', 'ridge', 'groove'])
+const BORDER_SIDES = ['top', 'right', 'bottom', 'left'].map((side) => [`border-${side}-style`, `border-${side}-color`])
+/**
+ * Blink shades an inset, outset, ridge or groove border from a light grey for as long as its
+ * colour is still `currentcolor`. The resolved colour says otherwise: an <hr> reads
+ * rgb(128, 128, 128) and, frozen, was shaded from that, 44 over 128 where the page shows 154
+ * over 238. Neither computed style nor Typed OM keeps the keyword, so a shaded side in the
+ * text colour is traced to who set it: an author rule or the style attribute that names a
+ * colour (authorPaints), else the UA sheet, which names one for a <button> and none for an
+ * <hr>. Where the author scan cannot say, the UA's answer stands.
+ * @param {Element} el
+ * @param {Record<string, any>} snap
+ */
+export function keepCurrentBorderColor(el, snap) {
+  let named
+  for (const [style, color] of BORDER_SIDES) {
+    if (!SHADED_BORDER.has(snap[style]) || snap[color] !== snap.color) continue
+    if (named === undefined) named = authorPaints(el, true) === true || !uaBorderFollowsColor(el)
+    if (named) return
+    snap[color] = 'currentcolor'
+  }
+}
+
+/** Tags freezeByTag has a rewrite for: the column boxes, the table, the native controls. */
+export const TAG_FREEZES = new Set(['col', 'colgroup', 'table', 'input', 'button', 'select', 'textarea', 'progress', 'meter'])
+/** Inputs the clone draws itself, or that paint nothing. */
+const DRAWN_INPUT = /^(?:checkbox|radio|range|color|hidden|image)$/
+/**
+ * The rewrites that belong to one tag, behind a single lookup in getSnapshot: six name reads
+ * per node cost the recapture of a 250-row table 1 of 20 ms.
+ *
+ * A control gets its UA paint back. The base reset and the class restate its background and
+ * border as author rules, and every engine drops a control's native look for an author border
+ * or background: fields and buttons came out in a dark 2px frame, <progress> as a green slab.
+ * Where the live values are the UA's own and no author rule sets one, `revert` keeps them out
+ * of the author origin. A control the page painted keeps its frozen values. Where the scan
+ * cannot say (authorPaints), equal values are taken for an unpainted control.
+ * @param {Element} el - an element whose tag is in TAG_FREEZES
+ * @param {CSSStyleDeclaration} cs
+ * @param {Record<string, any>} snap
+ * @returns {boolean|undefined} true when a control's paint was handed back
+ */
+export function freezeByTag(el, cs, snap) {
+  const tag = el.localName
+  if (tag === 'colgroup' || tag === 'col') {
+    if (tag === 'colgroup' || el.span > 1) restoreColumnWidth(el, snap)
+    return
+  }
+  if (tag === 'table') {
+    // `height` sizes a table's row grid, and its used height counts the captions too: frozen,
+    // the rows shared a caption's 18px out and came out 30px for 21. The rows carry their own.
+    if (el.caption) snap.height = snap['block-size'] = undefined
+    return
+  }
+  if (DRAWN_INPUT.test(el.type)) return
+  const ua = uaChromeOf(el, cs.colorScheme)
+  for (const prop in ua) if (cs.getPropertyValue(prop) !== ua[prop]) return
+  // The UA's values, yet a rule that declares them paints the control all the same:
+  // `input { background: white }` leaves it in the dark frame on the page too.
+  if (authorPaints(el, false)) return
+  for (const prop in snap) if (CHROME_PROP.test(prop)) snap[prop] = undefined
+  snap.background = snap.border = snap['border-radius'] = 'revert'
+  return true
+}
+
 const WRAPPER_TAGS = new Set(['div', 'section', 'article', 'main', 'aside', 'header', 'footer', 'nav'])
 /**
  * Best-effort: drop height/block-size on transparent flow wrappers so margin collapsing
@@ -364,7 +446,17 @@ export function stripHeightForWrappers(el, cs, snap) {
   // 1) Only div/section/article/main/aside/header/footer/nav (no ol/ul/li: list layout).
   // Before the inline-height read: the tag test is a string compare, the read two DOM calls.
   // toLowerCase, not localName: an XHTML `<DIV>` keeps its uppercase localName.
-  if (!el.tagName || !WRAPPER_TAGS.has(el.tagName.toLowerCase())) return
+  // Any other plain block joins them when its last child carries a bottom margin: frozen, a
+  // <details>, <form>, <address> or custom element kept that margin inside and pulled what
+  // follows up by it (16px after `<details><p>`).
+  if (!el.tagName) return
+  // The snapshot's display first: it is a plain read, and it spares every cell, row and
+  // inline box the DOM getter.
+  if (!WRAPPER_TAGS.has(el.tagName.toLowerCase())) {
+    if (snap.display !== 'block') return
+    const last = el.lastElementChild
+    if (!last || getStyle(last).marginBottom === '0px') return
+  }
 
   // 2) Respect an author inline height
   if (isHTMLEl(el) && el.style && el.style.height) return

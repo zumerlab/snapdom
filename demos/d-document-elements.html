@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Plain document elements</title>
+    <!-- Elements a styled app rarely leaves bare and a document always does. Each block is a
+         failure found on html2pdf.js's all-tags reference page (3.8.1): a margin kept inside
+         <details> and <form>, a spanning <col>, a captioned table, unpainted native controls,
+         shaded borders in `currentcolor`, a text/html <embed>, two inline frames. -->
+    <style>
+      body { margin: 0; padding: 16px; font: 16px/1.3 serif; }
+      #target { width: 560px; background: white; }
+      h2 { margin: 0; padding: 6px 10px; background: #593186; color: white; font-size: 18px; }
+      table { border-collapse: collapse; }
+      td, th { border: 1px solid black; padding: 1px 4px; }
+      .lead { background: #888; }
+      .rest { background: #bbb; }
+      .painted input, .painted button, .painted select { background-color: #fff; }
+      .ruled { border: 3px inset; width: 150px; margin: 4px 0; }
+      .named { border: 3px ridge rgb(180, 40, 40); color: rgb(180, 40, 40); width: 150px; margin: 4px 0; }
+      iframe, embed { width: 150px; height: 44px; border: 1px solid #06c; }
+    </style>
+  </head>
+  <body>
+    <div id="target">
+      <h2>Margins through a block</h2>
+      <details open>
+        <summary>Details</summary>
+        <p>The paragraph's margin pushes the select below.</p>
+      </details>
+      <select><option>After details</option></select>
+      <form><p>A form around a paragraph.</p></form>
+      <address><p>An address around a paragraph.</p></address>
+
+      <h2>Tables</h2>
+      <table>
+        <caption>Caption, a spanning column</caption>
+        <colgroup><col class="lead"><col class="rest" span="2"></colgroup>
+        <thead><tr><th>Header 1</th><th>Header 2</th><th>Header 3</th></tr></thead>
+        <tbody>
+          <tr><td>Row 1 cell 1</td><td>Row 1 cell 2</td><td>Row 1 cell 3</td></tr>
+          <tr><td>Row 2 cell 1</td><td>Row 2 cell 2</td><td>Row 2 cell 3</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Controls the page left alone</h2>
+      <p>
+        <input type="text" value="Text"> <input type="submit"> <input type="reset">
+        <button>Button</button> <select><option>Select</option></select>
+      </p>
+      <p><textarea rows="2" cols="18">Textarea</textarea> <progress value="0.6"></progress> <meter value="0.6"></meter></p>
+
+      <h2>The same, with a declared background</h2>
+      <p class="painted">
+        <input type="text" value="Text"> <input type="submit"> <input type="reset">
+        <button>Button</button> <select><option>Select</option></select>
+      </p>
+
+      <h2>Shaded borders</h2>
+      <hr>
+      <div class="ruled">inset, no colour</div>
+      <div class="named">ridge, text colour named</div>
+
+      <h2>Frames in a line</h2>
+      <p>
+        <iframe srcdoc="<body style='margin:0;padding:8px;font:14px sans-serif;background:#fff4e0'>First frame</body>"></iframe>
+        <iframe srcdoc="<body style='margin:0;padding:8px;font:14px sans-serif;background:#e8f7e8'>Second frame</body>"></iframe>
+        <embed type="text/html" src="assets/embedded-document.html">
+      </p>
+    </div>
+  </body>
+</html>

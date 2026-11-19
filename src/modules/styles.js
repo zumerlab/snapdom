@@ -23,6 +23,7 @@ import { universeFor, importantPropsFor } from './authorStyles.js'
 import { SHARE_SKIP_TAGS, shareStateOf, identityFor, shareLists } from './styleShare.js'
 import {
   addScrollbarGutter, freezeBorderBox, syncInlineBorderBox, freezeOneLine, stripHeightForWrappers,
+  keepCurrentBorderColor, freezeByTag, TAG_FREEZES,
   isFlexOrGridItem, BORDER_WIDTHS,
 } from './styleFreeze.js'
 
@@ -707,12 +708,16 @@ function getSnapshot(el, preStyle = null, options = {}, shareInfo = null, sessio
     }
   }
   stripHeightForWrappers(el, style, snap)
+  keepCurrentBorderColor(el, snap)
   // Before the twin tail below: it keys this node's final values.
   const clipped = freezeBorderBox(el, style, snap)
   // Here and not in inlineAllStyles: a snapshot served from the cache already carries its
   // gutter, and adding it per capture grew the box by one scrollbar every time.
   const gutter = addScrollbarGutter(el, style, snap)
+  // Last: the freezes above read the border widths.
+  const native = TAG_FREEZES.has(el.localName) && freezeByTag(el, style, snap)
   if (dyn !== null) {
+    if (native) dyn.push('\u0008')
     if (restoredAutoMargin) dyn.push('\u0005', ...MARGIN_PROPS.map(prop => snap[prop]))
     if (clipped) dyn.push('\u0006' + clipped)
     if (gutter) dyn.push('\u0007' + snap.width, snap.height)
