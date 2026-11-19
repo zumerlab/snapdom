@@ -7,6 +7,7 @@
  */
 
 import { getStyle, isHTMLEl, shadowHost, uaChromeOf, uaBorderFollowsColor } from '../utils/index.js'
+import { isFirefox } from '../utils/browser.js'
 import { CHROME_PROP } from './styleScan.js'
 import { authorPaints } from './authorStyles.js'
 
@@ -503,6 +504,15 @@ export function stripHeightForWrappers(el, cs, snap) {
   const autoH = autoContentHeight(el, box.top) / (Math.abs(k - 1) < 0.01 ? 1 : k)
   const TOL = 2
   if (Number.isFinite(usedH) && Number.isFinite(autoH) && Math.abs(usedH - autoH) > TOL) return
+
+  // Gecko lays an open <details> out no taller than its summary inside an SVG image, and what
+  // follows climbed 49px over its content. There the height stays, and the margin that left
+  // through the box rides on it.
+  if (el.localName === 'details' && isFirefox()) {
+    const through = getStyle(el.lastElementChild).marginBottom
+    if (parseFloat(through) > (parseFloat(snap['margin-bottom']) || 0)) snap['margin-bottom'] = through
+    return
+  }
 
   // 7) Now drop height and block-size from the snapshot. Assigned, not deleted: a twin's
   // snapshot inherits from its identity's (getSnapshot), and a delete would uncover that one.
