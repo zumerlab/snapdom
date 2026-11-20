@@ -1,5 +1,13 @@
 # Vector changes
 
+## 1.0.3
+
+> 20 November 2026
+
+**Chores**
+
+- **vector:** require SnapDOM 3.8.1 [`81a140c`](https://github.com/zumerlab/snapdom/commit/81a140c218158a61dd18688ef55bdbbc5bf3337a)
+
 ## 1.0.2
 
 > 20 November 2026

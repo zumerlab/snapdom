@@ -1,6 +1,6 @@
 {
   "name": "@zumer/snapdom-vector",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Editable SVG and Figma clipboard export for SnapDOM",
   "type": "module",
   "scripts": {
