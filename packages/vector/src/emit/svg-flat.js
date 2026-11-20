@@ -2544,12 +2544,24 @@ function dominantStyle(runs, styles) {
  *
  * @returns {string[]} rendered `name="value"` attributes
  */
-function textStyleAttrs(style, ctx, nodeId, defs, { drawnDecoration = false, resetStroke = false, resetVariant = false, inheritedVariant = '' } = {}) {
+function textStyleAttrs(style, ctx, nodeId, defs, { drawnDecoration = false, resetStroke = false, resetVariant = false, inheritedVariant = '', inherited = null } = {}) {
   const attrs = [`font-family="${escAttr(styleFontFamily(style, ctx))}"`, `font-size="${num(style.size, 16)}"`]
-  if (Number.isFinite(Number(style.weight)) && Number(style.weight) !== 400) attrs.push(`font-weight="${num(style.weight)}"`)
+  // Weight, slant and tracking are written only when they are not the default,
+  // and the `<text>` element carries the DOMINANT run's — which inherit. A run
+  // at the default inside a block whose longest run is bold therefore has to say
+  // so, or it is bold too: `Se arreglaron los <strong>márgenes de elementos de
+  // documento</strong>.` came out bold from the first letter to the full stop.
+  // The same trap `resetStroke` and `resetVariant` exist for.
+  const set = (v) => Number.isFinite(Number(v)) && Number(v) !== 0
+  const heavy = (v) => Number.isFinite(Number(v)) && Number(v) !== 400
+  if (heavy(style.weight)) attrs.push(`font-weight="${num(style.weight)}"`)
+  else if (inherited && heavy(inherited.weight)) attrs.push('font-weight="400"')
   if (style.italic) attrs.push('font-style="italic"')
-  if (Number.isFinite(Number(style.letterSpacing)) && Number(style.letterSpacing) !== 0) {
+  else if (inherited && inherited.italic) attrs.push('font-style="normal"')
+  if (set(style.letterSpacing)) {
     attrs.push(`letter-spacing="${num(style.letterSpacing)}"`)
+  } else if (inherited && set(inherited.letterSpacing)) {
+    attrs.push('letter-spacing="0"')
   }
   if (Number.isFinite(Number(style.wordSpacing)) && Number(style.wordSpacing) !== 0) {
     attrs.push(`word-spacing="${num(style.wordSpacing)}"`)
@@ -2978,7 +2990,7 @@ function emitText(out, depth, node, nodeId, defs, ctx, linear = IDENTITY_LINEAR,
         'emit.svg.text-style-missing', 'O')
       style = { size: 16, stack: 'sans-serif' }
     }
-    let base = textStyleAttrs(style, ctx, nodeId, defs, { ...opts, resetStroke, resetVariant, inheritedVariant })
+    let base = textStyleAttrs(style, ctx, nodeId, defs, { ...opts, resetStroke, resetVariant, inheritedVariant, inherited: dominant })
     const ranged = rangePaint.find((r) => r.from <= segment.from && segment.to <= r.to)
     if (ranged) base = mergeAttrs(base, ranged.attrs)
     return paint ? mergeAttrs(base, paint) : base

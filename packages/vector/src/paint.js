@@ -2133,6 +2133,192 @@ function makeNode (fields) {
   }
 }
 
+/** Input types whose painted content is the value, as one line of text. */
+const VALUE_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel', 'number', 'password'])
+/** Input types whose painted content is a centred label. */
+const LABEL_INPUT_TYPES = new Set(['button', 'submit', 'reset'])
+const CONTROL_TEXT_ATTR = 'data-snapdom-vector-control-text'
+/** Everything that decides where a glyph of the value lands, and its colour. */
+const CONTROL_TEXT_PROPS = [
+  'fontFamily', 'fontSize', 'fontStyle', 'fontWeight', 'fontStretch', 'fontVariant', 'fontKerning',
+  'fontFeatureSettings', 'fontVariationSettings', 'letterSpacing', 'wordSpacing', 'textTransform',
+  'textIndent', 'textAlign', 'direction', 'tabSize', 'lineHeight', 'color', 'wordBreak',
+]
+
+/**
+ * The characters a form control paints, which are in no text node: the value of
+ * an input or a textarea, the placeholder standing in for an empty one, the
+ * label of the selected option, the caption of an `<input type=submit>`.
+ * `null` for the controls whose content is not one run of text (date and time
+ * segments, a file picker, a list box) — those keep the declaration they had.
+ */
+function controlTextOf (el, tag) {
+  if (tag === 'TEXTAREA') {
+    const value = typeof el.value === 'string' ? el.value : (el.textContent || '')
+    if (value) return { kind: 'textarea', text: value, wraps: true }
+    return el.placeholder ? { kind: 'textarea', text: el.placeholder, wraps: true, placeholder: true } : null
+  }
+  if (tag === 'SELECT') {
+    if (el.multiple || numberOr(el.size, 1) > 1) return null
+    const chosen = (el.selectedOptions && el.selectedOptions[0]) ||
+      (el.options && el.options[el.selectedIndex >= 0 ? el.selectedIndex : 0])
+    const text = chosen ? String(chosen.label || chosen.text || '').replace(/\s+/g, ' ').trim() : ''
+    return text ? { kind: 'select', text } : null
+  }
+  if (tag !== 'INPUT') return null
+  const type = String(el.type || (el.getAttribute && el.getAttribute('type')) || 'text').toLowerCase()
+  if (LABEL_INPUT_TYPES.has(type)) {
+    const text = el.value || (type === 'submit' ? 'Submit' : type === 'reset' ? 'Reset' : '')
+    return text ? { kind: type, text } : null
+  }
+  if (!VALUE_INPUT_TYPES.has(type)) return null
+  const value = typeof el.value === 'string' ? el.value : ''
+  if (value) return { kind: type, text: type === 'password' ? '•'.repeat([...value].length) : value }
+  return el.placeholder ? { kind: type, text: el.placeholder, placeholder: true } : null
+}
+
+/**
+ * Lay the control's text out where the control paints it, so `collectText` can
+ * MEASURE it instead of this module guessing a baseline.
+ *
+ * The value of a control lives in a UA shadow tree no script can reach, so there
+ * is no rect to read. What can be reproduced exactly is the box it is laid out
+ * in: the control's content box, its font, its alignment, and — for a textarea —
+ * its wrapping. A block with those properties and the same characters breaks
+ * lines where the control does, and that block is ordinary text.
+ *
+ * It goes in the clone HOST, not in the clone: the host is `contain: layout`, so
+ * it is the containing block of an absolutely positioned child, the child takes
+ * no part in the clone's flow, and `unmount()` removes it with everything else.
+ *
+ * @returns {Element|null} the mounted block, or null when there is no host to
+ *   mount it in (a tree this module did not mount) or nothing to lay out.
+ */
+function mountControlText (el, cs, info, st) {
+  const host = el.closest ? el.closest('[data-snapdom-vector="clone-host"]') : null
+  if (!host || typeof el.getBoundingClientRect !== 'function') return null
+  const view = el.ownerDocument.defaultView
+  const block = el.ownerDocument.createElement('div')
+  block.setAttribute(CONTROL_TEXT_ATTR, info.kind)
+  const style = block.style
+  style.cssText = 'position:absolute;margin:0;padding:0;border:0;box-sizing:content-box;' +
+    'overflow:hidden;background:none;pointer-events:none;'
+  for (const prop of CONTROL_TEXT_PROPS) if (cs[prop]) style[prop] = cs[prop]
+  if (info.placeholder) {
+    let placeholder = null
+    try { placeholder = view.getComputedStyle(el, '::placeholder') } catch { /* keep the control's colour */ }
+    if (placeholder && placeholder.color) style.color = placeholder.color
+  }
+  if (info.wraps) {
+    style.whiteSpace = 'pre-wrap'
+    style.overflowWrap = 'break-word'
+  } else {
+    style.whiteSpace = 'pre'
+  }
+
+  const r = el.getBoundingClientRect()
+  const hr = host.getBoundingClientRect()
+  const pad = [num(cs.paddingTop), num(cs.paddingRight), num(cs.paddingBottom), num(cs.paddingLeft)]
+  // `clientWidth` and not the border box less the borders: it is what is left
+  // once a textarea's scrollbar has taken its share, which is the width the
+  // lines were broken to.
+  // A drop-down keeps its label 4px in from the content edge: the inner block of
+  // Chromium's menulist has that inline-start padding and no property reports it.
+  // Measured on `challenges/fx-form` — without it the label sat 4px left of the page's.
+  const inset = info.kind === 'select' ? 4 : 0
+  const rtl = cs.direction === 'rtl'
+  const contentW = Math.max(0, el.clientWidth - pad[1] - pad[3] - inset)
+  const contentH = Math.max(0, el.clientHeight - pad[0] - pad[2])
+  const left = r.left - hr.left + num(cs.borderLeftWidth) + pad[3] + (rtl ? 0 : inset)
+  let top = r.top - hr.top + num(cs.borderTopWidth) + pad[0]
+  style.width = `${contentW}px`
+  style.left = `${left}px`
+  style.top = `${top}px`
+  block.textContent = info.text
+  host.appendChild(block)
+  if (info.wraps) {
+    style.height = `${contentH}px`
+    if (el.scrollTop) block.scrollTop = el.scrollTop
+  } else {
+    // One line, which the control centres in its content box whatever the
+    // line-height says. The line's own height is measured, not derived.
+    const line = block.getBoundingClientRect().height
+    top += (contentH - line) / 2
+    style.top = `${top}px`
+  }
+  return block
+}
+
+/**
+ * The frame of a `<fieldset>` that has a rendered `<legend>`, as the three pieces
+ * the browser paints, or `null` when the ordinary box already describes it.
+ *
+ * The border box of such a fieldset does not start at the element's top edge: its
+ * top border runs through the vertical middle of the legend, the background
+ * starts there too, and the border is not drawn across the legend's own box.
+ * Emitted on the element's rectangle it came out as a frame that began above the
+ * legend and ran straight through its text. Measured on Chromium: the top
+ * border's centre line is the legend's centre line.
+ *
+ * Rounded top corners are left to the ordinary path — a corner cannot be split
+ * between a side piece and a top piece without drawing it twice.
+ */
+function fieldsetPieces (el, cs, st) {
+  const legend = Array.from(el.children || []).find((child) => {
+    if ((child.tagName || '').toUpperCase() !== 'LEGEND') return false
+    const lcs = st.styleOf(child)
+    return !!lcs && lcs.display !== 'none' && floatOf(lcs) === 'none' &&
+      lcs.position !== 'absolute' && lcs.position !== 'fixed'
+  })
+  if (!legend) return null
+  const top = num(cs.borderTopWidth)
+  if (!(top > 0) || cs.borderTopStyle === 'none' || cs.borderTopStyle === 'hidden') return null
+  if (!/^0px( 0px)?$/.test(cs.borderTopLeftRadius || '0px') || !/^0px( 0px)?$/.test(cs.borderTopRightRadius || '0px')) return null
+  const r = el.getBoundingClientRect()
+  const l = legend.getBoundingClientRect()
+  if (!(r.width > 0 && r.height > 0 && l.width > 0 && l.height > 0)) return null
+  const offset = Math.max(0, (l.top - r.top) + (l.height - top) / 2)
+  if (offset <= 0 || offset >= r.height) return null
+  const x = r.left - st.rootOrigin.x
+  const y = r.top - st.rootOrigin.y + offset
+  const gapFrom = Math.max(r.left, Math.min(r.right, l.left)) - r.left
+  const gapTo = Math.max(r.left, Math.min(r.right, l.right)) - r.left
+  const specs = [{
+    abs: { x, y, w: r.width, h: r.height - offset },
+    label: 'frame',
+    fragment: { w: r.width, h: r.height - offset, sides: [false, true, true, true] },
+  }]
+  if (gapFrom > 0) {
+    specs.push({
+      abs: { x, y, w: gapFrom, h: top },
+      label: 'top, before the legend',
+      fragment: { w: gapFrom, h: top, sides: [true, false, false, false], noFill: true },
+    })
+  }
+  if (r.width - gapTo > 0) {
+    specs.push({
+      abs: { x: x + gapTo, y, w: r.width - gapTo, h: top },
+      label: 'top, after the legend',
+      fragment: { w: r.width - gapTo, h: top, sides: [true, false, false, false], noFill: true },
+    })
+  }
+  return specs
+}
+
+/**
+ * The line boxes of a non-atomic inline element, root-relative, or `null` when it
+ * sits on one line (the ordinary path already describes that exactly).
+ * `getClientRects()` is the only place the browser says where each piece went.
+ * Empty rects are dropped: a fragment that holds only a collapsed space still
+ * reports one, zero wide, and it paints nothing.
+ */
+function lineFragments (el, st) {
+  if (typeof el.getClientRects !== 'function') return null
+  const rects = Array.from(el.getClientRects()).filter(r => r.width > 0 && r.height > 0)
+  if (rects.length < 2) return null
+  return rects.map(r => ({ x: r.left - st.rootOrigin.x, y: r.top - st.rootOrigin.y, w: r.width, h: r.height }))
+}
+
 /**
  * One DOM element -> at most one emitted entry.
  *
@@ -2518,13 +2704,24 @@ function walk (el, st, frameCtx) {
   // the text is really a set of anonymous BLOCK boxes it takes the block lane
   // instead, ahead of the siblings it was interleaved with — usually right, always
   // closer than painting it over all of them.
+  //
+  // The block lane is only safe while no emitted child is an inline box of THIS
+  // block's own formatting context. Such a child's text was folded into this
+  // text node (`childCtx.inText` above), so what it emits is the decoration those
+  // glyphs sit on, and Appendix E paints it in the inline lane — above every
+  // block lane. A `<mark>` in a paragraph that also holds one block child (a
+  // zero-height clearfix is enough, and jsPDF's `doc.html()` appends exactly
+  // that) had its background painted over its own words.
   const descriptors = kids.map(k => ({ cs: k.cs, el: k.el, stackingContext: k.sc }))
   let textIndex = -1
   if (wantsTextChild) {
-    const descriptor = mixed
+    const sitsOnInlineBox = mixed && kids.some(k => k.cs && joinsParentText(k.cs.display) &&
+      k.cs.position !== 'absolute' && k.cs.position !== 'fixed' && floatOf(k.cs) === 'none')
+    const blockLane = mixed && !sitsOnInlineBox
+    const descriptor = blockLane
       ? { position: 'static', float: 'none', display: 'block', zIndex: 'auto', stackingContext: false }
       : { position: 'static', float: 'none', display: 'inline', zIndex: 'auto', stackingContext: false }
-    textIndex = mixed ? 0 : descriptors.length
+    textIndex = blockLane ? 0 : descriptors.length
     descriptors.splice(textIndex, 0, descriptor)
   }
   const ranks = paintOrder(descriptors)
@@ -2547,6 +2744,95 @@ function walk (el, st, frameCtx) {
     Object.defineProperty(textNode, '_paints', { value: true, writable: true, configurable: true, enumerable: false })
     node._kids.push(textNode)
     st.count++
+  }
+
+  // An inline box broken across lines is several boxes, not one. Its bounding
+  // rectangle covers the gap between the end of one line and the start of the
+  // next, so a highlighted phrase that wrapped came out as one solid block over
+  // text that was never highlighted. Each line fragment becomes a shape of its
+  // own, below everything else this node holds, and the node itself keeps no
+  // box paint (`collectNode` reads `_fragmented` / `_fragment`).
+  const pieces = !isRoot && !contents && visible && !frameCtx.transformed && !own &&
+    joinsParentText(cs.display) && paintsBox(cs) && !st.truncated
+    ? lineFragments(el, st)
+    : null
+  // A fieldset with a legend is not painted on its own box either: the frame
+  // starts at the legend's middle and is interrupted where the legend sits.
+  const framed = !pieces && tag === 'FIELDSET' && !contents && visible && !frameCtx.transformed && !own && !st.truncated
+    ? fieldsetPieces(el, cs, st)
+    : null
+  const specs = pieces
+    ? pieces.map((abs, i) => ({ abs, label: `line ${i + 1}`, fragment: { index: i, count: pieces.length, w: abs.w, h: abs.h } }))
+    : framed
+  if (specs) {
+    for (const kid of node._kids) kid.paint.z += specs.length
+    const shapes = specs.map((spec, i) => {
+      const piece = makeNode({
+        type: 'shape',
+        name: `${nodeName(el, tag.toLowerCase(), 'shape', '', pseudo)} · ${spec.label}`,
+        source: pseudo
+          ? { tag: tag.toLowerCase(), path: `${path}::fragment(${i + 1})`, css: source.css, pseudo }
+          : { tag: tag.toLowerCase(), path: `${path}::fragment(${i + 1})`, css: source.css },
+      })
+      piece.abs = spec.abs
+      piece.paint.z = i
+      Object.defineProperty(piece, 'el', { value: el, writable: true, configurable: true, enumerable: false })
+      Object.defineProperty(piece, '_kids', { value: [], writable: true, configurable: true, enumerable: false })
+      Object.defineProperty(piece, '_paints', { value: true, writable: true, configurable: true, enumerable: false })
+      Object.defineProperty(piece, '_fragment', { value: spec.fragment, writable: true, configurable: true, enumerable: false })
+      return piece
+    })
+    node._kids.unshift(...shapes)
+    node.type = 'group'
+    Object.defineProperty(node, '_fragmented', { value: specs.length, writable: true, configurable: true, enumerable: false })
+    st.count += shapes.length
+  }
+
+  // The text a control paints. It is in a UA shadow tree, so the walk above saw
+  // no text node and the control used to arrive as an empty box: a form exported
+  // with every field blank. `mountControlText` rebuilds the line box and the
+  // ordinary text collector measures it.
+  if (isControl && visible && !frameCtx.transformed && !own && !st.truncated) {
+    let info = null
+    let block = null
+    try {
+      info = controlTextOf(el, tag)
+      block = info ? mountControlText(el, cs, info, st) : null
+    } catch (error) {
+      pushDiag(st, {
+        code: 'B4.form-control-text',
+        severity: 'warn',
+        _node: node,
+        note: `the text of this control could not be laid out (${error && error.message}); it is emitted without it`,
+      })
+    }
+    if (block) {
+      const r = rectOf(block)
+      const textNode = makeNode({
+        type: 'text',
+        name: nodeName(el, tag.toLowerCase(), 'text', info.text, pseudo),
+        source: { tag: tag.toLowerCase(), path: `${path}::value`, css: {} },
+      })
+      textNode.abs = { x: r.x - st.rootOrigin.x, y: r.y - st.rootOrigin.y, w: r.w, h: r.h }
+      textNode.paint.z = node._kids.length
+      Object.defineProperty(textNode, 'el', { value: block, writable: true, configurable: true, enumerable: false })
+      Object.defineProperty(textNode, '_kids', { value: [], writable: true, configurable: true, enumerable: false })
+      Object.defineProperty(textNode, '_paints', { value: true, writable: true, configurable: true, enumerable: false })
+      node._kids.push(textNode)
+      if (node.type === 'shape') node.type = 'frame'
+      st.count++
+      pushDiag(st, {
+        code: 'B4.form-control-text',
+        severity: 'info',
+        _node: node,
+        kind: info.kind,
+        note: `the ${info.placeholder ? 'placeholder' : info.kind === 'select' ? 'selected option' : 'value'} of this ` +
+          'control is in a UA shadow tree with no rects to read, so it was laid out again in a block with ' +
+          'the control\'s content box, font, alignment and wrapping, and measured there. The characters ' +
+          'and their line breaks are the control\'s; a value longer than the box is not scrolled or ' +
+          'clipped the way the control clips it',
+      })
+    }
   }
 
   // Promotion candidates, evaluated once the whole tree and its paint order exist.

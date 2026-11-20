@@ -65,6 +65,11 @@ const SKIP_TAGS = new Set([
 
 const RUBY_TAGS = new Set(['RT', 'RP'])
 
+/** The skipped tags that are a box in the line, as opposed to nothing at all. */
+const REPLACED_INLINE = new Set([
+  'INPUT', 'TEXTAREA', 'SELECT', 'IMG', 'SVG', 'MATH', 'CANVAS', 'VIDEO', 'IFRAME', 'OBJECT',
+])
+
 /**
  * The display values that keep a child's text inside THIS block's inline
  * formatting context. Everything else — `inline-block` included — lays its text
@@ -1454,6 +1459,16 @@ function collectTextNodes(blockEl, S, flags) {
   // white space behind, so the next text node has to remember it was there —
   // otherwise a line that ends at a `<br>` looks exactly like a word cut in half.
   let afterBox = false
+  // The box that just went past was an ATOMIC INLINE sitting in the line: a
+  // checkbox, an image, an `inline-block` pill. The collapsible space after it is
+  // not at the start of anything — the browser paints it, between the box and
+  // the word — while the one after a `<br>` or a block is eaten. `afterBox` does
+  // not tell the two apart, and treating both as a line start dropped that space
+  // from the characters while the measured rect still began at it: every label
+  // after a radio button was drawn one space to the left of where the page has it.
+  let afterAtomic = false
+  const inLine = (cs) => !!cs && /^inline/.test(cs.display || '') &&
+    cs.position !== 'absolute' && cs.position !== 'fixed' && (cs.float || cs.cssFloat || 'none') === 'none'
   const walker = document.createTreeWalker(blockEl, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, {
     acceptNode(node) {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -1466,7 +1481,10 @@ function collectTextNodes(blockEl, S, flags) {
       if (tag === 'BR' || tag === 'WBR') { afterBox = true; return NodeFilter.FILTER_REJECT }
       if (SKIP_TAGS.has(tag)) {
         if (RUBY_TAGS.has(tag)) flags.ruby = true
-        else afterBox = true
+        else {
+          afterBox = true
+          if (REPLACED_INLINE.has(tag) && inLine(styleOf(node, S))) afterAtomic = true
+        }
         return NodeFilter.FILTER_REJECT
       }
       if (tag === 'SLOT') { flags.shadow = true; return NodeFilter.FILTER_SKIP }
@@ -1476,7 +1494,11 @@ function collectTextNodes(blockEl, S, flags) {
       if (cs.contentVisibility === 'hidden') { flags.contentVisibility = true; return NodeFilter.FILTER_REJECT }
       // Generates no box: its children belong to the parent's context.
       if (cs.display === 'contents') return NodeFilter.FILTER_SKIP
-      if (!INLINE_DISPLAY.test(cs.display)) { afterBox = true; return NodeFilter.FILTER_REJECT }
+      if (!INLINE_DISPLAY.test(cs.display)) {
+        afterBox = true
+        afterAtomic = inLine(cs)
+        return NodeFilter.FILTER_REJECT
+      }
       if (cs.verticalAlign && cs.verticalAlign !== 'baseline') flags.verticalAlign = true
       return NodeFilter.FILTER_SKIP
     },
@@ -1493,8 +1515,9 @@ function collectTextNodes(blockEl, S, flags) {
     // the break opportunity belongs to the next node that really paints.
     if (cs.visibility !== 'visible') { flags.hidden += 1; continue }
     if (cs.verticalAlign && cs.verticalAlign !== 'baseline') flags.verticalAlign = true
-    texts.push({ node, el, cs, mode: collapseMode(cs), afterBox })
+    texts.push({ node, el, cs, mode: collapseMode(cs), afterBox, afterAtomic })
     afterBox = false
+    afterAtomic = false
   }
   return texts
 }
@@ -1544,6 +1567,11 @@ function buildRendered(texts, S, flags) {
     }
 
     t.start = rendered.length
+    // A box in the line sits between this node and whatever came before, so a
+    // space that opens this node separates the two and is painted.
+    // It is not trimmable either: the line starts at the box, not at this space.
+    let opensAfterBox = !!t.afterAtomic
+    if (opensAfterBox) pendingSpace = false
     for (let k = 0; k < len; k++) {
       const ch = data[k]
       if (t.mode !== 'preserve' && isCollapsible(ch)) {
@@ -1557,11 +1585,13 @@ function buildRendered(texts, S, flags) {
           // The collapsed space takes the position of the FIRST character of the
           // run it stands for, which is where a caret in it would sit.
           mark(k)
-          rendered.push(' '); source.push(' '); trimmable.push(1); isBreak.push(0)
+          rendered.push(' '); source.push(' '); trimmable.push(opensAfterBox ? 0 : 1); isBreak.push(0)
           pendingSpace = true
         }
+        opensAfterBox = false
         continue
       }
+      opensAfterBox = false
       if (t.mode === 'preserve' && (ch === '\n' || ch === '\r')) {
         // CR, LF and CRLF are one segment break between them.
         if (ch === '\r' && data[k + 1] === '\n') continue

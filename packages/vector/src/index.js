@@ -1367,8 +1367,19 @@ function collectNode (st, id, node) {
     return null
   }
 
+  // An inline box that wrapped: `buildPaintTree` gave each line its own shape and
+  // this node is only what holds them. Its opacity and blend were read by the
+  // walk; painting the bounding box here as well would put back the solid block
+  // the split exists to remove.
+  if (node._fragmented) return null
+
   try {
-    applyBox(st, id, node, collectBox(el, cs, st.ctx))
+    applyBox(st, id, node, collectBox(el, cs, st.ctx, node._fragment || null))
+    if (node._fragment) {
+      // The group above already carries both, once, for all the pieces together.
+      node.opacity = 1
+      node.blend = 'normal'
+    }
   } catch (error) {
     report(st, id, 'collect.box-failed', 'O',
       `collectBox threw on this element: ${error && error.message}; the node is emitted with no paint.`)

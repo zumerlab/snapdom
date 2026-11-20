@@ -1,8 +1,8 @@
 {
   "_comment": "Measured values for test/verify-vector.mjs. Regenerate with `node test/verify-vector.mjs --update`. The diff thresholds are NOT invented: `diffLimit` is the measured `diffMean` with 40% + 0.6 of headroom, `diffBadLimit` the measured `diffBad` with 100% + 0.004, `diffTileLimit` the measured `diffTile` with 35% + 2, and `msLimit` is 2.5× the measured median (floor +5ms). Measured on the provenance machine over repeated quiet runs: diffMean, diffBad, diffTile, nodes, nodeRatio, grades and svgBytes are BIT-IDENTICAL run to run (sd = 0.000000 over 5 runs), so their headroom is not absorbing local noise — it is cross-machine font rasterisation, and nothing else. `ms` is the only metric that moves: sd ≤0.3ms quiet, and ×1.0–1.14 with the raster suite‘s own Chromium running alongside, which is why 2.5× is generous and the previous +30ms floor was not a threshold at all (it let a 7× regression on a 4ms fixture pass in silence). `diffTile` is the worst 32×32px tile and exists because `diffMean` is a whole-box average that divides local damage by the whole picture; neither one caught CONIC_WEDGES 128→12, `svgBytes` did. `codes` is the exact set of diagnostic codes the capture emitted: a code appearing or disappearing fails the suite until a human accepts it with --update, because a new code is a new degradation and a vanished one is a claim that something got better. `why` is the only field here a human writes; --update carries it over instead of overwriting it. See `_provenance` for where these numbers were taken — a threshold without provenance is noise a year from now.",
   "_provenance": {
-    "generatedAt": "2026-08-13T14:01:15.137Z",
-    "os": "Darwin 25.5.0 arm64",
+    "generatedAt": "2026-11-20T21:00:53.271Z",
+    "os": "Darwin 27.0.0 arm64",
     "cpu": "Apple M5 × 10",
     "memoryGb": 24,
     "node": "v25.8.1",
@@ -44,27 +44,29 @@
       "msLimit": 15
     },
     "challenges/fx-form": {
-      "nodes": 46,
+      "nodes": 49,
       "domElements": 41,
-      "nodeRatio": 1.122,
+      "nodeRatio": 1.1951,
       "grades": {
-        "A": 25,
+        "A": 28,
         "E": 10,
         "O": 11
       },
-      "diffMean": 2.313,
-      "diffBad": 0.03809,
-      "diffTile": 23.55,
+      "diffMean": 1.576,
+      "diffBad": 0.03389,
+      "diffTile": 9.95,
       "ms": 8,
-      "svgBytes": 15952,
+      "svgBytes": 17291,
       "codes": [
         "B4.anonymous-block",
         "B4.form-control",
+        "B4.form-control-text",
         "capture.root-paint-restored",
         "collect.box.form-control",
         "collect.text",
         "collect.text-family-system",
         "compose.outline",
+        "emit.svg.clip-inset-unknown",
         "emit.svg.control-reconstructed",
         "emit.svg.filter-not-imported",
         "emit.svg.shadow-spread-morphology",
@@ -72,9 +74,9 @@
         "emit.svg.text-per-line",
         "text.tracking-may-be-ignored"
       ],
-      "diffLimit": 3.838,
-      "diffBadLimit": 0.08018,
-      "diffTileLimit": 33.79,
+      "diffLimit": 2.806,
+      "diffBadLimit": 0.07178,
+      "diffTileLimit": 15.43,
       "msLimit": 20
     },
     "challenges/fx-glass": {
@@ -699,6 +701,6 @@
       "escapeHatch": "Si el corpus sube de nuevo SIN que cambie el conjunto de casos, eso si es una regresion: mirar los diffMean por caso contra este registro."
     }
   ],
-  "_corpusDiffMean": 2.6951,
+  "_corpusDiffMean": 2.6608,
   "_corpusDiffCases": 20
 }

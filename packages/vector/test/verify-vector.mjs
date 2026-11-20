@@ -334,9 +334,10 @@ const CAPTURE = async (a) => {
   // The live side of the text audit (`auditText`, in Node). Collected HERE because
   // the audit needs the page's own text nodes and `node.el` is nulled the moment
   // `toVector` returns — by the time the document reaches Node there is no DOM left
-  // to ask. Only what the page PAINTS counts: a node inside a `<select>` is the
-  // widget's own content, which this engine declares (`collect.box.form-control`)
-  // instead of drawing, and `checkVisibility` drops what the page does not show.
+  // to ask. Only what the page PAINTS counts: a text node inside a `<select>` or a
+  // `<textarea>` is not what the widget shows (the selected label and the current
+  // value are, and they are collected just below), and `checkVisibility` drops
+  // what the page does not show.
   const SKIP_TEXT = /^(SELECT|OPTION|OPTGROUP|TEXTAREA|SCRIPT|STYLE|TEMPLATE|NOSCRIPT|TITLE)$/
   const liveTextNodes = []
   const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
@@ -353,6 +354,33 @@ const CAPTURE = async (a) => {
       text: n.nodeValue,
       tag: n.parentElement ? n.parentElement.tagName.toLowerCase() : '?',
     })
+  }
+
+  // What a control paints and no text node holds: the value, the placeholder of
+  // an empty field, the selected option, a submit caption. The engine lays these
+  // out again and draws them (`B4.form-control-text`), so they are live text like
+  // any other — a field that exports blank fails question C, and a field that
+  // exports something the control does not show fails question B.
+  const VALUE_TYPES = /^(text|search|email|url|tel|number|password)$/
+  const LABEL_TYPES = /^(button|submit|reset)$/
+  for (const c of el.querySelectorAll('input, textarea, select')) {
+    if (typeof c.checkVisibility === 'function' &&
+        !c.checkVisibility({ visibilityProperty: true, contentVisibilityAuto: true })) continue
+    const tag = c.tagName.toLowerCase()
+    let text = ''
+    if (tag === 'textarea') text = c.value || c.placeholder || ''
+    else if (tag === 'select') {
+      if (c.multiple || Number(c.size) > 1) continue
+      const chosen = c.selectedOptions[0] || c.options[c.selectedIndex >= 0 ? c.selectedIndex : 0]
+      text = chosen ? (chosen.label || chosen.text || '') : ''
+    } else {
+      const type = (c.type || 'text').toLowerCase()
+      if (LABEL_TYPES.test(type)) text = c.value || (type === 'submit' ? 'Submit' : type === 'reset' ? 'Reset' : '')
+      else if (!VALUE_TYPES.test(type)) continue
+      else if (c.value) text = type === 'password' ? '\u2022'.repeat([...c.value].length) : c.value
+      else text = c.placeholder || ''
+    }
+    if (text && text.trim()) liveTextNodes.push({ text, tag, control: true })
   }
 
   const r = el.getBoundingClientRect()

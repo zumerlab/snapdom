@@ -619,10 +619,10 @@ function expandRadii (radii, d) {
  *   caller to turn into the mask node `node.mask` references. Both are inert
  *   until such a caller exists, and both say so in `warnings`.
  */
-export function collectBox (el, cs, ctx = {}) {
+export function collectBox (el, cs, ctx = {}, fragment = null) {
   const warnings = []
 
-  const { w, h } = borderBoxSize(el, cs, warnings)
+  const { w, h } = fragment ? { w: fragment.w, h: fragment.h } : borderBoxSize(el, cs, warnings)
   const border = [
     px(cs.borderTopWidth), px(cs.borderRightWidth),
     px(cs.borderBottomWidth), px(cs.borderLeftWidth),
@@ -631,6 +631,30 @@ export function collectBox (el, cs, ctx = {}) {
     px(cs.paddingTop), px(cs.paddingRight),
     px(cs.paddingBottom), px(cs.paddingLeft),
   ]
+  // One line box of an inline element that wrapped (`paint.js` splits it and
+  // hands each piece here). Under `box-decoration-break: slice`, the default,
+  // the box is laid out as ONE strip and cut at the line ends: only the first
+  // piece has the start edge and only the last has the end edge, and a cut has
+  // no border, no padding and no rounded corner. `clone` gives every piece all
+  // four. Measured on Chromium against both values.
+  const sliced = fragment && !fragment.sides && fragment.count > 1 &&
+    (cs.boxDecorationBreak || cs.webkitBoxDecorationBreak || 'slice') !== 'clone'
+  // A piece that keeps only some of the element's sides (`paint.js` builds the
+  // frame of a fieldset out of them): the others have no border and no padding.
+  if (fragment && fragment.sides) {
+    for (let i = 0; i < 4; i++) if (!fragment.sides[i]) { border[i] = 0; padding[i] = 0 }
+  }
+  let openStart = false
+  let openEnd = false
+  if (sliced) {
+    const rtl = cs.direction === 'rtl'
+    const first = fragment.index === 0
+    const last = fragment.index === fragment.count - 1
+    openStart = rtl ? !last : !first   // the LEFT edge of this piece is a cut
+    openEnd = rtl ? !first : !last     // the RIGHT edge of this piece is a cut
+    if (openStart) { border[3] = 0; padding[3] = 0 }
+    if (openEnd) { border[1] = 0; padding[1] = 0 }
+  }
   const boxes = {
     border: { x: 0, y: 0, w, h },
     padding: {
@@ -649,10 +673,25 @@ export function collectBox (el, cs, ctx = {}) {
   boxes.text = boxes.border
 
   const radii = parseRadii(cs, w, h)
+  if (openStart) { radii[0] = [0, 0]; radii[3] = [0, 0] }
+  if (openEnd) { radii[1] = [0, 0]; radii[2] = [0, 0] }
+  if (fragment && fragment.sides) {
+    // corners: tl, tr, br, bl — each lives on two sides and needs both.
+    const [t, r, b, l] = fragment.sides
+    if (!t || !l) radii[0] = [0, 0]
+    if (!t || !r) radii[1] = [0, 0]
+    if (!b || !r) radii[2] = [0, 0]
+    if (!b || !l) radii[3] = [0, 0]
+  }
 
-  if (/^inline($|-)/.test(cs.display) && cs.display !== 'inline-block' &&
+  if (!fragment && /^inline($|-)/.test(cs.display) && cs.display !== 'inline-block' &&
       typeof el.getClientRects === 'function' && el.getClientRects().length > 1) {
     warnings.push('inline box spans several line fragments; its paint is collapsed onto one rectangle.')
+  }
+  if (sliced && cs.backgroundImage && cs.backgroundImage !== 'none') {
+    warnings.push('this is one line of an inline box that wrapped, and its background-image is positioned ' +
+      'against this line alone. The page positions it against the whole unbroken strip ' +
+      '(box-decoration-break: slice), so a gradient restarts on every line here.')
   }
 
   // `visibility` is inherited but revocable, so the node has to survive — a
@@ -664,9 +703,35 @@ export function collectBox (el, cs, ctx = {}) {
   // does not exist, which is worse than losing something that does.
   const painted = (cs.visibility || 'visible') === 'visible'
 
-  const fills = painted ? collectFills(el, cs, boxes, warnings) : []
+  // A control the author left alone is painted by the platform theme, not from
+  // its computed border — see `nativeChromeOf`.
+  const chrome = fragment ? null : nativeChromeOf(el, cs)
+  let strokeCs = cs
+  if (chrome) {
+    border[0] = border[1] = border[2] = border[3] = chrome.width
+    for (let i = 0; i < 4; i++) radii[i] = [chrome.radius, chrome.radius]
+    strokeCs = new Proxy(cs, {
+      get (target, key) {
+        if (typeof key === 'string' && /^border(Top|Right|Bottom|Left)Style$/.test(key)) return 'solid'
+        if (typeof key === 'string' && /^border(Top|Right|Bottom|Left)Color$/.test(key)) return chrome.color
+        const value = target[key]
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    })
+    warnings.push({
+      code: 'collect.box.native-chrome',
+      grade: 'A',
+      severity: 'info',
+      message: `this ${chrome.what} keeps the browser's default border (${chrome.declared}), which Chromium ` +
+        'does not paint as declared: the platform theme draws a 1px solid rgb(118, 118, 118) frame with 2px ' +
+        'corners at the outer edge of the same box. Measured at 4x on text fields, textareas, selects and ' +
+        'buttons; the frame is emitted as measured, and another browser or theme draws its own.',
+    })
+  }
+
+  const fills = painted && !(fragment && fragment.noFill) ? collectFills(el, cs, boxes, warnings) : []
   const { strokes, strokeWarnings } = painted
-    ? collectStrokes(cs, radii, border, el)
+    ? collectStrokes(strokeCs, radii, border, el)
     : { strokes: [], strokeWarnings: [] }
   warnings.push(...strokeWarnings)
   const { effects, filterOpacity } = painted
@@ -901,6 +966,65 @@ function describeControl (el, cs) {
 
   const styled = (cs.appearance || cs.webkitAppearance || 'auto') === 'none'
   return { label, chrome: styled ? [] : chrome, content }
+}
+
+const UA_FRAME = 'rgb(118, 118, 118)'
+const BUTTON_INPUTS = new Set(['button', 'submit', 'reset'])
+
+/**
+ * Is this control still wearing the border the UA stylesheet gave it?
+ *
+ * The computed border of an untouched control is a description of nothing.
+ * `<input>` computes to `2px inset rgb(118, 118, 118)` and `<button>` to
+ * `2px outset rgb(0, 0, 0)`, and Chromium paints neither: while `appearance` is
+ * `auto` and the author has set no border of their own, the platform theme
+ * draws the frame — 1px solid rgb(118, 118, 118), 2px corner radius, at the
+ * outer edge of the border box (measured at 4x device pixels on all four
+ * control kinds). Emitting the declaration literally gave every plain form a
+ * frame twice as heavy as the page's, and black on buttons.
+ *
+ * The test is the declaration itself: `inset` and `outset` at 2px on all four
+ * sides are the UA's values and nobody writes them by hand any more; a textarea
+ * and a select already compute to the 1px solid frame the theme paints, so the
+ * only thing they are missing is the corner. Anything else — a width, a style
+ * or a colour the author chose — switches the theme off in the browser and is
+ * read here as ordinary CSS.
+ *
+ * @returns {{what:string, declared:string, width:number, radius:number, color:string}|null}
+ */
+function nativeChromeOf (el, cs) {
+  const tag = (el && el.tagName ? el.tagName : '').toUpperCase()
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT' && tag !== 'BUTTON') return null
+  if ((cs.appearance || cs.webkitAppearance || 'auto') === 'none') return null
+  const sides = ['Top', 'Right', 'Bottom', 'Left']
+  const all = (suffix, want) => sides.every((side) => cs[`border${side}${suffix}`] === want)
+  const square = ['TopLeft', 'TopRight', 'BottomRight', 'BottomLeft']
+    .every((corner) => /^0px( 0px)?$/.test(cs[`border${corner}Radius`] || '0px'))
+  if (!square) return null
+
+  let type = ''
+  if (tag === 'INPUT') {
+    type = String(el.type || (typeof el.getAttribute === 'function' && el.getAttribute('type')) || 'text').toLowerCase()
+  }
+  const button = tag === 'BUTTON' || (tag === 'INPUT' && BUTTON_INPUTS.has(type))
+  const field = tag === 'INPUT' && TEXTUAL_INPUTS.has(type)
+  const declared = `${cs.borderTopWidth} ${cs.borderTopStyle} ${cs.borderTopColor}`
+  const frame = { declared, width: 1, radius: 2, color: UA_FRAME }
+  if (button) {
+    return all('Width', '2px') && all('Style', 'outset') ? { ...frame, what: 'button' } : null
+  }
+  if (field) {
+    return all('Width', '2px') && all('Style', 'inset')
+      ? { ...frame, what: `<input type="${type}">`, color: cs.borderTopColor || UA_FRAME }
+      : null
+  }
+  if (tag === 'TEXTAREA' || tag === 'SELECT') {
+    if (tag === 'SELECT' && (el.multiple || Number(el.size) > 1)) return null
+    return all('Width', '1px') && all('Style', 'solid') && all('Color', UA_FRAME)
+      ? { ...frame, what: `<${tag.toLowerCase()}>` }
+      : null
+  }
+  return null
 }
 
 /** Background color plus the image layers, back-to-front. */
@@ -1325,6 +1449,25 @@ function collectStrokes (cs, radii, border, el) {
     const style = cs[`border${name}Style`] || 'none'
     const hidden = style === 'none' || style === 'hidden'
     const parsed = parseColor(cs[`border${name}Color`])
+    // `groove` is two bands, not one colour: measured on Chromium at 2px, the
+    // outer pixel of the top and left sides is the colour at 65% (239 -> 155)
+    // and the inner pixel is the colour itself, which on a light page is nearly
+    // the background. Emitted as one solid band of the declared colour, a
+    // fieldset's frame came out twice as thick and almost invisible. The dark
+    // band is what the eye reads, so that is the one emitted, at half the width.
+    const grooved = style === 'groove' && !hidden && border[i] >= 2 && parsed && Array.isArray(parsed.rgba)
+    if (grooved) {
+      return {
+        side: name.toLowerCase(),
+        width: border[i] / 2,
+        style: 'solid',
+        color: [parsed.rgba[0] * 0.65, parsed.rgba[1] * 0.65, parsed.rgba[2] * 0.65, parsed.rgba[3]],
+        srcCss: parsed.srcCss,
+        colorWarnings: ['border-style:groove is emitted as its dark band only, on the outer half of the ' +
+          'border; the light band is dropped, and on the bottom and right sides the page paints the dark ' +
+          'band on the inner half instead.'],
+      }
+    }
     return {
       side: name.toLowerCase(),
       width: hidden ? 0 : border[i],
