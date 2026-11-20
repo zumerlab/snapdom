@@ -1,5 +1,13 @@
 # Vector changes
 
+## 1.0.2
+
+> 20 November 2026
+
+**Fixes**
+
+- **vector:** wrapped inline boxes, form text and fieldset frames paint as the page does [`da04465`](https://github.com/zumerlab/snapdom/commit/da0446568b8b2eccb88d2dabe637c4055a799f23)
+
 ## 1.0.1
 
 > 17 November 2026
