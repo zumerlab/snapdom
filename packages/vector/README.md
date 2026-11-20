@@ -11,7 +11,7 @@ Editable SVG and Figma clipboard export for [SnapDOM](https://snapdom.dev/): `ve
 npm install @zumer/snapdom@latest @zumer/snapdom-vector@latest
 ```
 
-Requires SnapDOM 3.4.0 or newer within 3.x. Up to SnapDOM plugins 4.x the same exporter shipped as `@zumer/snapdom-plugins/vector`; only the import changes.
+Requires SnapDOM 3.8.1 or newer within 3.x. Up to SnapDOM plugins 4.x the same exporter shipped as `@zumer/snapdom-plugins/vector`; only the import changes.
 
 ## Usage
 
