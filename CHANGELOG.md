@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.8.2](https://github.com/zumerlab/snapdom/compare/v3.8.1...v3.8.2)
+
+> 21 November 2026
+
+**Fixes**
+
+- **core:** plain document elements keep their margins, widths and native paint [`3f0f8b5`](https://github.com/zumerlab/snapdom/commit/3f0f8b574af6c2a8f18aac7fa9239cd7bb8dbe57)
+- **styles:** an open &lt;details&gt; keeps its height in Firefox [`272d720`](https://github.com/zumerlab/snapdom/commit/272d720c2ff5e7599be8b9f34d3d7cc4ed974c45)
+
+**Performance**
+
+- profiling-derived speedups for first and later captures [`#570`](https://github.com/zumerlab/snapdom/pull/570)
+
+**Docs**
+
+- **site:** redirect /v2/ to the home page [`1b90506`](https://github.com/zumerlab/snapdom/commit/1b90506b79a99b7fbdbf31bea038308b3f58e986)
+- **core:** keep the #525 numbers and name ::slotted() in the scroll gate note [`18d091f`](https://github.com/zumerlab/snapdom/commit/18d091f29ac3fbd26221a1b4707639e3c2aedd33)
+
+**Tests**
+
+- **styles:** two #570 tests pass on the pinned Firefox [`4271177`](https://github.com/zumerlab/snapdom/commit/42711775c1d27514ba5d3d271c9b6504f5cd0171)
+- **css:** check a default the pinned Chromium also lists [`f25df5d`](https://github.com/zumerlab/snapdom/commit/f25df5d193cf477c03a8445d94ed4cc86ac64d29)
+
 #### [v3.8.1](https://github.com/zumerlab/snapdom/compare/v3.8.0...v3.8.1)
 
 > 18 November 2026
