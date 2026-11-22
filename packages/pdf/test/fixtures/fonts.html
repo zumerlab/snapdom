@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: fonts — which files can paint the text</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs" } }
+</script>
+<style>
+  /* Three ways a font file reaches a page, one block each. Every block is one
+     line per style so a band of the rendered page belongs to exactly one face. */
+  @font-face { font-family: 'Packed'; font-weight: 400;
+               src: url('/test/fixtures/fonts/Inter-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Ranged'; font-weight: 100 900;
+               src: url('/test/fixtures/fonts/Roboto-variable-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'Alone'; font-weight: 400; font-style: normal;
+               src: url('/demo/fonts/Inter-400.ttf') format('truetype'); }
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 560px; background: #fff; padding: 24px; color: #111; }
+  #target p { margin: 0 0 6px; font-size: 20px; line-height: 30px; white-space: nowrap; }
+  .packed { font-family: 'Packed', sans-serif; }
+  .ranged { font-family: 'Ranged', sans-serif; }
+  .alone  { font-family: 'Alone', sans-serif; }
+</style>
+</head>
+<body>
+<div id="target">
+  <p class="packed" data-band="packed">PackedRegular hamburgefonstiv 0123456789</p>
+  <p class="ranged" data-band="ranged-default">RangedRegular hamburgefonstiv 0123456789</p>
+  <p class="ranged" data-band="ranged-bold" style="font-weight:700">RangedBold hamburgefonstiv 0123456789</p>
+  <p class="ranged" data-band="ranged-light" style="font-weight:300">RangedLight hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-regular">AloneRegular hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-bold" style="font-weight:700">AloneBold hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-italic" style="font-style:italic">AloneItalic hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-light" style="font-weight:300">AloneLight hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-nofake" style="font-weight:700;font-synthesis:none">AloneUnfaked hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-faded" style="opacity:.5">AloneFaded hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-outlined" style="-webkit-text-stroke:1px #c00">AloneOutlined hamburgefonstiv 0123456789</p>
+  <p class="alone" data-band="alone-filled" style="color:#00c;-webkit-text-fill-color:#0a0">AloneFilled hamburgefonstiv 0123456789</p>
+</div>
+
+<script type="module">
+  import { snapdom } from '@zumer/snapdom'
+  import pdf from '/src/index.js'
+
+  const b64 = (bytes) => {
+    let out = ''
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      out += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
+    }
+    return btoa(out)
+  }
+
+  /** One export of #target at 1 CSS px per page unit; `export` are toPdf() options. */
+  window.__export = async ({ export: exp = {}, capture = {} } = {}) => {
+    try {
+      const shot = await snapdom(document.getElementById('target'), {
+        plugins: [pdf()], scale: 1, dpr: 1, embedFonts: true, ...capture,
+      })
+      let report = null
+      const blob = await shot.toPdf({ page: 'fit', ...exp, onReport: r => { report = r } })
+      return { base64: b64(new Uint8Array(await blob.arrayBuffer())), report }
+    } catch (error) {
+      return { error: { name: error?.name || 'Error', message: String(error?.message || error) } }
+    }
+  }
+
+  /** Each band's box in CSS px from #target's border box. */
+  window.__bands = () => {
+    const origin = document.getElementById('target').getBoundingClientRect()
+    const out = {}
+    for (const el of document.querySelectorAll('[data-band]')) {
+      const r = el.getBoundingClientRect()
+      out[el.dataset.band] = { x: r.left - origin.left, y: r.top - origin.top, w: r.width, h: r.height }
+    }
+    return out
+  }
+
+  /**
+   * Page 1 as pdf.js draws it at 1 CSS px per pixel, read back band by band:
+   * how many pixels are not the page's white, and the mean colour of those.
+   */
+  window.__ink = async (base64, bands) => {
+    const L = await import('/node_modules/pdfjs-dist/build/pdf.mjs')
+    L.GlobalWorkerOptions.workerSrc = '/node_modules/pdfjs-dist/build/pdf.worker.mjs'
+    const bin = atob(base64)
+    const data = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) data[i] = bin.charCodeAt(i)
+    const doc = await L.getDocument({ data }).promise
+    const pg = await doc.getPage(1)
+    const vp = pg.getViewport({ scale: 96 / 72 })
+    const canvas = new OffscreenCanvas(Math.ceil(vp.width), Math.ceil(vp.height))
+    const ctx = canvas.getContext('2d')
+    ctx.fillStyle = '#fff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    await pg.render({ canvasContext: ctx, viewport: vp }).promise
+    const out = {}
+    for (const [name, b] of Object.entries(bands)) {
+      const px = ctx.getImageData(Math.floor(b.x), Math.floor(b.y), Math.ceil(b.w), Math.ceil(b.h)).data
+      let ink = 0, r = 0, g = 0, bl = 0
+      for (let i = 0; i < px.length; i += 4) {
+        // Coverage, not a threshold: an antialiased edge counts for what it covers.
+        const cover = 1 - Math.min(px[i], px[i + 1], px[i + 2]) / 255
+        if (cover <= 0.02) continue
+        ink += cover
+        if (cover > 0.9) { r += px[i]; g += px[i + 1]; bl += px[i + 2] }
+      }
+      out[name] = { ink: Math.round(ink), rgb: [r, g, bl] }
+    }
+    await doc.destroy()
+    return out
+  }
+
+  await document.fonts.ready
+  await Promise.all([...document.fonts].map(f => f.load().catch(() => null)))
+  window.__ready = true
+</script>
+</body>
+</html>

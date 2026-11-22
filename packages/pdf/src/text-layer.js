@@ -814,11 +814,19 @@ function fontOf(el, S, cs) {
   // stack, and the stack is only readable while this document is alive.
   const weight = parseInt(cs.fontWeight, 10) || (cs.fontWeight === 'bold' ? 700 : 400)
   const italic = cs.fontStyle === 'italic' || cs.fontStyle.startsWith('oblique')
-  const fkKey = `${cs.fontFamily}|${weight}|${italic}`
+  // What else decides WHICH glyphs the engine drew from that file. A variable
+  // font is one file and many designs, and a face the page never loaded is
+  // faked by fattening or slanting the one it has; the export that paints real
+  // glyphs has to know, because the file only holds the design it was saved in.
+  const stretch = parseFloat(cs.fontStretch) || 100
+  const tuned = !!cs.fontVariationSettings && cs.fontVariationSettings !== 'normal'
+  const fakeBold = cs.fontSynthesisWeight !== 'none'
+  const fakeItalic = cs.fontSynthesisStyle !== 'none'
+  const fkKey = `${cs.fontFamily}|${weight}|${italic}|${stretch}|${tuned}|${fakeBold}|${fakeItalic}`
   let fk = S.fontKeyIndex.get(fkKey)
   if (fk === undefined) {
     fk = S.fontKeys.length
-    S.fontKeys.push({ stack: cs.fontFamily, weight, italic })
+    S.fontKeys.push({ stack: cs.fontFamily, weight, italic, stretch, tuned, fakeBold, fakeItalic })
     S.fontKeyIndex.set(fkKey, fk)
   }
   const css = `${cs.fontStyle === 'normal' ? '' : cs.fontStyle + ' '}${cs.fontWeight} ${size}px ${cs.fontFamily}`
@@ -856,8 +864,12 @@ function fontOf(el, S, cs) {
     // Type0 font cannot express — PDF `Tw` applies only to single-byte code 32,
     // and Identity-H is two-byte. Letter-spacing IS expressible (via `Tc`) and
     // travels on `tracking` instead of blocking the paint.
-    color: (colourAlpha(cs.color) >= 0.999 && (parseFloat(cs.wordSpacing) || 0) === 0)
-      ? colourTriple(cs.color) : null,
+    //
+    // The colour is the glyph FILL, which `-webkit-text-fill-color` overrides
+    // and `color` only supplies by default. An outlined glyph is not painted
+    // either: the outline is a second paint this export has no operator for, and
+    // a fill laid over the raster's outline covers the inner half of it.
+    color: paintColour(cs),
     // Letter-spacing in CSS px, applied as character spacing (`Tc`) when
     // painting. Distinct from `tracking` above, which is the canvas string the
     // measurement path feeds to ctx.letterSpacing.
@@ -865,6 +877,21 @@ function fontOf(el, S, cs) {
   }
   S.fontCache.set(el, info)
   return info
+}
+
+/**
+ * The fill a painted run takes, or null when plain filled glyphs would not be
+ * what the page shows: a fill that does not resolve or is translucent, an
+ * outlined glyph, or a word-spacing the font encoding cannot express.
+ */
+function paintColour(cs) {
+  const fill = cs.webkitTextFillColor && cs.webkitTextFillColor !== 'currentcolor'
+    ? cs.webkitTextFillColor
+    : cs.color
+  if (colourAlpha(fill) < 0.999) return null
+  if ((parseFloat(cs.wordSpacing) || 0) !== 0) return null
+  if ((parseFloat(cs.webkitTextStrokeWidth) || 0) > 0) return null
+  return colourTriple(fill)
 }
 
 /** Advance in the REAL font — the only independent measurement a rotated run has. */
@@ -989,7 +1016,9 @@ function pushRun(S, text, rect, info, L, ctx, owner) {
     width: box.width, height: box.height, ascent: info.ascent,
     size: info.size, font: info.key, fk: info.fk,
     naturalWidth: measureNatural(info, text),
-    matrix: L, rtl: info.rtl, color: info.color, tracking: info.trackingPx,
+    // A run under a translucent ancestor is not painted as glyphs: the fill has
+    // no alpha of its own here, and opaque letters over a faded block are wrong.
+    matrix: L, rtl: info.rtl, color: ctx.alpha >= 0.999 ? info.color : null, tracking: info.trackingPx,
   })
   // Parallel to `runs`, never inside a run: the run's key set is a pinned
   // contract, and this is a node from the temporary layout DOM that must not

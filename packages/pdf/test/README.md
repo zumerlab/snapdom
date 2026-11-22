@@ -1,6 +1,6 @@
 # test/
 
-One product, three suites, one harness.
+One product, four suites, one harness.
 
 Nothing here is a unit test. Every check boots Chromium, serves this repository,
 captures a real fixture page and reads the finished PDF back with pdf.js — because
@@ -12,6 +12,7 @@ proves nothing.
 | `verify.mjs` | the exporter against 23 fixtures, 700 checks | `npm run test:pdf` |
 | `megacheck.mjs` | fillable fields, identity, page labels, the accessible-structure edge, determinism, abort | `npm run test:pdf` |
 | `encryptcheck.mjs` | AES-256: no plaintext leaks, round trip through pdf.js, the refusals | `npm run test:pdf` |
+| `fontcheck.mjs` | which font files can paint the text: WOFF2, variable fonts, faked bold and italic, and what stays in the page image | `npm run test:pdf` |
 | `tools/` | **nothing** | a human, when the question comes up |
 
 A tool measures or investigates; each one's header says which question it was
@@ -26,7 +27,7 @@ remembers" — the encryption suite gated nothing at all for a day. The director
 split is there so that cannot recur silently.
 
 ```
-npm run test:pdf                all three (from the monorepo root)
+npm run test:pdf                all four (from the monorepo root)
 node packages/pdf/test/verify.mjs            the fixture suite alone
 node packages/pdf/test/verify.mjs prose table   prefix match, several allowed
 node packages/pdf/test/serve.mjs   serve the fixtures

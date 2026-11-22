@@ -1115,6 +1115,11 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
   let unlinked = 0
   let vectorPainted = 0
   let vectorMissed = 0
+  // Runs an embedded face could have painted, held back because the file does
+  // not hold the design the page drew (a variable font off its default, a faked
+  // bold or italic). One sentence per distinct reason, however many runs.
+  let vectorHeld = 0
+  const vectorHeldWhy = new Set()
   // Painted images nobody named, on body and matter pages alike. Any one of them
   // withholds the PDF/UA-1 claim.
   let unnamedImages = layer.unnamedImages
@@ -1299,7 +1304,19 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
     // face that did not cover the run, a translucent or unresolved colour, a
     // word-spacing Type0 cannot express — stays as it was, shown by the raster
     // or, in an image-free export, lost and counted.
-    const paint = vectorText && embeddedUsed && run.color && !run.rtl
+    //
+    // And only where the file holds the glyphs the page PAINTED. A face embeds
+    // whenever its file is readable, but a variable font off its default
+    // instance, or a bold or italic the engine faked from the regular file, is
+    // drawn by the page in a design the file does not contain (`faces.approx`).
+    // Painting it would put regular letters where the page shows bold ones.
+    const paintable = vectorText && embeddedUsed && run.color && !run.rtl
+    const approx = paintable && run.fk >= 0 && faces.approx ? faces.approx[run.fk] : null
+    const paint = paintable && !approx
+    if (approx) {
+      vectorHeld++
+      vectorHeldWhy.add(approx)
+    }
     let tr = debugText ? 0 : 3
     let colorOp = ''
     // Letter-spacing rides `Tc`, NOT Tz: folding it into the horizontal scale
@@ -2017,9 +2034,14 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
       'crisp at any zoom' + (image ? ', over the raster.' : ', and the raster is off.'))
   }
   if (vectorMissed) {
-    report(`${vectorMissed} text run(s) could not be painted as vector (RTL, no embedded face, or an ` +
-      'unresolved colour) and there is no raster to show them — they are searchable but not visible. ' +
+    report(`${vectorMissed} text run(s) could not be painted as vector (RTL, no embedded face, an ` +
+      'unresolved colour, or a face whose file does not hold the design the page drew) and there is ' +
+      'no raster to show them — they are searchable but not visible. ' +
       'Keep image:true for those, or embed a covering font.')
+  }
+  if (vectorHeld) {
+    report(`${vectorHeld} text run(s) left as image instead of painted as vector glyphs, because the ` +
+      `font file does not hold the design the page drew — ${[...vectorHeldWhy].join('; ')}.`)
   }
   if (cropped) {
     report(`${cropped} index line(s) show the heading's own pixels rather than typeset text — ` +

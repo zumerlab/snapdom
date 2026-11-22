@@ -222,8 +222,10 @@ export interface PdfExportOptions {
   /**
    * Paint eligible text as real vector glyphs from the embedded fonts instead
    * of leaving it invisible over the raster, crisp at any zoom. Only faithful
-   * where no shaping intervenes (left-to-right runs in an embedded face), so
-   * RTL and uncovered runs stay on the raster. Pair with `image: false` for a
+   * where no shaping intervenes (left-to-right runs in an embedded face) and
+   * the font file holds the design the page drew, so these stay on the raster:
+   * RTL and uncovered runs, a variable font off the weight its file was saved
+   * in, a bold or italic the browser faked, translucent or outlined text. Pair with `image: false` for a
    * tiny, fully-vector text PDF; with `image: true` the glyphs overpaint the
    * raster. Default false.
    */

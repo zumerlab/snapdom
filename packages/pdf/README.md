@@ -99,9 +99,16 @@ Links work for `http:`, `https:`, `mailto:` and `tel:`. Any other link is left o
 | `embedFonts` | `true` | Embed the page's web fonts, only the letters the document uses. `'full'` embeds whole fonts; `false` none. |
 | `vectorText` | `false` | Draw the text as real letters instead of pixels: sharp at any zoom. |
 
-The PDF can only embed fonts the capture carries, so capture with `snapdom(el, { embedFonts: true })`. System fonts have no file to embed. Copying text works the same with or without embedded fonts.
+The PDF can only embed fonts the capture carries, so capture with `snapdom(el, { embedFonts: true })`. Web fonts in TTF, OTF, WOFF and WOFF2 embed. System fonts have no file to embed. Copying text works the same with or without embedded fonts.
 
-`vectorText` needs embedded fonts. Right-to-left and complex scripts stay as image. With `image: false` it gives a very small text-only PDF, without borders, backgrounds or pictures.
+`vectorText` needs embedded fonts, and draws a text only when the font file holds the letters the page shows. These stay as image:
+
+- right-to-left and complex scripts;
+- a variable font at a weight other than the one its file was saved in;
+- bold or italic the browser fakes because the page loaded no file for it;
+- translucent or outlined text.
+
+With `image: false` it gives a very small text-only PDF, without borders, backgrounds or pictures.
 
 ## Bookmarks and accessibility
 

@@ -1,0 +1,9 @@
+Inter-400.woff2 — Inter (c) The Inter Project Authors, SIL Open Font License 1.1,
+https://github.com/rsms/inter. The same face as demo/fonts/Inter-400.ttf, in WOFF2.
+
+Roboto-variable-latin.woff2 — Roboto (c) Google. The variable latin subset
+(weight axis 100–900, saved at 400) as Google Fonts serves it, copied from this
+repository's demos/assets/fonts/roboto/. Its licence is the one published with
+Roboto at https://fonts.google.com/specimen/Roboto/license.
+
+Both are served locally and only to the test fixtures.

@@ -9,8 +9,8 @@
  *                      unicode-range subset that covers what this style paints
  *   rule → bytes       a data: URI inlined by snapdom, or the src URL fetched
  *                      force-cache (the page already downloaded it to paint)
- *   bytes → sfnt       WOFF unpacks; WOFF2, collections and license-restricted
- *                      faces refuse, each with its reason
+ *   bytes → sfnt       WOFF unpacks and WOFF2 is rebuilt; collections and
+ *                      license-restricted faces refuse, each with its reason
  *
  * Whatever survives becomes ONE parsed face per underlying file, shared by
  * every style that matched it. Whatever does not is a named diagnostic, never
@@ -23,6 +23,12 @@
  * the whole binding for one missing glyph (what the SVG channel does for its
  * textLength contract) would throw away a page of embeddable Latin over one
  * stray dingbat.
+ *
+ * A face that embeds is not always the face the page PAINTED. A variable font
+ * is one file holding a range of designs, and a PDF draws only the one it was
+ * saved in; a bold or an italic the page never loaded is the regular file,
+ * fattened or slanted by the engine. `substitution` says so per style, and the
+ * export keeps such text in the page image instead of painting the wrong glyphs.
  *
  * The sibling vector product solves the same problem the same way — same rule
  * reading, same matching order — so the two channels embed the same file for
@@ -195,6 +201,94 @@ function coversAll(rule, points) {
   return true
 }
 
+/**
+ * The variation axes of an sfnt (`fvar`): [{tag, min, def, max}], empty for a
+ * static font and for a table too short to be read.
+ */
+export function variationAxes(sfnt) {
+  const u16 = (at) => (sfnt[at] << 8) | sfnt[at + 1]
+  const u32 = (at) => ((sfnt[at] << 24) | (sfnt[at + 1] << 16) | (sfnt[at + 2] << 8) | sfnt[at + 3]) >>> 0
+  const fixed = (at) => (u32(at) | 0) / 65536
+  const out = []
+  const numTables = u16(4)
+  for (let i = 0; i < numTables; i++) {
+    const entry = 12 + i * 16
+    if (entry + 16 > sfnt.length) return out
+    if (u32(entry) !== 0x66766172) continue // 'fvar'
+    const table = u32(entry + 8)
+    if (table + 16 > sfnt.length) return out
+    const axes = table + u16(table + 4)
+    const count = u16(table + 8)
+    const size = u16(table + 10)
+    for (let a = 0; a < count; a++) {
+      const axis = axes + a * size
+      if (size < 16 || axis + 16 > sfnt.length) return out
+      out.push({
+        tag: String.fromCharCode(sfnt[axis], sfnt[axis + 1], sfnt[axis + 2], sfnt[axis + 3]),
+        min: fixed(axis + 4), def: fixed(axis + 8), max: fixed(axis + 12),
+      })
+    }
+    return out
+  }
+  return out
+}
+
+const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
+
+/** At and above this weight an engine fattens a face that is lighter than it. */
+const BOLD = 600
+
+/**
+ * Why the glyphs in the file are NOT the glyphs the page painted for this
+ * style, or null when they are.
+ *
+ * Three things stand between a file and the paint. A variable font is drawn at
+ * the instance the style asks for, and the file read as a plain font is only
+ * its default instance. A weight the family does not carry is faked by
+ * emboldening the nearest face, and an italic it does not carry by slanting the
+ * upright one — unless `font-synthesis` forbids it. Everything here is read
+ * from the rule that won and the file behind it, never guessed from a name.
+ *
+ * @param {{weight: string, style: string}} rule  the @font-face that matched
+ * @param {{weight: number, italic: boolean, stretch?: number, tuned?: boolean,
+ *   fakeBold?: boolean, fakeItalic?: boolean}} fk
+ * @param {Array<{tag: string, min: number, def: number, max: number}>} axes
+ * @returns {string|null}
+ */
+export function substitution(rule, fk, axes) {
+  const [lo, hi] = weightRange(rule.weight)
+  const ruleItalic = /^(italic|oblique)/.test((rule.style || 'normal').trim())
+  const axis = (tag) => axes.find(a => a.tag === tag && a.max > a.min) || null
+
+  if (axes.some(a => a.max > a.min) && fk.tuned) {
+    return 'the page sets font-variation-settings on a variable font, and a PDF draws only the design the file was saved in'
+  }
+  const wght = axis('wght')
+  if (wght) {
+    const drawn = clamp(clamp(fk.weight, lo, hi), wght.min, wght.max)
+    if (drawn !== wght.def) {
+      return `it is a variable font the page draws at weight ${drawn}, and a PDF draws only the weight the file was saved in (${wght.def})`
+    }
+  }
+  if (fk.weight >= BOLD && hi < BOLD && fk.fakeBold !== false) {
+    return 'the page has no bold file for it, so the browser fattens the regular one; the file holds only the regular glyphs'
+  }
+  if (fk.italic && (axis('slnt') || axis('ital'))) {
+    return 'it is a variable font the page slants along an axis, and a PDF draws only the upright design the file was saved in'
+  }
+  if (fk.italic && !ruleItalic && fk.fakeItalic !== false) {
+    return 'the page has no italic file for it, so the browser slants the upright one; the file holds only the upright glyphs'
+  }
+  const wdth = axis('wdth')
+  if (wdth && clamp(fk.stretch ?? 100, wdth.min, wdth.max) !== wdth.def) {
+    return 'it is a variable font the page draws at another width, and a PDF draws only the width the file was saved in'
+  }
+  if (axis('opsz')) {
+    return 'it is a variable font with an optical-size axis that follows the font size, and a PDF draws only the size the file was saved in'
+  }
+  return null
+}
+
 async function fetchBytes(url, timeout) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null
   const timer = controller && timeout > 0 ? setTimeout(() => controller.abort(), timeout) : null
@@ -218,8 +312,12 @@ async function fetchBytes(url, timeout) {
  * @param {Array<object>} rules  `collectFaceRules` output, captured at measure
  * @param {Map} cache  capture-lifetime: url/data-uri → {parsed, sfnt}|{error}
  * @param {(msg: string) => void} report
- * @returns {Promise<Array<{parsed, sfnt, label}|null>>} parallel to fontKeys;
- *   entries are SHARED where two keys resolved to one file.
+ * @returns {Promise<Array<{parsed, sfnt, label}|null> & {approx: Array<string|null>}>}
+ *   parallel to fontKeys; entries are SHARED where two keys resolved to one
+ *   file. `approx`, parallel too, is null where the file's glyphs are what the
+ *   page painted for that key and otherwise the sentence saying why they are
+ *   not (`substitution`): such a face still embeds, and still must not be
+ *   painted with.
  */
 export async function resolveFaces(fontKeys, pointsOfFk, rules, cache, report) {
   const byFamily = new Map()
@@ -231,11 +329,13 @@ export async function resolveFaces(fontKeys, pointsOfFk, rules, cache, report) {
 
   const faceByUrl = new Map()
   const out = []
+  out.approx = []
   const failed = new Map() // one sentence per distinct failure, however many keys hit it
 
   for (let i = 0; i < fontKeys.length; i++) {
     const fk = fontKeys[i]
     out.push(null)
+    out.approx.push(null)
     const points = pointsOfFk[i] || new Set()
     for (const name of splitTop(fk.stack, ',').map(unquote)) {
       if (!name || GENERIC.has(name.toLowerCase())) continue
@@ -249,8 +349,13 @@ export async function resolveFaces(fontKeys, pointsOfFk, rules, cache, report) {
       const label = `"${winner.family}" ${fk.weight}${fk.italic ? ' italic' : ''}`
 
       let face = null
+      let why = null
       for (const url of srcCandidates(winner.src, winner.base)) {
-        if (faceByUrl.has(url)) { face = faceByUrl.get(url); break }
+        if (faceByUrl.has(url)) {
+          face = faceByUrl.get(url)
+          why = substitution(winner, fk, face.axes)
+          break
+        }
         let entry = cache.get(url)
         if (!entry) {
           const bytes = /^data:/i.test(url) ? dataUriBytes(url) : await fetchBytes(url, 8000)
@@ -262,19 +367,25 @@ export async function resolveFaces(fontKeys, pointsOfFk, rules, cache, report) {
               entry = { error: container.error }
             } else {
               const parsed = parseFont(container.sfnt)
-              entry = parsed.error ? { error: parsed.error } : { parsed, sfnt: container.sfnt }
+              entry = parsed.error
+                ? { error: parsed.error }
+                : { parsed, sfnt: container.sfnt, axes: variationAxes(container.sfnt) }
             }
           }
           cache.set(url, entry)
         }
         if (!entry.error) {
-          face = { parsed: entry.parsed, sfnt: entry.sfnt, label }
+          face = { parsed: entry.parsed, sfnt: entry.sfnt, label, axes: entry.axes || [] }
           faceByUrl.set(url, face)
+          why = substitution(winner, fk, face.axes)
           break
         }
         failed.set(`${label}: ${entry.error}`, true)
       }
-      if (face) out[i] = face
+      if (face) {
+        out[i] = face
+        out.approx[i] = why && `"${winner.family}" ${fk.weight}${fk.italic ? ' italic' : ''}: ${why}`
+      }
       break // first non-generic family with rules decides, matching the browser
     }
   }
