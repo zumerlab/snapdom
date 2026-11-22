@@ -97,18 +97,19 @@ Links work for `http:`, `https:`, `mailto:` and `tel:`. Any other link is left o
 | Option | Default | What it does |
 |---|---|---|
 | `embedFonts` | `true` | Embed the page's web fonts, only the letters the document uses. `'full'` embeds whole fonts; `false` none. |
-| `vectorText` | `false` | Draw the text as real letters instead of pixels: sharp at any zoom. |
+| `vectorText` | `true` | Draw the text as real letters instead of pixels: sharp at any zoom and a lighter file. `false` keeps all the text in the image. |
 
 The PDF can only embed fonts the capture carries, so capture with `snapdom(el, { embedFonts: true })`. Web fonts in TTF, OTF, WOFF and WOFF2 embed. System fonts have no file to embed. Copying text works the same with or without embedded fonts.
 
-`vectorText` needs embedded fonts, and draws a text only when the font file holds the letters the page shows. These stay as image:
+Text is drawn as real letters wherever the page's own font file can draw it, which needs embedded fonts. The rest stays as image, so the page always looks as it does on screen. These stay as image:
 
 - right-to-left and complex scripts;
 - a variable font at a weight other than the one its file was saved in;
 - bold or italic the browser fakes because the page loaded no file for it;
 - translucent or outlined text;
 - small caps, tabular or old-style figures and other `font-feature-settings`;
-- a word the browser hyphenated, and a word with a letter the font lacks.
+- a word the browser hyphenated, and a word with a letter the font lacks;
+- any text in a system font: the browser does not hand over its file.
 
 The letters that are drawn leave the page image, so each one is in the file once: the PDF gets lighter and the text has no soft edge around it. Underlines, shadows and backgrounds stay in the image. A text that cannot be taken out of the image, such as the value of a form control, is not drawn and stays as image. This needs a `@zumer/snapdom` newer than 3.8.2; with an older one the letters are drawn over the image.
 
@@ -218,7 +219,7 @@ If the PDF does not match the page, [open an issue](https://github.com/zumerlab/
 
 ## Limits
 
-- Text is an image unless you use `vectorText`, so a deep zoom shows the capture's resolution.
+- Text in a system font is an image, so a deep zoom shows the capture's resolution. Text in a web font is drawn as letters.
 - Closed shadow roots cannot be read.
 - Date inputs are written in ISO format, not as the browser shows them.
 - An element used as header, footer or watermark has no selectable text. A repeated table header has no links.

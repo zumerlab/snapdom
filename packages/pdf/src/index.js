@@ -733,7 +733,7 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
     watermark = null,
     fields = true,
     embedFonts = true,
-    vectorText = false,
+    vectorText = true,
     encrypt: encryptSpec = null,
     meta: docMeta = null,
   } = options
@@ -1430,8 +1430,11 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
         natEff = natural + [...run.text].length * run.tracking
       }
       vectorPainted++
-    } else if (vectorText && !image && tr === 3) {
+    } else if (options.vectorText === true && !image && tr === 3) {
       // Nothing will show this run: no raster beneath it, and it was not painted.
+      // Counted only for a caller who ASKED for painted text. Painting is the
+      // default now, and an image-free export that never mentioned it is the
+      // searchable-layer-only file it always was, which has nothing to report.
       vectorMissed++
     }
     const tz = (natEff > 0 ? Math.max(1, Math.min(1000, (run.width / natEff) * 100)) : 100).toFixed(2)

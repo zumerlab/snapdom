@@ -22,6 +22,8 @@
  *    drawn without its glyph fill, the underline and the shadow it carries stay,
  *    nothing is lost next to the browser's own raster, and a later export of
  *    the same capture still gets the whole image.
+ *  - All of it is the default: an export with no options paints what its fonts
+ *    can draw, and `vectorText: false` is how to keep every glyph in the image.
  *  - `substitution`, `variationAxes`, `withoutGlyphs` and `wrapperIsInert`, the
  *    pure functions behind it.
  *
@@ -162,6 +164,22 @@ if (raster.error || glyphs.error) {
     assert(messages(again).some(m => /left out of the page image/.test(m)),
       'an export served from the image cache still reports what its image holds')
   }
+}
+
+// ——— painting text as glyphs is what happens when nobody asks ————————————————————
+{
+  console.log('\nthe default')
+  const [byDefault, off, imageFree] = await page.evaluate(() => window.__exportMany([{}, { vectorText: false }, { image: false }]))
+  assert(byDefault.report.vectorText === 7 * 3 + 2 && messages(byDefault).some(m => /left out of the page image/.test(m)),
+    `an export with no options paints the text its fonts can draw and clears it from the image (${byDefault.report.vectorText} runs)`)
+  assert(off.report.vectorText === 0 && !messages(off).some(m => /painted as real vector glyphs/.test(m)),
+    `vectorText:false paints none and says nothing about it (${off.report.vectorText} runs)`)
+  assert(Buffer.from(byDefault.base64, 'base64').length < Buffer.from(off.base64, 'base64').length,
+    `the default file is the lighter one (${Buffer.from(byDefault.base64, 'base64').length} B against ${Buffer.from(off.base64, 'base64').length} B)`)
+  // An image-free export that never mentioned vector text is the searchable-layer file it
+  // always was: it must not start warning that text it never promised to show is not shown.
+  assert(!messages(imageFree).some(m => /could not be painted as vector/.test(m)),
+    'an image-free export that did not ask for painted text is not warned about text it cannot paint')
 }
 
 // ——— the revised SVG ————————————————————————————————————————————————————————

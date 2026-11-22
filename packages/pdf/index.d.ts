@@ -180,7 +180,7 @@ export interface PdfReport {
    * configurable; the `ua-withheld` warning names the blockers when false.
    */
   pdfua: boolean
-  /** Text runs `vectorText` painted as real glyphs. 0 when it is off. */
+  /** Text runs painted as real glyphs. 0 when `vectorText` is off or no font could paint any. */
   vectorText: number
 }
 
@@ -234,7 +234,7 @@ export interface PdfExportOptions {
    * be taken out of the image — a form control's value — is then left as image.
    * Needs a core with `ctx.exports.editSvg`; on an older one the glyphs
    * overpaint the raster. Pair with `image: false` for a tiny, fully-vector
-   * text PDF. Default false.
+   * text PDF. Default true; `false` leaves every glyph in the page image.
    */
   vectorText?: boolean
   cover?: Element | null
