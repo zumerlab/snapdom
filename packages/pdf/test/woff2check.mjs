@@ -2,7 +2,7 @@
  * WOFF2 -> sfnt: the Brotli decoder and the table reconstruction, against things
  * that are not this code.
  *
- *   node test/verify-woff2.mjs
+ *   node test/woff2check.mjs
  *
  * Three questions, three referees:
  *
@@ -44,7 +44,7 @@ check('the static dictionary is the Brotli project\'s, byte for byte',
 
 {
   const text = fs.readFileSync(path.join(REPO, 'README.md'))
-  const html = fs.readFileSync(path.join(ROOT, 'demo', 'vector.html'))
+  const html = fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'mega.html'))
   const code = fs.readFileSync(path.join(ROOT, 'src', 'writer', 'brotli.js'))
   const font = fs.readFileSync(path.join(ROOT, 'demo', 'fonts', 'Inter-400.ttf')).subarray(0, 300000)
   // Fixed bytes rather than random ones: a failure has to be the same failure tomorrow.
@@ -182,7 +182,7 @@ const browser = await (await loadChromium(ROOT)).launch()
 try {
   const page = await browser.newPage()
   const { errors } = instrument(page)
-  await page.goto(`http://localhost:${server.port}/test/fixtures/mathml.html`)
+  await page.goto(`http://localhost:${server.port}/test/fixtures/fonts.html`)
   for (const [file, { variable }] of FONTS) {
     setFixture(path.basename(file))
     const r = await page.evaluate(async ({ url, variable }) => {
@@ -238,7 +238,7 @@ try {
         }
       }
       return { accepted: true, off, ink, widths, glyphs: parsed.numGlyphs, sampled: sample.length, runs: runs.join(', '), ms, from: bytes.length, to: read.sfnt.length }
-    }, { url: `/snapdom-v3/${file}`, variable: !!variable })
+    }, { url: `/snapdom/${file}`, variable: !!variable })
     if (r.error) { check('the WOFF2 is rebuilt into an sfnt', false, r.error); continue }
     check('the browser accepts the rebuilt sfnt as a font', r.accepted === true, r.accepted ? `${(r.from / 1024).toFixed(0)} kB -> ${(r.to / 1024).toFixed(0)} kB in ${r.ms.toFixed(0)}ms` : r.why)
     if (!r.accepted) continue

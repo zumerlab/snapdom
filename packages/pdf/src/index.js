@@ -31,8 +31,8 @@
  * Requires the SnapDOM plugin contract that exposes immutable capture metadata,
  * raw export options and pre-decode canvas crops (SnapDOM v3).
  */
-// `src/writer/` is the byte-level half, and it is this product's own source. It
-// was a package shared with a sibling product once, which is why it still knows
+// `src/writer/` is the byte-level half, and the only copy of it. It was a
+// package shared with the vector engine once, which is why it still knows
 // nothing about text layers or page models and why `setWarnPrefix` exists — that
 // is what makes a warning raised down there say `[snapdom-pdf]` to the person who
 // bought this. Nothing of it reaches the buyer as a separate file; it is bundled.

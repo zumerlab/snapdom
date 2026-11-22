@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="icon" href="data:,">
+<title>fixture: svd — the vector page, from the engine's own document</title>
+<script type="importmap">
+{ "imports": { "@zumer/snapdom": "/snapdom/dist/snapdom.mjs",
+  "@zumer/snapdom-vector/box-geometry": "/node_modules/@zumer/snapdom-vector/src/emit/box-geometry.js" } }
+</script>
+<style>
+  body { margin: 0; padding: 24px; background: #eef1f5; }
+  #target { width: 420px; background: #fff; padding: 20px; color: #111; font: 16px/1.5 Arial, Helvetica, sans-serif; }
+  .card { border: 2px dashed #36c; border-radius: 10px; padding: 12px; background: linear-gradient(90deg, #fde, #def); }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p { margin: 0; }
+</style>
+</head>
+<body>
+<div id="target">
+  <div class="card">
+    <h1>VectorPageHeading</h1>
+    <p>DrawnNotPictured sentence of ordinary words.</p>
+  </div>
+</div>
+<script type="module">
+  import { snapdom } from '@zumer/snapdom'
+  // The engine's SOURCE, by path, and only in this test: its published bundle
+  // hands out SVG, not the document, and how this plugin is to ask for that
+  // document in a real capture has not been decided (see src/svd-pdf.js).
+  import { vector } from '/node_modules/@zumer/snapdom-vector/src/index.js'
+  import { svdToPdf } from '/src/svd-pdf.js'
+
+  window.__vectorPage = async () => {
+    try {
+      const shot = await snapdom(document.getElementById('target'), { plugins: [vector({ silent: true })], scale: 1, dpr: 1 })
+      const doc = await shot.toVector()
+      const bytes = await svdToPdf(doc, { compress: false })
+      let raw = ''
+      for (let i = 0; i < bytes.length; i += 0x8000) raw += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000))
+      return { base64: btoa(raw), nodes: JSON.stringify(doc).length, diagnostics: (bytes.diagnostics || []).length }
+    } catch (error) {
+      return { error: String(error && error.stack || error) }
+    }
+  }
+  window.__ready = true
+</script>
+</body>
+</html>

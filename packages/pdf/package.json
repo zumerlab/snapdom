@@ -41,6 +41,9 @@
     "type": "github",
     "url": "https://github.com/sponsors/tinchox5"
   },
+  "dependencies": {
+    "@zumer/snapdom-vector": "^1.0.3"
+  },
   "peerDependencies": {
     "@zumer/snapdom": "^3.4.0"
   },

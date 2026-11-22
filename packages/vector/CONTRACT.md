@@ -393,8 +393,8 @@ for the side that sees them:
   carries two unrelated things at once — the caps half (`small-caps`,
   `all-small-caps`, …), which repaints letters, and the OpenType half
   (`tabular-nums`, `lining-nums`, `slashed-zero`, …), which selects figures and
-  ligatures. Backends split it themselves (`emit/pdf.js` `splitSmallCaps`,
-  `emit/figma-json.js` `variantOf`); there is no second field, so nobody has two
+  ligatures. Backends split it themselves (the PDF plugin's vector page,
+  `splitSmallCaps`, and `emit/figma-json.js` `variantOf`); there is no second field, so nobody has two
   places to look.
 - **`strokeWidth` / `strokeColor` are `-webkit-text-stroke`**, resolved
   (`strokeColor` falls back to `color`, and is `null` when the width is 0). It is
@@ -692,25 +692,6 @@ as `font-feature-settings`); `-webkit-text-stroke` when the runs of a block
 disagree, because a Figma stroke is per-NODE and applying it would contour glyphs
 the page does not contour; and per-range baseline shift.
 
-### `packages/vector/src/emit/pdf.js`
-
-```js
-/**
- * @param {SVDDocument} doc
- * @param {object} [options]  {compress, background, shadowLayers, quality,
- *                             onDiagnostic, onWarn, pages, links}
- * @returns {Promise<Uint8Array>}  the bytes, with a non-enumerable `diagnostics`
- */
-export async function svdToPdf (doc, options = {})
-```
-The third backend, and the one with the smallest primitive set: PDF has no blur,
-so every blurred shadow is `shadowLayers` concentric copies, and it has no
-colour-matrix either. `pages` is finished page geometry from a caller that owns
-the pagination — this emitter paginates nothing on its own. The diagnostics ride
-on the returned array AND are written into the file as an uncompressed object off
-the catalog, so `strings out.pdf` finds them: an approximation that only reaches a
-stream nobody opens is a silent degradation.
-
 ### `packages/vector/src/index.js`
 
 ```js
@@ -817,8 +798,8 @@ ordinary collectors already read. Two checkboxes in one box is worse than none.
 
 **Who reads it.** `emit/svg-flat.js` draws it (`emit.svg.control-reconstructed`, grade
 A, one per control: a reconstruction is not a capture). `emit/figma-json.js` and
-`emit/pdf.js` ignore it, so the widget is missing there and `B4.form-control` remains
-the whole story on those two paths.
+the PDF plugin's vector page ignore it, so the widget is missing there and
+`B4.form-control` remains the whole story on those two paths.
 
 ## What the Figma importer does — read `FIGMA_FINDINGS.md` before changing an emitter
 
@@ -862,34 +843,40 @@ lossless one.** For text metrics the Plugin API payload is strictly richer —
 `letter-spacing`, per-range small caps and a text stroke all survive it and none
 of them survives a paste. See the TEXT block under `emit/figma-json.js`.
 
-## PDF and Vector stay independent
+## The engine writes no PDF
 
-Both exporters are MIT licensed and ship as their own packages, `@zumer/snapdom-pdf` and `@zumer/snapdom-vector`
-(`packages/pdf` and `packages/vector`), and **neither may import the
-other.** The rule started as a licence boundary, when `@zumer/snapdom-pdf` and
-`@zumer/snapdom-vector` were sold separately, and it stays because each exporter can
-then be shipped and fixed on its own.
+Everything that writes PDF belongs to `@zumer/snapdom-pdf` (`packages/pdf`): the
+byte-level writer, the font reader behind it, and the backend that turns an SVD into
+drawing operators. **This package contains none of it**, and the dependency runs one
+way: the PDF plugin may import this package; nothing here may import the PDF plugin.
 
 The history is worth keeping because it is the reason for the shape. Until 2026-08-08
-`emit/pdf.js` imported the byte-level writer through `../../../pdf/src/pdf-writer.js`
-— a relative path into the other product, undeclared in `package.json`, and visible to
-users as `[snapdom-pdf]` warnings coming out of a vector capture. It was then lifted
-into a shared private package, `@zumer/pdf-writer`, that both plugins depended on by
-name and each build inlined. On 2026-08-28 the PDF product moved to a repository of
-its own, and the shared package went with the split: **each product now owns its copy
-of the writer as source** — `packages/vector/src/writer/` here, `src/writer/` there.
+`emit/pdf.js` lived here and imported the writer through
+`../../../pdf/src/pdf-writer.js` — a relative path into the other product, undeclared
+in `package.json`. The writer was then lifted into a shared private package,
+`@zumer/pdf-writer`, and on 2026-08-28, when the two products were split, each took a
+copy of it as source on the rule that neither may import the other. That rule bought
+independence and charged for it in drift: by 2026-11-22 the copies differed in
+`encrypt.js`, where the PDF plugin had replaced derived secrets with random ones and
+the copy here had not.
 
-That trade is deliberate and it is not free. Nothing can leak between the two any
-more, and nothing can be fixed in both at once either: a correction here does not
-reach the PDF product, and the two will drift. That is the cost of the boundary being
-a repository rather than a rule.
+The copy here was never the one a user reached. This package publishes SVG and Figma;
+its PDF backend was internal, exported by nothing, and the writer served only that
+backend. So the rule was withdrawn (founder decision, 2026-11-22): the writer exists
+once, in the PDF plugin, and the backend moved there with it as `src/svd-pdf.js`.
 
 Two rules follow:
 
-- **Nothing in `src/writer/` may name a product or know what it is drawing.** The
-  warning prefix is injected by whoever loaded it (`setWarnPrefix`).
-- **A module only this product needs belongs to this product.** There is no shared
-  package left to put it in, and reaching into the other repository is not available.
+- **A module only one product needs belongs to that product.** Check who imports a
+  thing before deciding where it lives.
+- **What the PDF plugin imports from here is an interface.** Today that is
+  `./box-geometry` (`src/emit/box-geometry.js`), the box and border geometry every
+  backend must agree on. Renaming one of its exports breaks the other package.
+
+How the PDF plugin gets an SVD out of a real capture is NOT settled. The published
+bundle hands out SVG and Figma, not the document, and this engine still enters the
+pipeline as a plugin of its own. Until that is decided the PDF plugin's vector page is
+exercised only by its test, which imports this package's source by path.
 
 ## House rules
 

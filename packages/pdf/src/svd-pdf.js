@@ -1,20 +1,26 @@
 /**
- * SVD -> PDF. The vector backend.
+ * SVD -> PDF. The vector page.
  *
- * The sibling product, `@zumer/snapdom-pdf`, writes a raster page with an
- * invisible text layer on top. This file writes the other thing: the page is PDF
- * *drawing operators* built from the SVD, so a box is a path, a gradient is a
- * shading, and a line of text is a `Tj` at its measured baseline. Nothing is
- * rasterized here that did not arrive as a raster in `doc.assets`.
+ * `index.js` writes a raster page with a text layer over it. This file writes
+ * the other thing: the page is PDF *drawing operators* built from an SVD, the
+ * document the vector engine (`@zumer/snapdom-vector`) describes a capture
+ * with, so a box is a path, a gradient is a shading, and a line of text is a
+ * `Tj` at its measured baseline. Nothing is rasterized here that did not arrive
+ * as a raster in `doc.assets`.
  *
- * The byte-level writer under `../writer/` is this product's own source. It was a
- * package shared with the PDF product while both lived in one repository; they are
- * separate repositories now and each owns its copy outright. The two are free to
- * diverge and neither can break the other — which is the point, and also the
- * price: a fix here does not reach the other one.
+ * **Nothing calls it yet.** It lived inside the engine, reachable from no public
+ * export, and moved here on 2026-11-22 because everything that writes PDF
+ * belongs to this plugin and the engine writes none. `toPdf()` still draws the
+ * raster page; wiring this in needs the engine running in the capture pipeline,
+ * which is a decision that has not been taken. `test/svdcheck.mjs` keeps it
+ * loading and writing a readable file until then.
  *
- * It is the sibling of `svg-flat.js` and it follows the same reading of the SVD
- * invariants:
+ * It writes through the same `./writer/` as the raster page, and takes from the
+ * engine the one thing both of their backends must agree on: where a box is
+ * really painted and how a dashed side is spaced (`box-geometry`).
+ *
+ * It is the sibling of the engine's `svg-flat.js` and it follows the same
+ * reading of the SVD invariants:
  *
  *  - Children are emitted sorted by `paint.z` (invariant 3), never re-derived.
  *  - `blur` is the CSS radius, so every Gaussian sigma here is `blur / 2`
@@ -62,21 +68,11 @@
  * is not already a JPEG needs a canvas to re-encode, and that path is taken only
  * when a DOM is present. Without one it degrades, loudly.
  */
-// The byte-level writer, from the internal package both paid plugins share. It
-// used to be a relative path into `packages/pdf`, which made this product import
-// the other product's source: undeclared, unbuildable on its own, and a licence
-// question nobody wanted to answer. the vendored writer is bundled into this
-// build and into that one separately, so the two plugins ship with no reference
-// to each other. Nothing above the object table is shared, and nothing here may
-// import from `packages/pdf` again.
 import {
   createPdfDoc, pdfString, BASE14, deflate, canDeflate, createUnicodeFont, encodeImage,
-  setWarnPrefix,
-} from '../writer/index.js'
-import { sfntFromBytes, parseFont, createEmbeddedFont } from '../writer/font.js'
-import { sideDashes, doubleBand, paintedBox } from './box-geometry.js'
-
-setWarnPrefix('[snapdom-vector]')
+} from './writer/index.js'
+import { sfntFromBytes, parseFont, createEmbeddedFont } from './writer/font.js'
+import { sideDashes, doubleBand, paintedBox } from '@zumer/snapdom-vector/box-geometry'
 
 /** CSS px -> PDF points (96dpi -> 72dpi). PDF's own unit, not a shared constant. */
 const PT = 0.75
