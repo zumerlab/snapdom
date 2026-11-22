@@ -777,6 +777,25 @@ export function validate (doc) {
   if (doc.capture !== undefined && !isObject(doc.capture)) {
     push(`capture must be an object (got ${show(doc.capture)})`)
   }
+  // Optional: the area an export covers when it is not the root's own box, in
+  // root-local px, and the page canvas colour shown where that area is not the root.
+  if (isObject(doc.capture) && doc.capture.frame !== undefined) {
+    const frame = doc.capture.frame
+    if (!isObject(frame)) push(`capture.frame must be an object (got ${show(frame)})`)
+    else {
+      for (const k of ['x', 'y']) if (!isNum(frame[k])) push(`capture.frame.${k} must be a finite number (got ${show(frame[k])})`)
+      for (const k of ['w', 'h']) if (!isNum(frame[k]) || !(frame[k] > 0)) push(`capture.frame.${k} must be a finite number > 0 (got ${show(frame[k])})`)
+    }
+  }
+  if (isObject(doc.capture) && doc.capture.rootShadow !== undefined && typeof doc.capture.rootShadow !== 'boolean') {
+    push(`capture.rootShadow must be a boolean (got ${show(doc.capture.rootShadow)})`)
+  }
+  if (isObject(doc.capture) && doc.capture.canvas !== undefined) {
+    const canvas = doc.capture.canvas
+    if (!isObject(canvas) || !Array.isArray(canvas.color) || canvas.color.length < 3 || !canvas.color.every(isNum)) {
+      push(`capture.canvas must be {color: [r, g, b, a]} (got ${show(canvas)})`)
+    }
+  }
   if (doc.report !== undefined && !isObject(doc.report)) {
     push(`report must be an object (got ${show(doc.report)})`)
   }

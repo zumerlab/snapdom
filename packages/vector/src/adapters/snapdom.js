@@ -90,8 +90,17 @@ const MARK = 'data-snapdom-vector'
  * a `<div>` that was 968px wide live came out 340px wide in the clone, and every
  * line in it wrapped somewhere else. `sizeHost` puts the width back — this
  * constant is only what does not depend on the element.
+ *
+ * `all:revert` comes first because the host is a `<div>` in the user's page, and
+ * the user's page has opinions about divs. MEASURED on a page whose whole
+ * stylesheet is `div{padding:1em;max-width:600px;margin:2em auto;background:…}`:
+ * the host took all four, the `<body>` clone inside it was laid out 600px wide and
+ * 32px down instead of 1264px wide at the origin, and every box in the capture was
+ * somewhere else (`drift` 664px). `revert` hands the host back to the browser's
+ * own defaults for a div, leaves inheritance from `<body>` exactly as it was, and
+ * — being inline — outranks every rule the page has that is not `!important`.
  */
-const HOST_CSS = 'position:fixed;left:-99999px;top:0;contain:layout style;display:block;'
+const HOST_CSS = 'all:revert;position:fixed;left:-99999px;top:0;contain:layout style;display:block;'
 
 /**
  * Give the host the box the clone root had on the page, so a root with
@@ -103,24 +112,45 @@ const HOST_CSS = 'position:fixed;left:-99999px;top:0;contain:layout style;displa
  * layout box. `cs.width`/`cs.height` are the used content box, in subpixels,
  * with no transform applied.
  *
- * Margins are added back because the host is the clone root's containing block
- * now: a block child with `margin:0 24px` would otherwise lay out 48px narrower
- * than it did on the page.
+ * Margins are added back only when the clone still HAS them. The host is the clone
+ * root's containing block, so a block child with `margin:0 24px` needs 48px more
+ * than its border box to lay out as wide as it did on the page — but snapdom zeroes
+ * the root's margin on the clone (`core/prepare.js`, "whatever placed it in the page
+ * is zeroed"), and a host that still leaves room for a margin the clone no longer
+ * has makes a `width:auto` root that much WIDER than the element it copies.
+ * MEASURED on a `<body>` with the default 8px margin in a 1280px window: the live
+ * body is 1264px wide, the clone came out 1280px, and every line in the page had
+ * 16px more room to wrap in (`drift` 16px). The clone's own inline value decides;
+ * the live margin is the fallback for a snapdom that leaves the clone's alone.
  *
  * @param {HTMLElement} host
  * @param {Element} element live capture root
+ * @param {Element} [clone] the clone root, read for the margin it actually carries
  */
-function sizeHost (host, element) {
+function sizeHost (host, element, clone) {
   const cs = typeof getComputedStyle === 'function' ? getComputedStyle(element) : null
   if (!cs) return
   const n = (v) => {
     const value = parseFloat(v)
     return Number.isFinite(value) ? value : 0
   }
-  const w = n(cs.width) + n(cs.paddingLeft) + n(cs.paddingRight) +
-    n(cs.borderLeftWidth) + n(cs.borderRightWidth) + n(cs.marginLeft) + n(cs.marginRight)
-  const h = n(cs.height) + n(cs.paddingTop) + n(cs.paddingBottom) +
-    n(cs.borderTopWidth) + n(cs.borderBottomWidth) + n(cs.marginTop) + n(cs.marginBottom)
+  // An inline px length on the clone is what will be used; anything else (unset,
+  // `auto`, a percentage) leaves the live used value as the best answer there is.
+  const margin = (side) => {
+    const own = clone && clone.style ? clone.style[side] : ''
+    return /^-?[\d.]+(px)?$/.test(own) ? n(own) : n(cs[side])
+  }
+  // Under `box-sizing:border-box` the used `width`/`height` ARE the border box, and
+  // adding padding and border again makes the host — and with it a `width:auto`
+  // clone — wider than the page ever was. MEASURED: a border-box `<div>` with 20px
+  // padding and a 2px border, 352px wide live, came out 396px in the clone.
+  const borderBox = cs.boxSizing === 'border-box'
+  const w = n(cs.width) +
+    (borderBox ? 0 : n(cs.paddingLeft) + n(cs.paddingRight) + n(cs.borderLeftWidth) + n(cs.borderRightWidth)) +
+    margin('marginLeft') + margin('marginRight')
+  const h = n(cs.height) +
+    (borderBox ? 0 : n(cs.paddingTop) + n(cs.paddingBottom) + n(cs.borderTopWidth) + n(cs.borderBottomWidth)) +
+    margin('marginTop') + margin('marginBottom')
   // A zero here would be worse than leaving the host to shrink-wrap: it would
   // collapse the clone instead of merely letting it choose its own width.
   if (w > 0) host.style.width = `${w}px`
@@ -330,10 +360,52 @@ function synthRulesFrom (clone, nodeMap, styleMap) {
     // every fixture regressed at once, fx-table's pixel diff 1.83 → 11.39 and
     // fx-card's drift 0.00 → 20.88px. The wrapper's signature is exact; the
     // absence of a map entry is not evidence of anything.
-    if (nodeMap.get(el) && !stranded.has(el)) continue
+    // A node snapdom REPLACED is in the same position too, though it has a live
+    // counterpart: an `<iframe>` arrives as a `<div>` wrapping a picture of its
+    // document, and nothing the page said to the iframe reaches that div — not a
+    // tag selector, and not the iframe's own `style` attribute, which is where
+    // most iframes carry their border and which the wrapper does not copy.
+    // Measured on `<iframe style="border:1px solid #666">`: the wrapper mounted
+    // with no border at all, 2px shorter than the frame it stands for, and every
+    // box after it moved up by that much (`capture.clone-drift`, 2px).
+    //
+    // The iframe is one instance of a rule, not the rule: ANY clone node whose tag
+    // is not its live counterpart's has changed which tag selectors reach it. A
+    // `<canvas>` arrives as an `<img>` of its pixels, so the page's
+    // `canvas{display:block}` no longer matches and the image sits on a text
+    // baseline instead. Measured on two such canvases: 4px of descender gap under
+    // each, and everything below them 5.6px lower than on the page.
+    const live = nodeMap.get(el)
+    const replaced = !!live && live.nodeType === 1 && el.nodeType === 1 &&
+      typeof live.tagName === 'string' && live.tagName !== el.tagName
+    if (live && !stranded.has(el) && !replaced) continue
     if (el.getAttribute && el.getAttribute('data-snapdom-pseudo') === FIRST_LETTER) continue
     const key = styleMap.get(el)
-    if (!key) continue
+    if (!key) {
+      // An invented node with no snapshot is one of snapdom's own helpers — the
+      // `<img>` an icon-font glyph is drawn into, the zero-width strut beside it —
+      // and its inline style is the whole of its styling. The page's rules must
+      // not add to it, and they do: a page that says `img{display:block;margin:
+      // 1rem 0}` put each icon on a line of its own. Measured on a card with two
+      // icons: 81px taller than the page, 42% of its pixels wrong. `revert` rolls
+      // every property back to what the browser gives the tag with no author rule
+      // at all, which leaves inheritance and the inline style exactly as they are.
+      //
+      // Only a node that carries nothing a selector could have been written for —
+      // no class, no id — and an inline style of its own. An invented node that
+      // KEEPS a class is a copy of something the page styles (the pre-composed
+      // backdrop of a `backdrop-filter` is a copy of real elements), and taking
+      // the page's rules away from it empties it: measured, a glass card lost 5 of
+      // its 21 nodes that way.
+      const helper = !live && el.nodeType === 1 && !el.hasAttribute('class') && !el.hasAttribute('id') &&
+        el.hasAttribute('style')
+      if (helper) {
+        el.setAttribute(SYNTH, String(n))
+        css += `[${MARK}="clone-host"] [${SYNTH}="${n}"]{all:revert}`
+        n++
+      }
+      continue
+    }
     // Keyed on a per-node attribute rather than the shared `cN` class: one key
     // can be shared by an invented node and a real one, and the real one must
     // keep the cascade it already lays out correctly under.
@@ -414,6 +486,8 @@ function laysOut (el, rect) {
  * @property {Map<Node, string>} styleMap  clone node -> style key
  * @property {string} fontsCSS     `@font-face` rules snapdom embedded, '' when none
  * @property {string} classCSS     every rule snapdom generated for this capture
+ * @property {((node: Element) => Element)|null} own  snapdom's own marker for helper
+ *   nodes mounted in the live document, when this snapdom hands one over
  */
 
 /**
@@ -680,6 +754,8 @@ export function handoffFrom (state) {
     styleMap: session ? session.styleMap : undefined,
     fontsCSS: state.fontsCSS || '',
     classCSS: state.classCSS || '',
+    // Absent on a snapdom that predates it; `mountClone` then mounts unmarked, as before.
+    own: state.options && typeof state.options.__ownNode === 'function' ? state.options.__ownNode : null,
   }
 }
 
@@ -721,7 +797,7 @@ export function handoffFrom (state) {
  *   capture.
  */
 export function mountClone (handoff) {
-  const { element, clone, nodeMap, styleMap, fontsCSS, classCSS } = handoff || {}
+  const { element, clone, nodeMap, styleMap, fontsCSS, classCSS, own } = handoff || {}
   if (!element || element.nodeType !== 1) {
     throw new Error('mountClone: the hand-off carries no live element')
   }
@@ -740,19 +816,50 @@ export function mountClone (handoff) {
   // that uses the families. All three go in ONE <style> so unmounting is one
   // removal, and the synthesized-node rules go last because nothing else in the
   // document says anything about those nodes.
-  const style = document.createElement('style')
+  // The clone is mounted in the document its element lives in, which is not always
+  // this one: an element captured INSIDE a same-origin iframe is styled by that
+  // frame's sheets, and those are the only rules that can style its clone. Mounted
+  // in the top document instead it met none of them — measured on an italic 30px
+  // Georgia heading with a border, which came out as 16px unstyled text, 62% wrong.
+  const doc = element.ownerDocument || document
+  const style = doc.createElement('style')
   style.setAttribute(MARK, 'clone-css')
   style.textContent = (fontsCSS || '') + prefix.css + synthCSS
-  document.head.appendChild(style)
+  // Both nodes this function adds to the page are declared snapdom's own BEFORE they
+  // are connected. snapdom watches the document to know when its memoised styles went
+  // stale, and an unmarked <style> in <head> plus an unmarked <div> in <body> told it
+  // the page had changed on every single export: the next capture of ANYTHING — this
+  // exporter's own included — re-read every computed style. MEASURED on a 500-row
+  // table: 432ms per repeated export unmarked, 287ms marked, same SVG byte for byte.
+  // The rules in `style` only target the clone's prefixed classes and its synthesized
+  // nodes, so the page they are hidden from is the page snapdom memoised.
+  if (own) own(style)
+  ;(doc.head || doc.documentElement).appendChild(style)
 
-  const host = document.createElement('div')
+  const host = doc.createElement('div')
   host.setAttribute(MARK, 'clone-host')
   host.setAttribute('aria-hidden', 'true')
   host.style.cssText = HOST_CSS
-  sizeHost(host, element)
+  if (own) own(host)
+  sizeHost(host, element, clone)
+  // The zoom the element lives under, when an ancestor between it and <body>
+  // declares one: the host is a child of <body> and inherits only what <body>
+  // has. `zoom` is layout, not paint — under 1.3125 a 1px border is 0.762px of
+  // the element's own px, and a grid of bordered cells laid out without it came
+  // out 43px taller than on the page (MEASURED, `drift` 201px). The host takes the
+  // difference, so the clone is laid out in the same px the element was.
+  try {
+    const parent = element.parentElement
+    const body = doc.body || doc.documentElement
+    const above = parent ? Number(parent.currentCSSZoom) : 1
+    const here = body ? Number(body.currentCSSZoom) : 1
+    if (above > 0 && here > 0 && Number.isFinite(above / here) && Math.abs(above / here - 1) > 1e-6) {
+      host.style.zoom = String(above / here)
+    }
+  } catch { /* no currentCSSZoom: the host stays unzoomed, as before */ }
   host.appendChild(clone)
   const isolatedRadios = isolateRadioGroups(clone)
-  document.body.appendChild(host)
+  ;(doc.body || doc.documentElement).appendChild(host)
 
   let unmounted = false
   const unmount = () => {

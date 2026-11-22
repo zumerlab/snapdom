@@ -134,6 +134,7 @@
  * had declared four approximations in a comment nobody opens.
  */
 import { toCssString } from '../css/color.js'
+import { sideDashes, doubleBand, paintedBox } from './box-geometry.js'
 
 /** How many flat wedges approximate one conic gradient. 2.8° each. */
 const CONIC_WEDGES = 128
@@ -150,8 +151,19 @@ const CONIC_SEAM = 0.4
  * antialiasing coverage sums to less than 1 and the backdrop shows through as a
  * pale ~6px blot (visible in `fx-card`'s ring). The disc is the fan's own mean
  * colour, which is what the limit of a conic gradient at its centre actually is.
+ *
+ * It is 1px and not the 3.5px it used to be because the fan is no longer
+ * antialiased at all: the group that holds the wedges asks for
+ * `shape-rendering="crispEdges"`. Antialiased, two wedges that share a boundary
+ * each cover a boundary pixel only in part and the parts do not add up to one —
+ * whatever the overlap between them — so the backdrop showed through along every
+ * one of the 128 boundaries as a moiré over the whole disc, and the 7px cap was a
+ * visible grey dot in its middle. MEASURED against the page's own conic: with
+ * crisp edges every pixel is one wedge's colour, the disc is smooth, and the
+ * shape's outline stays antialiased because that is the clip path's edge, not the
+ * wedges'. The 1px cap is kept for a renderer that ignores the hint.
  */
-const CONIC_APEX_PX = 3.5
+const CONIC_APEX_PX = 1
 
 const XML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;' }
 
@@ -1577,7 +1589,7 @@ function emitLayerBody(out, depth, fill, box, radii, defs, ctx, nodeId) {
     // far outside the shape — the fan disappeared entirely. Outer g clips, inner
     // g transforms.
     out.push(depth, `<g clip-path="url(#${fan.clipId})"${blend}>`)
-    out.push(depth + 1, `<g transform="${fan.transform}">`)
+    out.push(depth + 1, `<g transform="${fan.transform}" shape-rendering="crispEdges">`)
     for (const wedge of fan.wedges) out.push(depth + 2, wedge)
     out.push(depth + 1, '</g>')
     out.push(depth, '</g>')
@@ -1729,6 +1741,94 @@ function dashAttrs(stroke) {
 }
 
 /**
+ * One border side that is not a solid band: dashes, dots, or the two lines of
+ * `double`. Square boxes only — the caller keeps the quad for a rounded one.
+ *
+ * `double` is line / gap / line with both lines `(width + 1) / 3` whole pixels
+ * wide, Blink's rule (2/1/2 for 5px, 1/2/1 for 4px, measured on both); the gap is
+ * the background showing through, so nothing is painted there. The inner line
+ * stops short where a neighbouring side takes the corner.
+ *
+ * @returns {string[]|null} markup, or null when this side has to stay a quad
+ */
+function styledSide(name, style, weights, box, rgba) {
+  const [t, r, b, l] = weights
+  const { x: x0, y: y0, w, h } = box
+  const horizontal = name === 'top' || name === 'bottom'
+  const weight = { top: t, right: r, bottom: b, left: l }[name]
+  const length = horizontal ? w : h
+  // The band this side occupies, as [start, end] across its thickness.
+  const outer = { top: y0, bottom: y0 + h, left: x0, right: x0 + w }[name]
+  const inward = name === 'top' || name === 'left' ? 1 : -1
+
+  if (style === 'double') {
+    const third = doubleBand(weight)
+    if (third === null) return null
+    const band = (from, thickness, startInset, endInset) => {
+      const a = Math.min(from, from + inward * thickness)
+      return horizontal
+        ? `<rect x="${num(x0 + startInset)}" y="${num(a)}" width="${num(w - startInset - endInset)}" height="${num(thickness)}" ${paintAttrs(rgba)} data-side="${name}"/>`
+        : `<rect x="${num(a)}" y="${num(y0 + startInset)}" width="${num(thickness)}" height="${num(h - startInset - endInset)}" ${paintAttrs(rgba)} data-side="${name}"/>`
+    }
+    // Where a neighbour paints, the inner line starts after that neighbour's own band.
+    const before = horizontal ? l : t
+    const after = horizontal ? r : b
+    return [
+      band(outer, third, 0, 0),
+      band(outer + inward * (weight - third), third, before, after),
+    ]
+  }
+
+  const pattern = sideDashes(style, weight, length)
+  if (!pattern) return null
+  const mid = outer + inward * weight / 2
+  // A round dot is a zero-length dash under a round cap, and the cap adds half a
+  // width at each end, so the run starts and stops half a width inside the side.
+  const lead = pattern.round ? weight / 2 : 0
+  const [x1, y1, x2, y2] = horizontal
+    ? [x0 + lead, mid, x0 + w - lead, mid]
+    : [mid, y0 + lead, mid, y0 + h - lead]
+  const array = pattern.round
+    ? `0 ${num(pattern.dash + pattern.gap)}`
+    : `${num(pattern.dash)} ${num(pattern.gap)}`
+  return [`<line x1="${num(x1)}" y1="${num(y1)}" x2="${num(x2)}" y2="${num(y2)}" ${paintAttrs(rgba, 'stroke')} ` +
+    `stroke-width="${num(weight)}" stroke-dasharray="${array}"${pattern.round ? ' stroke-linecap="round"' : ''} data-side="${name}"/>`]
+}
+
+/** `box` grown by a per-side `[top, right, bottom, left]` outset; `box` itself when there is none. */
+/**
+ * `box` grown by a per-side `[top, right, bottom, left]` outset; `box` itself when
+ * there is none.
+ *
+ * With `abs` — the node's own box in root px, given only when nothing above it
+ * rotates or scales — every edge of the grown box is put on a whole pixel. The one
+ * stroke that carries an outset is a collapsed table border, and Chromium snaps
+ * those to the pixel grid: a grid line that layout left at x = 90.83 is painted as
+ * one crisp column, not smeared over two.
+ */
+function outsetBox(box, outset, abs) {
+  if (!Array.isArray(outset) || outset.length !== 4 || !outset.every((n) => Number.isFinite(Number(n)))) return box
+  const [t, r, b, l] = outset.map((n) => Math.max(0, Number(n)))
+  if (!(t || r || b || l)) return box
+  const grown = { x: box.x - l, y: box.y - t, w: box.w + l + r, h: box.h + t + b }
+  if (!abs || ![abs.x, abs.y].every((n) => typeof n === 'number' && Number.isFinite(n))) return grown
+  const left = Math.round(abs.x + grown.x)
+  const top = Math.round(abs.y + grown.y)
+  const right = Math.round(abs.x + grown.x + grown.w)
+  const bottom = Math.round(abs.y + grown.y + grown.h)
+  if (right <= left || bottom <= top) return grown
+  return { x: left - abs.x, y: top - abs.y, w: right - left, h: bottom - top }
+}
+
+/** `box` shrunk by a per-side `[top, right, bottom, left]` inset; `box` itself when there is none. */
+function insetBox(box, inset) {
+  if (!Array.isArray(inset) || inset.length !== 4 || !inset.every((n) => Number.isFinite(Number(n)))) return box
+  const [t, r, b, l] = inset.map((n) => Math.max(0, Number(n)))
+  if (!(t || r || b || l)) return box
+  return { x: box.x + l, y: box.y + t, w: Math.max(0, box.w - l - r), h: Math.max(0, box.h - t - b) }
+}
+
+/**
  * Per-side weights as four mitered quads. This is exact for square corners —
  * it is the same trapezoid the browser paints — and it is the only way to carry
  * four different weights or four different colours, neither of which a single
@@ -1753,8 +1853,13 @@ function emitPerSideStroke(out, depth, stroke, weights, box, radii, defs, ctx, n
   ]
   const perSide = Array.isArray(stroke.sides) ? stroke.sides : null
   const fallback = isObject(stroke.paint) && stroke.paint.type === 'solid' ? stroke.paint.color : [0, 0, 0, 1]
-  if (Array.isArray(stroke.dash) && stroke.dash.length) {
-    ctx.note(nodeId, 'a dashed border with per-side weights is emitted as four solid quads; the dash pattern is lost.',
+  // The style each side declares for itself, falling back to the stroke's own.
+  const styleOfSide = (i) => (perSide && isObject(perSide[i]) && typeof perSide[i].style === 'string'
+    ? perSide[i].style
+    : stroke.style)
+  const patterned = (style) => style === 'dashed' || style === 'dotted' || style === 'double'
+  if (rounded && [0, 1, 2, 3].some((i) => weights[i] > 0 && (styleOfSide(i) === 'dashed' || styleOfSide(i) === 'dotted'))) {
+    ctx.note(nodeId, 'a dashed border with per-side weights on a rounded box is emitted as four solid quads; the dash pattern is lost.',
       'emit.svg.stroke-dash-lost', 'O')
   }
   if (isObject(stroke.paint) && stroke.paint.type !== 'solid') {
@@ -1777,14 +1882,28 @@ function emitPerSideStroke(out, depth, stroke, weights, box, radii, defs, ctx, n
     if (!(weight > 0)) return
     const own = perSide && isObject(perSide[i]) && Array.isArray(perSide[i].color) ? perSide[i].color : null
     if (own && !(Number(own[3]) > 0)) return
+    // A dashed, dotted or double side of a square box is drawn as what it is. The
+    // solid quad is what is left for a rounded box and for a side too short to
+    // hold a pattern.
+    const style = styleOfSide(i)
+    const drawn = !rounded && patterned(style) ? styledSide(name, style, weights, box, own || fallback) : null
+    if (drawn) {
+      for (const markup of drawn) out.push(inner, markup)
+      return
+    }
     out.push(inner, `<path d="${d}" ${paintAttrs(own || fallback)} data-side="${name}"/>`)
   })
   if (inner !== depth) out.push(depth, '</g>')
 }
 
-function emitStrokes(out, depth, strokes, box, radii, defs, ctx, nodeId) {
+function emitStrokes(out, depth, strokes, outerBox, radii, defs, ctx, nodeId) {
   for (const stroke of strokes) {
     if (!isObject(stroke)) continue
+    // A stroke that starts inside the border edge (the inner band of a `groove` or
+    // `ridge`, `collect/box.js`) is an ordinary stroke of a smaller box.
+    // `outset` first (a collapsed table cell's border is centred on the cell's edge:
+    // half of each side lies outside the box, `collect/box.js`), then `inset`.
+    const box = insetBox(outsetBox(outerBox, stroke.outset, ctx.strokeAbs), stroke.inset)
     const raw = stroke.weight !== undefined ? stroke.weight : stroke.weights
     const weights = Array.isArray(raw)
       ? [0, 1, 2, 3].map((i) => Math.max(0, finite(raw[i])))
@@ -1800,7 +1919,15 @@ function emitStrokes(out, depth, strokes, box, radii, defs, ctx, nodeId) {
       ? stroke.sides.filter((s, i) => isObject(s) && weights[i] > 0 && Array.isArray(s.color))
       : []
     const sameColor = visible.every((s) => s.color.join() === visible[0].color.join())
-    if (!uniform || !sameColor) {
+    // A dashed or dotted border on a square box goes side by side too, even when
+    // one stroke COULD carry it: Chromium fits the dashes of each side to that
+    // side's own length, so every side starts and ends on ink, and one dash array
+    // run round the whole rectangle cannot do that — it turns the corners wherever
+    // the period happens to be. Measured on a 200x112 box with `3px dashed`: the
+    // page paints 6px dashes refitted per side, the single stroke painted 9px ones.
+    const patternedSquare = stroke.kind === 'border' && (stroke.style === 'dashed' || stroke.style === 'dotted') &&
+      !hasRadius(base) && isObject(stroke.paint) && stroke.paint.type === 'solid'
+    if (!uniform || !sameColor || patternedSquare) {
       emitPerSideStroke(out, depth, stroke, weights, box, base, defs, ctx, nodeId)
       continue
     }
@@ -2482,6 +2609,12 @@ function inheritedTextAttrs(style, ctx) {
   if (typeof style.variant === 'string' && style.variant.split(/\s+/).includes('small-caps')) {
     attrs.push('font-variant="small-caps"')
   }
+  // The language picks the glyphs (see `collect/text.js`), so it travels like the
+  // family does — but it inherits, so it is written once on the `<svg>` and here
+  // only where this block is in another one. `xml:lang` rather than `lang`: it is
+  // the one every SVG reader knows. An empty value is how XML says "none".
+  const lang = typeof style.lang === 'string' ? style.lang : ''
+  if (lang !== ctx.rootLang) attrs.push(`xml:lang="${escAttr(lang)}"`)
   const fill = Array.isArray(style.fills) ? style.fills.find(isObject) : null
   if (!fill || fill.type === 'solid') attrs.push(paintAttrs(fill ? fill.color : [0, 0, 0, 1]))
   attrs.push(...textStrokeAttrs(style))
@@ -2566,6 +2699,11 @@ function textStyleAttrs(style, ctx, nodeId, defs, { drawnDecoration = false, res
   if (Number.isFinite(Number(style.wordSpacing)) && Number(style.wordSpacing) !== 0) {
     attrs.push(`word-spacing="${num(style.wordSpacing)}"`)
   }
+  // A run says its language only where it is not the one it inherits: the block's
+  // dominant run's when there is one, the document's otherwise.
+  const lang = typeof style.lang === 'string' ? style.lang : ''
+  const above = inherited ? (typeof inherited.lang === 'string' ? inherited.lang : '') : ctx.rootLang
+  if (lang !== above) attrs.push(`xml:lang="${escAttr(lang)}"`)
   // Small caps. `collect/text.js` reads `fontVariantCaps` and folds it back into
   // `variant`, which is the only way to see it — `font-variant` serialises
   // without the caps value the moment any other longhand is set. It reached the
@@ -3094,6 +3232,33 @@ function emitText(out, depth, node, nodeId, defs, ctx, linear = IDENTITY_LINEAR,
    *   is one — the piece is then a single element and its attributes can be
    *   merged onto whatever element ends up carrying it.
    */
+  /**
+   * How far to move a baseline so that it lands on the whole pixel the browser
+   * paints it on, in root space.
+   *
+   * Upright text is not rasterised at a fractional baseline: the renderer rounds
+   * it to a whole pixel (half up), on the page and in an SVG alike. Layout works
+   * in 1/64 px, so a baseline of exactly `n + 0.5` is common — and there the
+   * rounding is decided by whatever is left after this file has printed a chain
+   * of `translate()`s at four decimals. MEASURED: the same SVG painted whole rows
+   * of an invoice one pixel lower opened as a file than inlined in a page, 0.50%
+   * against 0.05% wrong. Stating the rounded baseline takes the decision away
+   * from the leftovers: every consumer then rounds a number that is not on the
+   * edge.
+   *
+   * Only where that is what the browser does: no transform above or on this
+   * block (a scaled or rotated line is positioned by a different rule), and a
+   * root-space position to round against.
+   */
+  const textAbs = !bboxSpace && linear === IDENTITY_LINEAR &&
+    (node.transform === null || node.transform === undefined) &&
+    isObject(node.abs) && isNum(node.abs.y) ? node.abs.y : null
+  const baselineSnap = (py) => {
+    if (textAbs === null) return 0
+    const abs = textAbs + py
+    return Math.round(abs) - abs
+  }
+
   const buildPiece = (from, to, x, w, baseline, line, shiftHandled = false) => {
     if (to <= from) return null
     let px = finite(x)
@@ -3135,7 +3300,7 @@ function emitText(out, depth, node, nodeId, defs, ctx, linear = IDENTITY_LINEAR,
     // A right-to-left line anchors at its middle (see `text-anchor` above); `x`
     // is the left edge in both directions, so the centre is the same arithmetic.
     const anchorX = rtl ? px + width / 2 : px
-    const position = [`x="${num(anchorX)}"`, `y="${num(py)}"`]
+    const position = [`x="${num(anchorX)}"`, `y="${num(py + baselineSnap(py))}"`]
 
     const segments = segmentsIn(from, to)
     if (!segments.length) segments.push({ from, to, style: null, dy: 0 })
@@ -3970,7 +4135,7 @@ function emitNode(out, depth, nodeId, node, defs, ctx, scDepth, linear = IDENTIT
   ctx.visited.add(nodeId)
 
   const frame = frameOf(node)
-  const box = { x: 0, y: 0, w: frame.w, h: frame.h }
+  const box = paintedBox(node, frame, linear === IDENTITY_LINEAR)
   const radii = normalizeRadii(node.radii, box.w, box.h)
   // The linear map from this node's CONTENTS to the space client rects were
   // measured in — the parent's, composed with this node's own. `collect/text.js`
@@ -3978,7 +4143,13 @@ function emitNode(out, depth, nodeId, node, defs, ctx, scDepth, linear = IDENTIT
   // through it; `emitText` needs it to know whether it can trust one.
   const own = linearOf(node)
   const content = own ? mul2(linear, own) : linear
+  // The capture root's own outer shadow, when the capture's frame is larger than
+  // the root and the capture did not ask for it (`capture.rootShadow`): with the
+  // root box as the viewport it fell outside and was never seen; in a wider frame
+  // it would be painted into a picture that every other export of the same capture
+  // leaves it out of.
   const effects = (Array.isArray(node.effects) ? node.effects : []).filter(isObject)
+    .filter((e) => !(ctx.dropRootShadow && nodeId === ctx.rootId && e.type === 'dropShadow' && e.source !== 'text-shadow'))
   const boxEffects = effects.filter((e) => (e.type === 'dropShadow' || e.type === 'innerShadow') && e.source !== 'filter')
   const chainEffects = effects.filter((e) => e.type === 'layerBlur' || e.type === 'backgroundBlur' ||
     e.type === 'colorMatrix' ||
@@ -4137,6 +4308,8 @@ function emitNode(out, depth, nodeId, node, defs, ctx, scDepth, linear = IDENTIT
 
   let paintDepth = inner
   let clipDepth = null
+  // The outer shadow was cast from a stand-in and its group is already closed.
+  let shadowOnly = false
   if (backdropInClip) {
     ctx.note(nodeId, 'this node clips its children AND something under it uses mix-blend-mode, so its own ' +
       'fills and strokes are painted INSIDE the clip group, under the children: the group a clip creates ' +
@@ -4161,12 +4334,34 @@ function emitNode(out, depth, nodeId, node, defs, ctx, scDepth, linear = IDENTIT
     out.push(inner, `<g clip-path="url(#${clipId})">`)
     paintDepth = inner + 1
     clipDepth = paintDepth
-  } else if (boxEffects.length) {
-    if (!fills.length && !strokes.length) {
-      ctx.note(nodeId, 'the node has a box-shadow but no fill or stroke to cast it from; ' +
-        'the shadow follows whatever silhouette its own paint has, which is empty.',
-        'emit.svg.shadow-no-silhouette', 'A')
+  } else if (boxEffects.length && !fills.length && !strokes.length && node.type !== 'text') {
+    // A box with a shadow and no paint of its own — no background, no border. CSS
+    // casts `box-shadow` from the BORDER BOX, whether or not anything is painted in
+    // it, so the shadow is there: a ring drawn with spread alone, a focus halo on a
+    // transparent button. A filter over the node's own paint has nothing to read
+    // and drew nothing. MEASURED on `box-shadow: 0 0 0 16px` around a row of four
+    // tiles: the 16px ring was missing altogether, 4% of the capture. It is cast
+    // from an opaque stand-in for the box instead, the same way the clip branch
+    // above does it, and that filter also leaves the inside of the box unpainted,
+    // as CSS does.
+    shadowOnly = true
+    const drops = boxEffects.filter((e) => e.type === 'dropShadow')
+    if (drops.length) {
+      const bleed = filterBleed(drops)
+      const region = { x: -bleed, y: -bleed, w: box.w + 2 * bleed, h: box.h + 2 * bleed }
+      const filterId = dropShadowOnlyFilter(drops, region, defs, ctx, nodeId)
+      out.push(inner, `<g filter="url(#${filterId})">`)
+      out.push(inner + 1, shapeElement(box, radii, 'fill="#000"'))
+      out.push(inner, '</g>')
     }
+    if (drops.length < boxEffects.length) {
+      ctx.note(nodeId, 'the node has an inset box-shadow and no fill or stroke; this backend composites an ' +
+        'inner shadow over the node\'s own paint, which is empty, so the inset shadow is not drawn.',
+        'emit.svg.shadow-no-silhouette', 'O')
+    }
+  } else if (boxEffects.length) {
+    // A text node casts from its glyphs (`text-shadow`), which are emitted below
+    // inside the same filtered group.
     const bleed = filterBleed(boxEffects)
     const region = { x: -bleed, y: -bleed, w: box.w + 2 * bleed, h: box.h + 2 * bleed }
     const filterId = boxShadowFilter(boxEffects, region, defs, ctx, nodeId)
@@ -4179,6 +4374,10 @@ function emitNode(out, depth, nodeId, node, defs, ctx, scDepth, linear = IDENTIT
     paintDepth = inner + 1
   }
   if (fills.length) emitFills(out, paintDepth, fills, box, radii, defs, ctx, nodeId)
+  // Where this node's box sits in root px, for the one stroke that snaps to the
+  // pixel grid (a collapsed table border); null under any transform.
+  ctx.strokeAbs = linear === IDENTITY_LINEAR && (node.transform === null || node.transform === undefined) &&
+    isObject(node.abs) ? node.abs : null
   if (strokes.length) emitStrokes(out, paintDepth, strokes, box, radii, defs, ctx, nodeId)
   // Over the element's own background and border, which is where the UA paints
   // the widget, and under the children — a control has none, but a `<progress>`
@@ -4190,7 +4389,7 @@ function emitNode(out, depth, nodeId, node, defs, ctx, scDepth, linear = IDENTIT
     ctx.note(nodeId, 'an image node carries no image fill; nothing is painted for it.',
       'emit.svg.image-node-empty', 'O')
   }
-  if (boxEffects.length && clipDepth === null) out.push(inner, '</g>')
+  if (boxEffects.length && clipDepth === null && !shadowOnly) out.push(inner, '</g>')
   if (!paintsSomething && node.type !== 'group' && node.type !== 'frame' && node.type !== 'vector') {
     ctx.note(nodeId, `a ${String(node.type)} node paints nothing; it is emitted as an empty group.`,
       'emit.svg.node-paints-nothing', 'O')
@@ -4307,29 +4506,63 @@ function emitControl(out, depth, node, nodeId, box, radii, ctx) {
       `${fill(control.surface)} ${paintAttrs(control.border, 'stroke')} stroke-width="${num(bw)}"`))
   }
 
+  // The UA's own hairline round a bar or a slider track: `#767676` at half
+  // strength (measured: `#b2b2b2` over the `#efefef` track, `#3b75ba` over the
+  // `#0075ff` fill), and at 0.3 round a `<meter>`.
+  const hairline = (shape, r, alpha) => {
+    if (!(shape.w > 1) || !(shape.h > 1)) return
+    const inner = { x: shape.x + 0.5, y: shape.y + 0.5, w: shape.w - 1, h: shape.h - 1 }
+    const ir = Math.max(0, r - 0.5)
+    // The collector knows the theme (light or dark) and hands the hairline over
+    // whole; `alpha` is the light theme's, for a descriptor that predates it.
+    const line = Array.isArray(control.hairline) && control.hairline.length >= 3
+      ? control.hairline
+      : [...(Array.isArray(control.border) ? control.border.slice(0, 3) : [118 / 255, 118 / 255, 118 / 255]), alpha]
+    rows.push(shapeElement(inner, [[ir, ir], [ir, ir], [ir, ir], [ir, ir]],
+      `fill="none" ${paintAttrs(line, 'stroke')} stroke-width="1"`))
+  }
+
+  /**
+   * A slider as Chromium paints it. MEASURED on the raster at three heights (8, 16
+   * and 32px): the track is 8px tall whatever the element's height, centred, a
+   * pill, and stops 2px short of the box at each end; the thumb is a 16px disc
+   * whose centre travels from 8px inside one end to 8px inside the other; the
+   * part of the track behind the thumb's centre is the accent.
+   */
   const drawRange = () => {
-    const th = Math.max(1, 0.375 * box.h)
-    const track = { x: 0, y: (box.h - th) / 2, w: box.w, h: th }
+    const th = 8
+    const track = { x: 2, y: (box.h - th) / 2, w: Math.max(0, box.w - 4), h: th }
     const tr = [[th / 2, th / 2], [th / 2, th / 2], [th / 2, th / 2], [th / 2, th / 2]]
     rows.push(shapeElement(track, tr, fill(control.track)))
     if (!isNum(control.fraction)) {
+      hairline(track, th / 2, 0.5)
       ctx.note(nodeId, `a range control carries no readable value (${JSON.stringify(control.value)} of ` +
         `${control.min}..${control.max}); its track is drawn and its thumb is not.`,
       'emit.svg.control-no-value', 'O')
       return
     }
-    const r = Math.max(th / 2, s / 2 - 0.5)
+    const r = Math.min(8, box.w / 2)
     const cx = rtl
       ? box.w - r - control.fraction * (box.w - 2 * r)
       : r + control.fraction * (box.w - 2 * r)
     const filled = rtl
-      ? { x: cx, y: track.y, w: box.w - cx, h: th }
-      : { x: 0, y: track.y, w: cx, h: th }
+      ? { x: cx, y: track.y, w: track.x + track.w - cx, h: th }
+      : { x: track.x, y: track.y, w: cx - track.x, h: th }
     if (filled.w > 0) rows.push(shapeElement(filled, tr, fill(control.accent)))
+    hairline(track, th / 2, 0.5)
     rows.push(`<circle cx="${num(cx)}" cy="${num(box.h / 2)}" r="${num(r)}" ${fill(control.accent)}/>`)
   }
 
-  const drawBar = () => {
+  /**
+   * `<progress>` and `<meter>` as Chromium paints them. MEASURED at 8, 16 and 32px
+   * of height: the bar is HALF the element's height, centred, a pill, and as wide
+   * as the element — not the element's whole box, which is what this drew before
+   * (a default 16px bar came out twice as thick and square). The value end of the
+   * fill is square. A `<progress>` hairline runs over the fill; a `<meter>`'s runs
+   * round the track and the fill sits inside it.
+   */
+  /** A bar the author took over from the UA: its pseudo-elements fill the whole box. */
+  const drawStyledBar = () => {
     rows.push(shapeElement(box, radii, fill(control.track)))
     if (!isNum(control.fraction)) {
       ctx.note(nodeId, `this <${control.kind}> is indeterminate (value ${JSON.stringify(control.value)}), which the ` +
@@ -4340,16 +4573,51 @@ function emitControl(out, depth, node, nodeId, box, radii, ctx) {
     }
     const bar = { x: rtl ? box.w * (1 - control.fraction) : 0, y: 0, w: box.w * control.fraction, h: box.h }
     if (!(bar.w > 0)) return
-    // The end the bar STARTS from keeps the track's corners and the end it stops
-    // at is square, which is what a bar clipped to a pill track looks like — and
-    // it is one `<rect>` rather than a `<clipPath>` plus a group. That matters
-    // beyond tidiness: FIGMA_FINDINGS.md records a `userSpaceOnUse` clip inside a
-    // transformed group being resolved differently from the shape next to it.
     const [tl, tr, br, bl] = normalizeRadii(radii, box.w, box.h)
     const full = control.fraction >= 1
     const barRadii = full ? [tl, tr, br, bl]
       : rtl ? [ZERO_RADII[0], tr, br, ZERO_RADII[3]] : [tl, ZERO_RADII[1], ZERO_RADII[2], bl]
     rows.push(shapeElement(bar, normalizeRadii(barRadii, bar.w, bar.h), fill(control.accent)))
+  }
+
+  const drawBar = () => {
+    if (control.styled) return drawStyledBar()
+    const bh = box.h / 2
+    const bar0 = { x: 0, y: (box.h - bh) / 2, w: box.w, h: bh }
+    const pr = bh / 2
+    const pill = [[pr, pr], [pr, pr], [pr, pr], [pr, pr]]
+    const meter = control.kind === 'meter'
+    rows.push(shapeElement(bar0, pill, fill(control.track)))
+    if (!isNum(control.fraction)) {
+      hairline(bar0, pr, meter ? 0.3 : 0.5)
+      ctx.note(nodeId, `this <${control.kind}> is indeterminate (value ${JSON.stringify(control.value)}), which the ` +
+        'UA paints as a moving stripe; only its track is drawn, because a bar would state a value the ' +
+        'page does not have.',
+      'emit.svg.control-indeterminate', 'O')
+      return
+    }
+    const inset = meter && bh > 2 ? 1 : 0
+    const len = box.w * control.fraction
+    const bar = {
+      x: rtl ? box.w - len : inset,
+      y: bar0.y + inset,
+      w: len - inset,
+      h: bh - 2 * inset,
+    }
+    if (bar.w > 0 && bar.h > 0) {
+      // The end the bar STARTS from keeps the track's corners and the end it stops
+      // at is square, which is what a bar clipped to a pill track looks like — and
+      // it is one `<rect>` rather than a `<clipPath>` plus a group. That matters
+      // beyond tidiness: FIGMA_FINDINGS.md records a `userSpaceOnUse` clip inside a
+      // transformed group being resolved differently from the shape next to it.
+      const er = Math.max(0, pr - inset)
+      const end = [er, er]
+      const full = control.fraction >= 1
+      const barRadii = full ? [end, end, end, end]
+        : rtl ? [ZERO_RADII[0], end, end, ZERO_RADII[3]] : [end, ZERO_RADII[1], ZERO_RADII[2], end]
+      rows.push(shapeElement(bar, normalizeRadii(barRadii, bar.w, bar.h), fill(control.accent)))
+    }
+    hairline(bar0, pr, meter ? 0.3 : 0.5)
   }
 
   const drawSelect = () => {
@@ -4625,6 +4893,21 @@ function fontFaceRules(doc, ctx) {
         'emit.svg.font-subset', 'A')
     }
   }
+  // Aliases for installed faces (`collect/font.js`, `localNames`): no bytes travel,
+  // but the rule does, so the name the text asks for means on this machine what it
+  // meant on the page.
+  const aliases = isObject(doc.capture) && Array.isArray(doc.capture.localFonts) ? doc.capture.localFonts : []
+  for (const alias of aliases) {
+    if (!isObject(alias) || typeof alias.family !== 'string' || !Array.isArray(alias.local) || !alias.local.length) continue
+    const family = alias.family.replace(/^['"]|['"]$/g, '').replace(/"/g, '')
+    const parts = [
+      `  font-family: "${family}";`,
+      `  src: ${alias.local.map((name) => `local("${String(name).replace(/["\\]/g, '')}")`).join(', ')};`,
+    ]
+    if (typeof alias.weight === 'string' && /^\d+(\s+\d+)?$/.test(alias.weight)) parts.push(`  font-weight: ${alias.weight};`)
+    parts.push(`  font-style: ${alias.italic ? 'italic' : 'normal'};`)
+    rules.push(['@font-face {', ...parts, '}'].join('\n'))
+  }
   return rules
 }
 
@@ -4741,6 +5024,8 @@ export function svdToSvg(doc, {
      * two are different nodes emitted at different times.
      * @type {Map<string, string[]>}
      */
+    /** The capture root's language (`doc.capture.lang`), '' when the page declares none. */
+    rootLang: isObject(doc.capture) && typeof doc.capture.lang === 'string' ? doc.capture.lang : '',
     textPaint: new Map(),
     /**
      * Text node id -> the character ranges an INLINE element's `background-clip: text`
@@ -4799,8 +5084,18 @@ export function svdToSvg(doc, {
   const capture = isObject(doc.capture) ? doc.capture : {}
   const captureRoot = isObject(capture.root) ? capture.root : null
   const rootFrame = isObject(root) ? frameOf(root) : { x: 0, y: 0, w: 0, h: 0 }
-  const width = captureRoot && finite(captureRoot.w) > 0 ? finite(captureRoot.w) : rootFrame.w
-  const height = captureRoot && finite(captureRoot.h) > 0 ? finite(captureRoot.h) : rootFrame.h
+  const rootW = captureRoot && finite(captureRoot.w) > 0 ? finite(captureRoot.w) : rootFrame.w
+  const rootH = captureRoot && finite(captureRoot.h) > 0 ? finite(captureRoot.h) : rootFrame.h
+  // The capture's own frame, when it is not the root box: the viewport is that
+  // area, in the same root-local px everything else is drawn in — so nothing in
+  // the tree moves, the window onto it does.
+  const frame = isObject(capture.frame) && finite(capture.frame.w) > 0 && finite(capture.frame.h) > 0
+    ? { x: finite(capture.frame.x), y: finite(capture.frame.y), w: finite(capture.frame.w), h: finite(capture.frame.h) }
+    : { x: 0, y: 0, w: rootW, h: rootH }
+  const width = frame.w
+  const height = frame.h
+  ctx.rootId = rootId
+  ctx.dropRootShadow = isObject(capture.frame) && capture.rootShadow === false
 
   const defs = createDefs()
   const body = createWriter(1)
@@ -4822,8 +5117,14 @@ export function svdToSvg(doc, {
 
   const out = createWriter(0)
   out.push(0, `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ` +
-    `width="${num(width)}" height="${num(height)}" viewBox="0 0 ${num(width)} ${num(height)}" ` +
-    'text-rendering="geometricPrecision">')
+    `width="${num(width)}" height="${num(height)}" viewBox="${num(frame.x)} ${num(frame.y)} ${num(width)} ${num(height)}"` +
+    // No `text-rendering` here. The file used to ask for `geometricPrecision`, which
+    // makes Chromium draw glyphs unhinted and heavier than the same text on the page
+    // it was captured from. MEASURED against the browser's own screenshot on eight
+    // pages (2026-11-21): seven came closer without it — a web-font page went from
+    // 3.17% of pixels off to 0.82% — and the eighth moved by 0.06. The default is
+    // what the page itself is drawn with, so the default is the faithful one.
+    `${ctx.rootLang ? ` xml:lang="${escAttr(ctx.rootLang)}"` : ''}>`)
 
   if (notes.length) {
     out.push(1, `<!-- snapdom-vector svg-flat: ${notes.length} approximation(s) — nothing here is silent.`)
@@ -4845,6 +5146,16 @@ export function svdToSvg(doc, {
     }
     for (const chunk of defs.chunks) out.merge(2, chunk)
     out.push(1, '</defs>')
+  }
+
+  // The page canvas, under everything: a `<body>` capture's frame shows the page
+  // around and below the body, which the page paints in this colour.
+  const canvas = isObject(capture.canvas) && Array.isArray(capture.canvas.color) ? capture.canvas.color : null
+  if (canvas && canvas.length >= 3) {
+    const alpha = isNum(canvas[3]) ? canvas[3] : 1
+    out.push(1, `<rect x="${num(frame.x)}" y="${num(frame.y)}" width="${num(width)}" height="${num(height)}" ` +
+      `fill="${toCssString([finite(canvas[0]), finite(canvas[1]), finite(canvas[2]), 1])}"` +
+      `${alpha < 1 ? ` fill-opacity="${num(alpha)}"` : ''}/>`)
   }
 
   out.rows.push(...body.rows)

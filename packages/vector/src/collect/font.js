@@ -213,6 +213,25 @@ async function refetchFaces (href, timeout) {
  * skipped (a local face has no bytes a page can hand over), and so is any
  * `format()` no engine loads.
  */
+/**
+ * The installed faces a `src:` names with `local()`, in source order.
+ *
+ * A rule that is ONLY `local()` — `@font-face{font-family:"x";src:local("Georgia")}`,
+ * an alias — has no bytes to embed and never will, but it is not nothing either:
+ * it is the only place the page says which installed font "x" is. A document that
+ * forgets it names a family no viewer has ever heard of.
+ */
+function localNames (src) {
+  const out = []
+  const re = /local\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi
+  let m
+  while ((m = re.exec(src || ''))) {
+    const name = (m[1] || m[2] || m[3] || '').trim()
+    if (name && !out.includes(name)) out.push(name)
+  }
+  return out
+}
+
 function srcCandidates (src, base) {
   const items = []
   let depth = 0
@@ -416,12 +435,20 @@ export async function collectFonts (st, report) {
     let fromUrl = null
     let inline = false
     const sources = srcCandidates(rule.src, rule.base)
+    // One asset is one FACE, not one file: a variable font is routinely declared
+    // twice over the same URL — `font-weight:400` and `font-weight:700`, as Google
+    // Fonts serves Roboto — and the asset carries the rule's own weight and style.
+    // Keyed on the URL alone, the 700 request was handed the asset the 400 rule had
+    // made, the document declared a single 400 face, and every bold line was drawn
+    // with the regular instance squeezed into the bold line's measured width.
+    // MEASURED on such a page: 13.5% of the pixels of a two-line card.
+    const faceKey = (url) => `${url}\n${rule.weight || ''}\n${rule.style || ''}`
     for (const cand of sources) {
       if (/^data:/i.test(cand.url)) {
         bytes = dataUriBytes(cand.url)
         fromUrl = 'an inline data: URI'
         inline = true
-      } else if (assetByUrl.has(cand.url)) {
+      } else if (assetByUrl.has(faceKey(cand.url))) {
         bytes = null
         fromUrl = cand.url
         inline = false
@@ -434,13 +461,29 @@ export async function collectFonts (st, report) {
       if (bytes) break
     }
 
-    let assetId = !inline && fromUrl ? assetByUrl.get(fromUrl) : undefined
+    let assetId = !inline && fromUrl ? assetByUrl.get(faceKey(fromUrl)) : undefined
     if (!assetId) {
       if (!bytes || !bytes.length) {
         report(st, null, 'assets.font-fetch-failed', 'A',
           `${label}: none of the ${sources.length} src candidate(s) of its @font-face could be read ` +
           `(${sources.length ? sources.map((s) => s.url.slice(0, 96)).join(', ') : 'src lists only local() or unloadable formats'}), ` +
           'so the family travels by name and the viewer substitutes on a machine without it.', 'warn')
+        // An alias for an installed face travels as that: the rule itself, which a
+        // backend that writes CSS can repeat. Measured on a page whose text was set
+        // in `"7a3a…"` = `local("Georgia")`: without the rule the SVG asked for a
+        // family that does not exist and was drawn in the default serif, 2.4% off.
+        const locals = sources.length ? [] : localNames(rule.src)
+        if (locals.length && st.doc && st.doc.capture) {
+          const aliases = st.doc.capture.localFonts || (st.doc.capture.localFonts = [])
+          const [lo, hi] = weightRange(rule.weight)
+          const entry = {
+            family: rule.family,
+            local: locals,
+            weight: lo === hi ? String(lo) : `${lo} ${hi}`,
+            italic: /^(italic|oblique)/.test(rule.style || 'normal'),
+          }
+          if (!aliases.some((a) => JSON.stringify(a) === JSON.stringify(entry))) aliases.push(entry)
+        }
         continue
       }
       const mime = sniffFontMime(bytes) || 'font/ttf'
@@ -470,7 +513,7 @@ export async function collectFonts (st, report) {
         if (names.sub) asset.nameTable['17'] = names.sub
       }
       doc.assets[assetId] = asset
-      if (!inline && fromUrl) assetByUrl.set(fromUrl, assetId)
+      if (!inline && fromUrl) assetByUrl.set(faceKey(fromUrl), assetId)
       report(st, null, 'assets.font-embedded', 'E',
         `${label} travels in the document: ${Math.round(bytes.length / 1024)} kB of ${mime} fetched from ` +
         `${fromUrl}, serving ${members.length} text style(s). Every line in those styles now carries ` +

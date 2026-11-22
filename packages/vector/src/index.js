@@ -69,6 +69,8 @@ import { emptyDocument, validate } from '../svd/index.js'
 import { handoffFrom, mountClone } from './adapters/snapdom.js'
 import { buildPaintTree } from './paint.js'
 import { collectBox, resolveLayerRect } from './collect/box.js'
+import { parseShadows } from './css/shadow.js'
+import { parseColor } from './css/color.js'
 import { collectText } from './collect/text.js'
 import { collectImage, svgBackgroundAsset, looksLikeSvg } from './collect/image.js'
 import { collectMathML } from './collect/mathml.js'
@@ -566,6 +568,9 @@ function registerTextStyle (st, style, sink) {
     wordSpacing: style.wordSpacing,
     lineHeight: style.lineHeight,
     case: style.textTransform,
+    // Absent when the page declares no language, so a document without one is
+    // byte for byte what it was.
+    lang: style.lang || undefined,
     fills: [{ type: 'solid', color: style.color, srcCss: style.colorCss }],
     decoration: style.decorations && style.decorations.length ? style.decorations : null,
     strokeWidth: style.strokeWidth,
@@ -698,11 +703,25 @@ function collectTextInto (st, id, node, cs) {
   // this, a shadowed heading exports with no effect and no entry at all: the
   // export looks clean and is wrong, which is the one outcome this format exists
   // to prevent.
+  //
+  // It is carried now, as drop shadows on THIS node: a text node has no box paint
+  // of its own, so a shadow cast from the node is cast from the glyphs, which is
+  // what `text-shadow` is. `source: 'text-shadow'` is what tells a backend that
+  // cannot cast from glyphs (the PDF one builds shadows out of the box) to leave
+  // it out and say so, instead of drawing a shadowed rectangle behind the words.
   const shadow = cs && cs.textShadow
   if (shadow && shadow !== 'none') {
-    report(st, id, 'collect.text-shadow-dropped', 'O',
-      `text-shadow "${shadow}" paints these glyphs and is not emitted: no backend here carries a ` +
-      'shadow on text, so the letters export flat.')
+    const { shadows, warnings: shadowWarnings } = parseShadows(shadow, { inset: false, currentColor: cs.color })
+    for (const message of shadowWarnings) warn(st, id, 'text', `text-shadow: ${message}`)
+    if (shadows.length) {
+      node.effects = [...(node.effects || []), ...shadows.map((s) => ({ ...s, source: 'text-shadow' }))]
+      report(st, id, 'collect.text-shadow', 'A',
+        `text-shadow "${shadow}" is carried as ${shadows.length} drop shadow(s) on the text node, taken from ` +
+        'the block\'s own style: a run inside it with a shadow of its own is cast with the block\'s.')
+    } else {
+      report(st, id, 'collect.text-shadow-dropped', 'O',
+        `text-shadow "${shadow}" paints these glyphs and could not be parsed, so the letters export flat.`)
+    }
   }
 }
 
@@ -933,15 +952,27 @@ async function loadBackgroundAsset (url, st) {
  */
 async function resolveBackgroundAssets (st) {
   const pending = new Map()
-  for (const id of Object.keys(st.doc.nodes)) {
-    if (st.dropped.has(id)) continue
-    for (const fill of st.doc.nodes[id].fills || []) {
+  const queue = (id, fills, drop) => {
+    for (const fill of fills || []) {
       if (!fill || fill.type !== 'image') continue
       if (!fill.asset || typeof fill.asset !== 'object' || !fill.asset.pending) continue
       const url = absoluteUrl(fill.asset.url)
       if (!pending.has(url)) pending.set(url, [])
-      pending.get(url).push({ id, fill })
+      pending.get(url).push({ id, fill, drop })
     }
+  }
+  for (const id of Object.keys(st.doc.nodes)) {
+    if (st.dropped.has(id)) continue
+    const node = st.doc.nodes[id]
+    queue(id, node.fills, (fill) => { node.fills = node.fills.filter((f) => f !== fill) })
+  }
+  // `mask-image: url()` layers are parked on `st.masks` until `wireMasks` gives them
+  // a node, so they are not in any `fills` yet. Left out of this pass they reached
+  // the document still pending, and it failed validation (`fills[0].asset must be
+  // an asset id`): MEASURED on snapdom's own demo gallery, which then exported nothing.
+  for (const { id, mask } of st.masks) {
+    if (st.dropped.has(id)) continue
+    queue(id, mask.layers, (fill) => { mask.layers = mask.layers.filter((f) => f !== fill) })
   }
   if (!pending.size) return
 
@@ -953,8 +984,7 @@ async function resolveBackgroundAssets (st) {
       for (const use of uses) {
         report(st, use.id, 'assets.background-failed', 'O',
           `background-image ${url} could not be loaded: ${error && error.message}; the layer is dropped.`)
-        const node = st.doc.nodes[use.id]
-        node.fills = node.fills.filter((f) => f !== use.fill)
+        use.drop(use.fill)
       }
       return
     }
@@ -1458,6 +1488,8 @@ function wireMasks (st) {
   for (const { id, mask } of st.masks) {
     const node = st.doc.nodes[id]
     if (!node || node.mask) continue
+    // Every layer failed to load and was dropped (and declared): no mask is left to wire.
+    if (!mask.layers.length) continue
     let maskId = `${id}__mask`
     for (let n = 2; st.doc.nodes[maskId]; n++) maskId = `${id}__mask${n}`
     const frame = node.frame || node.abs
@@ -2678,6 +2710,12 @@ async function buildDocument (ctx, options) {
   // nothing below may take a measurement off it: the two trees sit ~99999px
   // apart and every coordinate is relative to its own root.
   const capture = mountClone(handoff)
+  // What snapdom published about THIS capture once it had composed it: the box it
+  // decided the picture covers. Read off the export context and never off the
+  // hand-off, which was taken in `beforeRender` — before the frame existed.
+  capture.meta = ctx && ctx.meta
+  capture.outerTransforms = !ctx || ctx.outerTransforms !== false
+  capture.outerShadows = !!(ctx && ctx.outerShadows)
   try {
     return await assemble(element, capture, options, startedAt, handoff)
   } finally {
@@ -2703,6 +2741,124 @@ async function buildDocument (ctx, options) {
  *   from the DOM to the document (the h2d hybrid does)
  * @returns {Promise<SVDDocument>}
  */
+/** The content language in force at `element`: its own `lang`, or the nearest ancestor's. */
+function rootLanguage (element) {
+  for (let n = element; n && n.nodeType === 1; n = n.parentElement) {
+    const own = n.getAttribute && (n.getAttribute('lang') || n.getAttribute('xml:lang'))
+    if (own) return String(own).toLowerCase()
+  }
+  return ''
+}
+
+/**
+ * The area the export covers, in root-local px (the capture root's border box is
+ * `0 0 root.w root.h`), when it is NOT that box.
+ *
+ * One capture has one frame. snapdom decides it while composing the picture every
+ * other exporter of the same capture hands out — `toPng()`, `toCanvas()`,
+ * `toSvg()` — and publishes it as `meta`: a `<body>` is framed on the page it lays
+ * out (its box grown to the document's extent, so a page shorter than the window is
+ * still a window tall and one that overflows is not cut at the body's own height),
+ * `outerShadows` grows the frame by what the root paints past its box, a transformed
+ * root is framed on its bounding box, `clip` frames a window of the element. This
+ * engine used to frame every export on the clone root's own rectangle instead, so
+ * `toVector()` and `toPng()` of the SAME capture disagreed about what the capture
+ * was: measured on 96 demo pages, 43 came out a different size, 34 of them `<body>`
+ * captures. The frame is read from the capture rather than re-derived here because
+ * two derivations of one decision is how they came to differ.
+ *
+ * `null` — and the root box stays the frame — when there is no `meta` (a snapdom
+ * that predates it) or when it IS the root box.
+ *
+ * One part of snapdom's frame is deliberately NOT taken: the safety ring it pads
+ * around a transformed root (2px) and around one captured with `outerTransforms:
+ * false` (1px more). That ring exists because a browser rasterising a
+ * `foreignObject` shaves the last pixel or two off a fractional edge
+ * (`engines/svg.js`, "Pad the viewBox on every engine"); it frames nothing the page
+ * paints, and a vector file has no raster edge to protect. `pad` is that ring, and
+ * it is taken back off — which is also what keeps a root that is merely translated
+ * exactly the size of its own box, as `test/verify-mathml.mjs` pins.
+ *
+ * @param {object|null|undefined} meta  snapdom's `options.meta` for this capture
+ * @param {{w:number,h:number}} root    the clone root's border box
+ * @param {number} [pad=0]              snapdom's raster safety ring for this capture, px per side
+ * @returns {{x:number,y:number,w:number,h:number,material:boolean}|null}
+ *   `material` is false when the frame is the root box rounded to whole pixels
+ */
+function frameFromMeta (meta, root, pad = 0) {
+  if (!meta || typeof meta !== 'object') return null
+  const f = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : NaN)
+  const w = f(meta.vbW) - 2 * pad
+  const h = f(meta.vbH) - 2 * pad
+  const cx = f(meta.contentX) - pad
+  const cy = f(meta.contentY) - pad
+  if (!(w > 0) || !(h > 0) || Number.isNaN(cx) || Number.isNaN(cy)) return null
+  // `contentX/Y` locate the capture box inside snapdom's viewBox; under `clip` that
+  // box is the window, which itself sits at `clip.x/y` in the element.
+  const clip = meta.clip && typeof meta.clip === 'object' ? meta.clip : null
+  const x = (clip ? f(clip.x) || 0 : 0) - cx
+  const y = (clip ? f(clip.y) || 0 : 0) - cy
+  const EPS = 0.01
+  const same = (frame, box) => Math.abs(frame - box) <= EPS
+  if (Math.abs(x) <= EPS && Math.abs(y) <= EPS && same(w, root.w) && same(h, root.h)) return null
+  // snapdom measures the root with `offsetWidth`, a whole number that is the layout
+  // size rounded to NEAREST, so for a 498.17px root its frame is 498 — up to half a
+  // pixel short of the box, or a pixel over it. That frame is taken too, and it is
+  // the better file: an SVG that declares a fractional size is resampled by
+  // whatever rasterises it (MEASURED: drawn into a 498px canvas, a 498.17px
+  // capture came out 1.2% off, every row a fraction out of place). It is only not
+  // `material`: nothing new is in view, so nothing about what is painted changes.
+  const rounding = (frame, box) => Math.abs(frame - box) < 1
+  const material = !(Math.abs(x) <= EPS && Math.abs(y) <= EPS && rounding(w, root.w) && rounding(h, root.h))
+  return { x, y, w, h, material }
+}
+
+/**
+ * snapdom's raster safety ring for one capture, in px per side — the same two
+ * conditions `engines/svg.js` adds up (`basePad` + `extraPad`), read the same way
+ * (`hasBBoxAffectingTransform`): a transform other than the identity, or any of the
+ * individual `rotate`/`scale`/`translate`.
+ *
+ * @param {Element} element          the live capture root
+ * @param {boolean} outerTransforms  the capture's own option
+ * @returns {number}
+ */
+function rasterPad (element, outerTransforms) {
+  let transformed = false
+  try {
+    const cs = getComputedStyle(element)
+    const t = cs.transform || 'none'
+    transformed = (t !== 'none' && !/^matrix\(\s*1\s*,\s*0\s*,\s*0\s*,\s*1\s*,\s*0\s*,\s*0\s*\)$/i.test(t)) ||
+      (!!cs.rotate && cs.rotate !== 'none' && cs.rotate !== '0deg') ||
+      (!!cs.scale && cs.scale !== 'none' && cs.scale !== '1') ||
+      (!!cs.translate && cs.translate !== 'none' && cs.translate !== '0px 0px')
+  } catch { /* no style, no transform to pad for */ }
+  return (transformed ? 2 : 0) + (outerTransforms === false ? 1 : 0)
+}
+
+/**
+ * The page's canvas colour for a capture whose root is `<body>` or `<html>`:
+ * `<html>`'s background colour, else the body's — which CSS propagates to the
+ * canvas, so on the page it covers the margins around the body and everything
+ * below it, not the body's own box. A frame larger than that box shows exactly
+ * that area, and without this it would be transparent where the page is not.
+ * Colour only, as in snapdom's own `canvasBackground`: a propagated background
+ * IMAGE keeps painting the body box, which is declared nowhere yet.
+ *
+ * @param {Element} element  the live capture root
+ * @returns {{color:number[],srcCss:string}|null}
+ */
+function canvasColor (element) {
+  const doc = element && element.ownerDocument
+  if (!doc || (element !== doc.body && element !== doc.documentElement)) return null
+  for (const el of [doc.documentElement, doc.body]) {
+    if (!el) continue
+    const parsed = parseColor(getComputedStyle(el).backgroundColor)
+    if (parsed && parsed.rgba[3] > 0) return { color: parsed.rgba, srcCss: parsed.srcCss }
+  }
+  return null
+}
+
 async function assemble (element, capture, options, startedAt, handoff, elementIndex) {
   const { clone, nodeMap, drift } = capture
   const rect = element.getBoundingClientRect()
@@ -2710,10 +2866,17 @@ async function assemble (element, capture, options, startedAt, handoff, elementI
   const ctx = makeCtx(clone, options)
   const tree = buildPaintTree(clone, ctx)
   const rootNode = tree.nodes[tree.rootId]
+  const framed = frameFromMeta(capture.meta, rootNode.abs, rasterPad(element, capture.outerTransforms))
+  const frame = framed ? { x: framed.x, y: framed.y, w: framed.w, h: framed.h } : null
+  const canvas = frame ? canvasColor(element) : null
 
   const doc = emptyDocument({
     url: typeof location !== 'undefined' ? location.href : '',
     selector: cssSelector(element),
+    // The language the capture root is in, so a backend can state it once for the
+    // whole document and only repeat it on the text that differs. Absent when the
+    // page declares none.
+    lang: rootLanguage(element) || undefined,
     capturedAt: new Date().toISOString(),
     viewport: {
       w: typeof innerWidth === 'number' ? innerWidth : 0,
@@ -2727,6 +2890,14 @@ async function assemble (element, capture, options, startedAt, handoff, elementI
       y: rect.top + (typeof scrollY === 'number' ? scrollY : 0),
     },
     root: { w: rootNode.abs.w, h: rootNode.abs.h },
+    // Only when the export does not cover exactly the root box; see `frameFromMeta`.
+    // A frame that is not the root box shows the area around the root, and the
+    // capture's own `outerShadows` says whether the root's shadow is part of the
+    // picture there (snapdom's default is that it is not). Figma ignores this: its
+    // frames overflow, and the shadow belongs to the layer.
+    ...(frame ? { frame } : {}),
+    ...(framed && framed.material ? { rootShadow: !!capture.outerShadows } : {}),
+    ...(canvas ? { canvas } : {}),
     mode: ctx.mode,
   })
   doc.nodes = tree.nodes

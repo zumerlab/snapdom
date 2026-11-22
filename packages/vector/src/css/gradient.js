@@ -846,13 +846,14 @@ function radialPrelude (tokens, w, h, notes) {
 const HUE_METHODS = new Set(['shorter', 'longer', 'increasing', 'decreasing'])
 
 /**
- * Remove `in <colorspace> [<hue> hue]` from a prelude. The gradient is still
- * interpolated in sRGB — matching a non-sRGB ramp would need the whole stop list
- * resampled through that space, which is a different job — but the DIRECTION has
- * to survive: dropping the prelude wholesale would turn `45deg in oklab` into the
- * default `to bottom`, a geometry error on top of a colour one.
+ * Remove `in <colorspace> [<hue> hue]` from a prelude and hand it back apart. The
+ * DIRECTION has to survive on its own: dropping the prelude wholesale would turn
+ * `45deg in oklab` into the default `to bottom`, a geometry error on top of a
+ * colour one. The method goes to `resampleInSpace`, which is what honours it.
+ *
+ * @returns {{tokens: string[], method: string, space: string}|null}
  */
-function stripInterpolationMethod (tokens, notes) {
+function stripInterpolationMethod (tokens) {
   const at = tokens.findIndex((t) => t.toLowerCase() === 'in')
   if (at === -1) return null
   let end = at + 1
@@ -862,8 +863,53 @@ function stripInterpolationMethod (tokens, notes) {
     end++
     if ((tokens[end] || '').toLowerCase() === 'hue') end++
   }
-  notes.push(`interpolation-space-ignored:${space || '?'}`)
-  return tokens.slice(0, at).concat(tokens.slice(end))
+  return { tokens: tokens.slice(0, at).concat(tokens.slice(end)), method: tokens.slice(at + 1, end).join(' '), space }
+}
+
+/** Stops added inside each interval of a ramp that is not interpolated in sRGB. */
+const SPACE_SAMPLES = 11
+
+/**
+ * A ramp interpolated in another colour space, as sRGB stops.
+ *
+ * Every backend this document reaches interpolates between two stops in sRGB, and
+ * `linear-gradient(in oklch, red, blue)` does not: its midpoint is a saturated
+ * purple where sRGB's is a dull one. MEASURED on a heading painted with such a
+ * gradient: the two ramps share their ends and nothing in between. The space
+ * cannot be carried, so the CURVE is: each interval is cut into short pieces whose
+ * ends are the colours the page's own engine gives for that point — asked with
+ * `color-mix()` in the same space and with the same hue rule, which is the
+ * definition of the gradient's interpolation — and between two such neighbours
+ * sRGB is as good as any space.
+ *
+ * Returns null, and the caller says so, when the engine will not mix in that
+ * space (an older browser, or no DOM): the ramp then stays sRGB, as before.
+ *
+ * @param {GradientStop[]} stops  non-decreasing in `t`
+ * @param {string} method  what followed `in`, e.g. `oklch longer hue`
+ * @returns {GradientStop[]|null}
+ */
+function resampleInSpace (stops, method) {
+  const out = []
+  for (let i = 0; i < stops.length; i++) {
+    const a = stops[i]
+    out.push(a)
+    const b = stops[i + 1]
+    if (!b || !(b.t - a.t > EPS)) continue
+    if (a.color.every((c, k) => Math.abs(c - b.color[k]) < 1e-6)) continue
+    // The colours as the author wrote them where that is known: a hue or a wide
+    // gamut the sRGB triple has already lost still steers the interpolation.
+    const from = a.srcCss || toCssString(a.color)
+    const to = b.srcCss || toCssString(b.color)
+    for (let k = 1; k <= SPACE_SAMPLES; k++) {
+      const f = k / (SPACE_SAMPLES + 1)
+      const share = (v) => `${+(v * 100).toFixed(4)}%`
+      const mixed = parseColor(`color-mix(in ${method}, ${from} ${share(1 - f)}, ${to} ${share(f)})`)
+      if (!mixed || !Array.isArray(mixed.rgba)) return null
+      out.push(stop(a.t + (b.t - a.t) * f, mixed.rgba))
+    }
+  }
+  return out
 }
 
 /** A first argument is a prelude only when it cannot be a colour stop. */
@@ -922,11 +968,13 @@ export function parseGradient (css, box) {
 
   const parts = splitTop(g.args, ',')
   if (parts.length === 0) return null
+  let interpolation = null
   if (parts.length > 1) {
-    const stripped = stripInterpolationMethod(splitTop(parts[0], ' '), notes)
+    const stripped = stripInterpolationMethod(splitTop(parts[0], ' '))
     if (stripped) {
-      if (stripped.length === 0) parts.shift()
-      else parts[0] = stripped.join(' ')
+      interpolation = stripped
+      if (stripped.tokens.length === 0) parts.shift()
+      else parts[0] = stripped.tokens.join(' ')
     }
   }
 
@@ -1091,6 +1139,15 @@ export function parseGradient (css, box) {
   const fixed = fixTransparentStops(raw, notes)
   let stops = applyHints(fixed, notes)
   if (stops.length === 0) stops = [stop(0, [0, 0, 0, 0])]
+  if (interpolation && !/^srgb$/i.test(interpolation.method.trim())) {
+    const resampled = interpolation.method ? resampleInSpace(stops, interpolation.method) : null
+    if (resampled) {
+      stops = resampled
+      notes.push(`interpolation-space-resampled:${interpolation.space}`)
+    } else {
+      notes.push(`interpolation-space-ignored:${interpolation.space || '?'}`)
+    }
+  }
 
   if (g.repeating && stops.length > 1) stops = unrollRepeat(stops, 0, domainHi, notes)
   stops = clampDomain(stops, 0, domainHi)

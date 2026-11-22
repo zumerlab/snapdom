@@ -729,8 +729,17 @@ export function collectBox (el, cs, ctx = {}, fragment = null) {
     })
   }
 
-  const fills = painted && !(fragment && fragment.noFill) ? collectFills(el, cs, boxes, warnings) : []
-  const { strokes, strokeWarnings } = painted
+  // A slider the author left to the platform paints its track and its thumb and
+  // NOTHING of its own box: not the UA's default field colour — white, or
+  // `rgb(59,59,59)` under a dark colour scheme, where it showed as a grey slab
+  // behind every slider — and not an author `background` or `border` either.
+  // MEASURED: `<input type=range style="background:#f00">` leaves the page's own
+  // white in all four corners of its box.
+  const themedSlider = !fragment && el.tagName === 'INPUT' &&
+    String(el.type || '').toLowerCase() === 'range' &&
+    (cs.appearance || cs.webkitAppearance || 'auto') !== 'none'
+  const fills = painted && !themedSlider && !(fragment && fragment.noFill) ? collectFills(el, cs, boxes, warnings) : []
+  const { strokes, strokeWarnings } = painted && !themedSlider
     ? collectStrokes(strokeCs, radii, border, el)
     : { strokes: [], strokeWarnings: [] }
   warnings.push(...strokeWarnings)
@@ -880,7 +889,7 @@ function collectTextShadow (el, cs, warnings) {
   }
   warnings.push(
     `text-shadow "${css}" paints the glyphs, not this box; it is collected on \`textEffects\` ` +
-    'for the text node, and no backend emits it yet.'
+    'and the text node carries it.'
   )
   return shadows.map((s) => ({ ...s, source: 'text-shadow' }))
 }
@@ -1431,6 +1440,86 @@ function stickyCollapsedBorderIsElsewhere (el, cs) {
   } catch { return false }
 }
 
+/**
+ * The two colours Chromium paints an `inset` / `outset` border in, from the one
+ * colour the style declares. MEASURED on Chromium 140, twelve colours, 8px borders:
+ *
+ *  - the dark sides are the colour scaled by `(v - 0.33) / v`, `v` being its
+ *    brightest channel as 0..1 — `rgb(128,128,128)` paints `44,44,44`, `rgb(37,99,235)`
+ *    paints `23,63,151`, and anything with `v` under 0.33 paints black;
+ *  - the light sides are the colour itself, untouched, unless it is that dark
+ *    (`v < 0.33`), where it is scaled UP by `(v + 0.33) / v` — `rgb(51,51,51)` paints
+ *    `135,135,135` and black paints `84,84,84`;
+ *  - alpha is carried as it is.
+ *
+ * The channels are truncated after scaling by just under 256/255, which is what
+ * turns 43.85 into the 44 the page shows.
+ *
+ * @param {number[]} rgba  0..1 floats
+ * @returns {{dark: number[], light: number[]}}
+ */
+function reliefColors (rgba) {
+  const [r, g, b, a] = rgba
+  const v = Math.max(r, g, b)
+  const SCALE = 255.99998 / 255
+  const scaled = (m) => [r, g, b].map((c) => Math.min(255, Math.floor(c * m * SCALE * 255)) / 255).concat([a])
+  const dark = v > 0 ? scaled(Math.max(0, (v - 0.33) / v)) : [0, 0, 0, a]
+  let light = rgba
+  if (v < 0.33) light = v > 0 ? scaled(Math.min(1, v + 0.33) / v) : [84 / 255, 84 / 255, 84 / 255, a]
+  return { dark, light }
+}
+
+/**
+ * The colour an `inset` / `outset` border is shaded FROM. It is the declared one,
+ * with one exception that covers the two commonest relief borders on the web: a
+ * border whose colour was never set — `currentcolor`, as on a bare `<hr>` and on an
+ * `<iframe>`'s default frame — is shaded from `rgb(238,238,238)` instead, whatever
+ * `color` is. MEASURED: `<hr>` and `<hr style="color:red">` both paint 154 over
+ * 238, and so does a default iframe frame, while `border: 1px inset gray` on a div
+ * paints 44 over 128.
+ */
+const UNSET_RELIEF = [238 / 255, 238 / 255, 238 / 255, 1]
+
+/**
+ * Was this side's border colour never set — is it `currentcolor`?
+ *
+ * The computed style cannot say: it reports the resolved colour either way. "Equal
+ * to the element's own `color`" used to stand in for it, and that is wrong exactly
+ * when an author writes the same colour twice — MEASURED on `border: 3px ridge
+ * rgb(180,40,40); color: rgb(180,40,40)`, which the page paints in two reds and
+ * this engine painted in the grey of an unset border. So the element is ASKED: its
+ * `color` is changed for one read, and a border that follows it is `currentcolor`.
+ * It runs only for a relief border whose colour already equals `color` — the one
+ * case the answer is not known — on the clone, which is this engine's own to
+ * touch, and both properties are put back before anything else reads them.
+ *
+ * @param {Element|undefined} el  the clone element
+ * @param {CSSStyleDeclaration} cs  its computed style
+ * @param {string} name  `Top` | `Right` | `Bottom` | `Left`
+ * @returns {boolean}
+ */
+function borderColorUnset (el, cs, name) {
+  const prop = `border${name}Color`
+  if (cs[prop] !== cs.color) return false
+  if (!el || !el.style || typeof el.style.setProperty !== 'function') return true
+  const style = el.style
+  const saved = ['color', 'transition'].map((k) => [k, style.getPropertyValue(k), style.getPropertyPriority(k)])
+  const PROBE = 'rgb(1, 2, 3)'
+  try {
+    // No transition, or the read below would be the first frame of one.
+    style.setProperty('transition', 'none', 'important')
+    style.setProperty('color', PROBE, 'important')
+    return cs[prop] === PROBE
+  } catch {
+    return true
+  } finally {
+    for (const [k, value, priority] of saved.reverse()) {
+      if (value) style.setProperty(k, value, priority)
+      else style.removeProperty(k)
+    }
+  }
+}
+
 /** Borders as one inside stroke with per-side weights, plus the outline as a sibling. */
 function collectStrokes (cs, radii, border, el) {
   const strokeWarnings = []
@@ -1449,23 +1538,50 @@ function collectStrokes (cs, radii, border, el) {
     const style = cs[`border${name}Style`] || 'none'
     const hidden = style === 'none' || style === 'hidden'
     const parsed = parseColor(cs[`border${name}Color`])
-    // `groove` is two bands, not one colour: measured on Chromium at 2px, the
-    // outer pixel of the top and left sides is the colour at 65% (239 -> 155)
-    // and the inner pixel is the colour itself, which on a light page is nearly
-    // the background. Emitted as one solid band of the declared colour, a
-    // fieldset's frame came out twice as thick and almost invisible. The dark
-    // band is what the eye reads, so that is the one emitted, at half the width.
-    const grooved = style === 'groove' && !hidden && border[i] >= 2 && parsed && Array.isArray(parsed.rgba)
-    if (grooved) {
+    // `groove` and `ridge` are two bands per side. MEASURED on Chromium 140 at 1, 2,
+    // 3, 4, 5 and 7px: reading each side in screen order (top and left from the
+    // outside in, bottom and right from the inside out) the FIRST band is
+    // `ceil(width / 2)` wide and the second takes the rest; `groove` paints the
+    // first dark and the second light on all four sides, `ridge` the other way
+    // round. So the dark band is the OUTER one on top and left and the INNER one on
+    // bottom and right — which is what makes it read as a groove. Under 2px there
+    // is one band, in the colour as declared. The colours are `reliefColors`.
+    //
+    // This side carries the outer band; `inner` is the other one, emitted as a
+    // second stroke that starts where this one ends.
+    if ((style === 'groove' || style === 'ridge') && !hidden && border[i] >= 2 && parsed && Array.isArray(parsed.rgba)) {
+      const unset = borderColorUnset(el, cs, name)
+      const { dark, light } = reliefColors(unset ? UNSET_RELIEF : parsed.rgba)
+      const first = Math.ceil(border[i] / 2)
+      const second = border[i] - first
+      const leading = name === 'Top' || name === 'Left'
+      const firstColor = style === 'groove' ? dark : light
+      const secondColor = style === 'groove' ? light : dark
       return {
         side: name.toLowerCase(),
-        width: border[i] / 2,
+        width: leading ? first : second,
         style: 'solid',
-        color: [parsed.rgba[0] * 0.65, parsed.rgba[1] * 0.65, parsed.rgba[2] * 0.65, parsed.rgba[3]],
+        color: leading ? firstColor : secondColor,
         srcCss: parsed.srcCss,
-        colorWarnings: ['border-style:groove is emitted as its dark band only, on the outer half of the ' +
-          'border; the light band is dropped, and on the bottom and right sides the page paints the dark ' +
-          'band on the inner half instead.'],
+        colorWarnings: (parsed && parsed.warnings) || [],
+        inner: { width: leading ? second : first, color: leading ? secondColor : firstColor },
+      }
+    }
+    // `inset` and `outset` are solid sides in two colours: top and left dark and
+    // bottom and right light for `inset`, the other way round for `outset`. Emitted
+    // in the one declared colour, a default `<hr>` came out as a 2px grey band where
+    // the page paints a 1px line over a nearly white one.
+    if ((style === 'inset' || style === 'outset') && !hidden && parsed && Array.isArray(parsed.rgba)) {
+      const unset = borderColorUnset(el, cs, name)
+      const { dark, light } = reliefColors(unset ? UNSET_RELIEF : parsed.rgba)
+      const darkSide = (name === 'Top' || name === 'Left') === (style === 'inset')
+      return {
+        side: name.toLowerCase(),
+        width: border[i],
+        style: 'solid',
+        color: darkSide ? dark : light,
+        srcCss: parsed.srcCss,
+        colorWarnings: (parsed && parsed.warnings) || [],
       }
     }
     return {
@@ -1497,8 +1613,9 @@ function collectStrokes (cs, radii, border, el) {
       paint: { type: 'solid', color: model.color, srcCss: model.srcCss },
       style: model.style,
       uniform,
-      // `colorWarnings` is a collection channel, not part of the stroke shape.
-      sides: sides.map(({ colorWarnings, ...rest }) => rest),
+      // `colorWarnings` is a collection channel, not part of the stroke shape, and
+      // `inner` becomes a stroke of its own below.
+      sides: sides.map(({ colorWarnings, inner, ...rest }) => rest),
     }
 
     if (model.style === 'dashed' || model.style === 'dotted') {
@@ -1523,6 +1640,20 @@ function collectStrokes (cs, radii, border, el) {
       strokeWarnings.push(`border-style:${model.style} is emitted as a solid stroke; its shading is lost.`)
     }
 
+    // A cell of a collapsed table does not own its border: the two cells either side
+    // of a grid line share ONE border, centred on the line. MEASURED in Chromium at
+    // 1, 2, 3 and 5px: the ink occupies exactly `edge - w/2` to `edge + w/2` of the
+    // cell's own box edge (which layout puts on a half pixel for an odd width, so the
+    // band lands on whole ones). Painted inside each cell instead, every inner line
+    // of the table came out twice as thick — two bands side by side — and the outer
+    // ones half a border off. `outset` moves each side out by half its own width;
+    // neighbours then paint the same band, once. `border-collapse` inherits, so the
+    // cell's own computed value is the table's. Where the two cells disagree the
+    // wider border should win and this paints both, which is declared.
+    if (cs.display === 'table-cell' && cs.borderCollapse === 'collapse') {
+      stroke.outset = weights.map((w) => w / 2)
+    }
+
     if (!uniform) {
       const detail = visible
         .map((s) => `${s.side}: ${s.style} ${s.srcCss}`)
@@ -1533,6 +1664,33 @@ function collectStrokes (cs, radii, border, el) {
       )
     }
     strokes.push(stroke)
+
+    // The inner bands of `groove` / `ridge` sides: a second border stroke that
+    // begins where the first one ends (`inset`, per side, in px from the border
+    // edge). A side that is not a relief has no inner band and only lends its full
+    // width to the inset, so the inner bands miter against it.
+    if (sides.some((s) => s.inner && s.inner.width > 0)) {
+      const inset = sides.map((s) => s.width)
+      const innerSides = sides.map((s) => ({
+        side: s.side,
+        width: s.inner ? s.inner.width : 0,
+        style: 'solid',
+        color: s.inner ? s.inner.color : null,
+        srcCss: s.srcCss,
+      }))
+      const firstInner = innerSides.find((s) => s.width > 0)
+      strokes.push({
+        kind: 'border',
+        align: 'inside',
+        weights: innerSides.map((s) => s.width),
+        inset,
+        radii: radii.map(([rx, ry]) => [Math.max(0, rx - Math.max(...inset)), Math.max(0, ry - Math.max(...inset))]),
+        paint: { type: 'solid', color: firstInner.color, srcCss: firstInner.srcCss },
+        style: 'solid',
+        uniform: false,
+        sides: innerSides,
+      })
+    }
   } else {
     for (const s of sides) {
       if (s.width > 0 && !s.color) {
@@ -1809,9 +1967,9 @@ function collectClip (cs, radii, border, warnings) {
   // inner radii the page uses, so nothing is approximated and a diagnostic here
   // would only degrade a node that is exact.
   if (cv === 'hidden') {
-    // The box itself still paints; its contents are skipped entirely, and the
-    // walk in `paint.js` does not know that, so it collects them from layout.
-    warnings.push('content-visibility:hidden — the page renders none of this subtree; descendants collected from layout are painted here although the page omitted them.')
+    // The box itself still paints; its contents are skipped entirely, here as on
+    // the page (`paint.js` does not walk them).
+    warnings.push('content-visibility:hidden — the page renders none of this subtree, so only the box itself is emitted.')
   }
   return { mode: 'rect', box: 'padding', radii: insetRadii(radii, border) }
 }

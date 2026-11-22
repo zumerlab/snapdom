@@ -45,6 +45,7 @@
 
 import { parseColor } from '../css/color.js'
 import { isExcluded } from '../exclusion.js'
+import { firstPseudoMayApply } from '../css/first-pseudo.js'
 
 /** Visual lines join with LSEP, never `\n`: `\n` makes a paragraph in Figma. */
 const LSEP = '\u2028'
@@ -212,6 +213,8 @@ function stateFor(ctx) {
       nameTables: new Map(),
       root: key.rootEl && key.rootEl.nodeType === 1 ? key.rootEl : null,
       exclude: [].concat(key.exclude || []),
+      // False for the shared fallback, which is not one capture's and never ends.
+      perCapture: key !== FALLBACK_KEY,
     }
     STATES.set(key, S)
   }
@@ -1290,6 +1293,12 @@ function buildTextStyle(el, cs, blockEl, S, warn) {
     textTransform: cs.textTransform || 'none',
     strokeWidth,
     strokeColor: stroke ? stroke.rgba : null,
+    // The content language, which is part of the style and not decoration: it
+    // picks the GLYPHS wherever one code point has several national forms. The
+    // same kanji are drawn from a Japanese font under `lang="ja"` and from a
+    // Chinese one without it — measured on three Japanese paragraphs emitted with
+    // no language, 2.5% of the block off against a page that had it.
+    lang: langOf(el, S) || undefined,
     href: hrefOf(el, S),
     ascent: metrics.ascent,
     descent: metrics.descent,
@@ -1302,6 +1311,7 @@ function buildTextStyle(el, cs, blockEl, S, warn) {
     style.letterSpacing, style.wordSpacing, style.lineHeight, style.colorCss,
     style.decorations.map(d => `${d.line}|${d.style}|${d.colorCss}|${d.thickness}`).join('&'),
     style.textTransform, style.strokeWidth, style.strokeColor && style.strokeColor.join(','), style.href,
+    style.lang || '',
   ].join('\u0000')
 
   if (style.note) warn(style.note)
@@ -1361,6 +1371,11 @@ function firstLetterLength(data, lang, S) {
  */
 function splitFirstLetter(pieces, blockEl, blockCs, S, warn) {
   if (!pieces.length) return
+  // No sheet in this document names `::first-letter`, so the comparison below could
+  // only find nothing (`css/first-pseudo.js`). Only for a state that belongs to one
+  // capture: the fallback state outlives captures, and a verdict cached on it would
+  // outlive the sheets it was read from.
+  if (S.perCapture && !firstPseudoMayApply(S, blockEl)) return
   let flCs = null
   try { flCs = getComputedStyle(blockEl, '::first-letter') } catch { return }
   if (!flCs) return
@@ -1922,8 +1937,14 @@ function chainScale(el, S) {
   const { m, ok } = linearAbove(el, S)
   const [a, b, c, d] = m
   const axis = ok && Math.abs(b) <= EPS && Math.abs(c) <= EPS && a > EPS && d > EPS
-  const sx = axis ? a : 1
-  const sy = axis ? d : 1
+  // `zoom` scales every client rect too, and `paint.js` divides ALL of it out — the
+  // element's own, its ancestors' and whatever is zoomed above the capture root —
+  // so the node this text lands on is in unzoomed px. `currentCSSZoom` is exactly
+  // that product.
+  const zoomed = Number(el && el.currentCSSZoom)
+  const zoom = zoomed > 0 && Number.isFinite(zoomed) ? zoomed : 1
+  const sx = (axis ? a : 1) * zoom
+  const sy = (axis ? d : 1) * zoom
   return { sx, sy, skewed: !axis, scaled: axis && (Math.abs(sx - 1) > 1e-4 || Math.abs(sy - 1) > 1e-4) }
 }
 
@@ -2001,7 +2022,12 @@ function fragmentsOf(segs, line, rToChar, blockRect, sx) {
       if (r.right > right) right = r.right
     }
     if (!Number.isFinite(left)) continue
-    items.push({ left, right, start: rToChar[s.rStart] })
+    // Inside a `<ruby>` the base is stretched to the width of its annotation, by
+    // spacing no advance predicts, so a base and what follows it are never one
+    // stretch of glyphs even when their rects touch.
+    const host = s.piece.t && s.piece.t.el
+    const ruby = !!(host && host.closest && host.closest('ruby'))
+    items.push({ left, right, start: rToChar[s.rStart], ruby })
   }
   if (items.length < 2) return null
   items.sort((a, b) => a.left - b.left)
@@ -2010,14 +2036,14 @@ function fragmentsOf(segs, line, rToChar, blockRect, sx) {
   // that its offsets are logical; splitting it here would be a lie with an x on it.
   for (let k = 1; k < items.length; k++) if (items[k].start < items[k - 1].start) return null
 
-  const groups = [{ left: items[0].left, right: items[0].right, start: items[0].start }]
+  const groups = [{ left: items[0].left, right: items[0].right, start: items[0].start, ruby: items[0].ruby }]
   for (let k = 1; k < items.length; k++) {
     const last = groups[groups.length - 1]
-    if (items[k].left <= last.right + FRAG_GAP) {
+    if (items[k].left <= last.right + FRAG_GAP && !items[k].ruby && !last.ruby) {
       if (items[k].right > last.right) last.right = items[k].right
       continue
     }
-    groups.push({ left: items[k].left, right: items[k].right, start: items[k].start })
+    groups.push({ left: items[k].left, right: items[k].right, start: items[k].start, ruby: items[k].ruby })
   }
   if (groups.length < 2) return null
 
@@ -2221,7 +2247,18 @@ export function collectText(blockEl, ctx) {
     // The ascent is a font measurement, in the block's own units; the rect it is
     // added to is in the viewport's. One of them has to move, and scaling the
     // ascent is exact where scaling a rounded rect back would not be.
-    p.ascentVp = p.style.ascent * sy
+    //
+    // The WHOLE-PIXEL ascent, because that is the one the browser lays the line out
+    // with: Blink rounds a font's ascent and descent before it builds the text box
+    // (`SimpleFontData`, `SkScalarRoundToScalar`), so the box a range rect reports
+    // starts `round(ascent)` above the baseline — while the canvas reports the
+    // unrounded number (Inter at 16px: 15.5). Added unrounded to a box whose top is
+    // not on a whole pixel, the baseline lands half a pixel short and then rounds
+    // DOWN where the page rounds up. MEASURED on a paragraph whose box starts at
+    // y = 88.59: the page paints its baseline on row 105, this reported 104.09 and
+    // the line was drawn one pixel high — every line under a heading with a
+    // fractional line-height.
+    p.ascentVp = Math.round(p.style.ascent) * sy
     if (!p.rects.length) continue
     if (p.style.lineHeight > refPitch) refPitch = p.style.lineHeight
     p.clusterOf = new Array(p.rects.length)
@@ -2855,7 +2892,14 @@ export function collectText(blockEl, ctx) {
   // and lines with at least two words. Every line of the block gets them,
   // including the unjustified last one: its anchors are exact too, and one rule
   // with no special case beats two rules with one.
-  if (align === 'justify' && !chain.skewed && direction !== 'rtl' && !RTL_CHARS.test(characters)) {
+  //
+  // A preserved TAB is the same problem in one line: it advances to the next tab
+  // stop, a width no font metric holds, and a backend that sets the string as one
+  // run gives it the width of a space — measured on a `<pre>` indented with tabs,
+  // every indented line started 24px to the left of the page's. The words of a
+  // line that contains one are anchored the same way, justified block or not.
+  const justified = align === 'justify'
+  if ((justified || flags.tabs) && !chain.skewed && direction !== 'rtl' && !RTL_CHARS.test(characters)) {
     // characters index -> rendered index. `rToChar` is the other direction, and
     // LSEP positions (which no word contains) simply stay -1.
     const rOf = new Int32Array(characters.length).fill(-1)
@@ -2884,6 +2928,7 @@ export function collectText(blockEl, ctx) {
       return lo
     }
     for (const line of lines) {
+      if (!justified && !characters.slice(line.start, line.end).includes('\t')) continue
       const words = []
       let at = line.start
       while (at < line.end) {
@@ -2894,7 +2939,9 @@ export function collectText(blockEl, ctx) {
         words.push({ start: at, end })
         at = end
       }
-      if (words.length < 2) continue
+      // Two words make a gap to anchor across; a line that is one word AFTER a tab
+      // needs its single anchor just as much.
+      if (words.length < 2 && (justified || !words.length || words[0].start === line.start)) continue
       let ok = true
       let cursor = 0
       let prevLeft = -Infinity
@@ -3037,7 +3084,7 @@ export function collectText(blockEl, ctx) {
       'of every stretch of glyphs — a backend that fits the whole string to one width stretches it across the hole')
   }
   if (flags.tabs) {
-    warn('preserved tab characters — tab-stop advance is not modelled, so a line width containing one is approximate')
+    warn('preserved tab characters — the tab-stop advance is no glyph metric, so every word of a line that contains one carries a measured x (`line.words`); a backend that sets the line as one run gives the tab the width of a space')
   }
   if (flags.capitalize && texts.length > 1) {
     warn('text-transform: capitalize is resolved one text node at a time, with the single preceding character for context — a word boundary that depends on more than that character may capitalize differently than it paints')
@@ -3047,7 +3094,7 @@ export function collectText(blockEl, ctx) {
   }
   if (flags.hidden) warn(`${flags.hidden} text node(s) under visibility:hidden were left out of the text`)
   if (flags.noRects) warn(`${flags.noRects} text node(s) have text but no client rects — clipped, clamped, or not laid out`)
-  if (flags.ruby) warn('ruby annotations (rt/rp) were left out — they paint on their own baseline and belong to their own node')
+  if (flags.ruby) warn('ruby annotations (rt) are not part of this block\'s string: each is a text node of its own, on its own baseline, and the base it annotates is a fragment of the line with its own measured x and width')
   if (flags.shadow) warn('shadow DOM or slotted content inside this block is out of scope for v0 and its text was not collected')
   if (flags.contentVisibility) warn('a content-visibility:hidden subtree was skipped — its text is not laid out and has no geometry')
 

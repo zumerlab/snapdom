@@ -833,13 +833,20 @@ function sidePaints (stroke) {
 function composeSides (stroke, box, name, warn, reason) {
   const weights = sideWeights(stroke)
   const paints = sidePaints(stroke)
-  const w = box.width
-  const h = box.height
+  // A stroke that starts inside the border edge — the inner band of a `groove` or
+  // `ridge` (`collect/box.js`) — is laid out on the box shrunk by its `inset`.
+  const inset = Array.isArray(stroke.inset) && stroke.inset.length === 4
+    ? stroke.inset.map((n) => Math.max(0, num(n, 0)))
+    : [0, 0, 0, 0]
+  const x0 = inset[3]
+  const y0 = inset[0]
+  const w = Math.max(0, box.width - inset[1] - inset[3])
+  const h = Math.max(0, box.height - inset[0] - inset[2])
   const geom = [
-    [0, 0, w, weights[0]],
-    [w - weights[1], 0, weights[1], h],
-    [0, h - weights[2], w, weights[2]],
-    [0, 0, weights[3], h],
+    [x0, y0, w, weights[0]],
+    [x0 + w - weights[1], y0, weights[1], h],
+    [x0, y0 + h - weights[2], w, weights[2]],
+    [x0, y0, weights[3], h],
   ]
   const labels = ['top', 'right', 'bottom', 'left']
   warn('figma.stroke-per-side-composed', 'info',

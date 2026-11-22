@@ -638,7 +638,7 @@ function namespaceSvg (clone, prefix, warnings, resolution = {}) {
     const copy = winner.cloneNode(true)
     // The imported node comes from elsewhere in the page: its stylesheet rules do
     // not travel with the markup any more than this SVG's own did.
-    bakeComputedStyle(winner, copy, warnings)
+    bakeComputedStyle(winner, copy, warnings, { keepVars: true })
     defs.appendChild(copy)
     pairSubtrees(winner, copy, liveToClone)
     for (const node of [copy, ...copy.querySelectorAll('*')]) {
@@ -741,7 +741,57 @@ function namespaceSvg (clone, prefix, warnings, resolution = {}) {
  * The page's stylesheets do not travel with the markup, and `currentColor` — the
  * usual way an icon gets its colour — resolves to nothing without this.
  */
-function bakeComputedStyle (live, clone, warnings) {
+/** Custom property names a piece of markup reads through `var()`. */
+function varNamesIn (markup, into = new Set()) {
+  const re = /var\(\s*(--[\w-]+)/g
+  let m
+  while ((m = re.exec(markup || ''))) into.add(m[1])
+  return into
+}
+
+/**
+ * The custom properties the definitions this SVG instantiates with `<use>` depend
+ * on — read off the referenced elements, wherever in the page they live.
+ */
+function usedVarNames (live, into = new Set()) {
+  let uses
+  try { uses = live.querySelectorAll('use') } catch { return into }
+  const doc = live.ownerDocument
+  for (const use of uses) {
+    const ref = use.getAttribute('href') || use.getAttribute('xlink:href') || ''
+    if (ref[0] !== '#' || !doc) continue
+    let target = null
+    try { target = doc.getElementById(ref.slice(1)) } catch { /* not an id the document can look up */ }
+    if (target) varNamesIn(target.outerHTML, into)
+  }
+  return into
+}
+
+/** Does the element itself say `var()` for this property — as an attribute or inline? */
+function authoredVar (node, prop) {
+  const attr = node.getAttribute ? node.getAttribute(prop) : null
+  if (attr && attr.includes('var(')) return true
+  const inline = node.style && typeof node.style.getPropertyValue === 'function' ? node.style.getPropertyValue(prop) : ''
+  return !!inline && inline.includes('var(')
+}
+
+/**
+ * @param {Element} live
+ * @param {Element} clone
+ * @param {string[]} warnings
+ * @param {{keepVars?: boolean, varNames?: Set<string>}} [how]
+ *   `keepVars` — a property the element writes with `var()` is left as written
+ *   instead of being baked. That is for a DEFINITION (`<symbol>`, a gradient)
+ *   copied in from elsewhere: it is styled where it is USED, and its computed
+ *   value where it is declared is only the fallback. MEASURED on four icons that
+ *   share one `<symbol fill="var(--my-fill,#ccc)">` and set `--my-fill` on their
+ *   own `<use>`: baked at the definition, all four were emitted `#ccc`.
+ *   `varNames` — custom properties to carry: each is written wherever its value
+ *   changes down the tree (the root, then any element that sets its own), so a
+ *   `var()` left in a definition finds the value its `<use>` had on the page.
+ */
+function bakeComputedStyle (live, clone, warnings, how = {}) {
+  const { keepVars = false, varNames = null } = how
   const liveNodes = [live, ...live.querySelectorAll('*')]
   const cloneNodes = [clone, ...clone.querySelectorAll('*')]
   if (liveNodes.length !== cloneNodes.length) {
@@ -787,7 +837,16 @@ function bakeComputedStyle (live, clone, warnings) {
     // wherever one of those wins, it won when the computed value was read too,
     // so the two agree, and removing it would drop the properties NOT baked here
     // (`d`, `transform`, `transform-origin`, …).
+    if (varNames && varNames.size) {
+      for (const name of varNames) {
+        const value = style.getPropertyValue(name)
+        if (!value) continue
+        if (parentStyle && value === parentStyle.getPropertyValue(name)) continue
+        target.style.setProperty(name, value.trim())
+      }
+    }
     for (const [prop, initial] of INHERITED_SVG_PROPS) {
+      if (keepVars && authoredVar(node, prop)) continue
       const value = style.getPropertyValue(prop)
       if (!value) continue
       if (isRoot) {
@@ -798,6 +857,7 @@ function bakeComputedStyle (live, clone, warnings) {
       target.setAttribute(prop, value)
     }
     for (const [prop, initial] of OWN_SVG_PROPS) {
+      if (keepVars && authoredVar(node, prop)) continue
       const value = style.getPropertyValue(prop)
       if (value && value !== initial) target.setAttribute(prop, value)
     }
@@ -1293,7 +1353,7 @@ async function inlineSvgAsset (el, ctx, box, warnings, timeout) {
   const id = nextAssetId(ctx, 'svg')
   const clone = el.cloneNode(true)
   const audit = auditSvgFeatures(el, warnings)
-  bakeComputedStyle(el, clone, warnings)
+  bakeComputedStyle(el, clone, warnings, { varNames: usedVarNames(el) })
   namespaceSvg(clone, `${id}__`, warnings, { live: el, index: buildIdIndex(resolutionRoot(el, ctx)) })
   await embedNestedImages(clone, timeout, warnings)
 

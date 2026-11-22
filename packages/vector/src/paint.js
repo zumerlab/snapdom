@@ -55,6 +55,7 @@
 import { parseTransform } from './css/matrix.js'
 import { parseColor } from './css/color.js'
 import { isExcluded } from './exclusion.js'
+import { firstPseudoMayApply } from './css/first-pseudo.js'
 
 /** Never rendered, or rendered by something else that we walk instead. */
 const SKIP_TAGS = new Set([
@@ -236,7 +237,11 @@ function isInlineLevel (display) {
  * disappeared with nothing but a "no painted characters" note.
  */
 function joinsParentText (display) {
-  return /^(inline|ruby|contents)$/.test(display || '') || /^ruby-/.test(display || '')
+  // `ruby-text` does NOT join: an annotation is set in its own size on its own
+  // baseline above the line, so its characters are no part of the line's string.
+  // It is a text carrier of its own, and `collect/text.js` keeps `<rt>` out of
+  // the paragraph for the same reason.
+  return /^(inline|ruby|contents)$/.test(display || '') || /^ruby-(?!text)/.test(display || '')
 }
 
 /**
@@ -320,6 +325,43 @@ function paintsColor (value) {
 
 const SIDES = ['Top', 'Right', 'Bottom', 'Left']
 
+// ——— per-walk answers ———
+
+/**
+ * One walk asks the same yes/no question of the same computed style again and
+ * again: `walk` needs `paintsBox` three times and `clipsContent` three times per
+ * element to decide prune / layer / type, `measure`, `readTransform` and the
+ * containing-block flags each ask `hasTransform` again, and every one of those is
+ * a run of live `getComputedStyle` reads. MEASURED on a 500-row table: 331 style
+ * reads per element, 56% of them a property that element had already been asked.
+ *
+ * Each of these five answers is a function of `cs` and nothing else, and nothing
+ * restyles the clone while `buildPaintTree` runs — the two places that write a
+ * style during a walk (`mathLayoutBox`, the marker measurement) put it back before
+ * they return, and `mathLayoutBox` asks its question of a style object of its own.
+ * So the answer is kept per style object, for the length of ONE `buildPaintTree`
+ * call: the map is created when the walk starts and dropped when it ends, and
+ * outside a walk every call computes, exactly as before.
+ */
+let walkAnswers = null
+const HAS_TRANSFORM = 0
+const CLIPS_CONTENT = 1
+const FORCES_GROUP = 2
+const PAINTS_BOX = 3
+const FIXED_CB = 4
+
+function answered (slot, cs, compute) {
+  if (walkAnswers === null || !cs) return compute(cs)
+  let row = walkAnswers.get(cs)
+  if (row === undefined) {
+    row = [undefined, undefined, undefined, undefined, undefined]
+    walkAnswers.set(cs, row)
+  }
+  const hit = row[slot]
+  if (hit !== undefined) return hit
+  return (row[slot] = compute(cs))
+}
+
 function paintsBorder (cs) {
   for (const side of SIDES) {
     const style = cs[`border${side}Style`]
@@ -338,6 +380,10 @@ function paintsOutline (cs) {
 
 /** Anything `collectBox` would find: backgrounds, borders, outline, shadows, effects. */
 function paintsBox (cs) {
+  return answered(PAINTS_BOX, cs, computePaintsBox)
+}
+
+function computePaintsBox (cs) {
   return isSet(cs.backgroundImage) ||
     paintsColor(cs.backgroundColor) ||
     paintsBorder(cs) ||
@@ -355,6 +401,10 @@ function paintsBox (cs) {
  * it a hard rule rather than a heuristic.
  */
 function forcesGroup (cs) {
+  return answered(FORCES_GROUP, cs, computeForcesGroup)
+}
+
+function computeForcesGroup (cs) {
   return opacityOf(cs) < 1 ||
     (isSet(cs.mixBlendMode) && cs.mixBlendMode !== 'normal') ||
     cs.isolation === 'isolate' ||
@@ -364,6 +414,10 @@ function forcesGroup (cs) {
 }
 
 function clipsContent (cs) {
+  return answered(CLIPS_CONTENT, cs, computeClipsContent)
+}
+
+function computeClipsContent (cs) {
   return (cs.overflowX && cs.overflowX !== 'visible') ||
     (cs.overflowY && cs.overflowY !== 'visible') ||
     isSet(cs.clipPath) || isSet(cs.webkitClipPath) ||
@@ -373,6 +427,10 @@ function clipsContent (cs) {
 
 /** Properties that move the border box away from where layout put it. */
 function hasTransform (cs) {
+  return answered(HAS_TRANSFORM, cs, computeHasTransform)
+}
+
+function computeHasTransform (cs) {
   return isSet(cs.transform) || isSet(cs.rotate) || isSet(cs.scale) ||
     isSet(cs.translate) || isSet(cs.offsetPath)
 }
@@ -382,12 +440,34 @@ function hasTransform (cs) {
  * together with `position != static`, of absolutely positioned ones.
  */
 function isFixedContainingBlock (cs) {
+  return answered(FIXED_CB, cs, computeFixedContainingBlock)
+}
+
+function computeFixedContainingBlock (cs) {
   return hasTransform(cs) ||
     isSet(cs.filter) || isSet(cs.webkitFilter) ||
     isSet(cs.backdropFilter) || isSet(cs.webkitBackdropFilter) ||
     isSet(cs.perspective) ||
     CONTAIN_SC.test(cs.contain || '') ||
     willChangeCreatesSC(cs.willChange)
+}
+
+/**
+ * The element's OWN `zoom`, as a factor; 1 when it has none.
+ *
+ * `zoom` is not a transform, and for this engine it has to be treated as one. The
+ * browser reports every painted rect in zoomed px and every computed length — font
+ * size, border width, radius, padding — in the element's own unzoomed px, so a
+ * subtree under `zoom: 1.5` was emitted with boxes one and a half times too big for
+ * the text and borders inside them. MEASURED on a card with `zoom: 1.5`: 24px text
+ * drawn at 16px. The node that declares the zoom is therefore emitted as a
+ * `scale(z)` about its own top-left corner — which is exactly where a zoomed box
+ * sits relative to its unzoomed self — and everything under it is measured in the
+ * unzoomed px its styles are written in (`measure`).
+ */
+function zoomOf (cs) {
+  const z = parseFloat(cs && cs.zoom)
+  return z > 0 && Number.isFinite(z) ? z : 1
 }
 
 // ——— geometry ———
@@ -431,7 +511,7 @@ function mathLayoutBox (el, rootEl) {
     for (let current = el; current; current = current.parentElement) {
       const style = current.style
       if (style) {
-        const transformed = hasTransform(current.ownerDocument.defaultView.getComputedStyle(current))
+        const transformed = computeHasTransform(current.ownerDocument.defaultView.getComputedStyle(current))
         saved.push([current, current.getAttribute('style')])
         for (const name of ['transition', 'translate', 'rotate', 'scale', 'offset-path']) {
           style.setProperty(name, 'none', 'important')
@@ -1161,18 +1241,31 @@ function markerTextFor (type, value, st) {
 
 /**
  * The ordinal the UA numbers this item with: `value` on the item wins, then the
- * running count from the list's `start`. `reversed` is not counted here.
+ * running count from the list's `start`.
+ *
+ * `<ol reversed>` counts DOWN, and with no `start` it begins at the number of
+ * items the list has, so the last one is 1 (HTML, "the ol element"). A `value`
+ * on an item resets the count there and the items after it keep going down.
  */
 function listItemOrdinal (li, st) {
   const parent = li.parentElement
   if (!parent) return null
   const ordered = parent.tagName === 'OL'
-  if (ordered && parent.hasAttribute('reversed')) return null
+  const reversed = ordered && parent.hasAttribute('reversed')
+  const step = reversed ? -1 : 1
   // Same trap as `value` below: `Number(null)` is 0, and taking it started every
   // ordered list at zero.
   const rawStart = ordered ? parent.getAttribute('start') : null
   const start = rawStart === null || rawStart.trim() === '' ? NaN : Number(rawStart)
-  let current = (Number.isFinite(start) ? start : 1) - 1
+  let first = Number.isFinite(start) ? start : 1
+  if (reversed && !Number.isFinite(start)) {
+    first = 0
+    for (const sib of parent.children) {
+      const cs = st.styleOf(sib)
+      if (cs && /list-item/.test(cs.display || '')) first++
+    }
+  }
+  let current = first - step
   for (const sib of parent.children) {
     const cs = st.styleOf(sib)
     if (!cs || !/list-item/.test(cs.display || '')) {
@@ -1184,7 +1277,7 @@ function listItemOrdinal (li, st) {
     // advance check, because "§0 · " and "§1 · " are the same width.
     const raw = sib.getAttribute ? sib.getAttribute('value') : null
     const own = raw === null || raw.trim() === '' ? NaN : Number(raw)
-    current = Number.isFinite(own) ? own : current + 1
+    current = Number.isFinite(own) ? own : current + step
     if (sib === li) return current
   }
   return null
@@ -1237,9 +1330,12 @@ function synthesizeMarkers (root, st) {
     if (candidates.length >= MAX_SYNTH_MARKERS) break
     const cs = st.styleOf(el)
     if (!cs || !/list-item/.test(cs.display || '')) continue
-    // Only the outside marker has the measured placement rule; `inside` is an
-    // inline box in the line and would need the line broken around it.
-    if (cs.listStylePosition !== 'outside') continue
+    // An `inside` marker is an inline box at the start of the first line: the
+    // text after it is already where the browser put it, and the marker is the
+    // same box an outside one is, sitting immediately before that text. It is
+    // measured the other way round below (`c.inside`) and then goes through the
+    // same advance check, which is what rejects it if this does not hold.
+    if (cs.listStylePosition !== 'outside' && cs.listStylePosition !== 'inside') continue
     if (isSet(cs.listStyleImage)) continue
     if (cs.direction !== 'ltr' || cs.visibility !== 'visible') continue
     if (el.querySelector(`:scope > [${PSEUDO_ATTR}="::marker"]`)) continue
@@ -1329,12 +1425,25 @@ function synthesizeMarkers (root, st) {
 
   // The browser's own answer for "how wide is the real marker": inside the line
   // box, the first text run starts exactly that much further right.
-  for (const c of candidates) c.el.style.setProperty('list-style-position', 'inside', 'important')
+  //
+  // An item that is ALREADY `inside` is asked the opposite way round: moved
+  // outside, its text slides back by the marker's width. Asked the usual way it
+  // answered zero — nothing moves when `inside` is set on an item that is inside —
+  // and every such item lost its marker for "not matching the UA's".
+  for (const c of candidates) {
+    c.inside = (st.styleOf(c.el).listStylePosition || '') === 'inside'
+    c.restore = c.el.style.getPropertyValue('list-style-position')
+    c.restorePriority = c.el.style.getPropertyPriority('list-style-position')
+  }
+  for (const c of candidates) c.el.style.setProperty('list-style-position', c.inside ? 'outside' : 'inside', 'important')
   for (const c of candidates) {
     const probe = firstTextRun(c.el)
-    c.measured = probe ? probe.rect.left - c.textLeft : null
+    c.measured = probe ? (c.inside ? c.textLeft - probe.rect.left : probe.rect.left - c.textLeft) : null
   }
-  for (const c of candidates) c.el.style.removeProperty('list-style-position')
+  for (const c of candidates) {
+    if (c.restore) c.el.style.setProperty('list-style-position', c.restore, c.restorePriority)
+    else c.el.style.removeProperty('list-style-position')
+  }
 
   const placed = []
   for (const c of candidates) {
@@ -1428,19 +1537,26 @@ function synthesizeMarkers (root, st) {
   for (const c of placed) {
     if (c.symbol) {
       const rect = c.span.getBoundingClientRect()
+      // Outside, the bullet ends `gap` short of the content edge. Inside, it is the
+      // first thing IN the content box: Blink gives the marker a -1px start margin
+      // and draws the bullet 1px into it, so its left edge is the content edge.
+      c.aimLeft = c.inside ? c.contentLeft : c.contentLeft - c.symbol.gap - c.symbol.size
       c.fix = rect.width > 0
         ? {
-            dx: (c.contentLeft - c.symbol.gap - c.symbol.size) - rect.left,
+            dx: c.aimLeft - rect.left,
             dy: (c.baseline - c.symbol.rise - c.symbol.size / 2) - rect.top,
           }
         : null
       continue
     }
+    // A string marker ends where the item's text begins when it is inside the
+    // line, and at the content edge when it hangs outside it.
+    c.aimRight = c.inside ? c.textLeft : c.contentLeft
     const run = firstTextRun(c.span)
     const font = fontShorthand(st.styleOf(c.span) || c.markerCs)
     const ascent = ascentOf(font, st)
     c.fix = run && ascent !== null
-      ? { dx: c.contentLeft - run.rect.right, dy: c.baseline - (run.rect.top + ascent), ascent, font }
+      ? { dx: c.aimRight - run.rect.right, dy: c.baseline - (run.rect.top + ascent), ascent, font }
       : null
   }
   for (const c of placed) {
@@ -1453,12 +1569,12 @@ function synthesizeMarkers (root, st) {
     let ok
     if (c.symbol) {
       const rect = c.span.getBoundingClientRect()
-      ok = Math.abs(rect.right - (c.contentLeft - c.symbol.gap)) < 0.5 &&
+      ok = Math.abs(rect.left - c.aimLeft) < 0.5 &&
         Math.abs((rect.top + rect.height / 2) - (c.baseline - c.symbol.rise)) < 0.5
     } else {
       const run = firstTextRun(c.span)
       ok = !!run &&
-        Math.abs(run.rect.right - c.contentLeft) < 0.5 &&
+        Math.abs(run.rect.right - c.aimRight) < 0.5 &&
         Math.abs(run.rect.top + c.fix.ascent - c.baseline) < 0.5
     }
     if (!ok) {
@@ -1601,6 +1717,25 @@ const UA_TRACK = '#efefef'
 const UA_SURFACE = '#ffffff'
 const UA_METER_OPTIMUM = '#107c10'
 const UA_METER_SUBOPTIMUM = '#d83b01'
+const UA_ACCENT_DARK = '#99c8ff'
+const UA_TRACK_DARK = '#3b3b3b'
+const UA_METER_OPTIMUM_DARK = '#74b374'
+
+/**
+ * Is this element painted with the dark variant of the platform theme? The used
+ * colour scheme is not a computed value: `color-scheme` lists what the element
+ * SUPPORTS, and the user's preference picks among them.
+ */
+function usesDarkScheme (el, cs) {
+  const schemes = String(cs.colorScheme || '').toLowerCase().split(/\s+/).filter(Boolean)
+  const dark = schemes.includes('dark')
+  if (!dark) return false
+  if (!schemes.includes('light')) return true
+  try {
+    const view = el.ownerDocument && el.ownerDocument.defaultView
+    return !!(view && view.matchMedia && view.matchMedia('(prefers-color-scheme: dark)').matches)
+  } catch { return false }
+}
 
 /** Fallbacks for the two colours above, so a descriptor is never colourless. */
 const RGBA_WHITE = [1, 1, 1, 1]
@@ -1663,14 +1798,20 @@ function describeWidget (el, cs) {
   if ((cs.appearance || cs.webkitAppearance || 'auto') === 'none') return null
   if ((cs.visibility || 'visible') !== 'visible') return null
 
+  // Under a dark colour scheme the theme paints the same shapes in other colours.
+  // MEASURED on the raster with `color-scheme: dark`: accent `#99c8ff`, track
+  // `#3b3b3b`, and a hairline of opaque `#858585` where the light theme uses
+  // `#767676` at half strength.
+  const dark = usesDarkScheme(el, cs)
   const accentCss = cs.accentColor && cs.accentColor !== 'auto' ? cs.accentColor : null
-  const accent = rgbaOf(accentCss) || rgbaOf(UA_ACCENT)
+  const accent = rgbaOf(accentCss) || rgbaOf(dark ? UA_ACCENT_DARK : UA_ACCENT)
   const common = {
     accent,
     accentSource: accentCss ? 'accent-color' : 'ua-default',
     ink: inkOn(accent),
     border: rgbaOf(UA_BORDER),
-    track: rgbaOf(UA_TRACK),
+    track: rgbaOf(dark ? UA_TRACK_DARK : UA_TRACK),
+    hairline: dark ? [0x85 / 255, 0x85 / 255, 0x85 / 255, 1] : [118 / 255, 118 / 255, 118 / 255, 0.5],
     surface: rgbaOf(UA_SURFACE),
     direction: cs.direction === 'rtl' ? 'rtl' : 'ltr',
     disabled: !!el.disabled,
@@ -1728,6 +1869,30 @@ function describeWidget (el, cs) {
     min,
     max,
   }
+  // Chromium paints its own themed bar — half the box, a pill — only while the
+  // element is untouched. MEASURED: an author `border-radius`, `background` or
+  // `border` on the element switches it to the plain boxes of its pseudo-elements,
+  // which fill the WHOLE box, and `appearance` goes on reporting `auto` either
+  // way. The backend draws two different things, so it is told which.
+  if (authorStyledBox(cs)) {
+    widget.styled = true
+    if (tag === 'PROGRESS') {
+      // Unthemed, the bar is `::-webkit-progress-bar` over `::-webkit-progress-value`,
+      // grey and green unless the page says otherwise — and `accent-color` no
+      // longer applies. Their computed style is not readable from script
+      // (`getComputedStyle` answers with the element's own), so the page's rules
+      // are read instead; a rule this cannot resolve leaves the UA's colour.
+      const track = pseudoBackground(el, '::-webkit-progress-bar')
+      const value = pseudoBackground(el, '::-webkit-progress-value')
+      widget.track = track || rgbaOf('#808080')
+      widget.accent = value || rgbaOf('#008000')
+      widget.accentSource = value ? 'pseudo-element' : 'ua-unthemed'
+      widget.ink = inkOn(widget.accent)
+      return widget
+    }
+  }
+  // A meter's hairline is fainter than a progress bar's in the light theme.
+  if (widget.kind === 'meter' && !dark) widget.hairline = [118 / 255, 118 / 255, 118 / 255, 0.3]
   if (widget.kind === 'meter' && !accentCss) {
     // Chromium recolours a meter by which band the value falls in. The bands are
     // readable (`low`/`high`/`optimum`), the exact rule for "even less good" is
@@ -1735,11 +1900,83 @@ function describeWidget (el, cs) {
     const low = numberOr(el.low, min)
     const high = numberOr(el.high, max)
     const value = numberOr(el.value, min)
-    widget.accent = rgbaOf(value >= low && value <= high ? UA_METER_OPTIMUM : UA_METER_SUBOPTIMUM)
+    widget.accent = rgbaOf(value >= low && value <= high ? (dark ? UA_METER_OPTIMUM_DARK : UA_METER_OPTIMUM) : UA_METER_SUBOPTIMUM)
     widget.accentSource = 'ua-meter-band'
     widget.ink = inkOn(widget.accent)
   }
   return widget
+}
+
+/** Has the author put a radius, a background or a border on this element's own box? */
+function authorStyledBox (cs) {
+  const zero = (v) => !v || /^0(px|%)?(\s+0(px|%)?)?$/.test(String(v).trim())
+  if (!['borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomRightRadius', 'borderBottomLeftRadius']
+    .every((k) => zero(cs[k]))) return true
+  if (['Top', 'Right', 'Bottom', 'Left'].some((side) => {
+    const style = cs[`border${side}Style`]
+    return style && style !== 'none' && style !== 'hidden' && parseFloat(cs[`border${side}Width`]) > 0
+  })) return true
+  if (cs.backgroundImage && cs.backgroundImage !== 'none') return true
+  const bg = parseColor(cs.backgroundColor)
+  return !!(bg && Array.isArray(bg.rgba) && bg.rgba[3] > 0)
+}
+
+/** Rules read before giving up on a pseudo-element's background. */
+const PSEUDO_RULE_BUDGET = 4000
+
+/**
+ * The background the page gives one of an element's UA pseudo-elements, as a flat
+ * colour — the last readable rule that names the pseudo on a selector this element
+ * matches. A gradient answers with the mean of its first and last stop: the widget
+ * is described in colours, and a bar in the middle colour is nearer the page than
+ * a bar in the UA's. `null` when no rule says, or none can be read.
+ *
+ * @param {Element} el
+ * @param {string} pseudo  e.g. `::-webkit-progress-value`
+ * @returns {number[]|null} rgba
+ */
+function pseudoBackground (el, pseudo) {
+  const doc = el.ownerDocument
+  if (!doc) return null
+  let budget = PSEUDO_RULE_BUDGET
+  let found = null
+  const read = (style) => {
+    const image = style.backgroundImage || ''
+    if (image && image !== 'none' && /gradient\(/.test(image)) {
+      const stops = image.match(/#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)|oklab\([^)]*\)/gi) || []
+      const first = stops.length ? parseColor(stops[0]) : null
+      const last = stops.length ? parseColor(stops[stops.length - 1]) : null
+      if (first && last) return first.rgba.map((c, i) => (c + last.rgba[i]) / 2)
+    }
+    const colour = style.backgroundColor ? parseColor(style.backgroundColor) : null
+    return colour && colour.rgba[3] > 0 ? colour.rgba : null
+  }
+  const scan = (rules) => {
+    for (const rule of rules) {
+      if (--budget < 0) return
+      const selector = rule.selectorText
+      if (typeof selector === 'string' && selector.includes(pseudo) && rule.style) {
+        for (const part of selector.split(',')) {
+          if (!part.includes(pseudo)) continue
+          const base = part.replace(pseudo, '').trim() || '*'
+          let matches = false
+          try { matches = el.matches(base) } catch { /* a selector this cannot test is skipped */ }
+          if (!matches) continue
+          const value = read(rule.style)
+          if (value) found = value
+        }
+      }
+      if (rule.cssRules && rule.cssRules.length) {
+        try { scan(rule.cssRules) } catch { /* unreadable nested rules */ }
+      }
+    }
+  }
+  try {
+    for (const sheet of doc.styleSheets) {
+      try { scan(sheet.cssRules) } catch { /* cross-origin sheet */ }
+    }
+  } catch { return null }
+  return found
 }
 
 // ——— names and paths ———
@@ -1992,12 +2229,25 @@ function findUnrepresentedPseudos (el, cs, textCarrier, st) {
     }
   }
   if (!textCarrier || typeof getComputedStyle !== 'function') return out
+  // No sheet in this document names either pseudo (`css/first-pseudo.js`), so both
+  // probes below would only report what an unstyled pseudo-element reports: the
+  // element's own value for every property in `FIRST_PSEUDO_PROPS` that inherits,
+  // which is all of them but `float`, and `none` for `float`. A floated block is
+  // therefore declared here in the probe's own words, so skipping the probe changes
+  // no document. (Whether a floated block SHOULD be declared is another question:
+  // nothing targets its pseudo-elements. It is kept because this is a speed path.)
   // `::first-letter` only when the clone did not already materialise it: when it did,
   // the span is a node of its own with its own styles and there is nothing to declare.
-  const selectors = el.querySelector(`:scope > [${PSEUDO_ATTR}="::first-letter"]`)
+  const selectorsOf = () => (el.querySelector(`:scope > [${PSEUDO_ATTR}="::first-letter"]`)
     ? ['::first-line']
-    : ['::first-letter', '::first-line']
-  for (const sel of selectors) {
+    : ['::first-letter', '::first-line'])
+  if (!firstPseudoMayApply(st, el)) {
+    if (cs.float !== 'none') {
+      for (const sel of selectorsOf()) out.push({ sel, content: 'float: none', styleOnly: true })
+    }
+    return out
+  }
+  for (const sel of selectorsOf()) {
     let pseudoCs
     try {
       pseudoCs = getComputedStyle(el, sel)
@@ -2012,6 +2262,9 @@ function findUnrepresentedPseudos (el, cs, textCarrier, st) {
   return out
 }
 
+/** The zoom frame of a chain with no zoom in it. */
+const NO_ZOOM = { k: 1, vx: 0, vy: 0, ax: 0, ay: 0 }
+
 /**
  * Untransformed border box in root space.
  *
@@ -2024,6 +2277,22 @@ function measure (el, cs, st, frameCtx, node) {
   const chainTransformed = frameCtx.transformed || hasTransform(cs)
   if (!chainTransformed) {
     const r = rectOf(el)
+    const zoom = frameCtx.zoom
+    const own = el === st.rootEl ? 1 : zoomOf(cs)
+    if (zoom || own !== 1) {
+      // Under `zoom` (see `zoomOf`): the painted rect is in zoomed px. Its POSITION
+      // is put back in the space of the nearest ancestor that declares a zoom —
+      // `zoom.v*` is where that ancestor was painted, `zoom.a*` where it is in
+      // `abs`, `zoom.k` everything zoomed above this element — and its SIZE in the
+      // element's own px, which is the space its own `scale(z)` then acts on.
+      const z = zoom || NO_ZOOM
+      return {
+        x: z.ax + (r.x - st.rootOrigin.x - z.vx) / z.k,
+        y: z.ay + (r.y - st.rootOrigin.y - z.vy) / z.k,
+        w: r.w / (z.k * own),
+        h: r.h / (z.k * own),
+      }
+    }
     return { x: r.x - st.rootOrigin.x, y: r.y - st.rootOrigin.y, w: r.w, h: r.h }
   }
   if (el.namespaceURI === MATH_NS && el.localName === 'math') {
@@ -2062,7 +2331,24 @@ function measure (el, cs, st, frameCtx, node) {
 }
 
 function readTransform (el, cs, box, node, st) {
-  if (!hasTransform(cs)) return null
+  const zoom = el === st.rootEl ? 1 : zoomOf(cs)
+  if (!hasTransform(cs)) {
+    if (zoom === 1) return null
+    // `zoom` as the scale it paints as: about the box's own top-left corner.
+    const scaled = parseTransform(`scale(${zoom})`, '0px 0px', box.w, box.h)
+    return scaled ? { m: scaled.m, decomposed: scaled.decomposed } : null
+  }
+  if (zoom !== 1) {
+    pushDiag(st, {
+      code: 'B4.zoom-with-transform',
+      severity: 'warn',
+      _node: node,
+      css: `zoom: ${cs.zoom}`,
+      note: 'this element declares both `zoom` and a transform; only the transform is emitted, so ' +
+        'its contents are drawn at their unzoomed size',
+    })
+    degrade(node, 'A', 'zoom dropped next to a transform')
+  }
   // The individual properties are separate computed values and apply BEFORE
   // `transform`, in the order translate, rotate, scale. Handing the whole list to
   // one parser keeps a single origin convention instead of two.
@@ -2145,6 +2431,46 @@ const CONTROL_TEXT_PROPS = [
   'textIndent', 'textAlign', 'direction', 'tabSize', 'lineHeight', 'color', 'wordBreak',
 ]
 
+/** Input types whose value the browser paints as a localised date or time. */
+const DATE_INPUT_TYPES = new Set(['date', 'time', 'datetime-local', 'month'])
+
+/**
+ * The text a date or time input shows for its value, as the pieces the browser
+ * lays out: editable fields (day, month, hour…) and the literals between them.
+ *
+ * The value is ISO (`2026-11-20`) and the control paints it in the browser's own
+ * locale (`11/20/2026` in en-US), from a UA shadow tree no script can read. The
+ * same string is rebuilt with `Intl`, which is the formatter the control itself
+ * sits on: numeric fields at two digits, the month spelled out for `type=month`.
+ * Anything this cannot parse, and `type=week`, whose wording is the browser's
+ * own, answers `null` and the control keeps the declaration it had.
+ *
+ * @returns {Array<{text: string, field: boolean}>|null}
+ */
+function dateFieldParts (type, value, locale) {
+  if (typeof Intl === 'undefined' || typeof Intl.DateTimeFormat !== 'function') return null
+  const m = /^(\d{4,})-(\d{2})(?:-(\d{2}))?(?:T(\d{2}):(\d{2})(?::(\d{2}))?)?$/.exec(value) ||
+    (type === 'time' ? /^()()()(\d{2}):(\d{2})(?::(\d{2}))?/.exec(value) : null)
+  if (!m) return null
+  const [, year, month, day, hour, minute, second] = m
+  const options = { timeZone: 'UTC' }
+  if (type === 'date' || type === 'datetime-local') Object.assign(options, { year: 'numeric', month: '2-digit', day: '2-digit' })
+  if (type === 'month') Object.assign(options, { year: 'numeric', month: 'long' })
+  if (type === 'time' || type === 'datetime-local') {
+    if (hour === undefined) return null
+    Object.assign(options, { hour: '2-digit', minute: '2-digit' })
+    if (second !== undefined) options.second = '2-digit'
+  } else if (type !== 'month' && day === undefined) return null
+  if (type !== 'time' && !year) return null
+  const when = new Date(Date.UTC(year ? Number(year) : 2000, month ? Number(month) - 1 : 0, day ? Number(day) : 1,
+    hour ? Number(hour) : 0, minute ? Number(minute) : 0, second ? Number(second) : 0))
+  if (Number.isNaN(when.getTime())) return null
+  let parts
+  try { parts = new Intl.DateTimeFormat(locale || undefined, options).formatToParts(when) } catch { return null }
+  const out = parts.map(part => ({ text: part.value, field: part.type !== 'literal' })).filter(part => part.text)
+  return out.length ? out : null
+}
+
 /**
  * The characters a form control paints, which are in no text node: the value of
  * an input or a textarea, the placeholder standing in for an empty one, the
@@ -2170,6 +2496,12 @@ function controlTextOf (el, tag) {
   if (LABEL_INPUT_TYPES.has(type)) {
     const text = el.value || (type === 'submit' ? 'Submit' : type === 'reset' ? 'Reset' : '')
     return text ? { kind: type, text } : null
+  }
+  if (DATE_INPUT_TYPES.has(type)) {
+    const view = el.ownerDocument && el.ownerDocument.defaultView
+    const locale = view && view.navigator ? view.navigator.language : undefined
+    const parts = el.value ? dateFieldParts(type, String(el.value), locale) : null
+    return parts ? { kind: type, text: parts.map(part => part.text).join(''), parts } : null
   }
   if (!VALUE_INPUT_TYPES.has(type)) return null
   const value = typeof el.value === 'string' ? el.value : ''
@@ -2234,7 +2566,21 @@ function mountControlText (el, cs, info, st) {
   style.width = `${contentW}px`
   style.left = `${left}px`
   style.top = `${top}px`
-  block.textContent = info.text
+  if (info.parts) {
+    // A date or time value is a row of fields, each an inline box with 1px of
+    // padding at either end, and the literals between them (Chromium's
+    // `::-webkit-datetime-edit-*-field`). Laid out the same way, the digits land
+    // where the control puts them instead of bunched up like one word.
+    for (const part of info.parts) {
+      if (!part.field) { block.appendChild(el.ownerDocument.createTextNode(part.text)); continue }
+      const field = el.ownerDocument.createElement('span')
+      field.style.cssText = 'padding:0 1px;margin:0;border:0;background:none;'
+      field.textContent = part.text
+      block.appendChild(field)
+    }
+  } else {
+    block.textContent = info.text
+  }
   host.appendChild(block)
   if (info.wraps) {
     style.height = `${contentH}px`
@@ -2247,6 +2593,45 @@ function mountControlText (el, cs, info, st) {
     style.top = `${top}px`
   }
   return block
+}
+
+const COLOR_SWATCH_ATTR = 'data-snapdom-vector-control-swatch'
+
+/**
+ * The swatch a `<input type=color>` paints, as a real box in the clone host, so
+ * the ordinary box collector reads its fill and border like any other element's.
+ *
+ * It is in a UA shadow tree like every control's content, but unlike a value it
+ * needs no measuring: Chromium's sheet gives the wrapper `padding: 4px 2px` and
+ * the swatch `border: 1px solid #777` over the chosen colour, inside the
+ * control's content box. MEASURED on a 50x27 control with `#2563eb`: the swatch
+ * the page paints starts 5px in and 6px down from the control's corner, which is
+ * border 1 + padding 2 + wrapper 2 and border 1 + padding 1 + wrapper 4.
+ *
+ * @returns {Element|null} the mounted box, or null for anything but a colour input
+ *   this module mounted itself
+ */
+function mountColorSwatch (el, cs, tag) {
+  if (tag !== 'INPUT') return null
+  const type = String(el.type || '').toLowerCase()
+  if (type !== 'color') return null
+  const host = el.closest ? el.closest('[data-snapdom-vector="clone-host"]') : null
+  if (!host || typeof el.getBoundingClientRect !== 'function') return null
+  const value = /^#[0-9a-f]{6}$/i.test(el.value || '') ? el.value : '#000000'
+  const r = el.getBoundingClientRect()
+  const hr = host.getBoundingClientRect()
+  const left = r.left - hr.left + num(cs.borderLeftWidth) + num(cs.paddingLeft) + 2
+  const top = r.top - hr.top + num(cs.borderTopWidth) + num(cs.paddingTop) + 4
+  const width = el.clientWidth - num(cs.paddingLeft) - num(cs.paddingRight) - 4
+  const height = el.clientHeight - num(cs.paddingTop) - num(cs.paddingBottom) - 8
+  if (!(width > 2) || !(height > 2)) return null
+  const box = el.ownerDocument.createElement('div')
+  box.setAttribute(COLOR_SWATCH_ATTR, '')
+  box.style.cssText = 'position:absolute;margin:0;padding:0;box-sizing:border-box;pointer-events:none;' +
+    `left:${left}px;top:${top}px;width:${width}px;height:${height}px;` +
+    `background:${value};border:1px solid #777777;`
+  host.appendChild(box)
+  return box
 }
 
 /**
@@ -2374,11 +2759,23 @@ function walk (el, st, frameCtx) {
   }
 
   const sc = isRoot ? true : isStackingContext(el, cs, frameCtx.parentCs)
-  const own = hasTransform(cs)
+  const ownZoom = isRoot ? 1 : zoomOf(cs)
+  const own = hasTransform(cs) || ownZoom !== 1
+  // The zoom frame the children are measured in (`measure`). An element that
+  // declares a zoom starts a new one, anchored where it was painted.
+  let zoomCtx = frameCtx.zoom || null
+  if (ownZoom !== 1 && !frameCtx.transformed && !hasTransform(cs)) {
+    const z = zoomCtx || NO_ZOOM
+    const r = rectOf(el)
+    const vx = r.x - st.rootOrigin.x
+    const vy = r.y - st.rootOrigin.y
+    zoomCtx = { k: z.k * ownZoom, vx, vy, ax: z.ax + (vx - z.vx) / z.k, ay: z.ay + (vy - z.vy) / z.k }
+  }
   const childCtx = {
     path,
     depth: frameCtx.depth + 1,
-    transformed: frameCtx.transformed || own,
+    transformed: frameCtx.transformed || hasTransform(cs),
+    zoom: zoomCtx,
     parentCs: cs,
     scrollX: frameCtx.scrollX + (el.scrollLeft || 0),
     scrollY: frameCtx.scrollY + (el.scrollTop || 0),
@@ -2421,7 +2818,12 @@ function walk (el, st, frameCtx) {
   // descendant is not a node, whatever its CSS says — this is where the node
   // ratio is won.
   const kids = []
-  if (!opaque && !isSvg) {
+  // `content-visibility: hidden` paints the element's own box and NONE of its
+  // contents — the page skips their layout and their paint alike. Walked anyway,
+  // the hidden child was drawn where it would have been: MEASURED on a yellow box
+  // hiding a red one, the red one was painted over it.
+  const skipsContents = cs.contentVisibility === 'hidden'
+  if (!opaque && !isSvg && !skipsContents) {
     for (const child of el.children) {
       const childCs = st.styleOf(child)
       // Only the in-flow inline part of the subtree belongs to this block's
@@ -2752,13 +3154,13 @@ function walk (el, st, frameCtx) {
   // text that was never highlighted. Each line fragment becomes a shape of its
   // own, below everything else this node holds, and the node itself keeps no
   // box paint (`collectNode` reads `_fragmented` / `_fragment`).
-  const pieces = !isRoot && !contents && visible && !frameCtx.transformed && !own &&
+  const pieces = !isRoot && !contents && visible && !frameCtx.transformed && !frameCtx.zoom && !own &&
     joinsParentText(cs.display) && paintsBox(cs) && !st.truncated
     ? lineFragments(el, st)
     : null
   // A fieldset with a legend is not painted on its own box either: the frame
   // starts at the legend's middle and is interrupted where the legend sits.
-  const framed = !pieces && tag === 'FIELDSET' && !contents && visible && !frameCtx.transformed && !own && !st.truncated
+  const framed = !pieces && tag === 'FIELDSET' && !contents && visible && !frameCtx.transformed && !frameCtx.zoom && !own && !st.truncated
     ? fieldsetPieces(el, cs, st)
     : null
   const specs = pieces
@@ -2792,7 +3194,7 @@ function walk (el, st, frameCtx) {
   // no text node and the control used to arrive as an empty box: a form exported
   // with every field blank. `mountControlText` rebuilds the line box and the
   // ordinary text collector measures it.
-  if (isControl && visible && !frameCtx.transformed && !own && !st.truncated) {
+  if (isControl && visible && !frameCtx.transformed && !frameCtx.zoom && !own && !st.truncated) {
     let info = null
     let block = null
     try {
@@ -2832,6 +3234,28 @@ function walk (el, st, frameCtx) {
           'and their line breaks are the control\'s; a value longer than the box is not scrolled or ' +
           'clipped the way the control clips it',
       })
+    }
+    // The swatch of a colour input: the one thing that control paints, and until
+    // now an empty grey button in every export.
+    let swatch = null
+    try {
+      swatch = mountColorSwatch(el, cs, tag)
+    } catch { /* the control keeps its `collect.box.form-control` declaration */ }
+    if (swatch) {
+      const r = rectOf(swatch)
+      const swatchNode = makeNode({
+        type: 'shape',
+        name: nodeName(el, tag.toLowerCase(), 'shape', null, pseudo),
+        source: { tag: tag.toLowerCase(), path: `${path}::swatch`, css: {} },
+      })
+      swatchNode.abs = { x: r.x - st.rootOrigin.x, y: r.y - st.rootOrigin.y, w: r.w, h: r.h }
+      swatchNode.paint.z = node._kids.length
+      Object.defineProperty(swatchNode, 'el', { value: swatch, writable: true, configurable: true, enumerable: false })
+      Object.defineProperty(swatchNode, '_kids', { value: [], writable: true, configurable: true, enumerable: false })
+      Object.defineProperty(swatchNode, '_paints', { value: true, writable: true, configurable: true, enumerable: false })
+      node._kids.push(swatchNode)
+      if (node.type === 'shape') node.type = 'frame'
+      st.count++
     }
   }
 
@@ -3090,6 +3514,17 @@ export function buildPaintTree (rootEl, ctx = {}) {
       'light DOM with fontsCSS + classPrefixCSS before calling.')
   }
 
+  // Per-walk answers live exactly as long as this call (see `walkAnswers`). The
+  // function is synchronous, so a second capture cannot start inside the first.
+  walkAnswers = new Map()
+  try {
+    return paintTreeOf(rootEl, ctx)
+  } finally {
+    walkAnswers = null
+  }
+}
+
+function paintTreeOf (rootEl, ctx) {
   const st = makeState(rootEl, ctx)
   const rootCs = st.styleOf(rootEl)
   if (!rootCs) throw new Error('buildPaintTree: no computed style for rootEl (detached document?)')
@@ -3137,6 +3572,8 @@ export function buildPaintTree (rootEl, ctx = {}) {
 
   const rootRect = rootEl.getBoundingClientRect()
   st.rootOrigin = { x: rootRect.left, y: rootRect.top }
+  const rootZoom = Number(rootEl.currentCSSZoom)
+  st.rootZoom = rootZoom > 0 && Number.isFinite(rootZoom) ? rootZoom : 1
   st.rootLayout = layoutBox(rootEl)
   if (!st.rootLayout && rootEl.namespaceURI === MATH_NS && hasTransform(rootCs)) {
     st.rootLayout = mathLayoutBox(rootEl, rootEl).box
@@ -3149,6 +3586,10 @@ export function buildPaintTree (rootEl, ctx = {}) {
     // in, but it still transforms every descendant's painted rect, so the chain
     // starts "transformed" and descendants take the layout path.
     transformed: hasTransform(rootCs),
+    // Everything zoomed above the capture root AND by the root itself is divided
+    // out of the whole capture: the output is in the root's own unzoomed px, which
+    // is the size snapdom gives every other export of it (`offsetWidth`).
+    zoom: st.rootZoom !== 1 ? { k: st.rootZoom, vx: 0, vy: 0, ax: 0, ay: 0 } : null,
     parentCs: rootEl.parentElement ? st.styleOf(rootEl.parentElement) : null,
     scrollX: 0,
     scrollY: 0,
@@ -3161,8 +3602,8 @@ export function buildPaintTree (rootEl, ctx = {}) {
   rootNode.abs = {
     x: 0,
     y: 0,
-    w: st.rootLayout && hasTransform(rootCs) ? st.rootLayout.w : rootRect.width,
-    h: st.rootLayout && hasTransform(rootCs) ? st.rootLayout.h : rootRect.height,
+    w: st.rootLayout && hasTransform(rootCs) ? st.rootLayout.w : rootRect.width / st.rootZoom,
+    h: st.rootLayout && hasTransform(rootCs) ? st.rootLayout.h : rootRect.height / st.rootZoom,
   }
   rootNode.paint.z = 0
   rootNode.paint.stackingContext = true

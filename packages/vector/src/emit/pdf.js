@@ -73,6 +73,8 @@ import {
   createPdfDoc, pdfString, BASE14, deflate, canDeflate, createUnicodeFont, encodeImage,
   setWarnPrefix,
 } from '../writer/index.js'
+import { sfntFromBytes, parseFont, createEmbeddedFont } from '../writer/font.js'
+import { sideDashes, doubleBand, paintedBox } from './box-geometry.js'
 
 setWarnPrefix('[snapdom-vector]')
 
@@ -324,6 +326,46 @@ function shapePath (box, radii) {
   return hasRadius(radii) ? boxPath(box, radii) : rectPath(box.x, box.y, box.w, box.h)
 }
 
+/**
+ * The clipping-path operators for a resolved `clip-path` (`node.clipShape`, in
+ * node-local px), or null when there is none or it cannot be drawn here.
+ *
+ * Polygons, circles and ellipses, and `inset()` / `rect()` with their rounding
+ * are plain path construction. `path()` carries SVG path data, which this backend
+ * has no parser for; that one is declared and the node stays unclipped.
+ */
+function clipShapeOps (shape, ctx, nodeId) {
+  if (!isObject(shape)) return null
+  const paint = shape.rule === 'evenodd' ? 'W* n' : 'W n'
+  if (shape.kind === 'polygon' && Array.isArray(shape.points) && shape.points.length > 2 &&
+      shape.points.every((p) => Array.isArray(p) && isNum(p[0]) && isNum(p[1]))) {
+    return [shape.points.map((p, i) => `${num(p[0])} ${num(p[1])} ${i ? 'l' : 'm'}`).join(' ') + ' h', paint]
+  }
+  if (shape.kind === 'ellipse' && isNum(shape.cx) && isNum(shape.cy) && isNum(shape.rx) && isNum(shape.ry)) {
+    const { cx, cy } = shape
+    const rx = Math.max(0, shape.rx)
+    const ry = Math.max(0, shape.ry)
+    const kx = KAPPA * rx
+    const ky = KAPPA * ry
+    return [[
+      `${num(cx + rx)} ${num(cy)} m`,
+      `${num(cx + rx)} ${num(cy + ky)} ${num(cx + kx)} ${num(cy + ry)} ${num(cx)} ${num(cy + ry)} c`,
+      `${num(cx - kx)} ${num(cy + ry)} ${num(cx - rx)} ${num(cy + ky)} ${num(cx - rx)} ${num(cy)} c`,
+      `${num(cx - rx)} ${num(cy - ky)} ${num(cx - kx)} ${num(cy - ry)} ${num(cx)} ${num(cy - ry)} c`,
+      `${num(cx + kx)} ${num(cy - ry)} ${num(cx + rx)} ${num(cy - ky)} ${num(cx + rx)} ${num(cy)} c`,
+      'h',
+    ].join(' '), 'W n']
+  }
+  if ((shape.kind === 'inset' || shape.kind === 'rect') && isObject(shape.rect)) {
+    const r = rectOf(shape.rect)
+    return [shapePath(r, normalizeRadii(shape.kind === 'rect' ? shape.radii : shape.round, r.w, r.h)), 'W n']
+  }
+  ctx.note(nodeId, `a clip-path of kind "${String(shape.kind)}" cannot be drawn by this backend ` +
+    '(`path()` carries SVG path data, which it has no parser for); the node is emitted unclipped.',
+    'emit.pdf.clip-path-unsupported', 'O')
+  return null
+}
+
 /** A circle as four cubics — the conic fan's apex cap. */
 function circlePath (cx, cy, r) {
   const k = KAPPA * r
@@ -361,6 +403,7 @@ function createResources (doc) {
   const gstates = new Map()
   const shadings = new Map()
   const xobjects = new Map()
+  const embedded = new Set()
   let unicode = null
 
   const intern = (map, prefix, key, make) => {
@@ -418,6 +461,8 @@ function createResources (doc) {
     },
     /** The document-wide Type0 font, registered on first use. */
     useUnicode (font) { unicode = font },
+    /** An embedded face (`writer/font.js`); it names itself and joins /Font once it has been encoded with. */
+    useEmbedded (font) { embedded.add(font) },
     /** An ExtGState, content-addressed: `<< ... >>` body without the delimiters. */
     gs: (body) => intern(gstates, 'G', body, () => doc.add(`<< ${body} >>`)),
     shading: (body) => intern(shadings, 'S', body, () => doc.add(`<< ${body} >>`)),
@@ -428,6 +473,7 @@ function createResources (doc) {
       const fontRefs = [...fonts.values()].map((f) => `/${f.name} ${f.id} 0 R`)
       for (const entry of symbols.values()) fontRefs.push(`/${entry.name} ${entry.id} 0 R`)
       if (unicode && unicode.id !== null) fontRefs.push(`/${unicode.name} ${unicode.id} 0 R`)
+      for (const font of embedded) if (font.id !== null) fontRefs.push(`/${font.name} ${font.id} 0 R`)
       if (fontRefs.length) parts.push(`/Font << ${fontRefs.join(' ')} >>`)
       for (const [label, map] of [['ExtGState', gstates], ['Shading', shadings], ['XObject', xobjects]]) {
         if (!map.size) continue
@@ -980,6 +1026,82 @@ async function imageXObject (ctx, nodeId, key, asset) {
   return result
 }
 
+/** Device pixels per CSS px a passthrough SVG is rasterised at: 216 dpi on paper. */
+const VECTOR_RASTER_SCALE = 3
+/** The longest side such a raster may have, whatever the scale. */
+const VECTOR_RASTER_MAX = 4096
+
+/**
+ * An inline `<svg>` or an `<img src="*.svg">`, painted.
+ *
+ * The node carries the drawing as SVG markup, and this backend has no SVG parser
+ * — so until now it painted NOTHING for it: every icon, logo and chart of a page
+ * was a hole in the PDF (measured: a 380x200 chart, 10.6% of its block missing).
+ * A browser can draw that markup, though, so where there is one it is drawn onto
+ * a canvas at `VECTOR_RASTER_SCALE` and embedded as an image, with its alpha.
+ *
+ * That is a raster where the page had vectors, and it is declared as one
+ * (`emit.pdf.vector-rasterized`, grade R): sharp at print size, soft if the
+ * reader zooms far in, and its text is pixels — set in whatever the browser
+ * resolves for an isolated image, which is installed fonts and no webfonts.
+ * Outside a browser nothing can draw it and the old declaration stands.
+ *
+ * The placement is the one `emit/svg-flat.js` uses (`emitVector`): `crop` is the
+ * window of the drawing that survives `object-fit`, `transform` puts that window
+ * on the node's box.
+ */
+async function emitVectorAsImage (out, ctx, nodeId, node, box, radii) {
+  const raw = typeof node.svg === 'string' ? node.svg
+    : isObject(node.vector) && typeof node.vector.markup === 'string' ? node.vector.markup
+      : typeof node.vector === 'string' ? node.vector : null
+  const nothing = (why) => ctx.note(nodeId, `a vector node carries passthrough SVG markup, which this backend ` +
+    `has no parser for, and ${why}; nothing is painted for it.`, 'emit.pdf.vector-passthrough', 'O')
+  if (!raw) { nothing('the node carries none'); return }
+  if (typeof document === 'undefined' || typeof Image !== 'function') { nothing('there is no browser here to draw it'); return }
+  if (!(box.w > 0) || !(box.h > 0)) return
+
+  const place = isObject(node.svgPlacement) ? node.svgPlacement : null
+  const crop = place && isObject(place.crop) ? place.crop : null
+  const m = place && Array.isArray(place.transform) && place.transform.length === 6 ? place.transform : null
+  let drawing = raw
+  if (crop && m && crop.w > 0 && crop.h > 0) {
+    const sx = m[0] / crop.w
+    const sy = m[3] / crop.h
+    drawing = `<g transform="matrix(${num(sx)} 0 0 ${num(sy)} ${num(m[4] - crop.x * sx)} ${num(m[5] - crop.y * sy)})">${raw}</g>`
+  }
+  const scale = Math.min(VECTOR_RASTER_SCALE, VECTOR_RASTER_MAX / Math.max(box.w, box.h))
+  const pw = Math.max(1, Math.round(box.w * scale))
+  const ph = Math.max(1, Math.round(box.h * scale))
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+    `width="${pw}" height="${ph}" viewBox="0 0 ${num(box.w)} ${num(box.h)}">${drawing}</svg>`
+  try {
+    const picture = new Image()
+    picture.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+    await picture.decode()
+    const canvas = typeof OffscreenCanvas === 'function'
+      ? new OffscreenCanvas(pw, ph)
+      : Object.assign(document.createElement('canvas'), { width: pw, height: ph })
+    canvas.getContext('2d').drawImage(picture, 0, 0, pw, ph)
+    const encoded = await encodeImage(canvas, { quality: ctx.quality })
+    const smaskRef = encoded.smask
+      ? ` /SMask ${ctx.pdf.addStream(encoded.smask.dict, encoded.smask.bytes)} 0 R`
+      : ''
+    const id = ctx.pdf.addStream(encoded.dict + smaskRef, encoded.bytes)
+    out.push('q')
+    out.push(shapePath(box, radii))
+    out.push('W n')
+    // The flip: an image XObject's unit square has y UP from its own origin.
+    out.push(matrixOp([box.w, 0, 0, -box.h, box.x, box.y + box.h]))
+    out.push(`/${ctx.res.xobject(id, 'Im')} Do`)
+    out.push('Q')
+    ctx.note(nodeId, `a vector node (inline SVG or an SVG image) is painted as a ${pw}x${ph} raster of its own ` +
+      `markup, ${num(scale)} device px per CSS px: this backend has no SVG parser. It is sharp at print size, ` +
+      'not at any zoom, and any text in it is pixels.', 'emit.pdf.vector-rasterized', 'R')
+  } catch (error) {
+    nothing(`drawing it in the browser failed (${error && error.message})`)
+  }
+}
+
 // ——— fills ———
 
 /** Where one background layer paints, in node-local px. */
@@ -1175,8 +1297,12 @@ function emitPerSideStroke (out, ctx, nodeId, stroke, weights, box, radii) {
       'clipped to the border radius, so the corner arcs thin out where the miter is cut away.',
       'emit.pdf.stroke-per-side-miter', 'A')
   }
-  if (Array.isArray(stroke.dash) && stroke.dash.length) {
-    ctx.note(nodeId, 'a dashed border with per-side weights is emitted as four solid quads; the dash pattern is lost.',
+  const perSideStyles = Array.isArray(stroke.sides) ? stroke.sides : null
+  const styleOfSide = (i) => (perSideStyles && isObject(perSideStyles[i]) && typeof perSideStyles[i].style === 'string'
+    ? perSideStyles[i].style
+    : stroke.style)
+  if (rounded && [0, 1, 2, 3].some((i) => weights[i] > 0 && (styleOfSide(i) === 'dashed' || styleOfSide(i) === 'dotted'))) {
+    ctx.note(nodeId, 'a dashed border with per-side weights on a rounded box is emitted as four solid quads; the dash pattern is lost.',
       'emit.pdf.stroke-dash-lost', 'O')
   }
   if (isObject(stroke.paint) && stroke.paint.type !== 'solid') {
@@ -1212,17 +1338,110 @@ function emitPerSideStroke (out, ctx, nodeId, stroke, weights, box, radii) {
     out.push('q')
     const gs = gsFor(ctx, alpha, alpha)
     if (gs) out.push(`/${gs} gs`)
-    out.push(fillColorOp(color))
-    out.push(path)
-    out.push('f')
+    // A dashed, dotted or double side of a square box is drawn as what it is,
+    // with the same numbers the SVG backend uses (`box-geometry.js`); the solid
+    // quad is what is left for a rounded box and for a side too short to pattern.
+    const drawn = rounded ? null : patternedSideOps(i, styleOfSide(i), weights, box, color)
+    if (drawn) {
+      for (const op of drawn) out.push(op)
+    } else {
+      out.push(fillColorOp(color))
+      out.push(path)
+      out.push('f')
+    }
     out.push('Q')
   })
   out.push('Q')
 }
 
-function emitStrokes (out, ctx, nodeId, strokes, box, radii) {
+/**
+ * The operators for one border side that is not a solid band — see `styledSide`
+ * in `emit/svg-flat.js`, of which this is the PDF spelling. `i` is the side in
+ * top, right, bottom, left order.
+ *
+ * @returns {string[]|null} null when the side stays a quad
+ */
+function patternedSideOps (i, style, weights, box, color) {
+  if (style !== 'dashed' && style !== 'dotted' && style !== 'double') return null
+  const [t, r, b, l] = weights
+  const { x: x0, y: y0, w, h } = box
+  const horizontal = i === 0 || i === 2
+  const weight = weights[i]
+  const outer = [y0, x0 + w, y0 + h, x0][i]
+  const inward = i === 0 || i === 3 ? 1 : -1
+
+  if (style === 'double') {
+    const third = doubleBand(weight)
+    if (third === null) return null
+    const band = (from, startInset, endInset) => {
+      const a = Math.min(from, from + inward * third)
+      return horizontal
+        ? `${num(x0 + startInset)} ${num(a)} ${num(w - startInset - endInset)} ${num(third)} re`
+        : `${num(a)} ${num(y0 + startInset)} ${num(third)} ${num(h - startInset - endInset)} re`
+    }
+    const before = horizontal ? l : t
+    const after = horizontal ? r : b
+    return [fillColorOp(color), band(outer, 0, 0), band(outer + inward * (weight - third), before, after), 'f']
+  }
+
+  const pattern = sideDashes(style, weight, horizontal ? w : h)
+  if (!pattern) return null
+  const mid = outer + inward * weight / 2
+  const lead = pattern.round ? weight / 2 : 0
+  const [x1, y1, x2, y2] = horizontal
+    ? [x0 + lead, mid, x0 + w - lead, mid]
+    : [mid, y0 + lead, mid, y0 + h - lead]
+  const dash = pattern.round ? `[0 ${num(pattern.dash + pattern.gap)}] 0 d` : `[${num(pattern.dash)} ${num(pattern.gap)}] 0 d`
+  return [
+    strokeColorOp(color),
+    `${num(weight)} w`,
+    `${pattern.round ? 1 : 0} J`,
+    dash,
+    `${num(x1)} ${num(y1)} m ${num(x2)} ${num(y2)} l S`,
+  ]
+}
+
+/** `box` shrunk by a per-side `[top, right, bottom, left]` inset; `box` itself when there is none. */
+/** `box` grown by a per-side `[top, right, bottom, left]` outset; `box` itself when there is none. */
+/**
+ * `box` grown by a per-side `[top, right, bottom, left]` outset; `box` itself when
+ * there is none.
+ *
+ * With `abs` — the node's own box in root px, given only when nothing above it
+ * rotates or scales — every edge of the grown box is put on a whole pixel. The one
+ * stroke that carries an outset is a collapsed table border, and Chromium snaps
+ * those to the pixel grid: a grid line that layout left at x = 90.83 is painted as
+ * one crisp column, not smeared over two.
+ */
+function outsetBox (box, outset, abs) {
+  if (!Array.isArray(outset) || outset.length !== 4 || !outset.every((n) => Number.isFinite(Number(n)))) return box
+  const [t, r, b, l] = outset.map((n) => Math.max(0, Number(n)))
+  if (!(t || r || b || l)) return box
+  const grown = { x: box.x - l, y: box.y - t, w: box.w + l + r, h: box.h + t + b }
+  if (!abs || ![abs.x, abs.y].every((n) => typeof n === 'number' && Number.isFinite(n))) return grown
+  const left = Math.round(abs.x + grown.x)
+  const top = Math.round(abs.y + grown.y)
+  const right = Math.round(abs.x + grown.x + grown.w)
+  const bottom = Math.round(abs.y + grown.y + grown.h)
+  if (right <= left || bottom <= top) return grown
+  return { x: left - abs.x, y: top - abs.y, w: right - left, h: bottom - top }
+}
+
+function insetBox (box, inset) {
+  if (!Array.isArray(inset) || inset.length !== 4 || !inset.every((n) => Number.isFinite(Number(n)))) return box
+  const [t, r, b, l] = inset.map((n) => Math.max(0, Number(n)))
+  if (!(t || r || b || l)) return box
+  return { x: box.x + l, y: box.y + t, w: Math.max(0, box.w - l - r), h: Math.max(0, box.h - t - b) }
+}
+
+function emitStrokes (out, ctx, nodeId, strokes, outerBox, radii) {
   for (const stroke of strokes) {
     if (!isObject(stroke)) continue
+    // The inner band of a `groove` / `ridge` border (`collect/box.js`): an ordinary
+    // stroke of a smaller box.
+    // `outset` first (a collapsed table cell's border is centred on the cell's edge:
+    // half of each side lies outside the box, `collect/box.js`), then `inset`.
+    const box = insetBox(outsetBox(outerBox, stroke.outset, ctx.strokeAbs), stroke.inset)
     const raw = stroke.weight !== undefined ? stroke.weight : stroke.weights
     const weights = Array.isArray(raw)
       ? [0, 1, 2, 3].map((i) => Math.max(0, finite(raw[i])))
@@ -1241,7 +1460,12 @@ function emitStrokes (out, ctx, nodeId, strokes, box, radii) {
       ? stroke.sides.filter((s, i) => isObject(s) && weights[i] > 0 && Array.isArray(s.color))
       : []
     const sameColor = visible.every((s) => s.color.join() === visible[0].color.join())
-    if (!uniform || !sameColor) {
+    // As in the SVG backend: a dashed or dotted border on a square box is fitted
+    // side by side, the way Chromium paints it, never as one dash array run round
+    // the rectangle.
+    const patternedSquare = stroke.kind === 'border' && (stroke.style === 'dashed' || stroke.style === 'dotted') &&
+      !hasRadius(base) && isObject(stroke.paint) && stroke.paint.type === 'solid'
+    if (!uniform || !sameColor || patternedSquare) {
       emitPerSideStroke(out, ctx, nodeId, stroke, weights, box, base)
       continue
     }
@@ -1655,8 +1879,69 @@ function naturalWidth (key, text) {
 }
 
 /**
- * The base-14 key for a text style. The SVD carries the family the page asked
- * for, never a binary, so this is a substitution every time and the document
+ * The font binaries the document carries, made ready to paint with.
+ *
+ * `collect/font.js` puts the bytes of every `@font-face` family the capture
+ * paints with into `doc.assets`, and a text style points at its face through
+ * `style.font`. Until this existed the PDF backend never looked: every run was
+ * set in a base-14 face and stretched to the measured width, whatever the page
+ * had loaded — MEASURED on a page set in Inter from a TTF, 4.5% of the block off.
+ *
+ * What can be embedded is what `writer/font.js` can read: TrueType and OpenType,
+ * bare or wrapped as WOFF. WOFF2 is declined there (its tables are transformed
+ * and Brotli-compressed), and so are collections and faces whose licence bits
+ * forbid embedding. Each refusal is declared once, with the writer's own reason,
+ * and that family goes on being substituted.
+ *
+ * @returns {Promise<Map<string, object|null>>} asset id -> embedded font, or null
+ */
+async function prepareEmbeddedFonts (doc, pdf, ctx) {
+  const out = new Map()
+  const assets = isObject(doc.assets) ? doc.assets : {}
+  let tag = 0
+  for (const id of Object.keys(assets)) {
+    const asset = assets[id]
+    if (!isObject(asset) || asset.kind !== 'font') continue
+    const family = typeof asset.cssFamily === 'string' && asset.cssFamily ? asset.cssFamily : id
+    const refuse = (why) => {
+      out.set(id, null)
+      ctx.note(null, `the font "${family}" travels in the document and cannot be embedded in the PDF: ${why}. ` +
+        'Text set in it is drawn in a base-14 face instead and stretched to the measured width.',
+        'emit.pdf.font-not-embeddable', 'A')
+    }
+    const m = typeof asset.data === 'string' ? /^data:[^;,]*;base64,(.*)$/s.exec(asset.data) : null
+    if (!m) { refuse('it carries no inline binary'); continue }
+    let bytes
+    try {
+      const bin = atob(m[1])
+      bytes = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+    } catch { refuse('its binary could not be decoded'); continue }
+    try {
+      const read = await sfntFromBytes(bytes)
+      if (read.error) { refuse(read.error); continue }
+      const parsed = parseFont(read.sfnt)
+      if (parsed.error) { refuse(parsed.error); continue }
+      out.set(id, createEmbeddedFont(pdf, parsed, read.sfnt, String(tag++)))
+    } catch (error) {
+      refuse(`reading it threw (${error && error.message})`)
+    }
+  }
+  return out
+}
+
+/** The advance of `text` set in an embedded face, with the same spacing terms as `advanceOf`. */
+function embeddedAdvance (font, text, size, ls, ws) {
+  const natural = font.width(text, size)
+  if (natural === null) return null
+  const spaces = (text.match(/ /g) || []).length
+  return natural + ls * [...text].length + ws * spaces
+}
+
+/**
+ * The base-14 key for a text style. Used for every run whose face is not in the
+ * document as an embeddable binary (`prepareEmbeddedFonts`): a system font, a
+ * WOFF2, a family that travels by name. That is a substitution, and the document
  * says so once per family.
  */
 function fontKeyFor (ctx, style) {
@@ -1867,11 +2152,31 @@ function emitText (out, ctx, nodeId, node) {
           'emit.pdf.text-style-missing', 'O')
         style = { size: 16, stack: 'sans-serif' }
       }
-      const raw = transliterate(chars.slice(segment.from, segment.to), ctx, nodeId)
-      const key = fontKeyFor(ctx, style)
+      const source = chars.slice(segment.from, segment.to)
       const size = finite(style.size, 16)
       const ls = finite(style.letterSpacing)
       const ws = finite(style.wordSpacing)
+      // The page's own face, when the document carries it and it has a glyph for
+      // every character of this run. One missing glyph sends the whole run to the
+      // substituted path, so a line never mixes two fonts' metrics mid-word.
+      const face = typeof style.font === 'string' ? ctx.embeddedFonts.get(style.font) || null : null
+      const ownCaps = face ? splitSmallCaps(source, style.variant) : null
+      if (face && ownCaps.every((cap) => face.covers(cap.text))) {
+        if (ownCaps.length > 1 || ownCaps[0].small) {
+          ctx.note(nodeId, `a run is set in ${style.variant}; no shaping runs here, so it is drawn as capitals at ` +
+            `${SMALL_CAPS_RATIO} of the em rather than with the font's own small-cap glyphs.`,
+          'emit.pdf.text-small-caps', 'A')
+        }
+        for (const cap of ownCaps) {
+          const capSize = cap.small ? size * SMALL_CAPS_RATIO : size
+          const width = embeddedAdvance(face, cap.text, capSize, ls, ws)
+          pieces.push({ style, text: cap.text, key: null, face, size: capSize, ls, ws, width, href: segment.href })
+          natural += width
+        }
+        continue
+      }
+      const raw = transliterate(source, ctx, nodeId)
+      const key = fontKeyFor(ctx, style)
       // Small caps are synthesized here, BEFORE the advance is measured, so the
       // width the line's `Tz` is computed from is the width that gets painted.
       // Measuring the lowercase and drawing the caps is how a line ends up
@@ -1917,12 +2222,33 @@ function emitText (out, ctx, nodeId, node) {
 
       const painted = (piece.width * tz) / 100
       const at = cursor
-      for (const chunk of chunkByEncodability(text)) {
-        const advance = (advanceOf(key, chunk.text, size, ls, ws) * tz) / 100
+      // An embedded face paints the run whole; a base-14 one is split by where
+      // each glyph has to come from.
+      const chunks = piece.face ? [{ font: '@', text }] : chunkByEncodability(text)
+      for (const chunk of chunks) {
+        const advance = piece.face
+          ? (piece.width * tz) / 100
+          : (advanceOf(key, chunk.text, size, ls, ws) * tz) / 100
         let str
         let fontName
         let mode = stroked ? 2 : 0
-        if (chunk.font === '*') {
+        let show = 'Tj'
+        if (chunk.font === '@') {
+          // Two-byte codes: `Tw` only ever applies to the single byte 32, so word
+          // spacing has to be written out, as a TJ adjustment after each space.
+          fontName = piece.face.name
+          ctx.res.useEmbedded(piece.face)
+          if (ws !== 0 && chunk.text.includes(' ') && size > 0) {
+            const parts = chunk.text.split(/( )/).filter((part) => part !== '')
+            const adjust = num((-ws * 1000) / size)
+            str = '[' + parts.map((part) => (part === ' '
+              ? `${piece.face.encode(' ')} ${adjust}`
+              : piece.face.encode(part))).join(' ') + ']'
+            show = 'TJ'
+          } else {
+            str = piece.face.encode(chunk.text)
+          }
+        } else if (chunk.font === '*') {
           str = pdfString(chunk.text)
           fontName = ctx.res.font(key)
         } else if (chunk.font) {
@@ -1983,7 +2309,7 @@ function emitText (out, ctx, nodeId, node) {
         }
         // The counter-flip: the page CTM is y-down, and glyphs are not.
         body.push(`1 0 0 -1 ${num(cursor)} ${num(baseline)} Tm`)
-        body.push(`${str} Tj`)
+        body.push(`${str} ${show}`)
         cursor += advance
       }
       cursor = at
@@ -2103,7 +2429,12 @@ async function emitNode (out, ctx, nodeId, node) {
   ctx.visited.add(nodeId)
 
   const frame = frameOf(node)
-  const box = { x: 0, y: 0, w: frame.w, h: frame.h }
+  // The box the browser paints, on whole pixels (`box-geometry.js`). `ctx.ctm` is
+  // the matrix accumulated above this node: anything but a translation there and
+  // the box stays where layout put it.
+  const above = ctx.ctm
+  const upright = above[0] === 1 && above[1] === 0 && above[2] === 0 && above[3] === 1
+  const box = paintedBox(node, frame, upright)
 
   // The placement is decided here rather than at the bottom (where it is
   // WRITTEN) because everything emitted into `inner` below is emitted under it,
@@ -2128,8 +2459,18 @@ async function emitNode (out, ctx, nodeId, node) {
 
   const radii = normalizeRadii(node.radii, box.w, box.h)
   const effects = (Array.isArray(node.effects) ? node.effects : []).filter(isObject)
-  const drops = effects.filter((e) => e.type === 'dropShadow' && e.source !== 'filter')
-  const inners = effects.filter((e) => e.type === 'innerShadow' && e.source !== 'filter')
+  // `text-shadow` is cast from glyphs, and every shadow this backend draws is built
+  // out of the node's BOX: emitted here it would be a soft rectangle behind the
+  // words. It is left out and declared.
+  if (effects.some((e) => e.source === 'text-shadow')) {
+    ctx.note(nodeId, 'text-shadow is not emitted: this backend builds shadows from the box silhouette and has ' +
+      'no way to cast one from glyphs, so the letters are flat.', 'emit.pdf.text-shadow-dropped', 'O')
+  }
+  // As in the SVG backend: the root's own outer shadow is not part of a capture
+  // whose frame is wider than the root unless the capture asked for it.
+  const noRootShadow = ctx.dropRootShadow && nodeId === ctx.rootId
+  const drops = noRootShadow ? [] : effects.filter((e) => e.type === 'dropShadow' && e.source !== 'filter' && e.source !== 'text-shadow')
+  const inners = effects.filter((e) => e.type === 'innerShadow' && e.source !== 'filter' && e.source !== 'text-shadow')
   for (const e of effects) {
     if (e.type === 'layerBlur' || e.type === 'backgroundBlur') {
       ctx.note(nodeId, `a CSS filter "${e.type}" applies to the node AND its descendants; PDF has no filter that ` +
@@ -2151,8 +2492,7 @@ async function emitNode (out, ctx, nodeId, node) {
     } else if ((e.type === 'dropShadow' || e.type === 'innerShadow') && e.source === 'filter') {
       ctx.note(nodeId, 'filter: drop-shadow() follows the alpha silhouette of the whole subtree; it is emitted ' +
         'from the node\'s own box instead.', 'emit.pdf.filter-shadow-box', 'A')
-      if (e.type === 'dropShadow') drops.push(e)
-      else inners.push(e)
+      if (e.type === 'dropShadow') { if (!noRootShadow) drops.push(e) } else inners.push(e)
     }
   }
   const fills = (Array.isArray(node.fills) ? node.fills : []).filter(isObject)
@@ -2165,20 +2505,19 @@ async function emitNode (out, ctx, nodeId, node) {
   // a transparency group — can be decided after the subtree is known.
   const inner = []
 
-  if (drops.length && !fills.length && !strokes.length) {
-    ctx.note(nodeId, 'the node has a box-shadow but no fill or stroke to cast it from; the shadow follows ' +
-      'whatever silhouette its own paint has, which is empty.', 'emit.pdf.shadow-no-silhouette', 'A')
-  }
+  // No note for a box with a shadow and no paint: `emitDropShadows` builds the
+  // shadow from the box geometry, not from what was painted, so it is drawn — as
+  // CSS draws it. The note that used to sit here said the shadow was empty, which
+  // was not true of this backend.
 
   if (drops.length) emitDropShadows(inner, ctx, nodeId, drops, box, radii)
   for (const fill of fills) await emitLayer(inner, ctx, nodeId, fill, box, radii)
   if (inners.length) emitInnerShadows(inner, ctx, nodeId, inners, box, radii)
+  ctx.strokeAbs = upright && (node.transform === null || node.transform === undefined) &&
+    isObject(node.abs) ? node.abs : null
   if (strokes.length) emitStrokes(inner, ctx, nodeId, strokes, box, radii)
   if (node.type === 'text') emitText(inner, ctx, nodeId, node)
-  if (node.type === 'vector') {
-    ctx.note(nodeId, 'a vector node carries passthrough SVG markup, which this backend has no parser for; ' +
-      'nothing is painted for it.', 'emit.pdf.vector-passthrough', 'O')
-  }
+  if (node.type === 'vector') await emitVectorAsImage(inner, ctx, nodeId, node, box, radii)
   if (node.type === 'image' && !fills.length) {
     ctx.note(nodeId, 'an image node carries no image fill; nothing is painted for it.',
       'emit.pdf.image-node-empty', 'O')
@@ -2218,6 +2557,12 @@ async function emitNode (out, ctx, nodeId, node) {
 
   out.push('q')
   for (const op of placement) out.push(op)
+  // `clip-path` cuts everything this node paints — its own background, border and
+  // shadow as well as its subtree — so it is set once here, under the placement
+  // and over all of it. It used to be ignored without a word: a star clipped out
+  // of a red square exported as the red square, 54% of the box wrong.
+  const shapeClip = clipShapeOps(node.clipShape, ctx, nodeId)
+  if (shapeClip) for (const op of shapeClip) out.push(op)
 
   if (grouped) {
     // A transparency group, not a bare `/ca`: `/ca` applies to every object in
@@ -2302,7 +2647,7 @@ export async function svdToPdf (doc, options = {}) {
   if (!isObject(doc)) throw new TypeError('svdToPdf: doc must be an SVD document object')
   const {
     compress = true,
-    background = null,
+    background: backgroundOption = null,
     shadowLayers = SHADOW_LAYERS,
     quality = 0.92,
     onDiagnostic = null,
@@ -2311,6 +2656,7 @@ export async function svdToPdf (doc, options = {}) {
     links = true,
   } = options
   const pageList = readPages(pages)
+  let background = backgroundOption
 
   const nodes = isObject(doc.nodes) ? doc.nodes : {}
   const seen = new Set()
@@ -2334,6 +2680,8 @@ export async function svdToPdf (doc, options = {}) {
     visited: new Set(),
     fontNotes: new Set(),
     unicodeFont: createUnicodeFont(pdf),
+    /** Asset id -> embedded face, filled before the first node is emitted (`prepareEmbeddedFonts`). */
+    embeddedFonts: new Map(),
     shadowLayers: Math.max(1, Math.round(finite(shadowLayers, SHADOW_LAYERS))),
     quality,
     /**
@@ -2375,8 +2723,22 @@ export async function svdToPdf (doc, options = {}) {
   const capture = isObject(doc.capture) ? doc.capture : {}
   const captureRoot = isObject(capture.root) ? capture.root : null
   const rootFrame = isObject(root) ? frameOf(root) : { x: 0, y: 0, w: 0, h: 0 }
-  const width = captureRoot && finite(captureRoot.w) > 0 ? finite(captureRoot.w) : rootFrame.w
-  const height = captureRoot && finite(captureRoot.h) > 0 ? finite(captureRoot.h) : rootFrame.h
+  const rootW = captureRoot && finite(captureRoot.w) > 0 ? finite(captureRoot.w) : rootFrame.w
+  const rootH = captureRoot && finite(captureRoot.h) > 0 ? finite(captureRoot.h) : rootFrame.h
+  // The capture's own frame, when it is not the root box (see `frameFromMeta` in
+  // index.js): the page is that area, and the drawing stays in root-local px.
+  const frame = isObject(capture.frame) && finite(capture.frame.w) > 0 && finite(capture.frame.h) > 0
+    ? { x: finite(capture.frame.x), y: finite(capture.frame.y), w: finite(capture.frame.w), h: finite(capture.frame.h) }
+    : { x: 0, y: 0, w: rootW, h: rootH }
+  const width = frame.w
+  const height = frame.h
+  ctx.rootId = rootId
+  ctx.dropRootShadow = isObject(capture.frame) && capture.rootShadow === false
+  // The page canvas colour of a `<body>` capture; an explicit `background` wins.
+  if (!Array.isArray(background) && isObject(capture.canvas) && Array.isArray(capture.canvas.color) &&
+      capture.canvas.color.length >= 3) {
+    background = capture.canvas.color
+  }
   if (!(width > 0) || !(height > 0)) {
     ctx.note(null, 'the capture has no width or height; a 1x1 point page is emitted.',
       'emit.pdf.empty-page', 'O')
@@ -2393,6 +2755,7 @@ export async function svdToPdf (doc, options = {}) {
     ctx.note(null, `root ${rootId === null ? 'is missing' : `"${rootId}" does not resolve to a node`}; the ` +
       'document is emitted empty.', 'emit.pdf.root-missing', 'O')
   } else {
+    ctx.embeddedFonts = await prepareEmbeddedFonts(doc, pdf, ctx)
     await emitNode(drawing, ctx, rootId, root)
     const orphans = Object.keys(nodes).filter((id) => !ctx.visited.has(id))
     if (orphans.length) {
@@ -2409,7 +2772,7 @@ export async function svdToPdf (doc, options = {}) {
    */
   const sheets = pageList || [{
     size: [pageW, pageH],
-    matrix: [PT, 0, 0, -PT, 0, pageH],
+    matrix: [PT, 0, 0, -PT, -frame.x * PT, pageH + frame.y * PT],
     clip: null,
   }]
   if (pageList) {
@@ -2431,6 +2794,9 @@ export async function svdToPdf (doc, options = {}) {
   }
 
   ctx.unicodeFont.finalize()
+  // After the last `encode` and before the document is built: a face that was
+  // never painted with adds nothing.
+  for (const face of ctx.embeddedFonts.values()) if (face) await face.finalize()
 
   const deflated = compress && canDeflate
   const streamDict = deflated ? '/Filter /FlateDecode' : ''
@@ -2494,7 +2860,7 @@ export async function svdToPdf (doc, options = {}) {
     if (drawingRef) {
       ops.push(`/${drawingRef} Do`)
     } else {
-      ops.push(...backgroundOps(0, 0, width, height))
+      ops.push(...backgroundOps(frame.x, frame.y, width, height))
       ops.push(...drawing)
     }
     ops.push('Q')
