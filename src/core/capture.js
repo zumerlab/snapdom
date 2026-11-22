@@ -22,6 +22,7 @@ import { invalidateSnapshotsUnder, animatedProps } from '../modules/styles.js'
 import { styleShareSafe } from '../modules/styleShare.js'
 import { addShadowAnimations, noteCaptured } from './changes.js'
 import { stageReaches, DEFAULT_STAGE } from './stages.js'
+import { markInternalNode } from '../utils/ownership.js'
 import { compressCloneAssets, numberCompressedAssets, snapshotCompressedAssets } from '../modules/compress.js'
 import { applyTextFieldSelectionLayers } from '../modules/selection.js'
 import { composeAndSerialize } from '../engines/svg.js'
@@ -76,6 +77,13 @@ export async function captureDOM(element, options, session = createCaptureSessio
   applyCachePolicy(options.cache)
   // ALIAS for published readers (session.js); nothing in this module reads it back.
   options.__session = session
+  // For a plugin that mounts helper nodes of its own in the live document (the vector
+  // exporter lays the clone out there): marking them as snapdom's keeps their mount and
+  // removal out of the style epoch, exactly as for the helpers this module creates
+  // (changes.js isOwnedNode). Unmarked, every such export cost the NEXT capture of anything a
+  // full re-snapshot: measured on a 4,512-element table, toCanvas 40ms -> 173ms after one
+  // empty <div> was appended and removed. Reader: packages/vector/src/adapters/snapdom.js.
+  options.__ownNode = markInternalNode
   session.resolveNodeHooks = collectResolveNodeHooks(options)
   // ONE context per capture: hooks get the normalized option bag itself, so a "mutate ctx in
   // beforeSnap" lands in what the pipeline reads. Per-stage fields are added as produced.
