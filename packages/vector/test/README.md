@@ -1,6 +1,6 @@
 # test/
 
-One product, four suites, one harness.
+One product, five suites, one harness.
 
 The PDF product left for its own repository on 2026-08-28 and took its suite, its
 fixtures and its demos with it. What is here tests the vector path.
@@ -11,6 +11,7 @@ fixtures and its demos with it. What is here tests the vector path.
 | **h2d** | `test/verify-h2d.mjs` | the html-to-design channel | a recorded capture from the official extension |
 | **plugin** | `test/verify-plugin.mjs` | v3 option precedence, export hooks, capture isolation and cleanup | the mounted v3 build and local fixtures |
 | **MathML** | `test/verify-mathml.mjs` | native math content, geometry, fonts, exclusions and capture cleanup | browser layout and actual public SVG exports |
+| **WOFF2** | `test/verify-woff2.mjs` | the Brotli decoder and the WOFF2 -> sfnt reconstruction the internal PDF emitter embeds fonts with | Node's `zlib` (the reference Brotli decoder) and the browser: it must accept the rebuilt font and draw it pixel-identical to the original |
 
 Shared: `test/harness.mjs` (assertions, Chromium bootstrap) and `test/serve.mjs`
 (static server: this repo at `/`, the snapdom checkouts at `/snapdom-v3/` and

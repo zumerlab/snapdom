@@ -49,17 +49,24 @@ async function inflate(bytes) {
  * Whatever arrived → a plain sfnt, or a refusal that names its reason.
  *
  * WOFF1 is a zip of the same tables and is rebuilt losslessly. WOFF2 is a
- * different font (glyf transformed, brotli-compressed) and reconstructing it IS
- * subsetter-grade surgery, so it is declined. A TrueType collection shares
- * tables between faces behind absolute offsets; embedding the whole file would
- * make every viewer guess which face was meant, so it is declined too.
+ * different font on the wire (glyf transformed, everything behind Brotli) and is
+ * rebuilt by `woff2.js` — the same outlines and metrics, not the same bytes. A
+ * TrueType collection shares tables between faces behind absolute offsets;
+ * embedding the whole file would make every viewer guess which face was meant,
+ * so it is declined.
  *
  * @returns {Promise<{sfnt: Uint8Array}|{error: string}>}
  */
 export async function sfntFromBytes(bytes) {
   if (!bytes || bytes.length < 12) return { error: 'not a font: shorter than an sfnt header' }
   const tag = TAG(bytes, 0)
-  if (tag === 'wOF2') return { error: 'WOFF2 stores transformed tables behind Brotli; rebuilding the original font is a decompiler this exporter refuses to half-do' }
+  if (tag === 'wOF2') {
+    // Brotli plus the inverse of the glyf/loca/hmtx transforms: `woff2.js`. Imported
+    // here and not at the top so that an export which never meets a WOFF2 never
+    // loads the decoder, or the 58 kB dictionary behind it.
+    const { woff2ToSfnt } = await import('./woff2.js')
+    return woff2ToSfnt(bytes)
+  }
   if (tag === 'ttcf') return { error: 'a TrueType collection shares tables between several faces; embedding it whole would leave the face choice to the viewer' }
   if (tag === 'wOFF') {
     if (typeof DecompressionStream !== 'function') {

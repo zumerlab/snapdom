@@ -1888,10 +1888,17 @@ function naturalWidth (key, text) {
  * had loaded — MEASURED on a page set in Inter from a TTF, 4.5% of the block off.
  *
  * What can be embedded is what `writer/font.js` can read: TrueType and OpenType,
- * bare or wrapped as WOFF. WOFF2 is declined there (its tables are transformed
- * and Brotli-compressed), and so are collections and faces whose licence bits
- * forbid embedding. Each refusal is declared once, with the writer's own reason,
- * and that family goes on being substituted.
+ * bare or wrapped as WOFF or WOFF2 (the last rebuilt by `writer/woff2.js`, which
+ * loads only when one arrives). Collections and faces whose licence bits forbid
+ * embedding are declined. Each refusal is declared once, with the writer's own
+ * reason, and that family goes on being substituted.
+ *
+ * A VARIABLE font is embedded as the file it is, and a PDF viewer draws the
+ * default instance of it — there is no way to ask for another. So the face is
+ * used only where the page asked for that default weight; text at any other
+ * weight goes on being substituted and says why (`variableDefault`, read at the
+ * run). MEASURED on Roboto served as one variable file for 400 and 700: embedded
+ * blind, the bold line was drawn regular.
  *
  * @returns {Promise<Map<string, object|null>>} asset id -> embedded font, or null
  */
@@ -1923,11 +1930,43 @@ async function prepareEmbeddedFonts (doc, pdf, ctx) {
       const parsed = parseFont(read.sfnt)
       if (parsed.error) { refuse(parsed.error); continue }
       out.set(id, createEmbeddedFont(pdf, parsed, read.sfnt, String(tag++)))
+      const weight = variableDefaultWeight(read.sfnt)
+      if (weight !== null) ctx.variableDefault.set(id, weight)
     } catch (error) {
       refuse(`reading it threw (${error && error.message})`)
     }
   }
   return out
+}
+
+/**
+ * The weight a variable font is drawn at when nothing chooses an instance — the
+ * default of its `wght` axis — or null for a font that has no such axis.
+ *
+ * @param {Uint8Array} sfnt
+ * @returns {number|null}
+ */
+function variableDefaultWeight (sfnt) {
+  const u16 = (at) => (sfnt[at] << 8) | sfnt[at + 1]
+  const u32 = (at) => ((sfnt[at] << 24) | (sfnt[at + 1] << 16) | (sfnt[at + 2] << 8) | sfnt[at + 3]) >>> 0
+  const numTables = u16(4)
+  for (let i = 0; i < numTables; i++) {
+    const entry = 12 + i * 16
+    if (entry + 16 > sfnt.length) return null
+    if (u32(entry) !== 0x66766172) continue // 'fvar'
+    const table = u32(entry + 8)
+    if (table + 16 > sfnt.length) return null
+    const axes = table + u16(table + 4)
+    const count = u16(table + 8)
+    const size = u16(table + 10)
+    for (let a = 0; a < count; a++) {
+      const axis = axes + a * size
+      if (axis + 16 > sfnt.length) return null
+      if (u32(axis) === 0x77676874) return (u32(axis + 8) | 0) / 65536 // 'wght', a 16.16 default
+    }
+    return null
+  }
+  return null
 }
 
 /** The advance of `text` set in an embedded face, with the same spacing terms as `advanceOf`. */
@@ -1941,8 +1980,8 @@ function embeddedAdvance (font, text, size, ls, ws) {
 /**
  * The base-14 key for a text style. Used for every run whose face is not in the
  * document as an embeddable binary (`prepareEmbeddedFonts`): a system font, a
- * WOFF2, a family that travels by name. That is a substitution, and the document
- * says so once per family.
+ * family that travels by name, a variable font asked for away from its default
+ * weight. That is a substitution, and the document says so once per family.
  */
 function fontKeyFor (ctx, style) {
   const stack = `${style.family || ''} ${style.stack || ''}`.toLowerCase()
@@ -2159,7 +2198,23 @@ function emitText (out, ctx, nodeId, node) {
       // The page's own face, when the document carries it and it has a glyph for
       // every character of this run. One missing glyph sends the whole run to the
       // substituted path, so a line never mixes two fonts' metrics mid-word.
-      const face = typeof style.font === 'string' ? ctx.embeddedFonts.get(style.font) || null : null
+      let face = typeof style.font === 'string' ? ctx.embeddedFonts.get(style.font) || null : null
+      if (face && ctx.variableDefault.has(style.font)) {
+        // A variable font in a PDF is its default instance and nothing else.
+        const drawn = ctx.variableDefault.get(style.font)
+        const asked = finite(style.weight, 400)
+        if (Math.abs(asked - drawn) > 1) {
+          face = null
+          const family = (typeof style.family === 'string' && style.family) || style.font
+          const key = `variable ${family} ${asked}`
+          if (!ctx.fontNotes.has(key)) {
+            ctx.fontNotes.add(key)
+            ctx.note(nodeId, `"${family}" is a variable font and this text is set at weight ${asked}; a PDF viewer draws ` +
+              `only its default instance (weight ${drawn}), so the embedded face is not used here and the text is ` +
+              'drawn in a base-14 face of the right weight instead.', 'emit.pdf.font-variable-instance', 'A')
+          }
+        }
+      }
       const ownCaps = face ? splitSmallCaps(source, style.variant) : null
       if (face && ownCaps.every((cap) => face.covers(cap.text))) {
         if (ownCaps.length > 1 || ownCaps[0].small) {
@@ -2682,6 +2737,8 @@ export async function svdToPdf (doc, options = {}) {
     unicodeFont: createUnicodeFont(pdf),
     /** Asset id -> embedded face, filled before the first node is emitted (`prepareEmbeddedFonts`). */
     embeddedFonts: new Map(),
+    /** Asset id -> the weight a variable face is drawn at; absent for a static face. */
+    variableDefault: new Map(),
     shadowLayers: Math.max(1, Math.round(finite(shadowLayers, SHADOW_LAYERS))),
     quality,
     /**
