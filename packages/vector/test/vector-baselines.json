@@ -1,7 +1,7 @@
 {
   "_comment": "Measured values for test/verify-vector.mjs. Regenerate with `node test/verify-vector.mjs --update`. The diff thresholds are NOT invented: `diffLimit` is the measured `diffMean` with 40% + 0.6 of headroom, `diffBadLimit` the measured `diffBad` with 100% + 0.004, `diffTileLimit` the measured `diffTile` with 35% + 2, and `msLimit` is 2.5× the measured median (floor +5ms). Measured on the provenance machine over repeated quiet runs: diffMean, diffBad, diffTile, nodes, nodeRatio, grades and svgBytes are BIT-IDENTICAL run to run (sd = 0.000000 over 5 runs), so their headroom is not absorbing local noise — it is cross-machine font rasterisation, and nothing else. `ms` is the only metric that moves: sd ≤0.3ms quiet, and ×1.0–1.14 with the raster suite‘s own Chromium running alongside, which is why 2.5× is generous and the previous +30ms floor was not a threshold at all (it let a 7× regression on a 4ms fixture pass in silence). `diffTile` is the worst 32×32px tile and exists because `diffMean` is a whole-box average that divides local damage by the whole picture; neither one caught CONIC_WEDGES 128→12, `svgBytes` did. `codes` is the exact set of diagnostic codes the capture emitted: a code appearing or disappearing fails the suite until a human accepts it with --update, because a new code is a new degradation and a vanished one is a claim that something got better. `why` is the only field here a human writes; --update carries it over instead of overwriting it. See `_provenance` for where these numbers were taken — a threshold without provenance is noise a year from now.",
   "_provenance": {
-    "generatedAt": "2026-11-20T21:00:53.271Z",
+    "generatedAt": "2026-11-22T01:18:51.291Z",
     "os": "Darwin 27.0.0 arm64",
     "cpu": "Apple M5 × 10",
     "memoryGb": 24,
@@ -120,11 +120,11 @@
         "A": 49,
         "E": 13
       },
-      "diffMean": 2.731,
-      "diffBad": 0.04917,
-      "diffTile": 12.57,
-      "ms": 10,
-      "svgBytes": 32852,
+      "diffMean": 1.907,
+      "diffBad": 0.02761,
+      "diffTile": 12.35,
+      "ms": 8,
+      "svgBytes": 30075,
       "codes": [
         "B4.anonymous-block",
         "B4.geometry-from-layout",
@@ -135,16 +135,15 @@
         "emit.svg.filter-not-imported",
         "emit.svg.shadow-no-silhouette",
         "emit.svg.shadow-spread-morphology",
-        "emit.svg.stroke-dash-lost",
         "emit.svg.text-length-viewer-width",
         "emit.svg.text-per-line",
         "emit.svg.text-unbboxed",
         "text.tracking-may-be-ignored"
       ],
-      "diffLimit": 4.423,
-      "diffBadLimit": 0.10234,
-      "diffTileLimit": 18.97,
-      "msLimit": 25
+      "diffLimit": 3.27,
+      "diffBadLimit": 0.05922,
+      "diffTileLimit": 18.67,
+      "msLimit": 20
     },
     "challenges/fx-img": {
       "nodes": 20,
@@ -154,27 +153,26 @@
         "A": 8,
         "E": 12
       },
-      "diffMean": 2.009,
-      "diffBad": 0.03192,
-      "diffTile": 12,
-      "ms": 8,
-      "svgBytes": 117673,
+      "diffMean": 1.235,
+      "diffBad": 0.01006,
+      "diffTile": 12.17,
+      "ms": 6,
+      "svgBytes": 116242,
       "codes": [
         "capture.root-paint-restored",
         "collect.text",
         "collect.text-family-system",
         "emit.svg.clip-inset-unknown",
         "emit.svg.filter-not-imported",
-        "emit.svg.shadow-no-silhouette",
         "emit.svg.shadow-spread-morphology",
         "emit.svg.text-length-viewer-width",
         "emit.svg.text-per-line",
         "text.tracking-may-be-ignored"
       ],
-      "diffLimit": 3.413,
-      "diffBadLimit": 0.06784,
-      "diffTileLimit": 18.2,
-      "msLimit": 20
+      "diffLimit": 2.329,
+      "diffBadLimit": 0.02412,
+      "diffTileLimit": 18.43,
+      "msLimit": 15
     },
     "challenges/fx-list": {
       "nodes": 35,
@@ -701,6 +699,6 @@
       "escapeHatch": "Si el corpus sube de nuevo SIN que cambie el conjunto de casos, eso si es una regresion: mirar los diffMean por caso contra este registro."
     }
   ],
-  "_corpusDiffMean": 2.6608,
+  "_corpusDiffMean": 1.7676,
   "_corpusDiffCases": 20
 }
