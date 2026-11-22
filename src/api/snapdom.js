@@ -202,6 +202,9 @@ snapdom.capture = async (el, context, _token, session = createCaptureSession(con
   return buildResult(url, context, session)
 }
 
+/** Where a plugin export's `editSvg` travels to the exporter. Not reachable from outside. */
+const EDIT_SVG = Symbol('editSvg')
+
 /**
  * Build the result object for a capture URL. Burst's differential recapture calls it too.
  * @private
@@ -241,6 +244,19 @@ async function buildResult(url, context, session) {
     ? (Number.isFinite(context.height) ? meta.targetH / meta.vbH : meta.targetW / meta.vbW) : 1
   // Async: an original can still be on its way (drawDecodedImages, compress.js).
   const exportSource = async (options) => {
+    const source = await captureSource(options)
+    // A plugin export may rasterize a revised copy of the artifact (`editSvg` on
+    // `ctx.exports`, PLUGIN_SPEC.md): the pdf plugin takes out of the page image the text it
+    // paints as glyphs. The capture itself is never touched, so every other export of this
+    // result still reads the artifact as captured. Anything but a non-empty string keeps it.
+    const edit = options[EDIT_SVG]
+    if (typeof edit !== 'function' || typeof source !== 'string') return source
+    const { isSvgDataURL, decodeSvgFromDataURL, encodeSvgToDataURL } = await import('../exporters/svgText.js')
+    if (!isSvgDataURL(source)) return source
+    const edited = await edit(decodeSvgFromDataURL(source))
+    return typeof edited === 'string' && edited ? encodeSvgToDataURL(edited) : source
+  }
+  const captureSource = async (options) => {
     if (engineCanvas || !originals?.size) return pixelSource
     let w = meta.vbW, h = meta.vbH
     const crop = options.crop
@@ -356,10 +372,19 @@ async function buildResult(url, context, session) {
   for (const k of ['img', 'svg', 'canvas', 'blob', 'png', 'jpeg', 'webp']) {
     // Normalized like the public path, or `ctx.exports.blob({ format: 'png' })` came back an
     // SVG blob and `ctx.exports.jpeg()` encoded transparency black.
-    _pluginExports[k] = async (opts) =>
-      coreExports[k](context, normalizeExportOptions(k, opts || {}))
+    _pluginExports[k] = async (opts) => {
+      const next = normalizeExportOptions(k, opts || {})
+      // Plugin facade only, hence a module-private key: the public to*() exports do not
+      // take a function that rewrites what they draw.
+      delete next.editSvg
+      if (typeof opts?.editSvg === 'function') next[EDIT_SVG] = opts.editSvg
+      return coreExports[k](context, next)
+    }
   }
   _pluginExports.jpg = _pluginExports.jpeg
+  // How a plugin that must also run on an older core knows `editSvg` will be honoured.
+  // Not enumerable: the facade's keys are the exports.
+  Object.defineProperty(_pluginExports, 'editSvg', { value: true })
 
   // A spread drops the non-enumerable `options` self-reference the types declare required, so
   // re-pin it on each export-stage view.

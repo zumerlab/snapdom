@@ -322,6 +322,24 @@ When export keys collide, priority is **local plugin > global plugin > core**. A
 plugin can override `toPng`, `toJpg`, `toCanvas` or another exporter. Use `ctx.export.url` or
 `ctx.exports` to build that export from the existing capture.
 
+An export may need the capture drawn slightly differently from how every other export sees
+it. `ctx.exports.*` accept `editSvg`, a function that receives the SVG text the exporter is
+about to draw and returns the SVG to draw instead:
+
+```js
+const canvas = await ctx.exports.canvas({
+  scale: 2,
+  editSvg: (svg) => hideTheTextIPaintMyself(svg), // may be async
+});
+```
+
+The capture is not changed: the next export of the same result reads it as captured. Keep the
+root `<svg>` size and `viewBox` as they are, since `crop`, `scale` and `width`/`height` are
+applied to the returned text. Returning anything but a non-empty string draws the capture
+untouched, and so does a core older than this option, which ignores it: `ctx.exports.editSvg
+=== true` says the core will honour it. `editSvg` is read only from `ctx.exports`, never from
+the public `to*()` calls, and only when the capture has an SVG artifact.
+
 ## Distribution
 
 ### Official plugins

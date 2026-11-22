@@ -389,7 +389,10 @@ export interface CaptureContext extends Omit<SnapdomOptions, "exclude" | "filter
   };
 
   /** Core export facade for `defineExports`: the built-in exporters without their hooks,
-   *  so a plugin format can build on `png`/`canvas`/… without re-entering the pipeline. */
+   *  so a plugin format can build on `png`/`canvas`/… without re-entering the pipeline.
+   *  Besides the export's own options each one takes `editSvg(svg: string): string |
+   *  Promise<string>`, which returns the SVG to draw instead of the captured one; the
+   *  capture itself is left as it is. `exports.editSvg === true` on a core that honours it. */
   exports?: Record<string, (opts?: any) => Promise<any>>;
 }
 
