@@ -3,8 +3,12 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { serve } from './serve.mjs'
 import { loadChromium, instrument, openFixture, check, report } from './harness.mjs'
+import { buildVector } from '../build.mjs'
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+// The package ships ONE built file, not `src/`. It is rebuilt here so the checks at the end of
+// this suite judge the bundle of THIS source, never a stale one left in the working tree.
+await buildVector({ logLevel: 'silent' })
 const server = await serve(0)
 const browser = await (await loadChromium(ROOT)).launch()
 try {
@@ -83,6 +87,29 @@ try {
     const [item] = await navigator.clipboard.read()
     const pasted = item.types.includes('text/html') ? await (await item.getType('text/html')).text() : ''
     test('toFigma() puts Figma paste HTML on the clipboard without the excluded text', pasted.length > 100 && !pasted.includes('Drop this sentence'), `${pasted.length} chars`)
+
+    // What the customer installs is the BUILT bundle (`dist/snapdom-vector.mjs`, minified), and
+    // `index.js` is the door to it. The suites above import `src/`, so they are blind to a bundle
+    // that is missing, mis-exported or changed by minification — these four are not.
+    const built = await import('/dist/snapdom-vector.mjs')
+    const door = await import('/index.js')
+    test('the built bundle exports only vector and default', JSON.stringify(Object.keys(built).sort()) === '["default","vector"]')
+    test('index.js re-exports the built bundle', door.vector === built.vector && door.default === built.default)
+    {
+      // Same element, same options, the clock frozen: the bundle has to write the same file.
+      const RealDate = Date
+      class Frozen extends RealDate { constructor (...a) { if (a.length) super(...a); else super(1e12) } static now () { return 1e12 } }
+      globalThis.Date = Frozen
+      try {
+        const fromSource = await (await snapdom(el, { plugins: [publicModule.vector({ exclude: '#plugin-drop' })] })).toVector()
+        const fromBundle = await (await snapdom(el, { plugins: [built.vector({ exclude: '#plugin-drop' })] })).toVector()
+        test('the built bundle writes the same SVG as the source, byte for byte', fromSource === fromBundle,
+          fromSource === fromBundle ? `${fromBundle.length} chars` : `source ${fromSource.length} chars, bundle ${fromBundle.length}`)
+        const viaBundle = await snapdom(el, { plugins: [built.vector()] })
+        test('the built plugin adds toVector and toFigma and nothing else',
+          typeof viaBundle.toVector === 'function' && typeof viaBundle.toFigma === 'function' && viaBundle.toVectorSvg === undefined)
+      } finally { globalThis.Date = RealDate }
+    }
 
     el.querySelector('#plugin-keep').textContent = 'A later capture'
     const later = await snapdom(el, { plugins: [plugin] })

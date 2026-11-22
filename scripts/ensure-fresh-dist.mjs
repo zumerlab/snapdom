@@ -31,10 +31,34 @@ export function distNeedsBuild(root) {
   })
 }
 
+/**
+ * The vector plugin ships one built file too (packages/vector/build.mjs), and its
+ * `index.js` re-exports it: __tests__/plugins.barrel.test.js imports that barrel, so a
+ * missing bundle fails the suite on a clean checkout and a stale one tests old code.
+ */
+export function vectorDistNeedsBuild(root) {
+  const dir = join(root, 'packages', 'vector')
+  const output = join(dir, 'dist', 'snapdom-vector.mjs')
+  if (!existsSync(output)) return true
+  const srcNewest = Math.max(
+    newestMtime(join(dir, 'src')),
+    newestMtime(join(dir, 'svd')),
+    statSync(join(dir, 'build.mjs')).mtimeMs,
+    statSync(join(dir, 'package.json')).mtimeMs
+  )
+  return statSync(output).mtimeMs < srcNewest
+}
+
 export default function ensureFreshDist() {
   const root = fileURLToPath(new URL('..', import.meta.url))
-  if (!distNeedsBuild(root)) return
-  console.log('[ensure-fresh-dist] dist/ is stale — recompiling before tests')
-  const res = spawnSync('node', ['esbuild.config.mjs'], { cwd: root, stdio: 'inherit' })
-  if (res.status !== 0) throw new Error('[ensure-fresh-dist] compile failed — refusing to test a stale dist/')
+  if (distNeedsBuild(root)) {
+    console.log('[ensure-fresh-dist] dist/ is stale — recompiling before tests')
+    const res = spawnSync('node', ['esbuild.config.mjs'], { cwd: root, stdio: 'inherit' })
+    if (res.status !== 0) throw new Error('[ensure-fresh-dist] compile failed — refusing to test a stale dist/')
+  }
+  if (vectorDistNeedsBuild(root)) {
+    console.log('[ensure-fresh-dist] packages/vector/dist/ is stale — rebuilding before tests')
+    const res = spawnSync('node', ['packages/vector/build.mjs'], { cwd: root, stdio: 'inherit' })
+    if (res.status !== 0) throw new Error('[ensure-fresh-dist] vector build failed — refusing to test a stale bundle')
+  }
 }

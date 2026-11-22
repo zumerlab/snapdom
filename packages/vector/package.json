@@ -4,19 +4,29 @@
   "description": "Editable SVG and Figma clipboard export for SnapDOM",
   "type": "module",
   "scripts": {
+    "build": "node build.mjs",
+    "prepack": "node build.mjs",
     "bump:dry": "npx @zumerbox/bump -d",
     "bump": "npx @zumerbox/bump && npx @zumerbox/changelog",
     "release": "git add package.json CHANGELOG.md ../../package-lock.json && git commit -m \"Bumped vector version\" && git push"
   },
+  "main": "./dist/snapdom-vector.mjs",
+  "module": "./dist/snapdom-vector.mjs",
   "exports": {
-    ".": "./index.js"
+    ".": {
+      "types": "./index.d.ts",
+      "import": "./dist/snapdom-vector.mjs",
+      "default": "./dist/snapdom-vector.mjs"
+    },
+    "./package.json": "./package.json"
   },
   "types": "./index.d.ts",
+  "unpkg": "./dist/snapdom-vector.mjs",
+  "jsdelivr": "./dist/snapdom-vector.mjs",
   "files": [
+    "dist/",
     "index.js",
     "index.d.ts",
-    "src/",
-    "svd/",
     "README.md",
     "CONTRACT.md",
     "CHANGELOG.md"
