@@ -1,10 +1,8 @@
 /**
- * Box geometry every backend needs and none should work out twice: where the
- * browser really paints a box, and how it draws a border side that is not a solid
- * band. `emit/svg-flat.js` here and the PDF plugin's vector page turn these numbers
- * into their own markup; the numbers themselves are Chromium's, measured, and live
- * here once. The PDF plugin imports this file as `@zumer/snapdom-vector/box-geometry`,
- * so its three exports are an interface: renaming one breaks that package.
+ * Box geometry worked out once: where the browser really paints a box, and how it
+ * draws a border side that is not a solid band. `emit/svg-flat.js` turns these
+ * numbers into markup; the numbers themselves are Chromium's, measured, and live
+ * here so a second backend never works them out again.
  *
  * Pure: no DOM, no backend.
  */

@@ -29,10 +29,6 @@
  * saved in; a bold or an italic the page never loaded is the regular file,
  * fattened or slanted by the engine. `substitution` says so per style, and the
  * export keeps such text in the page image instead of painting the wrong glyphs.
- *
- * The sibling vector product solves the same problem the same way — same rule
- * reading, same matching order — so the two channels embed the same file for
- * the same page or disagree loudly, never quietly.
  */
 
 import { sfntFromBytes, parseFont } from '../writer/font.js'

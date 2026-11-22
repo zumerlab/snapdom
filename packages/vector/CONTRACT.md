@@ -393,8 +393,7 @@ for the side that sees them:
   carries two unrelated things at once — the caps half (`small-caps`,
   `all-small-caps`, …), which repaints letters, and the OpenType half
   (`tabular-nums`, `lining-nums`, `slashed-zero`, …), which selects figures and
-  ligatures. Backends split it themselves (the PDF plugin's vector page,
-  `splitSmallCaps`, and `emit/figma-json.js` `variantOf`); there is no second field, so nobody has two
+  ligatures. A backend splits it itself (`emit/figma-json.js` `variantOf`); there is no second field, so nobody has two
   places to look.
 - **`strokeWidth` / `strokeColor` are `-webkit-text-stroke`**, resolved
   (`strokeColor` falls back to `color`, and is `null` when the width is 0). It is
@@ -797,9 +796,9 @@ knows better (Figma, which has real components) could never recognise the widget
 ordinary collectors already read. Two checkboxes in one box is worse than none.
 
 **Who reads it.** `emit/svg-flat.js` draws it (`emit.svg.control-reconstructed`, grade
-A, one per control: a reconstruction is not a capture). `emit/figma-json.js` and
-the PDF plugin's vector page ignore it, so the widget is missing there and
-`B4.form-control` remains the whole story on those two paths.
+A, one per control: a reconstruction is not a capture). `emit/figma-json.js`
+ignores it, so the widget is missing there and `B4.form-control` remains the whole
+story on that path.
 
 ## What the Figma importer does — read `FIGMA_FINDINGS.md` before changing an emitter
 
@@ -843,40 +842,41 @@ lossless one.** For text metrics the Plugin API payload is strictly richer —
 `letter-spacing`, per-range small caps and a text stroke all survive it and none
 of them survives a paste. See the TEXT block under `emit/figma-json.js`.
 
-## The engine writes no PDF
+## One engine per product
 
-Everything that writes PDF belongs to `@zumer/snapdom-pdf` (`packages/pdf`): the
-byte-level writer, the font reader behind it, and the backend that turns an SVD into
-drawing operators. **This package contains none of it**, and the dependency runs one
-way: the PDF plugin may import this package; nothing here may import the PDF plugin.
+This engine describes a page so it can be EDITED: SVG and Figma. `@zumer/snapdom-pdf`
+(`packages/pdf`) promises something else — a page that looks exactly like the screen,
+with its text selectable — and gets that from the core's own svg engine, where the
+browser itself paints the pixels. **Neither package imports the other, and a PDF is
+never made from two engines** (founder decision, 2026-11-22).
 
-The history is worth keeping because it is the reason for the shape. Until 2026-08-08
-`emit/pdf.js` lived here and imported the writer through
-`../../../pdf/src/pdf-writer.js` — a relative path into the other product, undeclared
-in `package.json`. The writer was then lifted into a shared private package,
-`@zumer/pdf-writer`, and on 2026-08-28, when the two products were split, each took a
-copy of it as source on the rule that neither may import the other. That rule bought
-independence and charged for it in drift: by 2026-11-22 the copies differed in
-`encrypt.js`, where the PDF plugin had replaced derived secrets with random ones and
-the copy here had not.
+That was reached the long way, and the route is worth keeping:
 
-The copy here was never the one a user reached. This package publishes SVG and Figma;
-its PDF backend was internal, exported by nothing, and the writer served only that
-backend. So the rule was withdrawn (founder decision, 2026-11-22): the writer exists
-once, in the PDF plugin, and the backend moved there with it as `src/svd-pdf.js`.
+- Until 2026-08-08 a PDF backend lived here (`emit/pdf.js`) and imported the PDF
+  product's writer by relative path. The writer then became a shared private package,
+  and on 2026-08-28, when the products were split, each took a copy of it.
+- By 2026-11-22 the copies had drifted on `encrypt.js`. This package's copy served
+  only that backend, which nothing exported, so the copy was deleted and the backend
+  moved to the PDF plugin (`acaff7d7`) with the idea of building the PDF on this
+  engine: draw what the engine can draw, and fall back to pixels for the rest.
+- The same day that idea was dropped. A PDF cannot embed a system font, so a drawn
+  page still needs the svg engine's pixels for most real pages: two engines in one
+  file, a rule to choose between them per page, and 410 kB loaded — to draw boxes and
+  borders, when MEASURED the weight of a PDF is in its text (a document went from
+  313 kB to 88 kB with the svg engine alone, once the PDF plugin painted its text as
+  glyphs). The backend was removed; its last version is `packages/pdf/src/svd-pdf.js`
+  at `acaff7d7`.
+
+What crossed from here to the PDF plugin, and stays there as its own code, is small:
+the WOFF2 reader, and the rule for when a font file really holds the glyphs a page
+painted.
 
 Two rules follow:
 
 - **A module only one product needs belongs to that product.** Check who imports a
   thing before deciding where it lives.
-- **What the PDF plugin imports from here is an interface.** Today that is
-  `./box-geometry` (`src/emit/box-geometry.js`), the box and border geometry every
-  backend must agree on. Renaming one of its exports breaks the other package.
-
-How the PDF plugin gets an SVD out of a real capture is NOT settled. The published
-bundle hands out SVG and Figma, not the document, and this engine still enters the
-pipeline as a plugin of its own. Until that is decided the PDF plugin's vector page is
-exercised only by its test, which imports this package's source by path.
+- **A second engine in a product needs a measured reason.** "It would reuse code" was
+  not one.
 
 ## House rules
 

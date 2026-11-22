@@ -1243,9 +1243,8 @@ function buildTextStyle(el, cs, blockEl, S, warn) {
   // shorthand alone loses it whenever another longhand is set: Chromium then
   // serializes the shorthand as the list it can serialize, and `small-caps` is
   // simply not in it. Both are read and the caps value is merged in, because
-  // `variant` is what the emitters look at — the PDF plugin's vector page synthesises small
-  // caps off exactly this string (`splitSmallCaps`), and inventing a second
-  // field would give it two places to look.
+  // `variant` is what the emitters look at, and inventing a second field would
+  // give them two places to look.
   const variantCaps = cs.fontVariantCaps && cs.fontVariantCaps !== 'normal' ? cs.fontVariantCaps : ''
   const variantShort = cs.fontVariant && cs.fontVariant !== 'normal' ? cs.fontVariant : ''
   const fontVariant = variantCaps && !variantShort.includes(variantCaps)
@@ -3040,7 +3039,7 @@ export function collectText(blockEl, ctx) {
       message: `font-variant-caps repaints ${smallCaps.join(', ')} as capitals. The value travels on the run ` +
         'style as `variant`; a backend that ignores it paints the lower-case letters at full size, and one ' +
         'that has no small-cap face can only synthesise them by drawing the lower-case letters upper-case at ' +
-        'about 0.8em (the PDF export does exactly that), which is a different set of shapes from a designed face',
+        'about 0.8em, which is a different set of shapes from a designed face',
     })
   }
   if (stroked.length) {

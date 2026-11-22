@@ -11,12 +11,11 @@
  * needs to know who called it, it belongs in the caller. That line is what keeps
  * the writer testable on its own and the exporter free to change above it.
  *
- * There is one copy of it, this one, and two callers in this plugin: the raster
- * page (`index.js`) and the vector page (`svd-pdf.js`). For a while the vector
- * engine kept a copy of its own, and the copies drifted on the one file where
- * drift is a defect, `encrypt.js`; that copy is gone. `setWarnPrefix` survives
- * from the shared-package days and is still worth having — it is what puts the
- * product's own name in front of a warning.
+ * There is one copy of it, this one. For a while the vector engine kept a copy
+ * of its own for a PDF backend nothing exported, and the copies drifted on the
+ * one file where drift is a defect, `encrypt.js`; that copy and that backend are
+ * gone. `setWarnPrefix` survives from the shared-package days and is still
+ * worth having — it is what puts the product's own name in front of a warning.
  *
  * createPdfDoc itself never compresses: it builds dictionaries and counts
  * /Length over whatever bytes it is handed, which is what keeps it synchronous

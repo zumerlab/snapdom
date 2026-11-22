@@ -1809,8 +1809,7 @@ function collectEffects (cs, warnings) {
     // What "dropped" means here is worth being exact about, because the old
     // message was not. It said the node "must be rasterized to keep it", which
     // `index.js` reads as grade `R` — a node the document then CLAIMS to have
-    // rasterized. Nothing in this engine rasterizes a box filter (the PDF
-    // plugin's vector page says so in as many words at its own filter branch), so the output was
+    // rasterized. Nothing in this engine rasterizes a box filter, so the output was
     // vector, unfiltered, and graded raster. The function is gone: grade `O`.
     const partial = kept.length
       ? `The rest of the chain is still applied (${listOf(kept)}), so this node is painted with a ` +

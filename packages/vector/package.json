@@ -18,7 +18,6 @@
       "import": "./dist/snapdom-vector.mjs",
       "default": "./dist/snapdom-vector.mjs"
     },
-    "./box-geometry": "./src/emit/box-geometry.js",
     "./package.json": "./package.json"
   },
   "types": "./index.d.ts",
@@ -28,7 +27,6 @@
     "dist/",
     "/index.js",
     "/index.d.ts",
-    "src/emit/box-geometry.js",
     "README.md",
     "CONTRACT.md",
     "CHANGELOG.md"
