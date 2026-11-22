@@ -12,7 +12,7 @@ proves nothing.
 | `verify.mjs` | the exporter against 23 fixtures, 700 checks | `npm run test:pdf` |
 | `megacheck.mjs` | fillable fields, identity, page labels, the accessible-structure edge, determinism, abort | `npm run test:pdf` |
 | `encryptcheck.mjs` | AES-256: no plaintext leaks, round trip through pdf.js, the refusals | `npm run test:pdf` |
-| `fontcheck.mjs` | which font files can paint the text: WOFF2, variable fonts, faked bold and italic, and what stays in the page image | `npm run test:pdf` |
+| `fontcheck.mjs` | which font files can paint the text (WOFF2, variable fonts, faked bold and italic), what stays in the page image, and that a painted word is in the file once | `npm run test:pdf` |
 | `tools/` | **nothing** | a human, when the question comes up |
 
 A tool measures or investigates; each one's header says which question it was

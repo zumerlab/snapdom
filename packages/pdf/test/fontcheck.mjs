@@ -16,7 +16,14 @@
  *    file) is painted: the file's glyphs are what is on the page.
  *  - Text under a translucent ancestor and outlined text are not painted;
  *    `-webkit-text-fill-color` decides the fill, not `color`.
- *  - `substitution` and `variationAxes`, the two pure functions behind it.
+ *  - Small caps, a soft-hyphenated word and a word the face does not cover stay
+ *    in the page image.
+ *  - With the page image on, a painted word is in the file ONCE: the image is
+ *    drawn without its glyph fill, the underline and the shadow it carries stay,
+ *    nothing is lost next to the browser's own raster, and a later export of
+ *    the same capture still gets the whole image.
+ *  - `substitution`, `variationAxes`, `withoutGlyphs` and `wrapperIsInert`, the
+ *    pure functions behind it.
  *
  * "Painted" is measured, not read from a counter: every band of the page is
  * rendered by pdf.js from an image-free export, where the only ink there can be
@@ -88,10 +95,140 @@ if (raster.error || glyphs.error) {
   const [r, g, b] = drawn['alone-filled'].rgb
   assert(g > r && g > b, `the fill is -webkit-text-fill-color, not color (rgb sums ${r}, ${g}, ${b})`)
 
+  console.log('\nglyphs that are not the code points')
+  held('packed-caps', 'small caps')
+  held('packed-hyphen', 'a word broken at a soft hyphen')
+  assert(drawn['packed-mixed'].ink > 0 && ratio('packed-mixed') < 0.8,
+    `a line with a word the face lacks paints the words it has and no more (ink ratio ${ratio('packed-mixed').toFixed(3)})`)
+
   console.log('\nthe count matches the page')
-  // One word per run in collapsing white-space: three words a band, eight bands painted.
-  assert(glyphs.report.vectorText === 6 * 3,
-    `report counts ${glyphs.report.vectorText} painted runs (6 painted bands × 3 words)`)
+  // One word per run in collapsing white-space: seven bands painted whole at
+  // three words each, and the two covered words of the mixed line.
+  assert(glyphs.report.vectorText === 7 * 3 + 2,
+    `report counts ${glyphs.report.vectorText} painted runs (7 painted bands × 3 words + 2)`)
+}
+
+// ——— the page image gives up the text that is painted as glyphs ————————————————
+{
+  console.log('\npainted once: the page image without the glyphs')
+  const both = await run({ export: { vectorText: true, deflate: false } })
+  if (raster.error || both.error) fail(`export threw: ${(raster.error || both.error).message}`)
+  else {
+    const bytes = Buffer.from(both.base64, 'base64')
+    // The same file with every painted run switched to invisible: what is left
+    // on the page is the image alone. `BT 0 Tr /E…` is how a painted run in an
+    // embedded face opens, and the edit keeps every byte offset where it was.
+    const raw = bytes.toString('latin1')
+    const imageOnly = { base64: Buffer.from(raw.replaceAll('BT 0 Tr /E', 'BT 3 Tr /E'), 'latin1').toString('base64') }
+    assert(raw.includes('BT 0 Tr /E') && raw.includes('/Subtype /Image'), 'the export paints glyphs AND carries a page image')
+    const photo = await inkOf(raster)
+    const whole = await inkOf(both)
+    const image = await inkOf(imageOnly)
+    const said = messages(both)
+
+    const PAINTED = ['packed', 'ranged-default', 'alone-regular', 'alone-light', 'alone-nofake', 'alone-filled']
+    const HELD = ['ranged-bold', 'ranged-light', 'alone-bold', 'alone-italic', 'alone-faded', 'alone-outlined',
+      'packed-caps', 'packed-hyphen']
+    const left = PAINTED.filter(b => image[b].ink > 0.02 * photo[b].ink)
+    assert(left.length === 0,
+      `the image holds no glyph of a painted line (${left.map(b => `${b} ${image[b].ink}/${photo[b].ink}`).join(', ') || 'all six clear'})`)
+    const gone = HELD.filter(b => image[b].ink < 0.97 * photo[b].ink || image[b].ink > 1.03 * photo[b].ink)
+    assert(gone.length === 0,
+      `the image keeps every line that is not painted (${gone.map(b => `${b} ${image[b].ink}/${photo[b].ink}`).join(', ') || 'all eight whole'})`)
+    const deco = image['packed-decorated'].ink / photo['packed-decorated'].ink
+    assert(deco > 0.1 && deco < 0.9,
+      `an underlined, shadowed line keeps its underline and shadow in the image and gives up its glyphs (ink ratio ${deco.toFixed(3)})`)
+    const mixed = image['packed-mixed'].ink / photo['packed-mixed'].ink
+    assert(mixed > 0.1 && mixed < 0.8,
+      `a mixed line keeps in the image only the word the face lacks (ink ratio ${mixed.toFixed(3)})`)
+    const off = Object.keys(bands).filter(b => whole[b].ink < 0.85 * photo[b].ink || whole[b].ink > 1.15 * photo[b].ink)
+    assert(off.length === 0,
+      `glyphs and image together lay down the page's own ink in every line (${off.map(b => `${b} ${(whole[b].ink / photo[b].ink).toFixed(3)}`).join(', ') || `${Object.keys(bands).length} lines`})`)
+    assert(said.some(m => /painted as real vector glyphs/.test(m) && /left out of the page image/.test(m)),
+      'the report says the painted words were left out of the page image')
+    const rasterBytes = Buffer.from(raster.base64, 'base64').length
+    assert(bytes.length < rasterBytes, `the file is lighter than the raster-only export (${bytes.length} B against ${rasterBytes} B)`)
+
+    // One capture, three exports: the cleared image must not leak into an export
+    // that paints nothing, nor be lost to one that paints again.
+    const [first, plain, again] = await page.evaluate(() => window.__exportMany([
+      { vectorText: true, deflate: false }, { vectorText: false, deflate: false }, { vectorText: true, deflate: false },
+    ]))
+    const plainInk = await inkOf(plain)
+    const short = Object.keys(bands).filter(b => plainInk[b].ink < 0.97 * photo[b].ink)
+    assert(short.length === 0,
+      `an export that paints nothing gets the whole image after one that cleared it (${short.join(', ') || 'every line'})`)
+    assert(first.base64 === again.base64, 'the same export twice on one capture is the same file')
+    assert(messages(again).some(m => /left out of the page image/.test(m)),
+      'an export served from the image cache still reports what its image holds')
+  }
+}
+
+// ——— the revised SVG ————————————————————————————————————————————————————————
+{
+  console.log('\nwithoutGlyphs')
+  const out = await page.evaluate(async () => {
+    const { withoutGlyphs, wrapperIsInert } = await import('/src/page-image.js')
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 10 10">' +
+      '<foreignObject width="10" height="10"><div xmlns="http://www.w3.org/1999/xhtml"><div>' +
+      '<p>alpha beta gamma</p><textarea>one two</textarea>' +
+      '<svg xmlns="http://www.w3.org/2000/svg"><text>inner</text></svg><p>delta</p>' +
+      '</div></div></foreignObject></svg>'
+    const wrapped = (spans, total = 4) => {
+      const text = withoutGlyphs(svg, new Map(spans), total)
+      if (text === null) return null
+      const doc = new DOMParser().parseFromString(text, 'image/svg+xml')
+      return {
+        parses: !doc.querySelector('parsererror'),
+        wrappers: [...doc.getElementsByTagName('snapdom-pdf-glyphs')].map(w => w.textContent),
+        style: doc.getElementsByTagName('snapdom-pdf-glyphs')[0]?.getAttribute('style'),
+        text: doc.documentElement.textContent,
+      }
+    }
+    const sheetDoc = async (css) => {
+      const frame = document.createElement('iframe')
+      frame.srcdoc = `<style>${css}</style><p>x</p>`
+      const loaded = new Promise(resolve => { frame.onload = resolve })
+      document.body.appendChild(frame)
+      await loaded
+      const verdict = wrapperIsInert(frame.contentDocument)
+      frame.remove()
+      return verdict
+    }
+    return {
+      neighbours: wrapped([[0, [[0, 5], [6, 10]]]]),
+      apart: wrapped([[0, [[0, 5], [11, 16]]]]),
+      whole: wrapped([[0, [[0, 5], [6, 10], [11, 16]]], [3, [[0, 5]]]]),
+      miscount: wrapped([[0, [[0, 5]]]], 5),
+      textarea: wrapped([[1, [[0, 3]]]]),
+      svgText: wrapped([[2, [[0, 5]]]]),
+      outOfRange: wrapped([[0, [[40, 50]]]]),
+      nothing: wrapped([]),
+      notSvg: withoutGlyphs('<p>plain</p>', new Map([[0, [[0, 1]]]]), 1),
+      inertClass: await sheetDoc('.c1{color:red} p{margin:0} [data-x]::after{content:""}'),
+      inertNested: await sheetDoc('@media screen{.c1{color:red}}'),
+      firstChild: await sheetDoc('b:first-child{color:red}'),
+      sibling: await sheetDoc('p + p{color:red}'),
+      star: await sheetDoc('div > *{color:red}'),
+      nestedEmpty: await sheetDoc('@media screen{p:empty{display:none}}'),
+    }
+  })
+  const same = (name, got, want) => assert(JSON.stringify(got) === JSON.stringify(want), `${name} (${JSON.stringify(got)})`)
+  same('neighbouring words share one wrapper, the space between them included', out.neighbours?.wrappers, ['alpha beta'])
+  same('words apart get a wrapper each', out.apart?.wrappers, ['alpha', 'gamma'])
+  same('a node cleared whole is wrapped whole', out.whole?.wrappers, ['alpha beta gamma', 'delta'])
+  assert(out.whole?.parses && out.whole.text === 'alpha beta gammaone twoinnerdelta', 'the revised SVG parses and no text moved or changed')
+  assert(/all:unset!important/.test(out.neighbours?.style || '') && /-webkit-text-fill-color:transparent!important/.test(out.neighbours.style),
+    'the wrapper changes the fill and nothing else')
+  same('a different text-node count clears nothing', out.miscount, null)
+  same('text inside a textarea is never wrapped', out.textarea, null)
+  same('SVG text is never wrapped', out.svgText, null)
+  same('a span outside the node is ignored', out.outOfRange, null)
+  same('nothing to clear is nothing to do', out.nothing, null)
+  same('a document that is not the capture is left alone', out.notSvg, null)
+  assert(out.inertClass === true && out.inertNested === true, 'class, tag and attribute rules cannot react to a wrapper')
+  assert(out.firstChild === false && out.sibling === false && out.star === false && out.nestedEmpty === false,
+    'a structural selector anywhere, nested rules included, vetoes wrapping')
 }
 
 // ——— the two pure functions ———————————————————————————————————————————————

@@ -426,6 +426,52 @@ else {
   }
 }
 
+// ——— vector text WITH the page image: every page, painted once ————————————————
+{
+  console.log('\nvector text over the page image, paginated')
+  const exp = (o) => run({ export: { page: 'a4', fields: false, meta: { title: 'V' }, ...o } })
+  const painted = await exp({ vectorText: true })
+  const plain = await exp({ vectorText: false })
+  if (painted.error || plain.error) fail(`export threw: ${(painted.error || plain.error).message}`)
+  else {
+    // Ink per page as pdf.js draws it. The page image no longer carries the
+    // painted words, so a page short of ink lost text and a page with more
+    // painted some of it twice.
+    const inkPerPage = (b64) => page.evaluate(async (data) => {
+      const L = await import('/node_modules/pdfjs-dist/build/pdf.mjs')
+      L.GlobalWorkerOptions.workerSrc = '/node_modules/pdfjs-dist/build/pdf.worker.mjs'
+      const bin = atob(data); const u = new Uint8Array(bin.length)
+      for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i)
+      const doc = await L.getDocument({ data: u }).promise
+      const out = []
+      for (let p = 1; p <= doc.numPages; p++) {
+        const pg = await doc.getPage(p)
+        const vp = pg.getViewport({ scale: 96 / 72 })
+        const c = new OffscreenCanvas(Math.ceil(vp.width), Math.ceil(vp.height))
+        const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height)
+        await pg.render({ canvasContext: x, viewport: vp }).promise
+        const px = x.getImageData(0, 0, c.width, c.height).data
+        let ink = 0
+        for (let i = 0; i < px.length; i += 4) ink += 1 - Math.min(px[i], px[i + 1], px[i + 2]) / 255
+        out.push(Math.round(ink))
+      }
+      await doc.destroy()
+      return out
+    }, b64)
+    const a = await inkPerPage(painted.base64)
+    const b = await inkPerPage(plain.base64)
+    assert(a.length === b.length && a.length > 1, `both exports paginate alike (${a.length} and ${b.length} pages)`)
+    const ratios = a.map((ink, i) => ink / b[i])
+    assert(ratios.every(r => r > 0.97 && r < 1.03),
+      `every page carries the raster export's ink, neither lost nor doubled (${ratios.map(r => r.toFixed(3)).join(', ')})`)
+    assert(painted.report.vectorText > 20, `${painted.report.vectorText} runs painted as glyphs`)
+    assert((painted.report.warnings || []).some(w => /left out of the page image/.test(w.message)),
+      'the report says the painted words were left out of the page image')
+    assert(bytesOf(painted).length < bytesOf(plain).length,
+      `the file is lighter than the raster-only one (${(bytesOf(painted).length / 1024).toFixed(0)} kB against ${(bytesOf(plain).length / 1024).toFixed(0)} kB)`)
+  }
+}
+
 // ——— the sfnt parser is hostile-input safe ———————————————————————————————
 {
   console.log('\nsfnt parser hardening')

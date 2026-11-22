@@ -47,6 +47,7 @@ import { buildStructure } from './tagged.js'
 import { createEmbeddedFont } from './writer/font.js'
 import { metaSpec, infoDict, xmpPacket } from './mega/meta.js'
 import { collectFaceRules, resolveFaces } from './mega/fonts.js'
+import { withoutGlyphs, wrapperIsInert } from './page-image.js'
 import { buildReport, reportSpec } from './mega/diag.js'
 import { flowSpec } from './mega/flow.js'
 import { pageLabels } from './mega/labels.js'
@@ -356,12 +357,23 @@ function runBox(run) {
 function clipMeasurement(layer, blocks, repeats, nav, frame, notes) {
   const runs = []
   const owners = []
+  // A word that loses a run to the capture window is no longer whole: the
+  // glyphs of that run exist only in the page image, so the word must stay there.
+  const sources = []
+  const cut = new Set()
   let clippedRuns = 0
   for (let i = 0; i < layer.runs.length; i++) {
-    if (!contains(frame, runBox(layer.runs[i]))) { clippedRuns++; continue }
+    const source = (layer.sources && layer.sources[i]) || null
+    if (!contains(frame, runBox(layer.runs[i]))) {
+      clippedRuns++
+      if (source) cut.add(source)
+      continue
+    }
     runs.push(layer.runs[i])
     owners.push(layer.owners[i])
+    sources.push(source)
   }
+  for (let i = 0; i < sources.length; i++) if (cut.has(sources[i])) sources[i] = null
   if (clippedRuns) {
     notes.push(`${clippedRuns} text run(s) crossing the snapdom clip edge were omitted ` +
       'from the searchable layer so clipped text cannot leak through extraction.')
@@ -376,7 +388,7 @@ function clipMeasurement(layer, blocks, repeats, nav, frame, notes) {
     const bottom = Math.min(frame.bottom, box.bottom)
     links.push({ ...link, x: left, y: top, width: right - left, height: bottom - top })
   }
-  layer = { ...layer, runs, owners, links }
+  layer = { ...layer, runs, owners, links, sources }
 
   blocks = blocks.flatMap(b => {
     const top = Math.max(frame.top, b.top)
@@ -670,6 +682,9 @@ async function measureArtifact(url, meta, opts, source = {}) {
       // The @font-face rules behind the text, read NOW: this CSSOM dies with the
       // frame, and the export that wants the bytes runs after it is gone.
       fontRules: collectFaceRules(frameDoc),
+      // Whether wrapping a text node could move anything, also only readable now
+      // (`page-image.js`): the stylesheets that would react die with the frame.
+      wrapperInert: wrapperIsInert(frameDoc),
       intrinsic: {
         width: Number.isFinite(intrinsicW) && intrinsicW > 0 ? intrinsicW : meta.vbW,
         height: Number.isFinite(intrinsicH) && intrinsicH > 0 ? intrinsicH : meta.vbH,
@@ -839,9 +854,14 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
   let jpegRegions = 0
   let losslessRegions = 0
   const imageObjects = new WeakMap()
-  const imageObject = async (crop = null) => {
+  let glyphsOut = null
+  // `cleared` asks for the page image without the text this export paints as
+  // glyphs (`glyphsOut`, below). Only the page's own pixels take it: a crop that
+  // stands in for typeset text — an index line, an empty field's face — is
+  // there precisely to show the letters.
+  const imageObject = async (crop = null, cleared = false) => {
     if (!raster) throw new Error('[snapdom-pdf] raster requested while image:false')
-    const encoded = await raster(crop, magnify)
+    const encoded = await raster(crop, magnify, cleared ? glyphsOut : null)
     let saved = imageObjects.get(encoded)
     if (saved) return saved
     if (/DCTDecode/.test(encoded.dict)) jpegRegions++
@@ -1005,6 +1025,74 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
   let coverageFallbacks = 0
 
   /**
+   * Whether a body run will be painted as real glyphs — `drawRun`'s own verdict,
+   * reachable before any page is drawn because the page image needs it first.
+   * The two must agree to the run: a text node is taken out of the image on this
+   * answer, and only `drawRun` puts its glyphs back.
+   */
+  const paintsAsGlyphs = (run, faces) => {
+    if (!vectorText || !run.color || run.rtl || !run.text || run.fk < 0) return false
+    const face = faces[run.fk]
+    if (!face || (faces.approx && faces.approx[run.fk])) return false
+    for (const ch of run.text) {
+      if (!face.parsed.cmap.has(ch.codePointAt(0))) return false
+    }
+    return true
+  }
+
+  // The words the page image can do without: every run they produced is
+  // painted as glyphs, on this export, by the rule above. A word with one run
+  // that is not — a fragment the face lacks, a value that became a field — stays
+  // in the image, and whatever of it is painted goes over it as it always did.
+  //
+  // With that list in hand a run is painted only if its word left the image, so
+  // nothing on the page is drawn twice: a paintable run that cannot be taken
+  // out — a form control's value, which is no text node, or a word with a
+  // fragment that is not painted — stays in the image, as pixels.
+  //
+  // `raster.clears` is false on a core that cannot draw a revised image, and
+  // `wrapperInert` when the capture's own CSS could react to the wrapping. Either
+  // way nothing is cleared and painted runs go over the image, as they used to.
+  const clearing = !!(image && text && vectorText && raster && raster.clears && measured.wrapperInert)
+  const clearedRuns = new Set()
+  if (clearing && layer.sources && layer.textNodes) {
+    const whole = new Map()
+    for (let i = 0; i < layer.runs.length; i++) {
+      const source = layer.sources[i]
+      if (!source) continue
+      const painted = !suppressedRuns.has(i) && paintsAsGlyphs(layer.runs[i], bodyFaces)
+      whole.set(source, whole.get(source) !== false && painted)
+    }
+    for (let i = 0; i < layer.runs.length; i++) {
+      if (layer.sources[i] && whole.get(layer.sources[i])) clearedRuns.add(layer.runs[i])
+    }
+    const spans = new Map()
+    let words = 0
+    for (const [source, painted] of whole) {
+      if (!painted) continue
+      if (!spans.has(source.node)) spans.set(source.node, [])
+      spans.get(source.node).push([source.from, source.to])
+      words++
+    }
+    if (words) {
+      const order = [...spans.keys()].sort((a, b) => a - b)
+      for (const node of order) spans.get(node).sort((a, b) => a[0] - b[0])
+      glyphsOut = {
+        spans,
+        words,
+        total: layer.textNodes,
+        // The encoded image is cached on the capture, across exports; an export
+        // that paints different text must not be handed this one's image.
+        key: order.map(node => `${node}:${spans.get(node).map(([a, b]) => `${a}-${b}`).join('.')}`).join(','),
+        // Set by the raster once a revised image was really drawn. A core that
+        // predates `editSvg` never sets it, and the export then says what it
+        // did: painted over the image, as before.
+        applied: false,
+      }
+    }
+  }
+
+  /**
    * One short string of the PLUGIN's own text — a page number, a running head, a
    * watermark, a line of the generated index — encoded and measured.
    *
@@ -1120,6 +1208,9 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
   // bold or italic). One sentence per distinct reason, however many runs.
   let vectorHeld = 0
   const vectorHeldWhy = new Set()
+  // Runs a face could paint, left in the page image because their word cannot
+  // be taken out of it and painting them would draw them twice.
+  let vectorKept = 0
   // Painted images nobody named, on body and matter pages alike. Any one of them
   // withholds the PDF/UA-1 claim.
   let unnamedImages = layer.unnamedImages
@@ -1312,10 +1403,16 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
     // Painting it would put regular letters where the page shows bold ones.
     const paintable = vectorText && embeddedUsed && run.color && !run.rtl
     const approx = paintable && run.fk >= 0 && faces.approx ? faces.approx[run.fk] : null
-    const paint = paintable && !approx
+    // Painted once: over a page image that can give text up, only a run whose
+    // word DID leave it is painted (`clearedRuns`). A cover or a colophon is
+    // drawn from its own capture, which is not revised, and keeps the old rule.
+    const twice = clearing && faces === bodyFaces && !clearedRuns.has(run)
+    const paint = paintable && !approx && !twice
     if (approx) {
       vectorHeld++
       vectorHeldWhy.add(approx)
+    } else if (paintable && twice) {
+      vectorKept++
     }
     let tr = debugText ? 0 : 3
     let colorOp = ''
@@ -1485,7 +1582,7 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
       const regions = cropsFor(slice.top, slice.height)
       for (let j = 0; j < regions.length; j++) {
         const crop = regions[j]
-        const ref = await imageObject(crop)
+        const ref = await imageObject(crop, true)
         const name = page === 'fit'
           ? `Im${j}`
           : `Ip${p}${j ? `_${j}` : ''}`
@@ -1526,7 +1623,7 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
         const regions = cropsFor(b.top, height)
         for (let j = 0; j < regions.length; j++) {
           const crop = regions[j]
-          const ref = await imageObject(crop)
+          const ref = await imageObject(crop, true)
           const name = `Ir${index}${j ? `_${j}` : ''}`
           pageXObjects.push(`/${name} ${ref.id} 0 R`)
           const contentY = (crop.y - offY) * k
@@ -2031,13 +2128,20 @@ async function draw({ measured, raster, meta, options, report, flow = null }) {
   }
   if (vectorText && vectorPainted) {
     report(`${vectorPainted} text run(s) painted as real vector glyphs from the embedded fonts — ` +
-      'crisp at any zoom' + (image ? ', over the raster.' : ', and the raster is off.'))
+      'crisp at any zoom' + (!image ? ', and the raster is off.'
+      : glyphsOut?.applied ? `, and ${glyphsOut.words} word(s) of them left out of the page image.`
+        : ', over the raster.'))
   }
   if (vectorMissed) {
     report(`${vectorMissed} text run(s) could not be painted as vector (RTL, no embedded face, an ` +
       'unresolved colour, or a face whose file does not hold the design the page drew) and there is ' +
       'no raster to show them — they are searchable but not visible. ' +
       'Keep image:true for those, or embed a covering font.')
+  }
+  if (vectorKept) {
+    report(`${vectorKept} text run(s) left as image instead of painted as vector glyphs, because they ` +
+      'cannot be taken out of the page image and would be drawn twice — the value of a form control, ' +
+      'or a word with a part that is not painted (clipped, hyphenated by the browser, missing from the font).')
   }
   if (vectorHeld) {
     report(`${vectorHeld} text run(s) left as image instead of painted as vector glyphs, because the ` +
@@ -2314,16 +2418,30 @@ export default function pdf(defaults = {}) {
       // asked for, and only re-exporting the SAME capture at a different quality,
       // codec or background rasterizes twice.
       const imageCache = new Map()
+      // Which cached images were drawn from a revised SVG, so a later export
+      // served from the cache still knows what its page image holds.
+      const imageApplied = new Set()
 
       const cropKey = (crop) => crop
         ? ['crop', crop.x, crop.y, crop.width, crop.height].map(String).join(':')
         : 'full'
       // `magnify` is the page's enlargement of the capture (`draw`), 1 with an absolute size.
-      const rasterFor = (options) => async (crop = null, magnify = 1) => {
+      // The revised SVG per source text. The core hands over one of two strings —
+      // the artifact, or the artifact with its compressed assets restored — once
+      // per region, and re-parsing a page of markup for every crop of it is the
+      // whole cost of this feature paid forty times.
+      const revised = new Map()
+      // `clear` is the export's list of text nodes to draw without their glyphs
+      // (`page-image.js`); null draws the capture as captured.
+      const rasterFor = (options) => async (crop = null, magnify = 1, clear = null) => {
         const key = JSON.stringify([
           cropKey(crop), magnify, options.quality, options.backgroundColor, options.codec,
+          clear ? clear.key : null,
         ])
-        if (imageCache.has(key)) return imageCache.get(key)
+        if (imageCache.has(key)) {
+          if (clear && imageApplied.has(key)) clear.applied = true
+          return imageCache.get(key)
+        }
         const promise = Promise.resolve().then(async () => {
           // Alpha is kept here; background flattening belongs to encodeImage.
           const canvas = await facade.canvas({
@@ -2332,6 +2450,22 @@ export default function pdf(defaults = {}) {
             height: absoluteSize ? (crop?.height ?? meta.vbH) * captureDensity : null,
             scale: rasterScale * magnify,
             ...(crop ? { crop } : {}),
+            ...(clear ? {
+              editSvg: (svg) => {
+                let memo = revised.get(svg)
+                if (!memo || memo.key !== clear.key) {
+                  if (revised.size > 3) revised.clear()
+                  memo = { key: clear.key, out: withoutGlyphs(svg, clear.spans, clear.total) }
+                  revised.set(svg, memo)
+                }
+                const out = memo.out
+                if (out) {
+                  clear.applied = true
+                  imageApplied.add(key)
+                }
+                return out
+              },
+            } : {}),
           })
           return encodeImage(canvas, {
             quality: options.quality,
@@ -2343,6 +2477,8 @@ export default function pdf(defaults = {}) {
         promise.catch(() => { if (imageCache.get(key) === promise) imageCache.delete(key) })
         return promise
       }
+      /** Whether this core can draw a revised copy of the capture (`editSvg`, PLUGIN_SPEC.md). */
+      const clears = facade?.editSvg === true
       const measuredForCapture = () => {
         if (!measuredPromise) measuredPromise = measureArtifact(artifactURL, meta, pluginDefaults, source)
         return measuredPromise
@@ -2434,7 +2570,7 @@ export default function pdf(defaults = {}) {
           }
           notes.push(...measured.notes)
 
-          const raster = options.image === false ? null : rasterFor(options)
+          const raster = options.image === false ? null : Object.assign(rasterFor(options), { clears })
           const { blob, stats } = await draw({ measured, raster, meta, options, report, flow })
           for (const n of notes) warn(n)
           onReport?.(buildReport({

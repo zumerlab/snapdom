@@ -225,9 +225,16 @@ export interface PdfExportOptions {
    * where no shaping intervenes (left-to-right runs in an embedded face) and
    * the font file holds the design the page drew, so these stay on the raster:
    * RTL and uncovered runs, a variable font off the weight its file was saved
-   * in, a bold or italic the browser faked, translucent or outlined text. Pair with `image: false` for a
-   * tiny, fully-vector text PDF; with `image: true` the glyphs overpaint the
-   * raster. Default false.
+   * in, a bold or italic the browser faked, translucent or outlined text, small
+   * caps and other glyph substitutions, a word the browser hyphenated.
+   *
+   * With `image: true` a painted word is drawn once: the page image is
+   * rasterized without its glyph fill (underline, shadow and background stay),
+   * which is where most of the file's weight goes. A paintable run that cannot
+   * be taken out of the image — a form control's value — is then left as image.
+   * Needs a core with `ctx.exports.editSvg`; on an older one the glyphs
+   * overpaint the raster. Pair with `image: false` for a tiny, fully-vector
+   * text PDF. Default false.
    */
   vectorText?: boolean
   cover?: Element | null

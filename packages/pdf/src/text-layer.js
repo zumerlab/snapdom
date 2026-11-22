@@ -19,6 +19,7 @@
 // question — this module only needs to know which textless ones deserve a run to
 // hang a tag on, and asking there is what keeps the two answers one answer.
 import { isFigure, semanticAlt } from './tagged.js'
+import { wrappable } from './page-image.js'
 
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TITLE', 'TEMPLATE', 'OPTION', 'OPTGROUP', 'DATALIST'])
 
@@ -891,8 +892,21 @@ function paintColour(cs) {
   if (colourAlpha(fill) < 0.999) return null
   if ((parseFloat(cs.wordSpacing) || 0) !== 0) return null
   if ((parseFloat(cs.webkitTextStrokeWidth) || 0) > 0) return null
+  // Small caps, tabular or old-style figures and any `font-feature-settings`
+  // swap glyphs through the font's substitution tables. A painted run maps each
+  // code point to its default glyph and nothing else, so it would draw the
+  // wrong letterforms.
+  for (const name of SUBSTITUTING) {
+    const value = cs[name]
+    if (value && value !== 'normal') return null
+  }
   return colourTriple(fill)
 }
+
+const SUBSTITUTING = [
+  'fontVariantCaps', 'fontVariantNumeric', 'fontVariantEastAsian', 'fontVariantAlternates',
+  'fontVariantPosition', 'fontFeatureSettings',
+]
 
 /** Advance in the REAL font — the only independent measurement a rotated run has. */
 function measureReal(info, text) {
@@ -999,7 +1013,9 @@ function baselineOrigin(L, rect, box, A) {
  * rect, a singular map, the clip — and all three COUNT what they dropped, or a
  * `transform: scale(0)` would empty the whole layer without a word of warning.
  */
-function pushRun(S, text, rect, info, L, ctx, owner) {
+const UNPAINTABLE = /[\u00ad\t]/
+
+function pushRun(S, text, rect, info, L, ctx, owner, hold = false) {
   // scale(0) and friends collapse an axis before the determinant below ever sees it.
   if (rect.width <= 0 || rect.height <= 0) { S.n.invisible++; return }
   // A singular map paints nothing and leaves w and h unrecoverable.
@@ -1018,7 +1034,12 @@ function pushRun(S, text, rect, info, L, ctx, owner) {
     naturalWidth: measureNatural(info, text),
     // A run under a translucent ancestor is not painted as glyphs: the fill has
     // no alpha of its own here, and opaque letters over a faded block are wrong.
-    matrix: L, rtl: info.rtl, color: ctx.alpha >= 0.999 ? info.color : null, tracking: info.trackingPx,
+    //
+    // Nor is a run whose glyphs are not its code points: a soft hyphen paints
+    // nothing unless the line breaks there, a tab is a jump and not a glyph, and
+    // `hold` is the caller saying the engine drew a hyphen this text does not have.
+    matrix: L, rtl: info.rtl, tracking: info.trackingPx,
+    color: ctx.alpha >= 0.999 && !hold && !UNPAINTABLE.test(text) ? info.color : null,
   })
   // Parallel to `runs`, never inside a run: the run's key set is a pinned
   // contract, and this is a node from the temporary layout DOM that must not
@@ -1033,6 +1054,42 @@ function pushRun(S, text, rect, info, L, ctx, owner) {
 function isUpright(info, text) {
   return info.orientation === 'upright' ||
     (info.orientation !== 'sideways' && UPRIGHT.test(text))
+}
+
+/**
+ * A text node's place in document order under the capture root. The export
+ * uses it to find the same node again in a fresh parse of the capture's SVG,
+ * long after this document is gone (`page-image.js`). Numbered once, in one
+ * walk, the first time any node asks.
+ */
+function textOrdinal(node, S) {
+  if (!S.textOrdinals) {
+    S.textOrdinals = new Map()
+    const doc = S.root.ownerDocument || document
+    const walker = doc.createTreeWalker(S.root, 4 /* NodeFilter.SHOW_TEXT */)
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) S.textOrdinals.set(n, S.textOrdinals.size)
+    S.textNodes = S.textOrdinals.size
+  }
+  const at = S.textOrdinals.get(node)
+  return at === undefined ? -1 : at
+}
+
+/**
+ * Where the runs of one word came from: text node, and the word's span in it.
+ * The export uses it to take painted text out of the page image, word by word.
+ *
+ * Nothing is recorded — and the word stays in the image — when it cannot be
+ * cleared whole: a fragment of it was not placed (the clip or a collapsed box
+ * dropped it, so those glyphs exist only in the image), or its text node
+ * cannot be wrapped where it stands.
+ */
+function markSource(S, node, from, to, first, lost) {
+  if (S.runs.length === first) return
+  if (S.n.invisible + S.n.clipped !== lost || !wrappable(node)) return
+  const at = textOrdinal(node, S)
+  if (at < 0) return
+  const source = { node: at, from, to }
+  for (let i = first; i < S.runs.length; i++) S.sources[i] = source
 }
 
 function emitText(node, S) {
@@ -1076,11 +1133,14 @@ function emitText(node, S) {
     // Per word in normal prose, per source line where white-space is preserved:
     // one CJK glyph anywhere else in a paragraph must not send every Latin word
     // around it down the per-glyph branch.
+    const first = S.runs.length
+    const lost = S.n.invisible + S.n.clipped
     if (info.vertical && isUpright(info, match[0])) {
       emitVertical(S, node, ctx, info, L, turn, range, from, to, preserve)
-      continue
+    } else {
+      place(S, node, ctx, info, turn, range, from, to, true, preserve)
     }
-    place(S, node, ctx, info, turn, range, from, to, true, preserve)
+    markSource(S, node, from, to, first, lost)
   }
 }
 
@@ -1194,8 +1254,12 @@ function place(S, node, ctx, info, L, range, from, to, first, preserveWords = fa
     : shown(info, text, startsWord)
   if (rects.length === 1) { pushRun(S, display(node.data.slice(from, to), first), rects[0], info, L, ctx, owner); return }
   const { parts, order } = groupByRect(node, from, to, rects, range, L)
+  // A word the engine hyphenated shows a hyphen that is in no text node, in a
+  // rect of its own. The fragments stay searchable as they are; painted as
+  // glyphs they would lose the hyphen, so they are left to the page image.
+  const hyphenated = ctx.cs.hyphens === 'auto' || node.data.slice(from, to).includes('\u00ad')
   // Only the fragment the word STARTS in may take the capital.
-  for (const i of order) pushRun(S, display(parts[i], first && i === order[0]), rects[i], info, L, ctx, owner)
+  for (const i of order) pushRun(S, display(parts[i], first && i === order[0]), rects[i], info, L, ctx, owner, hyphenated)
 }
 
 /**
@@ -1756,6 +1820,8 @@ export function collectTextLayer(root, options = {}) {
   const S = {
     root, formValues, shadow, documentURL, forms,
     runs: [], owners: [], links: [], controls: [],
+    // Parallel to `runs` and sparse: the word behind each run (`markSource`).
+    sources: [], textOrdinals: null, textNodes: 0,
     fontKeys: [], fontKeyIndex: new Map(),
     ctxCache: new WeakMap(), fontCache: new WeakMap(), layoutFontCache: new Map(),
     metricHost: null,
@@ -1795,6 +1861,7 @@ export function collectTextLayer(root, options = {}) {
 
   return {
     runs: S.runs, owners: S.owners, links: S.links, controls: S.controls, fontKeys: S.fontKeys, warnings,
+    sources: S.sources, textNodes: S.textNodes,
     unnamedImages: S.n.unnamedImages,
   }
 }

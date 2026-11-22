@@ -38,6 +38,10 @@
   <p class="alone" data-band="alone-faded" style="opacity:.5">AloneFaded hamburgefonstiv 0123456789</p>
   <p class="alone" data-band="alone-outlined" style="-webkit-text-stroke:1px #c00">AloneOutlined hamburgefonstiv 0123456789</p>
   <p class="alone" data-band="alone-filled" style="color:#00c;-webkit-text-fill-color:#0a0">AloneFilled hamburgefonstiv 0123456789</p>
+  <p class="packed" data-band="packed-decorated" style="text-decoration:underline;text-shadow:4px 4px 0 #e9a">PackedDecorated hamburgefonstiv 0123456789</p>
+  <p class="packed" data-band="packed-mixed">PackedMixed 漢字漢字漢字漢字 hamburgefonstiv</p>
+  <p class="packed" data-band="packed-hyphen" style="white-space:normal;width:170px;line-height:30px;height:60px">Hamburge&#173;fonstiv&#173;hamburgefonstiv</p>
+  <p class="packed" data-band="packed-caps" style="font-variant-caps:small-caps">PackedCaps hamburgefonstiv 0123456789</p>
 </div>
 
 <script type="module">
@@ -64,6 +68,20 @@
     } catch (error) {
       return { error: { name: error?.name || 'Error', message: String(error?.message || error) } }
     }
+  }
+
+  /** Several exports of ONE capture, in order: what a later export sees of an earlier one. */
+  window.__exportMany = async (list) => {
+    const shot = await snapdom(document.getElementById('target'), {
+      plugins: [pdf()], scale: 1, dpr: 1, embedFonts: true,
+    })
+    const out = []
+    for (const exp of list) {
+      let report = null
+      const blob = await shot.toPdf({ page: 'fit', ...exp, onReport: r => { report = r } })
+      out.push({ base64: b64(new Uint8Array(await blob.arrayBuffer())), report })
+    }
+    return out
   }
 
   /** Each band's box in CSS px from #target's border box. */

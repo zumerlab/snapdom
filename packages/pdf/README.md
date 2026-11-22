@@ -106,7 +106,11 @@ The PDF can only embed fonts the capture carries, so capture with `snapdom(el, {
 - right-to-left and complex scripts;
 - a variable font at a weight other than the one its file was saved in;
 - bold or italic the browser fakes because the page loaded no file for it;
-- translucent or outlined text.
+- translucent or outlined text;
+- small caps, tabular or old-style figures and other `font-feature-settings`;
+- a word the browser hyphenated, and a word with a letter the font lacks.
+
+The letters that are drawn leave the page image, so each one is in the file once: the PDF gets lighter and the text has no soft edge around it. Underlines, shadows and backgrounds stay in the image. A text that cannot be taken out of the image, such as the value of a form control, is not drawn and stays as image. This needs a `@zumer/snapdom` newer than 3.8.2; with an older one the letters are drawn over the image.
 
 With `image: false` it gives a very small text-only PDF, without borders, backgrounds or pictures.
 
