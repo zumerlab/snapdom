@@ -53,7 +53,7 @@ const sources = (dir, sub) => readdirSync(join(ROOT, 'packages', dir, sub), { re
 const PACKAGES = {
   plugins: ['package/capture-frames.js', 'package/privacy-policy.js', 'package/redact-clone.js'],
   pdf: ['package/src/mega/README.md', ...sources('pdf', 'src')],
-  vector: ['package/CONTRACT.md', ...sources('vector', 'src'), ...sources('vector', 'svd')],
+  vector: ['package/CONTRACT.md', 'package/index.js'],
   stream: sources('stream', 'src'),
 }
 let failures = 0
@@ -110,10 +110,12 @@ try {
     const tgz = join(packDir, out.trim().split('\n').pop().trim())
     run('tar', ['-xzf', tgz, '-C', packDir])
     const pkg = JSON.parse(readFileSync(join(packDir, 'package', 'package.json'), 'utf8'))
-    const entries = Object.entries(pkg.exports)
+    // Vector exports one built file through conditions, and its own manifest.
+    const entries = Object.entries(pkg.exports).filter(([key]) => key !== './package.json')
     const required = [
       'package/package.json', 'package/README.md', 'package/LICENSE', 'package/CHANGELOG.md',
-      ...entries.flatMap(([, path]) => [path, path.replace(/\.js$/, '.d.ts')].map((p) => 'package/' + p.slice(2))),
+      ...entries.flatMap(([, path]) => (typeof path === 'string' ? [path, path.replace(/\.js$/, '.d.ts')] : [path.import, path.types])
+        .map((p) => 'package/' + p.slice(2))),
       ...shipped,
     ]
     const listed = run('tar', ['-tzf', tgz]).split('\n').map((s) => s.trim()).filter(Boolean)
