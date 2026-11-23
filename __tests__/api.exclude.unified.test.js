@@ -177,6 +177,43 @@ describe('unified exclude', () => {
       expect(host.querySelector('.pii')).toBe(secret)
     })
 
+    // #571: an out-of-flow box holds no slot on the page, and a float's slot is beside the
+    // blocks that follow, so an in-flow spacer pushed every later sibling down by its height.
+    it.each([
+      'position:absolute;top:0;left:0;width:50px;height:40px',
+      'position:fixed;top:0;left:0;width:50px;height:40px',
+      'float:left;width:50px;height:40px',
+    ])('a hidden "%s" box moves no sibling', async piiStyle => {
+      const host = scene(piiStyle)
+      host.style.position = 'relative'
+      const baseline = await greenTop(host)
+      const hidden = await greenTop(host, { exclude: ['.pii'] })
+      host.remove()
+      expect(baseline).toBe(20)
+      expect(hidden).toBe(baseline)
+    })
+
+    // #571: the scroll wrapper leaves a scrolled box with one element child, which read as
+    // children lost to 'remove': the box got height:auto and overflow:visible and painted
+    // every row over its siblings.
+    it('remove keeps a scrolled container clipped at its scroll position', async () => {
+      const host = document.createElement('div')
+      host.style.cssText = 'width:200px;background:#fff'
+      // Sizes come from a sheet: the shrink pass leaves a box with an inline size alone.
+      host.innerHTML = '<style>.s571{height:60px;overflow-y:auto}.s571 div{height:20px}</style>' +
+        '<div class="pii" style="height:30px">secret</div><div style="height:40px"></div><div class="s571">' +
+        ['red', 'red', 'blue', 'blue', 'blue', 'red'].map(c => `<div style="background:${c}"></div>`).join('') +
+        '</div><div style="height:20px;background:green"></div>'
+      document.body.appendChild(host)
+      host.querySelector('.s571').scrollTop = 40
+      const canvas = await (await snapdom(host, { dpr: 1, scale: 1, exclude: ['.pii'], excludeMode: 'remove' })).toCanvas()
+      host.remove()
+      const px = y => Array.from(canvas.getContext('2d').getImageData(100, y, 1, 1).data.slice(0, 3))
+      // Opened, the two red rows scrolled out of view paint over the 40px above the scroller.
+      expect([px(20), px(45), px(95), px(110)])
+        .toEqual([[255, 255, 255], [0, 0, 255], [0, 0, 255], [0, 128, 0]])
+    })
+
     const flexRow = (piiStyle) => {
       const host = document.createElement('div')
       host.style.cssText = 'display:flex;width:300px;height:40px;background:white'

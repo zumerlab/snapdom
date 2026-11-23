@@ -154,6 +154,9 @@ function makeHideSpacer(node) {
   const style = getStyle(node)
   const display = style.display
   if (display === 'none') return null
+  // An out-of-flow box holds no slot either: an in-flow spacer of its size pushed every
+  // later sibling down (#571).
+  if (style.position === 'absolute' || style.position === 'fixed') return null
   // Safari at fractional page zoom can report offsetHeight=31 for a 30px box.
   // Used CSS sizes preserve both fractions and pre-transform layout; offsets are only
   // a fallback. Inline text and table/ruby boxes have different sizing rules, so keep
@@ -190,7 +193,10 @@ function makeHideSpacer(node) {
     h ??= fallbackH
   }
   const spacer = document.createElement('div')
-  spacer.style.cssText = `display:${display === 'inline' ? 'inline-block' : display};box-sizing:border-box;width:${w}px;height:${h}px;visibility:hidden;`
+  // A float keeps its side and its margins, or the spacer becomes a block above the content
+  // that flowed beside it (#571).
+  const float = style.float === 'none' ? '' : `float:${style.float};clear:${style.clear};margin:${style.margin};`
+  spacer.style.cssText = `display:${display === 'inline' ? 'inline-block' : display};box-sizing:border-box;width:${w}px;height:${h}px;visibility:hidden;${float}`
   return spacer
 }
 

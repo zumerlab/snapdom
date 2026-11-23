@@ -595,8 +595,28 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
   function walk(src, cln) {
     if ((src?.nodeType !== 1) || (cln?.nodeType !== 1)) return
 
-    // If the clone lost children relative to the source, it's a good candidate to shrink.
-    const lostKids = src.childElementCount > cln.childElementCount
+    // Pair children through the clone-to-source map: by index the lists misalign from the
+    // first excludeMode:'remove' drop, measuring every later child against an unrelated
+    // element. A clone child with no source is a wrapper the pipeline added (the scroll
+    // compensation, a pseudo): its children stand for it, or a scrolled box read as having
+    // lost all but one child and was opened over its siblings (#571).
+    // Pinned by `__tests__/api.exclude.unified.test.js`.
+    const pairs = []
+    if (nodeMap) {
+      const collect = parent => {
+        for (const cKid of parent.children) {
+          const sKid = nodeMap.get(cKid)
+          if (!sKid) collect(cKid)
+          else if (sKid.nodeType === 1) pairs.push([sKid, cKid])
+        }
+      }
+      collect(cln)
+    } else {
+      const sKids = src.children
+      const cKids = cln.children
+      for (let i = 0; i < Math.min(sKids.length, cKids.length); i++) pairs.push([sKids[i], cKids[i]])
+    }
+    const lostKids = src.childElementCount > (nodeMap ? pairs.length : cln.childElementCount)
 
     const cs = styleCache.get(src) || getComputedStyle(src)
     if (!styleCache.has(src)) styleCache.set(src, cs)
@@ -623,21 +643,7 @@ export function shrinkAutoSizeBoxes(sourceRoot, cloneRoot, styleCache = new Map(
       }
     }
 
-    // Pair children through the clone-to-source map: by index the lists misalign from the
-    // first excludeMode:'remove' drop (and the pseudo wrappers), measuring every later child
-    // against an unrelated element. The index walk is the fallback for callers with no map.
-    const cKids = Array.from(cln.children)
-    if (nodeMap) {
-      for (const cKid of cKids) {
-        const sKid = nodeMap.get(cKid)
-        if (sKid && sKid.nodeType === 1) walk(sKid, cKid)
-      }
-    } else {
-      const sKids = Array.from(src.children)
-      for (let i = 0; i < Math.min(sKids.length, cKids.length); i++) {
-        walk(sKids[i], cKids[i])
-      }
-    }
+    for (const [sKid, cKid] of pairs) walk(sKid, cKid)
   }
 
   walk(sourceRoot, cloneRoot)
