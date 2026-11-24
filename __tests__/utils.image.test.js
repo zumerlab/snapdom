@@ -223,14 +223,14 @@ describe('snapFetch (raster path)', () => {
     expect(r.mime).toMatch(/image\/png|image\/jpeg|image\/jpg/i)
   })
 
-  it('uses credentials: "include" for same-origin URLs', async () => {
+  it('uses credentials: "same-origin" for same-origin URLs', async () => {
     const spy = vi.spyOn(globalThis, 'fetch')
     // first call uses our default globalThis.fetch mock; we only care about the opts it receives
     await snapFetch('/local.png', { timeout: 100, as: 'blob' })
 
     expect(spy).toHaveBeenCalledTimes(1)
     const [, opts] = spy.mock.calls[0]
-    expect(opts.credentials).toBe('include')
+    expect(opts.credentials).toBe('same-origin')
 
     spy.mockRestore()
   })

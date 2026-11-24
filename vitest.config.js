@@ -74,6 +74,18 @@ const crossOrigin = (() => {
   }
 })()
 
+// A same-origin URL that answers 302 to wherever `to` says: the shape of an app endpoint that
+// hands out presigned storage URLs. Tests fetch `/__redirect?to=<encoded url>`.
+const sameOriginRedirect = {
+  name: 'snapdom-test-redirect',
+  configureServer(server) {
+    server.middlewares.use('/__redirect', (req, res) => {
+      res.writeHead(302, { location: new URL(req.url, 'http://localhost').searchParams.get('to'), 'cache-control': 'no-store' })
+      res.end()
+    })
+  },
+}
+
 // The first reading is taken here, before any browser starts, and handed to the suites via
 // inject('network'). Tests re-consult the gate as they run (the run itself is what congests the
 // link), but a value known at COLLECTION time is what lets a suite size its own test timeout: a
@@ -91,6 +103,7 @@ export default defineConfig({
   resolve: {
     alias: { '@zumer/snapdom': new URL('./src/index.js', import.meta.url).pathname },
   },
+  plugins: [sameOriginRedirect],
   test: {
     // Three engines at the default parallelism ran eighteen pages on a 10-core machine, and
     // WebKit, the slowest, ran out of room: about every second full run (2026-10-23) lost a

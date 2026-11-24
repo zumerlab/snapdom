@@ -188,7 +188,7 @@ describe('snapFetch (inflight dedup + error TTL)', () => {
 })
 
 describe('snapFetch (proxy & credentials)', () => {
-  it('same-origin → credentials: include, no proxy applied', async () => {
+  it('same-origin sends credentials: same-origin, no proxy applied', async () => {
     const { snapFetch } = await importFresh()
     const spy = vi.fn(async (_input, _init) => new Response('ok', { status: 200 }))
     globalThis.fetch = spy
@@ -198,8 +198,7 @@ describe('snapFetch (proxy & credentials)', () => {
 
     // No proxy used
     expect(spy.mock.calls[0][0]).toBe(url)
-    // Credentials should be 'include' for same-origin
-    expect(spy.mock.calls[0][1]?.credentials).toBe('include')
+    expect(spy.mock.calls[0][1]?.credentials).toBe('same-origin')
   })
 
   it('cross-origin + proxy template replaces {url}', async () => {

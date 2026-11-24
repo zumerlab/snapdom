@@ -206,7 +206,7 @@ function notifyError(options, result) {
 /**
  * Fetch a URL as text, Blob or data URL, and never throw. data:, blob: and about:blank skip
  * the network, caches and proxy; a blob: failure is not remembered (a revoked URL is usually
- * transient). Credentials default to `include` same-origin and `omit` otherwise. In dataURL
+ * transient). Credentials default to `same-origin` same-origin and `omit` otherwise. In dataURL
  * mode the Blob rides on the result, for compress's worker.
  * @param {string} url
  * @param {SnapFetchOptions} [options]
@@ -320,7 +320,12 @@ export async function snapFetch(url, options = {}) {
       const base = (typeof location !== 'undefined' && location.href) ? location.href : 'http://localhost/'
       const u = new URL(url, base)
       const sameOrigin = (typeof location !== 'undefined') && (u.origin === location.origin)
-      cred = sameOrigin ? 'include' : 'omit'
+      // 'same-origin', not 'include': both send the same cookies to this origin, but 'include'
+      // also sends them across a redirect, and the target must then answer with
+      // Access-Control-Allow-Credentials. A same-origin URL that redirects to a presigned
+      // storage URL (S3, R2) failed there and left a placeholder (nexu-io/openmotion#892).
+      // Pinned by `__tests__/module.snapFetch.redirect.test.js`.
+      cred = sameOrigin ? 'same-origin' : 'omit'
     } catch {
       cred = 'omit'
     }
