@@ -42,7 +42,7 @@
     "url": "https://github.com/sponsors/tinchox5"
   },
   "peerDependencies": {
-    "@zumer/snapdom": "^3.4.0"
+    "@zumer/snapdom": "^3.8.3"
   },
   "devDependencies": {
     "@zumer/snapdom": "file:../.."

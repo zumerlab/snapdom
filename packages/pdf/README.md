@@ -11,7 +11,7 @@ PDF export for [SnapDOM](https://snapdom.dev/): `pdf()` adds `toPdf()` to a capt
 npm install @zumer/snapdom@latest @zumer/snapdom-pdf@latest
 ```
 
-It needs SnapDOM 3.4.0 or newer within 3.x. Up to SnapDOM plugins 4.x the same exporter shipped as `@zumer/snapdom-plugins/pdf`; only the import changes.
+It needs SnapDOM 3.8.3 or newer within 3.x. Up to SnapDOM plugins 4.x the same exporter shipped as `@zumer/snapdom-plugins/pdf`; only the import changes.
 
 Without a bundler, map both packages in an import map and serve the whole `@zumer/snapdom-pdf` folder, because its `index.js` imports files from `src/`.
 
