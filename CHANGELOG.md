@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. 
 
+#### [v3.8.3](https://github.com/zumerlab/snapdom/compare/v3.8.2...v3.8.3)
+
+> 23 November 2026
+
+**Features**
+
+- **core:** a plugin export can rasterize a revised copy of the capture [`d34f7e8`](https://github.com/zumerlab/snapdom/commit/d34f7e8968407014ddae61c2f597bae42c5ac5f3)
+- **core:** a plugin can mark the helper nodes it mounts as snapdom's own [`8415b86`](https://github.com/zumerlab/snapdom/commit/8415b86d78a17498dc146e2bcc3700f8f618dbea)
+- **pdf:** WOFF2 fonts embed, and text is painted only from a file that holds its glyphs [`9644f96`](https://github.com/zumerlab/snapdom/commit/9644f969972bd942d2a767ccc70876adc916b00c)
+- **vector:** WOFF2 fonts are rebuilt and embedded by the internal PDF emitter [`280e4b4`](https://github.com/zumerlab/snapdom/commit/280e4b40cbaedb65f7632142bd75dbfda2e19e44)
+
+**Fixes**
+
+- **core:** exclude keeps a scrolled container clipped and out-of-flow boxes add no spacer [`#571`](https://github.com/zumerlab/snapdom/pull/571)
+- **core:** a same-origin URL that redirects to another origin is fetched [`8bb6f1a`](https://github.com/zumerlab/snapdom/commit/8bb6f1a06db5f74c88e9d6091273b729000167d9)
+- **scripts:** the packaging check reads the vector package's conditional exports [`8a69387`](https://github.com/zumerlab/snapdom/commit/8a69387562db38e1d047975100628f90d8764b01)
+
+**Refactoring**
+
+- the vector engine writes no PDF; the PDF plugin owns all of it [`acaff7d`](https://github.com/zumerlab/snapdom/commit/acaff7d76e12661a67ae8e1214b71c69f753bcc1)
+- one engine per product; the PDF plugin does not use the vector engine [`de4f795`](https://github.com/zumerlab/snapdom/commit/de4f79529174793e2800cd3517b40769d9be59d0)
+
+**Chores**
+
+- **vector:** the package ships one built file instead of src/ [`39a3040`](https://github.com/zumerlab/snapdom/commit/39a304015495e6dfd91fdbb5df29f4244f21dc98)
+
 #### [v3.8.2](https://github.com/zumerlab/snapdom/compare/v3.8.1...v3.8.2)
 
 > 21 November 2026
