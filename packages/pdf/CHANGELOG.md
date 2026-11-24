@@ -1,5 +1,25 @@
 # PDF changes
 
+## 1.0.2
+
+> 24 November 2026
+
+**Features**
+
+- **pdf:** WOFF2 fonts embed, and text is painted only from a file that holds its glyphs [`9644f96`](https://github.com/zumerlab/snapdom/commit/9644f969972bd942d2a767ccc70876adc916b00c)
+- **pdf:** a word painted as glyphs is in the file once [`88c831e`](https://github.com/zumerlab/snapdom/commit/88c831e4c0d07acb5a37749b15ff7fa88a2e100d)
+- **pdf:** text is painted as real glyphs by default [`9c525aa`](https://github.com/zumerlab/snapdom/commit/9c525aacdefb31320542b208df6aa1891ee5e2ec)
+
+**Refactoring**
+
+- the vector engine writes no PDF; the PDF plugin owns all of it [`acaff7d`](https://github.com/zumerlab/snapdom/commit/acaff7d76e12661a67ae8e1214b71c69f753bcc1)
+- one engine per product; the PDF plugin does not use the vector engine [`de4f795`](https://github.com/zumerlab/snapdom/commit/de4f79529174793e2800cd3517b40769d9be59d0)
+
+**Chores**
+
+- **pdf,vector:** require SnapDOM 3.8.3 [`548afe4`](https://github.com/zumerlab/snapdom/commit/548afe42db29c19ce6c2a1eeddd84f6c86aa1117)
+- release each package from its workspace instead of sixteen root aliases [`37f6b34`](https://github.com/zumerlab/snapdom/commit/37f6b341e842f6480786b663a3bc1123de393659)
+
 ## 1.0.1
 
 > 9 November 2026
