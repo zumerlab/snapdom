@@ -68,7 +68,7 @@
 <section>
   <h2 id="install">Install</h2>
   <pre><code>npm install @zumer/snapdom @zumer/snapdom-pdf</code></pre>
-  <p>Requires SnapDOM 3.4.0 or newer within 3.x. <a href="https://github.com/zumerlab/snapdom/tree/main/packages/pdf">Source and MIT license</a>. Without a bundler, map both packages in an import map and
+  <p>Requires SnapDOM 3.8.3 or newer within 3.x. <a href="https://github.com/zumerlab/snapdom/tree/main/packages/pdf">Source and MIT license</a>. Without a bundler, map both packages in an import map and
   serve the whole <code>@zumer/snapdom-pdf</code> folder, because its <code>index.js</code> imports
   files from <code>src/</code>.</p>
   <pre><code>&lt;script type="importmap"&gt;
@@ -154,7 +154,7 @@ const blob = await shot.toPdf({ page: 'a4', download: 'report.pdf' })</code></pr
   <div class="compare-table"><table>
     <thead><tr><th scope="col">Option</th><th scope="col">Default</th><th scope="col">What it does</th></tr></thead>
     <tbody>
-      <tr><td>image</td><td>true</td><td>Draw the captured image. With <code>false</code>, only PDF text and annotations remain; use <code>vectorText: true</code> with embedded fonts to make eligible text visible.</td></tr>
+      <tr><td>image</td><td>true</td><td>Draw the captured image. With <code>false</code>, only PDF text and annotations remain: the text drawn as letters stays visible, the rest does not.</td></tr>
       <tr><td>codec</td><td>'auto'</td><td>Try JPEG and lossless and keep the smaller file, per image. <code>'jpeg'</code> or <code>'flate'</code> forces one.</td></tr>
       <tr><td>quality</td><td>0.92</td><td>JPEG quality. It only matters when JPEG wins, which on normal pages is rare.</td></tr>
       <tr><td>backgroundColor</td><td>none</td><td>Fill transparent areas with a colour. Usually makes the file smaller.</td></tr>
@@ -189,15 +189,17 @@ const blob = await shot.toPdf({ page: 'a4', download: 'report.pdf' })</code></pr
     <thead><tr><th scope="col">Option</th><th scope="col">Default</th><th scope="col">What it does</th></tr></thead>
     <tbody>
       <tr><td>embedFonts</td><td>true</td><td>Embed the page's web fonts, only the letters the document uses. <code>'full'</code> embeds whole fonts; <code>false</code> none.</td></tr>
-      <tr><td>vectorText</td><td>false</td><td>Draw the text as real letters instead of pixels: sharp at any zoom.</td></tr>
+      <tr><td>vectorText</td><td>true</td><td>Draw the text as real letters instead of pixels: sharp at any zoom and a lighter file. <code>false</code> keeps all the text in the image.</td></tr>
     </tbody>
   </table></div>
   <p>The PDF can only embed fonts the capture carries, so capture with
   <code>snapdom(el, { embedFonts: true })</code>. System fonts have no file to embed. Copying text
   works the same with or without embedded fonts.</p>
-  <p><code>vectorText</code> needs embedded fonts. Right-to-left and complex scripts stay as image.
-  With <code>image: false</code> it gives a very small text-only PDF, without borders, backgrounds or
-  pictures.</p>
+  <p>Text is drawn as real letters wherever the page's own font file can draw it, which needs
+  embedded fonts. The letters that are drawn leave the page image, so each one is in the file once.
+  Text in a system font, right-to-left and complex scripts, and translucent or outlined text stay
+  as image. With <code>image: false</code> the result is a very small text-only PDF, without
+  borders, backgrounds or pictures.</p>
 </section>
 
 <section>
@@ -334,7 +336,7 @@ const blob = await shot.toPdf({ page: 'a4', download: 'report.pdf' })</code></pr
 <section>
   <h2 id="limits">Limits</h2>
   <ul class="pane-list">
-    <li>Text is an image unless you use <code>vectorText</code>, so a deep zoom shows the capture's resolution.</li>
+    <li>Text in a system font is an image, so a deep zoom shows the capture's resolution. Text in a web font is drawn as letters.</li>
     <li>Closed shadow roots cannot be read.</li>
     <li>Date inputs are written in ISO format, not as the browser shows them.</li>
     <li>An element used as header, footer or watermark has no selectable text. A repeated table header has no links.</li>
